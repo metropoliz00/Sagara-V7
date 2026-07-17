@@ -834,10 +834,12 @@ const GradesView: React.FC<GradesViewProps> = ({
   };
 
   const handleDownloadTemplate = () => { 
-      const headers = ["NIS", "Nama Siswa", "Mata Pelajaran(ID)", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS"];
+      const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran(ID)", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS"];
       
-      const rows = students.map(student => [
+      const rows = students.map((student, idx) => [
+        idx + 1,
         student.nis || '-',
+        student.nisn || '-',
         student.name.toUpperCase(),
         selectedSubject,
         "", "", "", "", ""
@@ -870,12 +872,12 @@ const GradesView: React.FC<GradesViewProps> = ({
           XLSX.writeFile(workbook, `rekap_nilai_rapor_kelas_${classId}.xlsx`);
       } else {
           const subjectName = activeSubject?.name || selectedSubject;
-          const headers = ["NIS", "Nama Siswa", "Mata Pelajaran", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS", "Nilai Akhir", "Status"];
-          const rows = students.map(s => {
+          const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS", "Nilai Akhir", "Status"];
+          const rows = students.map((s, idx) => {
              const g = getStudentGrade(s.id);
              const avg = calculateFinalAverage(g);
              const status = avg >= currentKktp ? 'Tuntas' : 'Belum Tuntas';
-             return [s.nis, s.name.toUpperCase(), subjectName, g.sum1, g.sum2, g.sum3, g.sum4, g.sas, avg, status];
+             return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, g.sum1, g.sum2, g.sum3, g.sum4, g.sas, avg, status];
           });
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
           const workbook = XLSX.utils.book_new();
@@ -1375,9 +1377,9 @@ const GradesView: React.FC<GradesViewProps> = ({
                  <thead className="bg-slate-50 text-slate-700 font-bold print:bg-white print:border-b print:text-black">
                     <tr className="border-b">
                        <th className="p-4 sticky left-0 bg-slate-50 print:bg-white w-12 text-center border-r z-20 hidden md:table-cell">No</th>
-                       <th className="p-4 w-20 text-center border-r">NIS</th>
-                       <th className="p-4 w-20 text-center border-r">NISN</th>
-                       <th className="p-4 sticky left-[112px] bg-slate-50 print:bg-white min-w-[124px] md:min-w-[220px] max-w-[124px] md:max-w-none border-r z-20">Nama Siswa</th>
+                       <th className="p-4 w-24 text-center border-r sticky left-0 md:left-12 bg-slate-50 print:bg-white z-20">NIS</th>
+                       <th className="p-4 w-28 text-center border-r sticky left-0 md:left-36 bg-slate-50 print:bg-white z-20">NISN</th>
+                       <th className="p-4 sticky left-0 md:left-64 bg-slate-50 print:bg-white min-w-[150px] md:min-w-[220px] border-r z-20">Nama Siswa</th>
                        <th className="p-2 w-20 text-center border-r">SUM 1</th>
                        <th className="p-2 w-20 text-center border-r">SUM 2</th>
                        <th className="p-2 w-20 text-center border-r">SUM 3</th>
@@ -1397,14 +1399,13 @@ const GradesView: React.FC<GradesViewProps> = ({
                              <td className="p-4 sticky left-0 bg-white text-center border-r z-10 w-12 font-medium print:text-black hidden md:table-cell">
                                  {idx + 1}
                               </td>
-                              <td className="p-4 sticky left-0 md:left-12 bg-white font-medium print:text-black border-r z-10 max-w-[124px] md:max-w-none">
+                             <td className="p-4 text-center border-r text-xs text-gray-500 sticky left-0 md:left-12 bg-white z-10">{s.nis}</td>
+                             <td className="p-4 text-center border-r text-xs text-gray-500 sticky left-0 md:left-36 bg-white z-10">{s.nisn || '-'}</td>
+                             <td className="p-4 sticky left-0 md:left-64 bg-white font-medium print:text-black border-r z-10 min-w-[150px] md:min-w-[220px]">
                                 <div className="flex flex-col truncate">
                                      <span className="truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span>
-                                     
                                  </div>
                              </td>
-                             <td className="p-4 text-center border-r text-xs text-gray-500">{s.nis}</td>
-                             <td className="p-4 text-center border-r text-xs text-gray-500">{s.nisn || '-'}</td>
                              {(['sum1','sum2','sum3','sum4', ...customColumns, 'sas'] as string[]).map(f => {
                                 const score = Number(g[f]) || 0;
                                 const colorClass = getInputColor(score);
@@ -1451,9 +1452,9 @@ const GradesView: React.FC<GradesViewProps> = ({
                    <thead className="bg-indigo-50 text-indigo-900 font-bold uppercase print:bg-gray-100 print:text-black">
                        <tr className="border-b border-indigo-100">
                            <th className="p-3 w-10 text-center border-r border-indigo-100 sticky left-0 bg-indigo-50 z-20 hidden md:table-cell">No</th>
-                           <th className="p-3 min-w-[124px] md:min-w-[200px] max-w-[124px] md:max-w-none border-r border-indigo-100 sticky left-0 md:left-10 bg-indigo-50 z-20">Nama Siswa</th>
-                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-indigo-50">NIS</th>
-                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-indigo-50">NISN</th>
+                            <th className="p-3 w-24 text-center border-r border-indigo-100 sticky left-0 md:left-10 bg-indigo-50 z-20">NIS</th>
+                            <th className="p-3 w-28 text-center border-r border-indigo-100 sticky left-0 md:left-34 bg-indigo-50 z-20">NISN</th>
+                            <th className="p-3 min-w-[150px] md:min-w-[200px] border-r border-indigo-100 sticky left-0 md:left-62 bg-indigo-50 z-20">Nama Siswa</th>
                            {activeSubjectsForRecap.map(subj => <th key={subj.id} className="p-2 w-16 text-center border-r border-indigo-100" title={subj.name}>{getSubjectInitials(subj.name)}</th>)}
                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-emerald-50 text-emerald-800">Jumlah</th>
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-sky-50 text-sky-800">Rata-Rata</th>
@@ -1467,7 +1468,9 @@ const GradesView: React.FC<GradesViewProps> = ({
                            return (
                                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
-                                   <td className="p-3 font-medium text-gray-800 border-r sticky left-0 md:left-10 bg-white group-hover:bg-gray-50 z-10 max-w-[124px] md:max-w-[200px] truncate">
+                                   <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 text-[10px] font-mono">{s.nis}</td>
+                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 md:left-34 bg-white group-hover:bg-gray-50 z-10 text-[10px] font-mono">{s.nisn || '-'}</td>
+                                   <td className="p-3 font-medium text-gray-800 border-r sticky left-0 md:left-62 bg-white group-hover:bg-gray-50 z-10 min-w-[150px] md:min-w-[200px] truncate">
                                        <div className="flex flex-col truncate"><span className="uppercase truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span></div>
                                    </td>
                                    {activeSubjectsForRecap.map(subj => <td key={subj.id} className="p-2 text-center border-r font-medium text-gray-600">{s.scores[subj.id] || '-'}</td>)}

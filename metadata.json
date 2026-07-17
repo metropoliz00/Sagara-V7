@@ -1,0 +1,7 @@
+{
+  "name": "SAGARA",
+  "description": "Sistem Akademik dan Administrasi Terintegrasi",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

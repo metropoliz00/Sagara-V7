@@ -1,0 +1,709 @@
+
+export interface User {
+  id: string;
+  username: string;
+  password?: string;
+  role: 'admin' | 'guru' | 'siswa' | 'Kepala Sekolah' | 'superadmin';
+  fullName: string;
+  nip?: string;
+  nuptk?: string;
+  birthPlace?: string;
+  birthDate?: string;
+  education?: string;
+  position: string;
+  rank?: string;
+  classId?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  photo?: string;
+  signature?: string;
+  studentId?: string;
+}
+
+export interface Student {
+  id: string;
+  classId: string;
+  nis: string;
+  nisn?: string;
+  name: string;
+  gender: 'L' | 'P';
+  birthDate: string;
+  birthPlace?: string;
+  religion?: string;
+  address: string;
+  photo?: string;
+  
+  fatherName: string; 
+  fatherJob?: string; 
+  fatherEducation?: string;
+  motherName: string;
+  motherJob?: string;
+  motherEducation?: string;
+  parentName: string;
+  parentJob?: string;
+  parentPhone: string;
+  
+  bloodType?: string;
+  height?: number;
+  weight?: number;
+  healthNotes?: string;
+  hobbies?: string;
+  ambition?: string;
+  economyStatus?: 'Mampu' | 'Cukup' | 'Kurang Mampu' | 'KIP';
+  
+  achievements?: string[];
+  violations?: string[];
+  behaviorScore: number;
+  attendance: {
+    present: number;
+    sick: number;
+    permit: number;
+    alpha: number;
+  };
+  
+  teacherNotes?: string;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  kkm: number;
+}
+
+export interface GradeData {
+  sum1: number;
+  sum2: number;
+  sum3: number;
+  sum4: number;
+  sas: number;
+  [key: string]: any;
+}
+
+export interface GradeRecord {
+  studentId: string;
+  classId: string;
+  subjects: Record<string, GradeData>;
+}
+
+export interface GradeHistoryRecord {
+  id: string; // academicYear_semester_studentId
+  studentId: string;
+  classId: string;
+  academicYear: string;
+  semester: string;
+  totalScore: number;
+  averageScore: number;
+  rank: number | string;
+  subjectsCount: number;
+  scores: Record<string, number>;
+  fullScores?: Record<string, GradeData>;
+  createdAt: string;
+}
+
+export interface ScheduleItem {
+  id: string;
+  day: string;
+  time: string;
+  subject: string;
+}
+
+export interface PiketGroup {
+  day: string;
+  studentIds: string[];
+}
+
+export interface SeatingLayouts {
+  classical: (string | null)[];
+  groups: (string | null)[];
+  ushape: (string | null)[];
+}
+
+export interface InventoryItem {
+  id: string;
+  classId: string;
+  name: string;
+  condition: 'Baik' | 'Rusak';
+  qty: number;
+}
+
+export interface SchoolAsset {
+  id: string;
+  name: string; // Jenis Sarana/Prasarana
+  condition: 'Baik' | 'Rusak Ringan' | 'Rusak Berat';
+  qty: number;
+  location?: string; // Optional location
+}
+
+export interface Guest {
+  id: string;
+  classId: string;
+  date: string;
+  time: string;
+  name: string;
+  purpose: string;
+  agency: string;
+}
+
+export interface AgendaItem {
+  id: string;
+  classId: string;
+  title: string;
+  date: string;
+  endDate?: string;
+  time?: string;
+  type: 'urgent' | 'warning' | 'info';
+  completed: boolean;
+}
+
+export interface BehaviorLog {
+  id: string;
+  classId: string;
+  studentId: string;
+  studentName: string;
+  date: string;
+  type: 'positive' | 'negative' | 'counseling';
+  category: string;
+  description: string;
+  point: number;
+  emotion: 'happy' | 'proud' | 'neutral' | 'sad' | 'angry';
+  status: 'Done' | 'Pending';
+}
+
+export interface Extracurricular {
+  id: string;
+  classId: string;
+  name: string;
+  category: string;
+  schedule: string;
+  coach: string;
+  members: string[];
+  color: string;
+}
+
+export interface Holiday {
+  id: string;
+  classId: string;
+  date: string;
+  description: string;
+  type: 'nasional' | 'haribesar' | 'cuti' | 'semester';
+}
+
+export interface EmploymentLink {
+  id: string;
+  title: string;
+  url: string;
+  icon?: string;
+}
+
+export interface SupportDocument {
+  id: string;
+  classId: string;
+  name: string;
+  url: string;
+}
+
+export interface LearningReport {
+  id: string;
+  classId: string;
+  schoolId?: string;
+  date: string;
+  type: 'Jurnal Harian' | 'RPP/Modul Ajar' | 'Dokumentasi' | 'Lainnya';
+  subject: string;
+  topic: string;
+  documentLink: string;
+  teacherName?: string;
+}
+
+export interface LearningJournalEntry {
+  id: string;
+  classId: string;
+  date: string;
+  day: string;
+  subject: string;
+  timeSlot?: string;
+  topic: string;
+  activities: string;
+  evaluation: string;
+  reflection: string;
+  followUp: string;
+  model?: string;
+  pendekatan?: string;
+  metode?: string[];
+  isTeacherPresent?: boolean;
+  teacherName?: string;
+  supervisionFeedback?: string;
+  supervisorName?: string;
+  feedbackRead?: boolean;
+}
+
+export interface LearningDocumentation {
+  id: string;
+  classId: string;
+  namaKegiatan: string;
+  linkFoto: string;
+}
+
+export interface LiaisonLog {
+  id: string;
+  classId: string;
+  studentId: string;
+  date: string;
+  sender: 'Guru' | 'Wali Murid';
+  category?: string;
+  message: string;
+  status?: 'Pending' | 'Diterima' | 'Ditolak' | 'Selesai';
+  response?: string;
+}
+
+export interface PermissionRequest {
+  id: string;
+  studentId: string;
+  studentName?: string;
+  classId: string;
+  date: string;
+  type: 'sick' | 'permit' | 'dispensation';
+  reason: string;
+  status: 'Pending' | 'Approved' | 'Rejected';
+}
+
+export interface TeacherProfileData {
+  name: string;
+  nip: string;
+  nuptk?: string;
+  birthPlace?: string;
+  birthDate?: string;
+  education?: string;
+  position?: string;
+  rank?: string;
+  teachingClass?: string;
+  phone: string;
+  email: string;
+  address: string;
+  signature?: string;
+  photo?: string;
+}
+
+export interface SchoolProfileData {
+  name: string;
+  npsn: string;
+  address: string;
+  headmaster: string;
+  headmasterNip: string;
+  year: string;
+  semester: string;
+  regencyLogo?: string;
+  schoolLogo?: string;
+  runningText?: string;
+  runningTextSpeed?: number;
+  headmasterSignature?: string;
+  manualBookLink?: string;
+  developerInfo?: {
+    name: string;
+    moto: string;
+    photo: string;
+    whatsapp?: string;
+    facebook?: string;
+    instagram?: string;
+    tiktok?: string;
+    youtube?: string;
+    email?: string;
+  };
+  isGraduationAnnounced?: boolean;
+  graduationCountdownTime?: string;
+  loginPosterUrl?: string;
+  studentMitigationAccess?: boolean;
+  primaryColor?: string;
+  ttsEnabled?: boolean;
+}
+
+export interface AcademicCalendarData {
+  __descriptions__?: { [date: string]: string };
+  [yearMonth: string]: any;
+}
+
+export interface OrganizationStructure {
+  roles: Record<string, string | string[] | null>;
+  sections: { id: string; name: string }[];
+}
+
+// NEW: BOS Interface
+export interface BOSTransaction {
+  id: string;
+  date: string;
+  type: 'income' | 'expense';
+  category: 
+    | 'SiLPA Tahun Lalu'
+    | 'BOS Reguler' 
+    | 'Standar Isi' 
+    | 'Standar Proses' 
+    | 'Standar Kompetensi Lulusan' 
+    | 'Standar Pendidik dan Tenaga Kependidikan' 
+    | 'Standar Sarana dan Prasarana' 
+    | 'Standar Pengelolaan' 
+    | 'Standar Pembiayaan' 
+    | 'Standar Penilaian Pendidikan';
+  description: string;
+  amount: number;
+}
+
+export const SIKAP_INDICATORS = {
+  keimanan: 'Keimanan & Ketakwaan',
+  kewargaan: 'Kewargaan',
+  penalaranKritis: 'Penalaran Kritis',
+  kreativitas: 'Kreativitas',
+  kolaborasi: 'Kolaborasi',
+  kemandirian: 'Kemandirian',
+  kesehatan: 'Kesehatan',
+  komunikasi: 'Komunikasi',
+} as const;
+
+export type SikapIndicatorKey = keyof typeof SIKAP_INDICATORS;
+
+export interface SikapAssessment {
+  studentId: string;
+  classId: string;
+  keimanan: number;
+  kewargaan: number;
+  penalaranKritis: number;
+  kreativitas: number;
+  kolaborasi: number;
+  kemandirian: number;
+  kesehatan: number;
+  komunikasi: number;
+}
+
+export const KARAKTER_INDICATORS = {
+  bangunPagi: 'Bangun Pagi',
+  beribadah: 'Beribadah',
+  berolahraga: 'Berolahraga',
+  makanSehat: 'Makan Sehat & Bergizi',
+  gemarBelajar: 'Gemar Belajar',
+  bermasyarakat: 'Bermasyarakat',
+  tidurAwal: 'Tidur Lebih Awal',
+} as const;
+
+export type KarakterIndicatorKey = keyof typeof KARAKTER_INDICATORS;
+
+export interface KarakterAssessment {
+  studentId: string;
+  classId: string;
+  bangunPagi: string;
+  beribadah: string;
+  berolahraga: string;
+  makanSehat: string;
+  gemarBelajar: string;
+  bermasyarakat: string;
+  tidurAwal: string;
+  catatan?: string;
+  afirmasi?: string;
+}
+
+export interface Graduate {
+  id: string;
+  nis?: string;
+  nisn: string;
+  name: string;
+  ijazahNumber: string;
+  status: string;
+  graduationYear: string;
+  continuedTo: string;
+  sklUrl?: string;
+  isVisible?: boolean;
+  createdAt?: number;
+  updatedAt?: number;
+}
+
+export interface Material {
+  id: string;
+  classId: string;
+  subjectId: string;
+  title: string;
+  description?: string;
+  link: string;
+  videoLink?: string;
+  isVisible: boolean;
+  createdAt: string;
+}
+
+export type ViewState = 
+  | 'dashboard' 
+  | 'dashboard-student'
+  | 'ringkasan'
+  | 'jadwal-pelajaran'
+  | 'izin-absensi'
+  | 'materi-belajar'
+  | 'sumatif-siswa'
+  | 'buku-penghubung-siswa'
+  | 'profil-siswa'
+  | 'karakter-siswa'
+  | 'siswa' 
+  | 'data-lulusan'
+  | 'absensi' 
+  | 'agenda'
+  | 'materi'
+  | 'nilai' 
+  | 'administrasi/kelas' 
+  | 'konseling' 
+  | 'kegiatan' 
+  | 'profil' 
+  | 'pendahuluan' 
+  | 'sikap' 
+  | 'manajemen-akun' 
+  | 'tautan-kepegawaian' 
+  | 'laporan-pembelajaran' 
+  | 'jurnal-pembelajaran'
+  | 'rencana-pembelajaran'
+  | 'dokumentasi-pembelajaran'
+  | 'monitor-siswa' 
+  | 'buku-penghubung' 
+  | 'cadangan-pemulihan' 
+  | 'administrasi/bukti-dukung' 
+  | 'supervisi'
+  | 'administrasi/sarana-prasarana'
+  | 'administrasi/dana-bos'
+  | 'administrasi/peminjaman-buku'
+  | 'sumatif'
+  | 'sumatif/manage'
+  | 'penilaian-kinerja'
+  | 'mitigasi-bencana'
+  | 'manajemen-database-pusat'
+  | 'edit-pengembang'
+  | 'data-gtk';
+
+export type QuestionType = 'pg' | 'pgk' | 'bs' | 'uraian';
+
+export interface QuestionOption {
+  id: string;
+  text: string;
+  imageUrl?: string;
+}
+
+export interface Question {
+  id: string;
+  text: string;
+  imageUrl?: string;
+  imageCaption?: string;
+  type: QuestionType;
+  options?: QuestionOption[]; // Updated for shuffling
+  correctAnswer: any; // string | string[] | Record<string, string>
+  points: number;
+  difficulty?: 'mudah' | 'sedang' | 'sulit';
+  subQuestions?: { // For BS with 3 statements
+    id: string;
+    text: string;
+    imageUrl?: string;
+    imageCaption?: string;
+    correctAnswer: 'Benar' | 'Salah';
+  }[];
+}
+
+export interface Sumatif {
+  id: string;
+  classId: string;
+  subjectId: string;
+  title: string;
+  type: 'sum1' | 'sum2' | 'sum3' | 'sum4' | 'sas' | 'tka'; // Maps to GradeData fields
+  questions: Question[];
+  duration: number; // in minutes
+  startTime?: string;
+  endTime?: string;
+  isActive: boolean;
+  isVisible?: boolean;
+  token?: string;
+  createdAt?: string;
+}
+
+export interface SumatifResult {
+  id: string;
+  sumatifId: string;
+  studentId: string;
+  score: number;
+  answers: Record<string, any>; // questionId -> answer
+  manualScores?: Record<string, number>; // questionId -> manual score for 'uraian'
+  submittedAt: string;
+  status_tes?: 'mulai' | 'selesai';
+  needsGrading?: boolean; // True if there are ungraded 'uraian' questions
+}
+
+export interface BookLoan {
+  id: string;
+  studentId: string;
+  studentName: string;
+  classId: string;
+  books: string[];
+  qty: number;
+  status: 'Dipinjam' | 'Dikembalikan';
+  date: string;
+  notes: string;
+}
+
+export interface BookInventory {
+  id: string;
+  classId: string;
+  subjectId: string;
+  name: string;
+  stock: number;
+  totalStock: number;
+  coverUrl?: string;
+  digitalUrl?: string;
+}
+
+export interface GtkRecord {
+  id: string;
+  userId?: string;
+  nama: string;
+  nip: string;
+  nuptk: string;
+  jenisKelamin: 'L' | 'P' | '';
+  tempatLahir: string;
+  tanggalLahir: string;
+  ijazahTertinggi: string;
+  jabatan: string;
+  statusPegawai: string;
+  tmtPengangkatan: string;
+  mulaiBekerjaDiSini: string;
+  pangkatGolongan: string;
+  masaKerjaTahun: number;
+  masaKerjaBulan: number;
+  skTerakhir: string;
+  emailPribadi: string;
+  emailBelajar: string;
+  foto: string;
+}
+
+export interface EmergencyAlert {
+  id: string;
+  type: string;
+  description: string;
+  isActive: boolean;
+  triggeredBy: string;
+  triggeredByName: string;
+  createdAt: string;
+}
+
+export interface PerformanceAssessment {
+  id: string;
+  teacherId: string;
+  teacherName?: string;
+  supervisorId: string;
+  supervisorName?: string;
+  date: string;
+  scores: Record<number, number>; // 1-30 -> 1-4
+  reflection: string;
+  totalScore: number;
+  percentage: number;
+  category: string;
+  createdAt?: string;
+  academicYear?: string;
+  semester?: string;
+  isVisible?: boolean;
+}
+
+export interface Attachment {
+  id: string;
+  type: 'Ringkasan Materi' | 'LKM' | 'Rubrik Penilaian' | 'Soal Sumatif' | 'Asesmen Awal' | 'Proses' | 'Akhir' | 'Media';
+  title: string;
+  content: string; // Rich text content or structured text
+}
+
+export interface LearningPlan {
+  id: string;
+  schoolName: string;
+  compiler: string;
+  nip: string;
+  subject: string;
+  topic: string;
+  classSemester: string;
+  academicYear: string;
+  timeAllocation: string;
+  attachments?: Attachment[];
+  // Identifikasi
+  studentCharacteristics: string;
+  profileDimensions: string[]; // List of selected dimensions
+  // Design Pembelajaran
+  capaianPembelajaran: string;
+  learningGoals: string[];
+  // Praktik Pedagogis
+  pendekatan: string;
+  pendekatanReason: string;
+  model: string;
+  modelReason: string;
+  strategi: string;
+  strategiReason: string;
+  metode: string[];
+  metodeReason: string;
+  // Lintas disiplin dll
+  lintasDisiplin: string;
+  mitra: string;
+  digital: string;
+  lingkungan: string;
+  // Pengalaman Pembelajaran
+  kegiatanAwal: string[];
+  kegiatanInti: {
+    phase: string;
+    description: string;
+  }[];
+  kegiatanPenutup: string[];
+  kegiatanAwalTitle?: string;
+  kegiatanIntiTitle?: string;
+  kegiatanPenutupTitle?: string;
+  durasiAwal?: number;
+  durasiInti?: number;
+  durasiPenutup?: number;
+  // Asesmen
+  asesmenAwal: string;
+  asesmenProses: string;
+  asesmenAkhir: string;
+  // Meta
+  createdDate: string;
+  createdAt: string;
+  tempatPengesahan?: string;
+}
+
+export interface KokurikulerPlan {
+  id: string;
+  identitas: {
+    satuanPendidikan: string;
+    jenjangKelas: string;
+    semester: string;
+    tahunAjaran?: string;
+    temaKokurikuler: string;
+    bentukKokurikuler: string;
+    lintasDisiplinIlmu: string;
+    gerakan7KAIH: string;
+    berbasisNilai: string;
+    alokasiWaktu: string;
+    tipeAlokasi?: 'mingguan' | 'harian';
+    lokasiKegiatan: string;
+    tempatPengesahan?: string;
+    tanggalPengesahan?: string;
+    penanggungJawab: string;
+  };
+  analisisKebutuhan: {
+    karakteristikMurid: string;
+    potensiLingkungan: string;
+    programUnggulan: string;
+    kebutuhanProfil: string;
+  };
+  dimensiProfil: {
+    dimensi: string;
+    fokus: string;
+  }[];
+  tujuanPembelajaran: string[];
+  praktikPedagogis: string;
+  lingkunganPembelajaran: string;
+  pemanfaatanDigital: string;
+  kemitraan: {
+    satuanPendidikan: string;
+    keluarga: string;
+    masyarakat: string;
+  };
+  kegiatan: string[];
+  asesmen: {
+    formatif: string;
+    sumatif: string;
+  };
+  produk: string[];
+  createdAt: string;
+}

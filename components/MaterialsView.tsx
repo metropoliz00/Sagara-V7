@@ -1,0 +1,842 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Material, Subject, User } from '../types';
+import { 
+  BookOpen, Plus, Search, ExternalLink, Trash2, Edit2, 
+  Filter, Calendar, Link as LinkIcon, FileText, X, Youtube,
+  Eye, EyeOff, Sparkles, Award, BookMarked, Video, Layers, Globe, PenTool, Binary,
+  Upload, Download, FileSpreadsheet
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
+import CustomModal from './CustomModal';
+
+interface MaterialsViewProps {
+  materials: Material[];
+  subjects: Subject[];
+  currentUser: User | null;
+  classId: string;
+  onAddMaterial: (material: Omit<Material, 'id' | 'createdAt'> & { createdAt?: string }) => Promise<void>;
+  onUpdateMaterial: (material: Material) => Promise<void>;
+  onDeleteMaterial: (id: string) => Promise<void>;
+  onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
+}
+
+
+// Helper to get beautiful, modern theme palettes tailored per subject
+const getSubjectTheme = (subjectId: string, subjectName: string) => {
+  const name = subjectName.toLowerCase();
+  
+  if (name.includes('matematika') || name.includes('mtk') || name.includes('hitung')) {
+    return {
+      border: 'border-orange-100 hover:border-orange-200',
+      text: 'text-orange-600',
+      badge: 'bg-orange-50/80 text-orange-700 border-orange-100 hover:bg-orange-100/50',
+      banner: 'bg-gradient-to-r from-orange-400 to-amber-400',
+    };
+  }
+  if (name.includes('ipa') || name.includes('sains') || name.includes('fisika') || name.includes('biologi') || name.includes('kimia') || name.includes('science')) {
+    return {
+      border: 'border-sky-100 hover:border-sky-200',
+      text: 'text-sky-600',
+      badge: 'bg-sky-50/80 text-sky-700 border-sky-100 hover:bg-sky-100/50',
+      banner: 'bg-gradient-to-r from-sky-400 to-blue-400',
+    };
+  }
+  if (name.includes('agama') || name.includes('islam') || name.includes('kristen') || name.includes('buku') || name.includes('budi')) {
+    return {
+      border: 'border-emerald-100 hover:border-emerald-200',
+      text: 'text-emerald-600',
+      badge: 'bg-emerald-50/80 text-emerald-700 border-emerald-100 hover:bg-emerald-100/50',
+      banner: 'bg-gradient-to-r from-emerald-400 to-teal-400',
+    };
+  }
+  if (name.includes('sejarah') || name.includes('pkn') || name.includes('ips') || name.includes('sosial') || name.includes('geografi') || name.includes('negara')) {
+    return {
+      border: 'border-amber-100 hover:border-amber-200',
+      text: 'text-amber-600',
+      badge: 'bg-amber-50/80 text-amber-700 border-amber-100 hover:bg-amber-100/50',
+      banner: 'bg-gradient-to-r from-amber-400 to-yellow-400',
+    };
+  }
+  if (name.includes('bahasa') || name.includes('indonesia') || name.includes('inggris') || name.includes('english') || name.includes('jawa') || name.includes('sunda')) {
+    return {
+      border: 'border-rose-100 hover:border-rose-200',
+      text: 'text-rose-600',
+      badge: 'bg-rose-50/80 text-rose-700 border-rose-100 hover:bg-rose-100/50',
+      banner: 'bg-gradient-to-r from-rose-400 to-pink-400',
+    };
+  }
+  if (name.includes('seni') || name.includes('budaya') || name.includes('art') || name.includes('musik') || name.includes('prakarya')) {
+    return {
+      border: 'border-violet-100 hover:border-violet-200',
+      text: 'text-violet-600',
+      badge: 'bg-violet-50/80 text-violet-700 border-violet-100 hover:bg-violet-100/50',
+      banner: 'bg-gradient-to-r from-violet-400 to-purple-400',
+    };
+  }
+  if (name.includes('pjok') || name.includes('olahraga') || name.includes('jasmani') || name.includes('kesehatan') || name.includes('senam')) {
+    return {
+      border: 'border-teal-100 hover:border-teal-200',
+      text: 'text-teal-600',
+      badge: 'bg-teal-50/80 text-teal-700 border-teal-100 hover:bg-teal-100/50',
+      banner: 'bg-gradient-to-r from-teal-400 to-cyan-400',
+    };
+  }
+
+  // Fallback hashing based on key
+  const palettes = [
+    {
+      border: 'border-indigo-100 hover:border-indigo-200',
+      text: 'text-indigo-600',
+      badge: 'bg-indigo-50/80 text-indigo-700 border-indigo-100 hover:bg-indigo-100/50',
+      banner: 'bg-gradient-to-r from-indigo-400 to-violet-400',
+    },
+    {
+      border: 'border-cyan-100 hover:border-cyan-200',
+      text: 'text-cyan-600',
+      badge: 'bg-cyan-50/80 text-cyan-700 border-cyan-100 hover:bg-cyan-100/50',
+      banner: 'bg-gradient-to-r from-cyan-400 to-sky-400',
+    },
+    {
+      border: 'border-fuchsia-100 hover:border-fuchsia-200',
+      text: 'text-fuchsia-600',
+      badge: 'bg-fuchsia-50/80 text-fuchsia-700 border-fuchsia-100 hover:bg-fuchsia-100/50',
+      banner: 'bg-gradient-to-r from-fuchsia-400 to-pink-400',
+    }
+  ];
+
+  const key = subjectId || subjectName || 'default';
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % palettes.length;
+  return palettes[index];
+};
+
+const MaterialsView: React.FC<MaterialsViewProps> = ({
+  materials, subjects, currentUser, classId,
+  onAddMaterial, onUpdateMaterial, onDeleteMaterial, onShowNotification
+}) => {
+  console.log("MaterialsView received materials:", materials, "for classId:", classId);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<{
+    title: string;
+    url: string;
+    type: 'video' | 'material';
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      {
+        'Mata Pelajaran': subjects[0]?.name || 'Matematika',
+        'Judul Materi': 'Aljabar Dasar Bagian 1',
+        'Deskripsi': 'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
+        'Link Tautan (Opsional)': 'https://youtube.com/... atau https://drive.google.com/...',
+        'Status Tampilkan (Ya/Tidak)': 'Ya'
+      }
+    ];
+
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Materi");
+    XLSX.writeFile(wb, "Template_Materi_Pembelajaran.xlsx");
+    onShowNotification("Template Excel berhasil diunduh!", "success");
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const bstr = event.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+
+        if (rawData.length === 0) {
+          onShowNotification("Berkas Excel kosong atau format salah.", "error");
+          return;
+        }
+
+        let importedCount = 0;
+        for (const row of rawData) {
+          const subjectName = row['Mata Pelajaran'];
+          const title = row['Judul Materi'];
+          const description = row['Deskripsi'] || '';
+          const link = row['Link Tautan (Opsional)'] || '';
+          const visibleText = String(row['Status Tampilkan (Ya/Tidak)'] || 'Ya').toLowerCase().trim();
+          const isVisible = visibleText === 'ya' || visibleText === 'yes' || visibleText === 'true';
+
+          if (subjectName && title) {
+            const sub = subjects.find(s => s.name.toLowerCase() === String(subjectName).toLowerCase().trim());
+            const subjectId = sub ? sub.id : (subjects[0]?.id || 'other');
+
+            await onAddMaterial({
+              classId,
+              subjectId,
+              title: String(title),
+              description: String(description),
+              link: String(link),
+              isVisible,
+              createdAt: new Date().toISOString()
+            });
+            importedCount++;
+          }
+        }
+
+        if (importedCount > 0) {
+          onShowNotification(`Berhasil mengimpor ${importedCount} materi pembelajaran!`, "success");
+        } else {
+          onShowNotification("Format kolom tidak sesuai atau tidak ada data valid.", "error");
+        }
+      } catch (err) {
+        console.error(err);
+        onShowNotification("Gagal membaca berkas Excel.", "error");
+      }
+    };
+    reader.readAsBinaryString(file);
+    e.target.value = '';
+  };
+
+  const handleExportExcel = () => {
+    const activeMaterials = materials.filter(item => {
+      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSubject = selectedSubject === 'all' || item.subjectId === selectedSubject;
+      return matchesSearch && matchesSubject;
+    });
+
+    if (activeMaterials.length === 0) {
+      onShowNotification("Tidak ada data materi untuk diekspor.", "warning");
+      return;
+    }
+
+    const exportData = activeMaterials.map((item, idx) => {
+      const sub = subjects.find(s => s.id === item.subjectId);
+      return {
+        'NO': idx + 1,
+        'MATA PELAJARAN': sub ? sub.name : 'Lainnya',
+        'JUDUL MATERI': item.title,
+        'DESKRIPSI': item.description || '-',
+        'LINK TAUTAN': item.link || '-',
+        'TAMPILKAN': item.isVisible ? 'Ya' : 'Tidak',
+        'TANGGAL BUAT': item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-'
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
+    XLSX.writeFile(wb, `Materi_Pembelajaran_${classId}.xlsx`);
+    onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
+  };
+
+  const getYoutubeEmbedUrl = (url: string) => {
+    if (!url) return '';
+    const regExp = /^.*(youtu.be\/\?|youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?\s*v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : null;
+  };
+
+  const getGoogleDriveEmbedUrl = (url: string) => {
+    if (!url) return null;
+    const cleanUrl = url.trim();
+    if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
+      // Handle /file/d/...
+      let match = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/file/d/${match[1]}/preview`;
+      }
+      
+      // Handle /document/d/...
+      match = cleanUrl.match(/\/document\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://docs.google.com/document/d/${match[1]}/preview`;
+      }
+
+      // Handle /spreadsheets/d/...
+      match = cleanUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://docs.google.com/spreadsheets/d/${match[1]}/preview`;
+      }
+
+      // Handle /presentation/d/...
+      match = cleanUrl.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://docs.google.com/presentation/d/${match[1]}/preview`;
+      }
+
+      // Handle open?id=...
+      match = cleanUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/file/d/${match[1]}/preview`;
+      }
+    }
+    return null;
+  };
+  const [isSaving, setIsSaving] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [formData, setFormData] = useState({
+    subjectId: '',
+    title: '',
+    description: '',
+    link: '',
+    videoLink: '',
+    isVisible: true,
+    createdAt: ''
+  });
+
+  const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
+  console.log("MaterialsView RENDER - CurrentUser:", currentUser, "isTeacher:", isTeacher);
+
+  useEffect(() => {
+    const getFormattedDate = (dateStr?: string) => {
+      const d = dateStr ? new Date(dateStr) : new Date();
+      const tzOffset = d.getTimezoneOffset() * 60000;
+      return (new Date(d.getTime() - tzOffset)).toISOString().slice(0, 10);
+    };
+
+    if (editingMaterial) {
+      setFormData({
+        subjectId: editingMaterial.subjectId,
+        title: editingMaterial.title,
+        description: editingMaterial.description || '',
+        link: editingMaterial.link,
+        videoLink: editingMaterial.videoLink || '',
+        isVisible: editingMaterial.isVisible,
+        createdAt: getFormattedDate(editingMaterial.createdAt)
+      });
+    } else {
+      setFormData({
+        subjectId: subjects[0]?.id || '',
+        title: '',
+        description: '',
+        link: '',
+        videoLink: '',
+        isVisible: true,
+        createdAt: getFormattedDate()
+      });
+    }
+  }, [editingMaterial, subjects]);
+
+  const filteredMaterials = materials.filter(m => {
+    const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         (m.description?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesSubject = selectedSubject === 'all' || m.subjectId === selectedSubject;
+    const isVisibleToStudent = isTeacher || m.isVisible;
+    console.log(`Material: ${m.title}, isVisible: ${m.isVisible}, isTeacher: ${isTeacher}, show: ${matchesSearch && matchesSubject && isVisibleToStudent}`);
+    return matchesSearch && matchesSubject && isVisibleToStudent;
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.subjectId || !formData.title || !formData.link) {
+      onShowNotification('Mohon lengkapi data materi', 'error');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const materialDate = formData.createdAt ? new Date(formData.createdAt).toISOString() : new Date().toISOString();
+      if (editingMaterial) {
+        await onUpdateMaterial({
+          ...editingMaterial,
+          subjectId: formData.subjectId,
+          title: formData.title,
+          description: formData.description,
+          link: formData.link,
+          videoLink: formData.videoLink,
+          isVisible: formData.isVisible,
+          createdAt: materialDate
+        });
+        onShowNotification('Materi berhasil diperbarui', 'success');
+      } else {
+        await onAddMaterial({
+          classId,
+          subjectId: formData.subjectId,
+          title: formData.title,
+          description: formData.description,
+          link: formData.link,
+          videoLink: formData.videoLink,
+          isVisible: formData.isVisible,
+          createdAt: materialDate
+        });
+        onShowNotification('Materi berhasil ditambahkan', 'success');
+      }
+      setIsModalOpen(false);
+      setEditingMaterial(null);
+    } catch (error) {
+      // Error is handled in App.tsx but we catch it here to stop loading
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Apakah Anda yakin ingin menghapus materi ini?')) {
+      onDeleteMaterial(id);
+      onShowNotification('Materi berhasil dihapus', 'success');
+    }
+  };
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Materi Pembelajaran</h2>
+          <p className="text-gray-500">Kumpulan link materi pembelajaran yang dibagikan oleh guru.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
+          {isTeacher && (
+            <>
+              <button 
+                onClick={handleDownloadTemplate}
+                className="flex items-center space-x-2 bg-blue-50 text-blue-600 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-semibold"
+                title="Unduh Template Excel"
+              >
+                <Download size={18} />
+                <span>Unduh Template</span>
+              </button>
+              <button 
+                onClick={handleImportClick}
+                className="flex items-center space-x-2 bg-amber-50 text-amber-600 border border-amber-200 px-4 py-2 rounded-lg hover:bg-amber-100 transition text-sm font-semibold"
+                title="Import Materi dari Excel"
+              >
+                <Upload size={18} />
+                <span>Import Excel</span>
+              </button>
+            </>
+          )}
+          <button 
+            onClick={handleExportExcel}
+            className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-semibold"
+            title="Export Materi ke Excel"
+          >
+            <FileSpreadsheet size={18} />
+            <span>Export Excel</span>
+          </button>
+          {isTeacher && (
+            <button 
+              onClick={() => { setEditingMaterial(null); setIsModalOpen(true); }}
+              className="flex items-center space-x-2 px-4 py-2 bg-[#5AB2FF] text-white rounded-xl hover:bg-[#A0DEFF] transition-all shadow-md font-bold text-sm"
+            >
+              <Plus size={18} />
+              <span>Tambah Materi</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-2xl border border-[#CAF4FF] shadow-sm flex flex-col md:flex-row gap-4">
+        <div className="flex-1 relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input 
+            type="text" 
+            placeholder="Cari judul atau deskripsi..." 
+            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="flex items-center space-x-2">
+          <Filter size={18} className="text-gray-400" />
+          <select 
+            className="border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#5AB2FF]"
+            value={selectedSubject}
+            onChange={(e) => setSelectedSubject(e.target.value)}
+          >
+            <option value="all">Semua Mata Pelajaran</option>
+            {subjects.map(s => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Materials Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredMaterials.length > 0 ? (
+          filteredMaterials.map(material => {
+            const subject = subjects.find(s => s.id === material.subjectId);
+            const theme = getSubjectTheme(material.subjectId, subject?.name || '');
+            
+            // Choose icon based on subject name
+            let SubjectIcon = BookOpen;
+            const subName = (subject?.name || '').toLowerCase();
+            if (subName.includes('matematika') || subName.includes('mtk') || subName.includes('hitung')) {
+              SubjectIcon = Binary;
+            } else if (subName.includes('ipa') || subName.includes('sains') || subName.includes('fisika') || subName.includes('biologi') || subName.includes('kimia') || subName.includes('science')) {
+              SubjectIcon = Sparkles;
+            } else if (subName.includes('seni') || subName.includes('budaya') || subName.includes('art') || subName.includes('prakarya') || subName.includes('musik')) {
+              SubjectIcon = PenTool;
+            } else if (subName.includes('olahraga') || subName.includes('pjok') || subName.includes('jasmani') || subName.includes('kesehatan')) {
+              SubjectIcon = Award;
+            } else if (subName.includes('sejarah') || subName.includes('pkn') || subName.includes('ips') || subName.includes('sosial') || subName.includes('geografi')) {
+              SubjectIcon = Globe;
+            } else if (subName.includes('agama') || subName.includes('islam') || subName.includes('kristen') || subName.includes('budi')) {
+              SubjectIcon = BookMarked;
+            } else if (subName.includes('bahasa') || subName.includes('indonesia') || subName.includes('inggris') || subName.includes('english')) {
+              SubjectIcon = Layers;
+            }
+
+            return (
+              <div 
+                key={material.id} 
+                className={`bg-white rounded-3xl border ${theme.border} overflow-hidden shadow-sm hover:shadow-xl hover:shadow-[#5AB2FF]/5 transition-all duration-300 group transform hover:-translate-y-1 flex flex-col justify-between h-full relative`}
+              >
+                {/* Accent Top Bar */}
+                <div className={`h-[6px] w-full ${theme.banner}`} />
+                
+                {/* Card Content */}
+                <div className="p-6 flex-1 flex flex-col justify-between">
+                  <div className="space-y-4">
+                    {/* Header: Subject & Actions */}
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${theme.badge} uppercase tracking-wider shadow-sm transition-colors duration-200 w-max`}>
+                          <SubjectIcon size={12} className={theme.text} />
+                          {subject?.name || 'Mata Pelajaran'}
+                        </span>
+                        {!material.isVisible && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide w-max">
+                            <EyeOff size={10} />
+                            Draft (Siswa Sembunyi)
+                          </span>
+                        )}
+                      </div>
+
+                      {isTeacher && (
+                        <div className="flex items-center space-x-1 bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-sm opacity-90 hover:opacity-100 transition-all duration-200">
+                          <button 
+                            onClick={() => onUpdateMaterial({...material, isVisible: !material.isVisible})}
+                            className={`p-1.5 rounded-lg transition-all duration-200 ${material.isVisible ? 'text-emerald-600 hover:bg-emerald-50' : 'text-slate-400 hover:bg-slate-100'}`}
+                            title={material.isVisible ? 'Sembunyikan dari siswa' : 'Tampilkan ke siswa'}
+                          >
+                            {material.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
+                          </button>
+                          <button 
+                            onClick={() => { setEditingMaterial(material); setIsModalOpen(true); }}
+                            className="p-1.5 text-slate-500 hover:text-[#5AB2FF] hover:bg-[#5AB2FF]/10 rounded-lg transition-all duration-200"
+                            title="Edit"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(material.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all duration-200"
+                            title="Hapus"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Title and Description */}
+                    <div className="space-y-2">
+                      <h3 className={`text-base font-extrabold text-[#2D3142] leading-snug group-hover:${theme.text} transition-colors duration-200 line-clamp-2`}>
+                        {material.title}
+                      </h3>
+                      {material.description ? (
+                        <p className="text-xs text-slate-500 line-clamp-4 leading-relaxed font-normal whitespace-pre-wrap">
+                          {material.description}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-300 italic font-light">Tidak ada deskripsi tambahan</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Footer Stats & Actions */}
+                  <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-3">
+                    <div className="flex items-center text-[11px] text-slate-400 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                      <Calendar size={12} className="mr-1.5 text-slate-400" />
+                      <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    </div>
+                    
+                    <div className="flex gap-1.5">
+                      {material.videoLink && (
+                        <button 
+                          onClick={() => setPreviewItem({
+                            title: material.title,
+                            url: material.videoLink || '',
+                            type: 'video'
+                          })}
+                          className="flex items-center justify-center w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95 border border-red-100 shadow-sm cursor-pointer"
+                          title="Tonton Video Edukasi"
+                        >
+                          <Youtube size={16} className="animate-pulse" />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => setPreviewItem({
+                          title: material.title,
+                          url: material.link,
+                          type: 'material'
+                        })}
+                        className={`flex items-center gap-1.5 px-3 h-8 ${theme.badge} border font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer`}
+                        title="Buka Materi / File Selengkapnya"
+                      >
+                        <ExternalLink size={12} />
+                        <span>Materi</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="col-span-full py-20 flex flex-col items-center justify-center text-gray-400 bg-white rounded-3xl border-2 border-dashed border-gray-100">
+            <FileText size={48} className="mb-4 opacity-20" />
+            <p className="text-lg font-medium">Belum ada materi yang tersedia</p>
+            <p className="text-sm">Silakan hubungi guru untuk informasi lebih lanjut.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add/Edit Modal */}
+      {isModalOpen && (
+        <div className={`fixed inset-0 ${currentUser?.role !== 'siswa' ? 'lg:pl-72' : ''} z-[150] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-all duration-300`}>
+          <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-scale-in max-h-[85vh] md:max-h-[90vh] flex flex-col">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-[#CAF4FF]/30 shrink-0">
+              <h3 className="font-bold text-lg text-gray-800">
+                {editingMaterial ? 'Edit Materi' : 'Tambah Materi Baru'}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mata Pelajaran</label>
+                  <select 
+                    required
+                    className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none bg-white"
+                    value={formData.subjectId}
+                    onChange={e => setFormData({...formData, subjectId: e.target.value})}
+                  >
+                    {subjects.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                      required
+                      type="date" 
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none bg-white"
+                      value={formData.createdAt}
+                      onChange={e => setFormData({...formData, createdAt: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Judul Materi</label>
+                  <input 
+                    required
+                    type="text" 
+                    className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+                    placeholder="Contoh: Bab 1 - Bilangan Bulat"
+                    value={formData.title}
+                    onChange={e => setFormData({...formData, title: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Deskripsi (Opsional)</label>
+                  <textarea 
+                    className="w-full border border-gray-200 p-2.5 rounded-xl text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none h-24 resize-none"
+                    placeholder="Penjelasan singkat tentang materi..."
+                    value={formData.description}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Link Materi (URL)</label>
+                  <div className="relative">
+                    <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                      required
+                      type="url" 
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+                      placeholder="https://example.com/materi"
+                      value={formData.link}
+                      onChange={e => setFormData({...formData, link: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Link Video Youtube (Opsional)</label>
+                  <div className="relative">
+                    <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input 
+                      type="url" 
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-red-500 outline-none"
+                      placeholder="https://www.youtube.com/watch?v=..."
+                      value={formData.videoLink || ''}
+                      onChange={e => setFormData({...formData, videoLink: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
+                  <label className="text-sm font-bold text-gray-700">Tampilkan ke Siswa</label>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({...formData, isVisible: !formData.isVisible})}
+                    className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.isVisible ? 'bg-[#5AB2FF]' : 'bg-gray-200'}`}
+                  >
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${formData.isVisible ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </button>
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 border-t border-gray-100 flex space-x-3 shrink-0 pb-safe">
+                <button 
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 hover:bg-gray-100 transition-colors bg-white cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-2.5 bg-[#5AB2FF] text-white rounded-xl text-sm font-bold hover:bg-[#A0DEFF] transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center cursor-pointer"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                      <span>Menyimpan...</span>
+                    </>
+                  ) : (
+                    <span>{editingMaterial ? 'Simpan Perubahan' : 'Tambah Materi'}</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {previewItem && (
+        <div className={`fixed inset-0 ${currentUser?.role !== 'siswa' ? 'lg:pl-72' : ''} z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300`}>
+          <div className="bg-slate-900 text-white rounded-3xl w-full max-w-5xl overflow-hidden shadow-2xl flex flex-col h-[85vh] animate-scale-in border border-slate-800">
+            {/* Modal Header */}
+            <div className="p-4 md:p-5 flex justify-between items-center bg-slate-950/80 border-b border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${previewItem.type === 'video' ? 'bg-red-500/10 text-red-500' : 'bg-sky-500/10 text-sky-400'}`}>
+                  {previewItem.type === 'video' ? <Youtube size={20} /> : <FileText size={20} />}
+                </div>
+                <div className="text-left">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                    Pratinjau {previewItem.type === 'video' ? 'Video' : 'Materi'}
+                  </span>
+                  <h3 className="font-extrabold text-sm md:text-base text-slate-200 line-clamp-1 max-w-[200px] sm:max-w-[400px] md:max-w-[600px]">
+                    {previewItem.title}
+                  </h3>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <a 
+                  href={previewItem.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs md:text-sm font-bold text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 duration-200 shrink-0"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Buka di Tab Baru</span>
+                </a>
+                <button 
+                  onClick={() => setPreviewItem(null)} 
+                  className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer shrink-0"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content / Preview Area */}
+            <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4">
+              {previewItem.type === 'video' ? (
+                (() => {
+                  const embedUrl = getYoutubeEmbedUrl(previewItem.url);
+                  if (embedUrl) {
+                    return (
+                      <div className="w-full max-w-4xl aspect-video rounded-2xl overflow-hidden shadow-2xl bg-black border border-slate-800">
+                        <iframe 
+                          src={embedUrl}
+                          title={previewItem.title}
+                          className="w-full h-full border-0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                        />
+                      </div>
+                    );
+                  } else {
+                    return (
+                      <div className="text-center p-6 space-y-4">
+                        <p className="text-red-400 font-bold">Format link video tidak dikenali sebagai YouTube Embed</p>
+                        <a 
+                          href={previewItem.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-sm transition-all shadow-md"
+                        >
+                          <Youtube size={18} />
+                          <span>Buka Langsung di Youtube</span>
+                        </a>
+                      </div>
+                    );
+                  }
+                })()
+              ) : (
+                (() => {
+                  const driveEmbedUrl = getGoogleDriveEmbedUrl(previewItem.url);
+                  const isDrive = !!driveEmbedUrl;
+                  
+                  return (
+                    <div className="w-full h-full flex flex-col">
+                      {!isDrive && (
+                        <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-[11px] text-amber-200">
+                          💡 Beberapa materi/file pelajaran dilindungi keamanan oleh penyedianya dan mungkin tidak dapat dimuat langsung di sini. Jika layar di bawah kosong, silakan klik tombol <strong>"Buka di Tab Baru"</strong> di sudut kanan atas.
+                        </div>
+                      )}
+                      <iframe 
+                        src={driveEmbedUrl || previewItem.url}
+                        title={previewItem.title}
+                        className="w-full h-full border-0 bg-white"
+                        {...(!isDrive ? { sandbox: "allow-same-origin allow-scripts allow-forms allow-popups" } : {
+                          allow: "autoplay",
+                          sandbox: "allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
+                        })}
+                      />
+                    </div>
+                  );
+                })()
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default MaterialsView;

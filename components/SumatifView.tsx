@@ -3869,7 +3869,7 @@ const SumatifStudentResultPrint: React.FC<{
 
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
-          <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm">
+          <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
             
             <h1 className="text-2xl font-black text-center mb-8 uppercase tracking-widest">{sumatif.type === 'sas' ? 'Sumatif Akhir Semester' : 'Ujian Sumatif'}</h1>
             
@@ -3934,6 +3934,9 @@ const SumatifStudentResultPrint: React.FC<{
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">
                           <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
+                          {q.imageUrl && (
+                            <img src={q.imageUrl} alt="Question" className="max-w-full h-auto rounded-lg my-2 border border-slate-200" />
+                          )}
                           
                           <div className="flex mt-2">
                             <div className="w-1/2 pr-4">

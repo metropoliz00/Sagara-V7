@@ -270,8 +270,8 @@ export const TextToSpeechAccessibility: React.FC<TextToSpeechAccessibilityProps>
 
   const isOverlapPage = pathname === '/' || pathname === '/dashboard' || pathname === '/absensi' || pathname === '/nilai';
   const positionClasses = isOverlapPage
-    ? "bottom-[168px] md:bottom-[112px] right-6"
-    : "bottom-[96px] md:bottom-[40px] right-6";
+    ? "bottom-[168px] md:bottom-[112px] left-6"
+    : "bottom-[96px] md:bottom-[40px] left-6";
 
   return (
     <div id="tts-accessibility-root" className={`fixed ${positionClasses} w-14 h-14 z-[100] no-print`}>
@@ -284,7 +284,7 @@ export const TextToSpeechAccessibility: React.FC<TextToSpeechAccessibilityProps>
               initial={{ opacity: 0, scale: 0.9, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 15 }}
-              className="absolute bottom-16 right-0 w-80 bg-white rounded-2xl shadow-2xl border border-[#CAF4FF] overflow-hidden"
+              className="absolute bottom-16 left-0 w-80 bg-white rounded-2xl shadow-2xl border border-[#CAF4FF] overflow-hidden"
             >
               {/* Header */}
               <div className="p-4 bg-gradient-to-r from-[#5AB2FF] to-[#A0DEFF] text-white flex items-center justify-between">

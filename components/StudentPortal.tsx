@@ -1126,7 +1126,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       const indoSubject = studentGrades?.subjects?.['indo'];
 
       // Default TKA list
-      const titlesSet = new Set<string>(['TKA 1', 'TKA 2', 'TKA 3']);
+      const titlesSet = new Set<string>(['TKA 1']);
       if (matSubject?.tka_scores) {
         Object.keys(matSubject.tka_scores).forEach(t => titlesSet.add(t));
       }

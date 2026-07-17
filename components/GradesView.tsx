@@ -84,7 +84,7 @@ const GradesView: React.FC<GradesViewProps> = ({
 
   const [tkaTitles, setTkaTitles] = useState<Record<string, string>>({});
   const [selectedTkaTitle, setSelectedTkaTitle] = useState<string>('TKA 1');
-  const [tkaList, setTkaList] = useState<string[]>(['TKA 1', 'TKA 2', 'TKA 3']);
+  const [tkaList, setTkaList] = useState<string[]>(['TKA 1']);
   const [showAddTkaModal, setShowAddTkaModal] = useState(false);
   const [newTkaTitleInput, setNewTkaTitleInput] = useState('');
 
@@ -117,7 +117,7 @@ const GradesView: React.FC<GradesViewProps> = ({
         }
       } catch (e) {}
     }
-    setTkaList(['TKA 1', 'TKA 2', 'TKA 3']);
+    setTkaList(['TKA 1']);
     setSelectedTkaTitle('TKA 1');
   }, [classId]);
 

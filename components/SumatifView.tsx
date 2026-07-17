@@ -338,7 +338,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     // Register TKA title if type is TKA
     if (sumatifToSave.type === 'tka' && sumatifToSave.title) {
       const savedList = localStorage.getItem(`tka_list_${activeClassId}`);
-      let tkaList = ['TKA 1', 'TKA 2', 'TKA 3'];
+      let tkaList = ['TKA 1'];
       if (savedList) {
         try {
           const parsed = JSON.parse(savedList);
@@ -547,7 +547,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           
           // Seed the first TKA score from legacy if empty
           const savedList = localStorage.getItem(`tka_list_${activeClassId}`);
-          let tkaList = ['TKA 1', 'TKA 2', 'TKA 3'];
+          let tkaList = ['TKA 1'];
           if (savedList) {
             try {
               const parsed = JSON.parse(savedList);
@@ -1067,7 +1067,7 @@ const SumatifEditor: React.FC<{
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {}
     }
-    return ['TKA 1', 'TKA 2', 'TKA 3'];
+    return ['TKA 1'];
   });
 
   const [showAddTkaModal, setShowAddTkaModal] = useState(false);
@@ -1465,6 +1465,8 @@ const SumatifEditor: React.FC<{
                       if (!tkaList.includes(newTitle)) {
                         newTitle = tkaList[0] || 'TKA 1';
                       }
+                    } else {
+                      newTitle = "";
                     }
                     setFormData({ ...formData, type: newType, subjectId: newSubjectId, title: newTitle });
                   }}

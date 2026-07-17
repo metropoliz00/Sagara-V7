@@ -2927,7 +2927,8 @@ export const apiService = {
         submittedAt: r.submitted_at,
         status_tes: r.status_tes,
         needsGrading: r.needs_grading,
-        manualScores: r.manual_scores
+        manualScores: r.manual_scores,
+        createdAt: r.created_at
       }));
     } catch (err) {
       console.warn("getSumatifResults failed, using local fallback:", err);

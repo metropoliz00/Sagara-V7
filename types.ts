@@ -521,6 +521,8 @@ export interface SumatifResult {
   score: number;
   answers: Record<string, any>; // questionId -> answer
   manualScores?: Record<string, number>; // questionId -> manual score for 'uraian'
+  startedAt?: string;
+  createdAt?: string;
   submittedAt: string;
   status_tes?: 'mulai' | 'selesai';
   needsGrading?: boolean; // True if there are ungraded 'uraian' questions

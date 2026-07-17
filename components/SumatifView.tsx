@@ -3848,7 +3848,10 @@ const SumatifStudentResultPrint: React.FC<{
 }> = ({ sumatif, result, student, onClose }) => {
   const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
 
-  const durationStr = '-';
+  const startTime = result.createdAt || result.startedAt || (result as any).created_at;
+  const durationStr = result.submittedAt && startTime 
+    ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
+    : '-';
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -3871,25 +3874,22 @@ const SumatifStudentResultPrint: React.FC<{
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
           <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
             
-            <h1 className="text-2xl font-black text-center mb-8 uppercase tracking-widest">{sumatif.type === 'sas' ? 'Sumatif Akhir Semester' : 'Ujian Sumatif'}</h1>
+            <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
+            <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
             
             <div className="grid grid-cols-2 gap-4 mb-8">
               <div className="space-y-2">
                 <div className="flex"><span className="w-32 font-bold">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
                 <div className="flex"><span className="w-32 font-bold">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
-                <div className="flex"><span className="w-32 font-bold">MATA PELAJARAN</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
-                <div className="flex"><span className="w-32 font-bold">JUDUL SUMATIF</span><span className="mr-2">:</span><span className="uppercase">{sumatif.title}</span></div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex"><span className="w-32 font-bold">NILAI</span><span className="mr-2">:</span><span className="font-black text-xl">{result.score}</span></div>
+                <div className="flex"><span className="w-32 font-bold">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
                 <div className="flex"><span className="w-32 font-bold">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
               </div>
-            </div>
-
-            <div className="flex justify-end mb-8">
-              <div className="w-48 text-center">
-                <p className="font-bold mb-16">Tanda Tangan Orang Tua</p>
-                <div className="border-b border-black"></div>
+              <div className="space-y-4">
+                <div className="flex items-center"><span className="w-48 font-bold">NILAI</span><span className="mr-2">:</span><span className="font-black text-2xl bg-indigo-100 text-indigo-800 px-4 py-1 rounded-lg inline-block border border-indigo-200 shadow-sm">{result.score}</span></div>
+                <div className="w-48 mt-4">
+                  <p className="font-bold mb-12">Tanda Tangan Orang Tua</p>
+                  <div className="border-b border-black"></div>
+                </div>
               </div>
             </div>
 
@@ -3933,32 +3933,31 @@ const SumatifStudentResultPrint: React.FC<{
                       <div className="flex gap-4">
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">
-                          <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
                           {q.imageUrl && (
-                            <img src={q.imageUrl} alt="Question" className="max-w-full h-auto rounded-lg my-2 border border-slate-200" />
+                            <img src={q.imageUrl} alt="Question" className="max-w-[50%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" />
                           )}
+                          <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
                           
-                          <div className="flex mt-2">
-                            <div className="w-1/2 pr-4">
+                          <div className="flex mt-2 items-start">
+                            <div className="w-[40%] pr-4">
                               <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
-                              <div className={`p-2 rounded border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                              <div className={`p-2 rounded border ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                                 {studentAnswerText}
                               </div>
                             </div>
-                            <div className="w-1/2 pl-4 border-l border-slate-200">
+                            <div className="w-[40%] pl-4 border-l border-slate-200">
                               <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
-                              <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
                                 {correctAnswerText}
                               </div>
                             </div>
-                          </div>
-
-                          {q.type === 'uraian' && (
-                            <div className="mt-2 text-sm">
-                              <span className="font-bold">Skor Uraian: </span> 
-                              <span>{result.manualScores?.[q.id] || 0} / {q.points || 0}</span>
+                            <div className="w-[20%] pl-4 border-l border-slate-200">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Skor:</div>
+                              <div className={`p-2 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
+                                {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)} / {q.points || 0}
+                              </div>
                             </div>
-                          )}
+                          </div>
                         </div>
                       </div>
                     </div>

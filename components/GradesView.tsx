@@ -1485,7 +1485,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                             <th className="p-3 w-12 text-center border-r border-indigo-100 sticky left-0 bg-indigo-50 z-20 hidden md:table-cell">No</th>
                             <th className="p-3 w-32 text-center border-r border-indigo-100 sticky left-0 md:left-12 bg-indigo-50 z-20">NIS</th>
                             <th className="p-3 w-32 text-center border-r border-indigo-100 bg-indigo-50">NISN</th>
-                            <th className="p-3 min-w-[180px] text-center border-r border-indigo-100 bg-indigo-50">Nama Siswa</th>
+                            <th className="p-3 min-w-[260px] md:min-w-[300px] text-center border-r border-indigo-100 bg-indigo-50">Nama Siswa</th>
                             <th className="p-3 min-w-[160px] text-center border-r border-indigo-100">Tryout TKA</th>
                             <th className="p-3 w-32 text-center border-r border-indigo-100 bg-amber-50 text-amber-800">Matematika</th>
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-amber-50/50 text-amber-800">Predikat</th>
@@ -1505,7 +1505,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                     <td className="p-3 w-12 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
                                     <td className="p-3 w-32 text-center text-gray-700 font-mono border-r sticky left-0 md:left-12 bg-white group-hover:bg-gray-50 z-10">{student.nis}</td>
                                     <td className="p-3 w-32 text-center text-gray-700 font-mono border-r bg-white">{student.nisn || '-'}</td>
-                                    <td className="p-3 min-w-[180px] max-w-[220px] font-bold text-gray-800 border-r uppercase bg-white truncate" title={student.name}>{student.name}</td>
+                                    <td className="p-3 min-w-[260px] md:min-w-[300px] font-bold text-gray-800 border-r uppercase bg-white whitespace-normal break-words" title={student.name}>{student.name}</td>
                                     <td className="p-3 min-w-[160px] border-r bg-white text-center">
                                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
                                             {selectedTkaTitle}

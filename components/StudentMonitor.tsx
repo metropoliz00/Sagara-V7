@@ -306,7 +306,7 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
                     <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm animate-fade-in-up">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-gray-800 flex items-center">
-                                <Calculator className="mr-2 text-indigo-500" size={20}/> Hasil Nilai Sumatif TKA (Tes Kemampuan Akademik)
+                                <Calculator className="mr-2 text-indigo-500" size={20}/> Hasil Nilai Tryout TKA (Tes Kemampuan Akademik)
                             </h3>
                             <span className="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold border border-indigo-100 uppercase">
                                 Kelas 6

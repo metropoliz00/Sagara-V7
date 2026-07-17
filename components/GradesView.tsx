@@ -99,9 +99,9 @@ const GradesView: React.FC<GradesViewProps> = ({
       setSelectedTkaTitle(cleaned);
       setShowAddTkaModal(false);
       setNewTkaTitleInput('');
-      onShowNotification('Judul Sumatif TKA baru berhasil ditambahkan!', 'success');
+      onShowNotification('Tryout TKA baru berhasil ditambahkan!', 'success');
     } else {
-      onShowNotification('Nama judul sumatif tidak boleh kosong!', 'error');
+      onShowNotification('Nama tryout tidak boleh kosong!', 'error');
     }
   };
 
@@ -281,7 +281,7 @@ const GradesView: React.FC<GradesViewProps> = ({
   };
 
   const handleExportTKA = () => {
-    const headers = ["No", "NIS", "NISN", "Nama Siswa", "Judul Sumatif TKA", "Matematika", "Predikat Matematika", "Bahasa Indonesia", "Predikat Bahasa Indonesia"];
+    const headers = ["No", "NIS", "NISN", "Nama Siswa", "Tryout TKA", "Matematika", "Predikat Matematika", "Bahasa Indonesia", "Predikat Bahasa Indonesia"];
     const rows = students.map((student, idx) => {
       const studentRecord = grades.find(g => g.studentId === student.id);
       const matScore = studentRecord?.subjects['mat']?.tka || 0;
@@ -1256,9 +1256,9 @@ const GradesView: React.FC<GradesViewProps> = ({
 
               {viewMode === 'tka_recap' && (
                   <div className="flex flex-wrap items-center gap-3">
-                    {/* Filter Judul Sumatif TKA */}
+                    {/* Filter Tryout TKA */}
                     <div className="flex items-center bg-white border border-gray-200 px-3 py-1.5 rounded-xl shadow-sm gap-2">
-                        <span className="text-xs font-bold text-gray-500 uppercase">Judul Sumatif TKA:</span>
+                        <span className="text-xs font-bold text-gray-500 uppercase">Tryout TKA:</span>
                         <div className="relative flex items-center">
                              <select 
                                 value={selectedTkaTitle} 
@@ -1277,7 +1277,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                 {tkaList.map(title => (
                                     <option key={title} value={title}>{title}</option>
                                 ))}
-                                <option value="__add_new__">+ Tambah Judul Baru...</option>
+                                <option value="__add_new__">+ Tambah Tryout Baru...</option>
                             </select>
                             <ChevronDown size={14} className="pointer-events-none text-gray-400 absolute right-0" />
                         </div>
@@ -1478,7 +1478,7 @@ const GradesView: React.FC<GradesViewProps> = ({
            </div>
        ) : viewMode === 'tka_recap' ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto print-container">
-                <div className="hidden print-only text-center py-4 border-b"><h2 className="text-xl font-bold uppercase">REKAP HASIL NILAI SUMATIF TKA</h2><p className="text-sm">Kelas {classId}</p></div>
+                <div className="hidden print-only text-center py-4 border-b"><h2 className="text-xl font-bold uppercase">REKAP HASIL NILAI TRYOUT TKA</h2><p className="text-sm">Kelas {classId}</p></div>
                 <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
                     <thead className="bg-indigo-50 text-indigo-900 font-bold uppercase print:bg-gray-100 print:text-black">
                         <tr className="border-b border-indigo-100">
@@ -1486,7 +1486,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                             <th className="p-3 w-32 text-center border-r border-indigo-100 sticky left-0 md:left-12 bg-indigo-50 z-20">NIS</th>
                             <th className="p-3 w-32 text-center border-r border-indigo-100 bg-indigo-50">NISN</th>
                             <th className="p-3 min-w-[260px] md:min-w-[300px] text-center border-r border-indigo-100 bg-indigo-50">Nama Siswa</th>
-                            <th className="p-3 min-w-[160px] text-center border-r border-indigo-100">Judul Sumatif TKA</th>
+                            <th className="p-3 min-w-[160px] text-center border-r border-indigo-100">Tryout TKA</th>
                             <th className="p-3 w-32 text-center border-r border-indigo-100 bg-amber-50 text-amber-800">Matematika</th>
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-amber-50/50 text-amber-800">Predikat</th>
                             <th className="p-3 w-36 text-center border-r border-indigo-100 bg-sky-50 text-sky-800">Bahasa Indonesia</th>
@@ -1720,9 +1720,9 @@ const GradesView: React.FC<GradesViewProps> = ({
                        <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-[#CAF4FF] text-[#5AB2FF] shadow-sm">
                            <Plus size={32} />
                        </div>
-                       <h3 className="text-xl font-bold text-gray-800 mb-2">Tambah Judul Sumatif TKA Baru</h3>
+                       <h3 className="text-xl font-bold text-gray-800 mb-2">Tambah Tryout TKA Baru</h3>
                        <p className="text-gray-500 mb-4 text-center text-xs leading-relaxed">
-                           Masukkan nama atau judul sumatif untuk TKA yang baru.
+                           Masukkan nama atau judul untuk tryout TKA yang baru.
                        </p>
                        <input
                            type="text"

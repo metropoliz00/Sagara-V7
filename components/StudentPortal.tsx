@@ -1549,7 +1549,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                   <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 animate-fade-in-up">
                       <div className="flex justify-between items-center mb-6">
                           <h3 className="font-bold text-gray-800 flex items-center">
-                              <Calculator className="mr-2 text-indigo-500" size={20}/> Rekap Hasil Nilai Sumatif TKA (Tes Kemampuan Akademik)
+                              <Calculator className="mr-2 text-indigo-500" size={20}/> Rekap Hasil Nilai Tryout TKA (Tes Kemampuan Akademik)
                           </h3>
                           <span className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold border border-indigo-100 uppercase">
                               Akun Kelas 6

@@ -82,7 +82,6 @@ const menuGroups = [
     icon: Briefcase,
     items: [
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
-      { id: 'penilaian-kinerja', label: 'Penilaian Kinerja', icon: ClipboardList, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/sarana-prasarana', label: 'Sarana Prasarana', icon: Building, roles: ['admin', 'supervisor'] },
       { id: 'administrasi/dana-bos', label: 'Pengelolaan BOS', icon: Wallet, roles: ['admin', 'supervisor'] },

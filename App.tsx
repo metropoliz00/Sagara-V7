@@ -2471,6 +2471,9 @@ const AppContent: React.FC = () => {
                         subjects={MOCK_SUBJECTS}
                         kktpMap={kktpMap}
                         materials={materials}
+                        gtkData={gtkData}
+                        performanceAssessments={performanceAssessments}
+                        onSavePerformanceAssessment={handleSavePerformanceAssessment}
                     />
                 } />
                 
@@ -2950,14 +2953,7 @@ const AppContent: React.FC = () => {
                     />
                 } />
                 <Route path="/penilaian-kinerja" element={
-                    <PerformanceAssessmentView
-                        currentUser={currentUser}
-                        users={users}
-                        gtkData={gtkData}
-                        assessments={performanceAssessments}
-                        onSaveAssessment={handleSavePerformanceAssessment}
-                        schoolProfile={schoolProfile}
-                    />
+                    <Navigate to="/supervisi" replace />
                 } />
                 <Route path="/mitigasi-bencana" element={
                     (isStudentRole ? !schoolProfile?.studentMitigationAccess : (!isAdminRole && currentUser.role !== 'guru')) ? <Navigate to="/" replace /> :
@@ -2980,6 +2976,10 @@ const AppContent: React.FC = () => {
                         currentUser={currentUser}
                         activeClassId={activeClassId}
                         onShowNotification={handleShowNotification}
+                        gtkData={gtkData}
+                        performanceAssessments={performanceAssessments}
+                        onSavePerformanceAssessment={handleSavePerformanceAssessment}
+                        schoolProfile={schoolProfile}
                     />
                 } />
                 <Route path="/pendahuluan/*" element={

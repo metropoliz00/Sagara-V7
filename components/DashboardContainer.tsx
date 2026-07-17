@@ -7,7 +7,7 @@ import {
     ViewState, Student, AgendaItem, BehaviorLog, GradeRecord, Material,
     TeacherProfileData, SchoolProfileData, User, Holiday, KarakterAssessment, 
     EmploymentLink, LiaisonLog, PermissionRequest, InventoryItem, SchoolAsset, BOSTransaction, Extracurricular, LearningDocumentation, BookLoan,
-    Subject, LearningReport, LearningJournalEntry
+    Subject, LearningReport, LearningJournalEntry, GtkRecord, PerformanceAssessment
 } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 import { apiService } from '../services/apiService';
@@ -52,6 +52,9 @@ interface DashboardContainerProps {
   kktpMap?: Record<string, number>;
   subjects: Subject[];
   materials?: Material[];
+  gtkData?: GtkRecord[];
+  performanceAssessments?: PerformanceAssessment[];
+  onSavePerformanceAssessment?: (assessment: PerformanceAssessment) => Promise<void>;
 }
 
 const DashboardContainer: React.FC<DashboardContainerProps> = ({
@@ -93,7 +96,10 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   bookLoans,
   kktpMap,
   subjects,
-  materials = []
+  materials = [],
+  gtkData = [],
+  performanceAssessments = [],
+  onSavePerformanceAssessment
 }) => {
   const [learningJournals, setLearningJournals] = React.useState<LearningJournalEntry[]>([]);
 
@@ -162,9 +168,13 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         inventory={inventory}
         schoolAssets={schoolAssets}
         bosTransactions={bosTransactions}
-        currentUser={null} // We don't have it here but we can pass null or find it
+        currentUser={currentUser || null}
         activeClassId={activeClassId}
         onShowNotification={(msg: string, type: 'success' | 'error' | 'warning') => {}}
+        gtkData={gtkData}
+        performanceAssessments={performanceAssessments}
+        onSavePerformanceAssessment={onSavePerformanceAssessment}
+        schoolProfile={schoolProfile}
       />
     );
   }

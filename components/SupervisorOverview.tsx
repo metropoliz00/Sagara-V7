@@ -6,10 +6,12 @@ import {
 } from 'recharts';
 import { 
   Users, Briefcase, TrendingDown, AlertTriangle, CheckCircle, 
-  MessageSquare, FileText, Activity, GraduationCap, Bell, UserX, X, Tent, Package, UserCheck, Shield, Building, Wallet, Coins, TrendingUp, BarChart3
+  MessageSquare, FileText, Activity, GraduationCap, Bell, UserX, X, Tent, Package, UserCheck, Shield, Building, Wallet, Coins, TrendingUp, BarChart3,
+  ClipboardList
 } from 'lucide-react';
-import { Student, User, GradeRecord, LiaisonLog, PermissionRequest, BehaviorLog, GradeData, Extracurricular, InventoryItem, SchoolAsset, BOSTransaction } from '../types';
+import { Student, User, GradeRecord, LiaisonLog, PermissionRequest, BehaviorLog, GradeData, Extracurricular, InventoryItem, SchoolAsset, BOSTransaction, GtkRecord, PerformanceAssessment, SchoolProfileData } from '../types';
 import LearningMonitoringView from './LearningMonitoringView';
+import PerformanceAssessmentView from './PerformanceAssessmentView';
 
 interface SupervisorOverviewProps {
   students: Student[];
@@ -26,12 +28,17 @@ interface SupervisorOverviewProps {
   currentUser: User | null;
   activeClassId: string;
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
+  gtkData?: GtkRecord[];
+  performanceAssessments?: PerformanceAssessment[];
+  onSavePerformanceAssessment?: (assessment: PerformanceAssessment) => Promise<void>;
+  schoolProfile?: SchoolProfileData | null;
 }
 
 const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
-  students, users, attendanceRecords, grades, liaisonLogs, permissionRequests, counselingLogs, extracurriculars, inventory, schoolAssets, bosTransactions, currentUser, onShowNotification, activeClassId
+  students, users, attendanceRecords, grades, liaisonLogs, permissionRequests, counselingLogs, extracurriculars, inventory, schoolAssets, bosTransactions, currentUser, onShowNotification, activeClassId,
+  gtkData = [], performanceAssessments = [], onSavePerformanceAssessment, schoolProfile
 }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'monitoring'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'monitoring' | 'kinerja'>('overview');
   const [activeModal, setActiveModal] = useState<'permissions' | 'discipline' | 'incomplete' | null>(null);
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [showAllInventory, setShowAllInventory] = useState(false);
@@ -247,16 +254,39 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                 >
                   <BarChart3 size={16} /> Monitoring
                 </button>
+                <button 
+                  onClick={() => setActiveTab('kinerja')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    activeTab === 'kinerja' 
+                    ? 'bg-white text-indigo-600 shadow-sm' 
+                    : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <ClipboardList size={16} /> Penilaian Kinerja
+                </button>
             </div>
         </div>
 
-        {activeTab === 'monitoring' ? (
+        {activeTab === 'monitoring' && (
           <LearningMonitoringView 
             currentUser={currentUser}
             onShowNotification={onShowNotification}
             activeClassId={activeClassId}
           />
-        ) : (
+        )}
+
+        {activeTab === 'kinerja' && (
+          <PerformanceAssessmentView
+            currentUser={currentUser}
+            users={users}
+            gtkData={gtkData}
+            assessments={performanceAssessments}
+            onSaveAssessment={onSavePerformanceAssessment || (async () => {})}
+            schoolProfile={schoolProfile || undefined}
+          />
+        )}
+
+        {activeTab === 'overview' && (
           <>
             {/* --- BOS FINANCIAL OVERVIEW (NEW SECTION) --- */}
         <h3 className="text-lg font-bold text-gray-800 flex items-center">

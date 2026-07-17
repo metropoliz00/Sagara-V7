@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Info, X, Edit, Save, MessageSquareText } from 'lucide-react';
+import { Info, X, Edit, Save, MessageSquareText, MessageCircle } from 'lucide-react';
 import { User } from '../types';
 import { apiService } from '../services/apiService';
 
@@ -27,7 +27,7 @@ const ServiceInfo: React.FC<ServiceInfoProps> = ({ currentUser, onShowNotificati
           setInfoText(serviceInfoData.text);
           setDraftText(serviceInfoData.text);
         } else {
-          const defaultText = 'Selamat datang di layanan kami. Hubungi admin untuk informasi lebih lanjut.';
+          const defaultText = 'Selamat datang di layanan kami. Hubungi admin untuk informasi lebih lanjut.\n\nDev | MeyGa\n[logo wa] 085604431706';
           setInfoText(defaultText);
           setDraftText(defaultText);
         }
@@ -115,8 +115,31 @@ const ServiceInfo: React.FC<ServiceInfoProps> = ({ currentUser, onShowNotificati
                 </div>
               ) : (
                 <div className="prose prose-blue max-w-none">
-                  <div className="bg-blue-50/50 p-6 rounded-2xl text-gray-700 whitespace-pre-wrap leading-relaxed shadow-inner border border-blue-100/50 break-words">
-                    {infoText}
+                  <div className="bg-blue-50/50 p-6 rounded-2xl text-gray-700 leading-relaxed shadow-inner border border-blue-100/50 break-words">
+                    {infoText.split('\n').map((line, idx) => {
+                      if (line.includes('Dev | MeyGa')) {
+                        return <div key={idx} className="text-center mt-6 font-bold text-slate-400 text-[10px] tracking-widest uppercase">{line}</div>;
+                      }
+                      if (line.includes('[logo wa]')) {
+                        const number = line.replace('[logo wa]', '').trim();
+                        const cleanNumber = number.replace(/\D/g, '');
+                        const waLink = `https://wa.me/${cleanNumber.startsWith('0') ? '62' + cleanNumber.slice(1) : cleanNumber}`;
+                        return (
+                          <div key={idx} className="text-center">
+                            <a 
+                              href={waLink} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center space-x-2 text-green-600 font-bold hover:text-green-700 transition-colors mt-1"
+                            >
+                              <MessageCircle size={18} className="fill-green-500 text-white" />
+                              <span className="text-sm">{number}</span>
+                            </a>
+                          </div>
+                        );
+                      }
+                      return <div key={idx} className="whitespace-pre-wrap">{line || <br />}</div>;
+                    })}
                   </div>
                 </div>
               )}

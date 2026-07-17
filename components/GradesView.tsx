@@ -1448,7 +1448,7 @@ const GradesView: React.FC<GradesViewProps> = ({
        ) : viewMode === 'recap' ? (
            <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto print-container">
                <div className="hidden print-only text-center py-4 border-b"><h2 className="text-xl font-bold uppercase">REKAP NILAI RAPOR</h2><p className="text-sm">Kelas {classId}</p></div>
-               <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
+               <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
                    <thead className="bg-indigo-50 text-indigo-900 font-bold uppercase print:bg-gray-100 print:text-black">
                        <tr className="border-b border-indigo-100">
                            <th className="p-3 w-10 text-center border-r border-indigo-100 sticky left-0 bg-indigo-50 z-20 hidden md:table-cell">No</th>
@@ -1468,8 +1468,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                            return (
                                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
-                                   <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 text-[10px] font-mono">{s.nis}</td>
-                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 md:left-34 bg-white group-hover:bg-gray-50 z-10 text-[10px] font-mono">{s.nisn || '-'}</td>
+                                   <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 text-xs font-mono">{s.nis}</td>
+                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 md:left-34 bg-white group-hover:bg-gray-50 z-10 text-xs font-mono">{s.nisn || '-'}</td>
                                    <td className="p-3 font-medium text-gray-800 border-r sticky left-0 md:left-62 bg-white group-hover:bg-gray-50 z-10 min-w-[150px] md:min-w-[200px] truncate">
                                        <div className="flex flex-col truncate"><span className="uppercase truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span></div>
                                    </td>
@@ -1488,7 +1488,7 @@ const GradesView: React.FC<GradesViewProps> = ({
        ) : viewMode === 'tka_recap' ? (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto print-container">
                 <div className="hidden print-only text-center py-4 border-b"><h2 className="text-xl font-bold uppercase">REKAP HASIL NILAI TRYOUT TKA</h2><p className="text-sm">Kelas {classId}</p></div>
-                <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
+                <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
                     <thead className="bg-indigo-50 text-indigo-900 font-bold uppercase print:bg-gray-100 print:text-black">
                         <tr className="border-b border-indigo-100">
                             <th className="p-3 w-12 text-center border-r border-indigo-100 sticky left-0 bg-indigo-50 z-20 hidden md:table-cell">No</th>
@@ -1512,8 +1512,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                             return (
                                 <tr key={student.id} className="hover:bg-gray-50 transition-colors border-b">
                                     <td className="p-3 w-12 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
-                                    <td className="p-3 w-32 text-center text-gray-700 font-mono border-r sticky left-0 md:left-12 bg-white group-hover:bg-gray-50 z-10">{student.nis}</td>
-                                    <td className="p-3 w-32 text-center text-gray-700 font-mono border-r bg-white">{student.nisn || '-'}</td>
+                                    <td className="p-3 w-32 text-center text-gray-700 font-mono border-r sticky left-0 md:left-12 bg-white group-hover:bg-gray-50 z-10 text-xs">{student.nis}</td>
+                                    <td className="p-3 w-32 text-center text-gray-700 font-mono border-r bg-white text-xs">{student.nisn || '-'}</td>
                                     <td className="p-3 min-w-[260px] md:min-w-[300px] font-bold text-gray-800 border-r uppercase bg-white whitespace-normal break-words" title={student.name}>{student.name}</td>
                                     <td className="p-3 min-w-[160px] border-r bg-white text-center">
                                         <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
@@ -1629,7 +1629,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                </div>
                {isLoadingHistory ? <div className="p-20 flex flex-col items-center justify-center text-gray-400"><Loader2 size={40} className="animate-spin mb-4 text-indigo-400"/><p>Memuat riwayat...</p></div> : gradeHistory.length === 0 ? <div className="p-20 flex flex-col items-center justify-center text-gray-400 text-center"><History size={48} className="text-gray-300 mb-4"/><h3 className="text-lg font-bold text-gray-700">Belum Ada Riwayat</h3><p className="text-sm mt-1">Gunakan tombol arsipkan di rekap rapor untuk menyimpan data.</p></div> : (
                    <div className="overflow-x-auto">
-                       <table className="w-full text-xs text-left border-collapse min-w-[1000px]">
+                       <table className="w-full text-sm text-left border-collapse min-w-[1000px]">
                            <thead className="bg-slate-50 text-slate-700 font-bold uppercase">
                                <tr className="border-b">
                                    <th className="p-3 w-10 text-center border-r sticky left-0 bg-slate-50 z-20 hidden md:table-cell">No</th>

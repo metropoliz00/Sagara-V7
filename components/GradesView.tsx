@@ -1376,6 +1376,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                     <tr className="border-b">
                        <th className="p-4 sticky left-0 bg-slate-50 print:bg-white w-12 text-center border-r z-20 hidden md:table-cell">No</th>
                        <th className="p-4 sticky left-0 md:left-12 bg-slate-50 print:bg-white min-w-[124px] md:min-w-[220px] max-w-[124px] md:max-w-none border-r z-20">Nama Siswa</th>
+                        <th className="p-4 w-20 text-center border-r">NIS</th>
+                        <th className="p-4 w-20 text-center border-r">NISN</th>
                        <th className="p-2 w-20 text-center border-r">SUM 1</th>
                        <th className="p-2 w-20 text-center border-r">SUM 2</th>
                        <th className="p-2 w-20 text-center border-r">SUM 3</th>
@@ -1395,11 +1397,14 @@ const GradesView: React.FC<GradesViewProps> = ({
                              <td className="p-4 sticky left-0 bg-white text-center border-r z-10 w-12 font-medium print:text-black hidden md:table-cell">
                                  {idx + 1}
                               </td>
-                              <td className="p-4 border-r w-24 text-center text-sm">{s.nis}</td>
-                              <td className="p-4 border-r w-24 text-center text-sm">{s.nisn || '-'}</td>
-                              <td className="p-4 sticky left-0 md:left-[240px] bg-white font-medium print:text-black border-r z-10 max-w-[124px] md:max-w-none">
+                              <td className="p-4 sticky left-0 md:left-12 bg-white font-medium print:text-black border-r z-10 max-w-[124px] md:max-w-none">
+                                <div className="flex flex-col truncate">
                                      <span className="truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span>
+                                     
+                                 </div>
                              </td>
+                             <td className="p-4 text-center border-r text-xs text-gray-500">{s.nis}</td>
+                             <td className="p-4 text-center border-r text-xs text-gray-500">{s.nisn || '-'}</td>
                              {(['sum1','sum2','sum3','sum4', ...customColumns, 'sas'] as string[]).map(f => {
                                 const score = Number(g[f]) || 0;
                                 const colorClass = getInputColor(score);
@@ -1447,6 +1452,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                        <tr className="border-b border-indigo-100">
                            <th className="p-3 w-10 text-center border-r border-indigo-100 sticky left-0 bg-indigo-50 z-20 hidden md:table-cell">No</th>
                            <th className="p-3 min-w-[124px] md:min-w-[200px] max-w-[124px] md:max-w-none border-r border-indigo-100 sticky left-0 md:left-10 bg-indigo-50 z-20">Nama Siswa</th>
+                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-indigo-50">NIS</th>
+                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-indigo-50">NISN</th>
                            {activeSubjectsForRecap.map(subj => <th key={subj.id} className="p-2 w-16 text-center border-r border-indigo-100" title={subj.name}>{getSubjectInitials(subj.name)}</th>)}
                            <th className="p-3 w-20 text-center border-r border-indigo-100 bg-emerald-50 text-emerald-800">Jumlah</th>
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-sky-50 text-sky-800">Rata-Rata</th>
@@ -1461,7 +1468,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
                                    <td className="p-3 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
                                    <td className="p-3 font-medium text-gray-800 border-r sticky left-0 md:left-10 bg-white group-hover:bg-gray-50 z-10 max-w-[124px] md:max-w-[200px] truncate">
-                                       <div className="flex flex-col truncate"><span className="uppercase truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span><div className="flex gap-1 text-[9px] text-gray-500 truncate no-print"><span>NIS: {s.nis}</span>{s.nisn && <span className="hidden sm:inline">• NISN: {s.nisn}</span>}</div></div>
+                                       <div className="flex flex-col truncate"><span className="uppercase truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span></div>
                                    </td>
                                    {activeSubjectsForRecap.map(subj => <td key={subj.id} className="p-2 text-center border-r font-medium text-gray-600">{s.scores[subj.id] || '-'}</td>)}
                                    <td className="p-3 text-center font-bold text-emerald-600 bg-emerald-50/30 border-r border-emerald-100">{s.totalScore > 0 ? s.totalScore : '-'}</td>

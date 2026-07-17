@@ -220,8 +220,9 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       if (isReadOnly) return;
       const newAttendance: Record<string, {status: AttendanceStatus, notes: string}> = { ...dailyAttendance };
       students.forEach(s => {
-          if (!newAttendance[s.id]) newAttendance[s.id] = { status: 'present', notes: '' };
-          else newAttendance[s.id] = { ...newAttendance[s.id], status: 'present' };
+          if (!newAttendance[s.id] || !newAttendance[s.id].status) {
+              newAttendance[s.id] = { status: 'present', notes: '' };
+          }
       });
       setDailyAttendance(newAttendance);
   };

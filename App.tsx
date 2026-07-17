@@ -1006,7 +1006,10 @@ const AppContent: React.FC = () => {
           if (isDemoMode) {
               setPermissionRequests(prev => prev.map(p => p.id === id ? { ...p, status: action === 'approve' ? 'Approved' : 'Rejected' } : p));
               if (action === 'approve' && req) {
-                  setAllAttendanceRecords(prev => [...prev, { studentId: req.studentId, classId: req.classId, date: req.date, status: req.type, reason: req.reason }]);
+                  setAllAttendanceRecords(prev => {
+                      const filtered = prev.filter(r => !(String(r.studentId) === String(req.studentId) && String(r.date) === String(req.date)));
+                      return [...filtered, { studentId: req.studentId, classId: req.classId, date: req.date, status: req.type, notes: req.reason }];
+                  });
               }
               handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'} (Demo).`, 'success');
           } else {

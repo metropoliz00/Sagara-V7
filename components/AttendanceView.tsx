@@ -1749,10 +1749,11 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
              </div>
              <div className="bg-white rounded-xl border overflow-x-auto">
                 <table className="w-full text-sm min-w-[650px]">
-                     <thead><tr className="bg-[#FFF9D0]"><th className="p-4">Nama Siswa</th><th className="p-4 text-center">H</th><th className="p-4 text-center">D</th><th className="p-4 text-center">S</th><th className="p-4 text-center">I</th><th className="p-4 text-center">A</th><th className="p-4">Catatan</th></tr></thead>
+                     <thead><tr className="bg-[#FFF9D0]"><th className="p-4">No</th><th className="p-4">Nama Siswa</th><th className="p-4 text-center">H</th><th className="p-4 text-center">D</th><th className="p-4 text-center">S</th><th className="p-4 text-center">I</th><th className="p-4 text-center">A</th><th className="p-4">Catatan</th></tr></thead>
                     <tbody>
-                        {students.map(s => (
+                        {students.map((s, index) => (
                             <tr key={s.id} className="border-t">
+                                <td className="p-4 text-center">{index + 1}</td>
                                 <td className="p-4 font-medium uppercase">{s.name.toUpperCase()}</td>
                                 {['present','dispensation','sick','permit','alpha'].map(type => (
                                     <td key={type} className="p-2 text-center">

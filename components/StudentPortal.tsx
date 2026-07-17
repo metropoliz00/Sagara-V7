@@ -6,7 +6,7 @@ import { MOCK_SUBJECTS, CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIP
 import { 
   User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
   BookOpen, Book, LayoutDashboard, Clock,
-  Star, HeartHandshake, ListTodo, Award,
+  Star, HeartHandshake, ListTodo,
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
   Edit, Save, Loader2, PlusCircle, History, MessageSquare,
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
-import { getLocalISODate, formatDateID } from '../utils/dateUtils';
+import { getLocalISODate } from '../utils/dateUtils';
 import SumatifView from './SumatifView';
 import ManualBookView from './ManualBookView';
 import MitigasiBencanaView from './MitigasiBencanaView';
@@ -161,7 +161,7 @@ interface StudentPortalProps {
   employmentLinks?: EmploymentLink[];
 }
 
-type PortalTab = 'dashboard' | 'attendance' | 'liaison' | 'profile' | 'character' | 'materi' | 'sumatif' | 'schedule' | 'manual_book' | 'kelulusan' | 'mitigasi' | 'tka';
+type PortalTab = 'dashboard' | 'attendance' | 'liaison' | 'profile' | 'character' | 'materi' | 'sumatif' | 'schedule' | 'manual_book' | 'kelulusan' | 'mitigasi';
 
 const SUBJECT_COLORS: { [key: string]: string } = {
   'default': 'bg-gray-100 text-gray-700 border-gray-200',
@@ -492,8 +492,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     '/karakter-siswa': 'character',
     '/buku-panduan-siswa': 'manual_book',
     '/pengumuman-kelulusan': 'kelulusan',
-    '/mitigasi-bencana': 'mitigasi',
-    '/nilai-tka': 'tka'
+    '/mitigasi-bencana': 'mitigasi'
   };
 
   const pathToTabMap: Record<PortalTab, string> = {
@@ -507,8 +506,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     'character': '/karakter-siswa',
     'manual_book': '/buku-panduan-siswa',
     'kelulusan': '/pengumuman-kelulusan',
-    'mitigasi': '/mitigasi-bencana',
-    'tka': '/nilai-tka'
+    'mitigasi': '/mitigasi-bencana'
   };
 
   const [activeTab, setActiveTab] = useState<PortalTab>(() => {
@@ -1119,6 +1117,47 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   }, [showRecapReport, grades, student.id, student.classId]);
 
 
+  // -- TKA SCORE DATA FOR CLASS 6 --
+  const myTkaData = useMemo(() => {
+      if (!student.classId?.startsWith('6')) return null;
+      
+      const studentGrades = grades.find(g => g.studentId === student.id);
+      const matSubject = studentGrades?.subjects?.['mat'];
+      const indoSubject = studentGrades?.subjects?.['indo'];
+
+      // Default TKA list
+      const titlesSet = new Set<string>(['TKA 1', 'TKA 2', 'TKA 3']);
+      if (matSubject?.tka_scores) {
+        Object.keys(matSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      if (indoSubject?.tka_scores) {
+        Object.keys(indoSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      const titles = Array.from(titlesSet);
+
+      return titles.map(title => {
+        let matScore = matSubject?.tka_scores?.[title];
+        if (matScore === undefined && title === 'TKA 1' && matSubject?.tka !== undefined) {
+          matScore = matSubject.tka;
+        }
+        matScore = matScore || 0;
+
+        let indoScore = indoSubject?.tka_scores?.[title];
+        if (indoScore === undefined && title === 'TKA 1' && indoSubject?.tka !== undefined) {
+          indoScore = indoSubject.tka;
+        }
+        indoScore = indoScore || 0;
+
+        return {
+          title,
+          mat: matScore,
+          indo: indoScore,
+          average: Math.round((matScore + indoScore) / 2)
+        };
+      });
+  }, [grades, student.id, student.classId]);
+
+
   // -- CALENDAR STATE --
   const [calendarMonth, setCalendarMonth] = useState(new Date());
 
@@ -1198,9 +1237,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
   if (student?.classId?.startsWith('6') && schoolProfile?.isGraduationAnnounced) {
       TABS.push({ id: 'kelulusan', label: 'Kelulusan', icon: GraduationCap });
-  }
-  if (student?.classId?.startsWith('6')) {
-      TABS.push({ id: 'tka', label: 'Nilai TKA', icon: Award });
   }
   if (schoolProfile?.studentMitigationAccess) {
       TABS.push({ id: 'mitigasi', label: 'Mitigasi Bencana', icon: AlertTriangle });
@@ -1347,9 +1383,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           { id: 'manual_book', label: 'Panduan', icon: BookOpen, color: 'bg-slate-50 text-slate-600' },
                           ...(student?.classId?.startsWith('6') && schoolProfile?.isGraduationAnnounced 
                               ? [{ id: 'kelulusan', label: 'Lulus', icon: GraduationCap, color: 'bg-rose-50 text-rose-600' }] 
-                              : []),
-                          ...(student?.classId?.startsWith('6') 
-                              ? [{ id: 'tka', label: 'Nilai TKA', icon: Award, color: 'bg-amber-50 text-amber-600' }] 
                               : [])
                       ].map((item) => {
                           const Icon = item.icon;
@@ -1507,6 +1540,86 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   </span>
                               )}
                           </div>
+                      </div>
+                  </div>
+                  )}
+
+                  {/* TKA Recap Section (Khusus Kelas 6) */}
+                  {student.classId?.startsWith('6') && myTkaData && (
+                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm mb-6 animate-fade-in-up">
+                      <div className="flex justify-between items-center mb-6">
+                          <h3 className="font-bold text-gray-800 flex items-center">
+                              <Calculator className="mr-2 text-indigo-500" size={20}/> Rekap Hasil Nilai Tryout TKA (Tes Kemampuan Akademik)
+                          </h3>
+                          <span className="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full font-bold border border-indigo-100 uppercase">
+                              Akun Kelas 6
+                          </span>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {myTkaData.map((tka, index) => {
+                              const matPred = tka.mat > 90 ? 'Istimewa' : tka.mat >= 76 ? 'Baik' : tka.mat >= 60 ? 'Memadai' : tka.mat > 0 ? 'Kurang' : '-';
+                              const indoPred = tka.indo > 90 ? 'Istimewa' : tka.indo >= 76 ? 'Baik' : tka.indo >= 60 ? 'Memadai' : tka.indo > 0 ? 'Kurang' : '-';
+                              const hasData = tka.mat > 0 || tka.indo > 0;
+                              
+                              return (
+                                  <div key={index} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all">
+                                      <div className="border-b pb-2 mb-3 flex justify-between items-center">
+                                          <span className="font-extrabold text-slate-800 text-sm uppercase tracking-wide">{tka.title}</span>
+                                          {hasData && (
+                                              <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                                  Rata-rata: {tka.average}
+                                              </span>
+                                          )}
+                                      </div>
+                                      
+                                      <div className="space-y-3">
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="text-slate-500 font-bold">Matematika (TKA)</span>
+                                              <div className="flex items-center gap-2">
+                                                  <span className={`font-bold ${tka.mat > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                      {tka.mat > 0 ? tka.mat : '-'}
+                                                  </span>
+                                                  {tka.mat > 0 && (
+                                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                                          matPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                          matPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                          matPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                          'bg-gray-100 text-gray-600'
+                                                      }`}>
+                                                          {matPred}
+                                                      </span>
+                                                  )}
+                                              </div>
+                                          </div>
+                                          
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="text-slate-500 font-bold">Bahasa Indonesia (TKA)</span>
+                                              <div className="flex items-center gap-2">
+                                                  <span className={`font-bold ${tka.indo > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                      {tka.indo > 0 ? tka.indo : '-'}
+                                                  </span>
+                                                  {tka.indo > 0 && (
+                                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                                          indoPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                          indoPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                          indoPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                          'bg-gray-100 text-gray-600'
+                                                      }`}>
+                                                          {indoPred}
+                                                      </span>
+                                                  )}
+                                              </div>
+                                          </div>
+                                      </div>
+                                      {!hasData && (
+                                          <div className="text-center text-[11px] text-slate-400 italic mt-3 border-t pt-2">
+                                              Belum ada nilai yang diinput.
+                                          </div>
+                                      )}
+                                  </div>
+                              );
+                          })}
                       </div>
                   </div>
                   )}
@@ -2827,201 +2940,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           )}
                       </div>
                   )}
-              </div>
-          )}
-
-          {/* --- TKA TAB --- */}
-          {activeTab === 'tka' && student?.classId?.startsWith('6') && (
-              <div className="space-y-6 animate-fade-in">
-                  <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="space-y-1">
-                          <span className="bg-amber-400/30 text-amber-100 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-amber-300/20">
-                              EVALUASI AKADEMIK KHUSUS KELAS 6
-                          </span>
-                          <h2 className="text-2xl md:text-3xl font-black tracking-tight mt-1">Tes Kemampuan Akademik (TKA)</h2>
-                          <p className="text-xs md:text-sm text-amber-50 font-medium font-semibold">
-                              Hasil pemetaan potensi akademis sebagai persiapan penunjang transisi menuju jenjang SMP.
-                          </p>
-                      </div>
-                      <div className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/20 text-center self-stretch md:self-auto flex flex-col justify-center">
-                          <span className="block text-[10px] text-amber-200 font-bold uppercase">Tanggal Tes</span>
-                          <span className="font-bold text-sm">
-                              {student.tkaScore?.examDate ? formatDateID(student.tkaScore.examDate) : 'Belum Melaksanakan Tes'}
-                          </span>
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                      {/* Left: Score Gauge Circle */}
-                      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
-                          <h3 className="font-bold text-gray-800 text-sm uppercase tracking-wider">Rerata Skor TKA</h3>
-                          
-                          {(() => {
-                              const score = student.tkaScore;
-                              const verbal = score?.scores?.verbal || 0;
-                              const kuantitatif = score?.scores?.kuantitatif || 0;
-                              const penalaran = score?.scores?.penalaran || 0;
-                              const spasial = score?.scores?.spasial || 0;
-                              const avg = score ? Math.round((verbal + kuantitatif + penalaran + spasial) / 4) : 0;
-                              
-                              let colorClass = "text-slate-300";
-                              let bgLightClass = "bg-slate-50";
-                              let predikat = "Belum Ada Data";
-                              let deskripsi = "Silakan hubungi wali kelas untuk informasi pengisian skor.";
-                              
-                              if (avg > 0) {
-                                  if (avg < 60) {
-                                      colorClass = "text-rose-500";
-                                      bgLightClass = "bg-rose-50";
-                                      predikat = "Perlu Pendampingan";
-                                      deskripsi = "Membutuhkan bimbingan intensif pada materi dasar akademik untuk persiapan ujian masuk.";
-                                  } else if (avg < 75) {
-                                      colorClass = "text-amber-500";
-                                      bgLightClass = "bg-amber-50";
-                                      predikat = "Kesiapan Cukup";
-                                      deskripsi = "Telah menguasai kompetensi dasar akademik dengan baik. Pertahankan dan tingkatkan latihan.";
-                                  } else if (avg < 90) {
-                                      colorClass = "text-indigo-500";
-                                      bgLightClass = "bg-indigo-50";
-                                      predikat = "Kesiapan Baik";
-                                      deskripsi = "Memiliki kesiapan akademis yang sangat baik dan siap bersaing menuju sekolah favorit.";
-                                  } else {
-                                      colorClass = "text-emerald-500";
-                                      bgLightClass = "bg-emerald-50";
-                                      predikat = "Kesiapan Unggul";
-                                      deskripsi = "Luar biasa! Tingkat analisis sangat tinggi dan memiliki potensi akademis yang unggul.";
-                                  }
-                              }
-
-                              return (
-                                  <>
-                                      <div className="relative flex items-center justify-center w-40 h-40">
-                                          {/* Outer Ring Circle Placeholder */}
-                                          <svg className="w-full h-full transform -rotate-90">
-                                              <circle 
-                                                  cx="80" 
-                                                  cy="80" 
-                                                  r="70" 
-                                                  className="text-gray-105" 
-                                                  strokeWidth="12" 
-                                                  stroke="currentColor" 
-                                                  fill="transparent" 
-                                              />
-                                              <circle 
-                                                  cx="80" 
-                                                  cy="80" 
-                                                  r="70" 
-                                                  className={colorClass} 
-                                                  strokeWidth="12" 
-                                                  strokeDasharray={440}
-                                                  strokeDashoffset={440 - (440 * avg) / 100}
-                                                  strokeLinecap="round"
-                                                  stroke="currentColor" 
-                                                  fill="transparent" 
-                                              />
-                                          </svg>
-                                          <div className="absolute flex flex-col items-center justify-center text-center">
-                                              <span className="text-4xl font-black text-gray-900 leading-none">{avg}</span>
-                                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Skor Indeks</span>
-                                          </div>
-                                      </div>
-
-                                      <div className={`w-full p-4 rounded-2xl border ${bgLightClass} border-current/10 space-y-1`}>
-                                          <span className="text-[10px] font-black uppercase tracking-wider text-gray-400">Predikat Kesiapan</span>
-                                          <p className={`text-lg font-black ${colorClass} leading-tight`}>{predikat}</p>
-                                          <p className="text-xs text-gray-600 mt-1 leading-relaxed font-semibold">{deskripsi}</p>
-                                      </div>
-                                  </>
-                              );
-                          })()}
-                      </div>
-
-                      {/* Right: Subtest Details list */}
-                      <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
-                          <h3 className="font-bold text-gray-850 text-base border-b border-gray-100 pb-3 flex items-center gap-2">
-                              <Medal className="text-amber-500" size={20} /> Detail Hasil Per-Subtest TKA
-                          </h3>
-
-                          {(() => {
-                              const score = student.tkaScore;
-                              const verbal = score?.scores?.verbal || 0;
-                              const kuantitatif = score?.scores?.kuantitatif || 0;
-                              const penalaran = score?.scores?.penalaran || 0;
-                              const spasial = score?.scores?.spasial || 0;
-
-                              const subtests = [
-                                  {
-                                      label: 'Subtest Verbal',
-                                      score: verbal,
-                                      desc: 'Mengukur penguasaan kosakata, hubungan kata (analogi), serta pemahaman bacaan untuk menilai kemampuan literasi.',
-                                      color: 'bg-indigo-500',
-                                      textColor: 'text-indigo-600',
-                                      bgColor: 'bg-indigo-50 border-indigo-100'
-                                  },
-                                  {
-                                      label: 'Subtest Kuantitatif',
-                                      score: kuantitatif,
-                                      desc: 'Menilai kemampuan berpikir numerik, penguasaan pola matematika logis, hitungan dasar cepat, dan pemecahan masalah angka.',
-                                      color: 'bg-emerald-500',
-                                      textColor: 'text-emerald-600',
-                                      bgColor: 'bg-emerald-50 border-emerald-100'
-                                  },
-                                  {
-                                      label: 'Subtest Penalaran',
-                                      score: penalaran,
-                                      desc: 'Mengukur kemampuan berpikir analitis, penarikan kesimpulan logis, analisis urutan silogisme, serta pemetaan pola abstrak.',
-                                      color: 'bg-amber-500',
-                                      textColor: 'text-amber-600',
-                                      bgColor: 'bg-amber-50 border-amber-100'
-                                  },
-                                  {
-                                      label: 'Subtest Spasial',
-                                      score: spasial,
-                                      desc: 'Menilai imajinasi visual, rekonstruksi bangun ruang 3D, rotasi mental objek geometri, serta analisis pola gambar visual.',
-                                      color: 'bg-rose-500',
-                                      textColor: 'text-rose-600',
-                                      bgColor: 'bg-rose-50 border-rose-100'
-                                  }
-                              ];
-
-                              return (
-                                  <div className="space-y-5">
-                                      {subtests.map((sub, i) => (
-                                          <div key={i} className="space-y-2">
-                                              <div className="flex justify-between items-center">
-                                                  <div>
-                                                      <span className="font-black text-gray-800 text-sm block">{sub.label}</span>
-                                                      <span className="text-[11px] text-gray-500 block leading-tight mt-0.5">{sub.desc}</span>
-                                                  </div>
-                                                  <div className={`px-3 py-1 rounded-full ${sub.bgColor} border font-black text-sm shrink-0`}>
-                                                      <span className={sub.textColor}>{sub.score} <span className="text-[10px] font-bold text-gray-400">/ 100</span></span>
-                                                  </div>
-                                              </div>
-                                              
-                                              {/* Progress bar container */}
-                                              <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden relative">
-                                                  <div className={`h-full ${sub.color} rounded-full transition-all duration-1000`} style={{ width: `${sub.score}%` }}></div>
-                                              </div>
-                                          </div>
-                                      ))}
-                                  </div>
-                              );
-                          })()}
-                      </div>
-                  </div>
-
-                  {/* Catatan Pendampingan Wali Kelas */}
-                  <div className="bg-gradient-to-br from-slate-50 to-indigo-50/30 p-6 rounded-3xl border border-slate-100 space-y-3">
-                      <h4 className="font-black text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
-                          <Sparkles className="text-indigo-500" size={18} /> Catatan Khusus & Rekomendasi Guru Pendamping
-                      </h4>
-                      <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                          Rekomendasi di bawah ini disusun langsung oleh wali kelas berdasarkan capaian skor simulasi TKA siswa untuk mendukung kesiapan pendaftaran dan seleksi ke jenjang berikutnya (SMP/MTs).
-                      </p>
-                      <div className="bg-white p-4 rounded-2xl border border-slate-100 text-sm text-slate-700 italic font-medium shadow-sm min-h-[60px] flex items-center">
-                          {student.tkaScore?.notes ? `"${student.tkaScore.notes}"` : '"Belum ada catatan evaluasi khusus dari wali kelas. Terus pertahankan semangat belajarnya!"'}
-                      </div>
-                  </div>
               </div>
           )}
 

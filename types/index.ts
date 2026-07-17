@@ -63,20 +63,6 @@ export interface Student {
   };
   
   teacherNotes?: string;
-  tkaScore?: TkaScore;
-}
-
-export interface TkaSubtests {
-  verbal: number;
-  kuantitatif: number;
-  penalaran: number;
-  spasial: number;
-}
-
-export interface TkaScore {
-  scores: TkaSubtests;
-  examDate?: string;
-  notes?: string;
 }
 
 export interface Subject {

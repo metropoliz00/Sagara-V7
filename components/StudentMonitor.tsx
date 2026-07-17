@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
   Student, GradeRecord, AgendaItem, 
-  LiaisonLog, User, BehaviorLog, PermissionRequest, TkaScore
+  LiaisonLog, User, BehaviorLog, PermissionRequest
 } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 import { formatDateID } from '../utils/dateUtils';
@@ -10,7 +10,7 @@ import {
   UserCheck, BookOpen, Calendar, Send, 
   PieChart as PieIcon, List, FileText, ChevronDown, CheckCircle, XCircle, Clock,
   MapPin, TrendingUp, ListTodo, Award, Star, AlertTriangle, HeartHandshake, LayoutDashboard, Medal,
-  Activity, Trophy, User as UserIcon, Save, Loader2, GraduationCap, Heart, Sparkles, AlertCircle
+  Activity, Trophy, User as UserIcon, Save, Loader2, GraduationCap, Heart, Sparkles, AlertCircle, Calculator
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 
@@ -40,15 +40,6 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
   const [isSavingNotes, setIsSavingNotes] = useState(false);
   const { showAlert } = useModal();
   
-  // TKA State Variables
-  const [tkaVerbal, setTkaVerbal] = useState<number>(0);
-  const [tkaKuantitatif, setTkaKuantitatif] = useState<number>(0);
-  const [tkaPenalaran, setTkaPenalaran] = useState<number>(0);
-  const [tkaSpasial, setTkaSpasial] = useState<number>(0);
-  const [tkaExamDate, setTkaExamDate] = useState<string>('');
-  const [tkaNotes, setTkaNotes] = useState<string>('');
-  const [isSavingTka, setIsSavingTka] = useState(false);
-  
   // Grade Selection State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(MOCK_SUBJECTS[0]?.id || 'pai');
 
@@ -65,38 +56,8 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
   useEffect(() => {
     if (selectedStudent) {
         setTeacherNotes(selectedStudent.teacherNotes || '');
-        const score = selectedStudent.tkaScore;
-        setTkaVerbal(score?.scores?.verbal || 0);
-        setTkaKuantitatif(score?.scores?.kuantitatif || 0);
-        setTkaPenalaran(score?.scores?.penalaran || 0);
-        setTkaSpasial(score?.scores?.spasial || 0);
-        setTkaExamDate(score?.examDate || '');
-        setTkaNotes(score?.notes || '');
     }
   }, [selectedStudent]);
-
-  const handleSaveTka = async () => {
-    if (!selectedStudent) return;
-    setIsSavingTka(true);
-    try {
-      const updatedTkaScore = {
-        scores: {
-          verbal: Number(tkaVerbal) || 0,
-          kuantitatif: Number(tkaKuantitatif) || 0,
-          penalaran: Number(tkaPenalaran) || 0,
-          spasial: Number(tkaSpasial) || 0
-        },
-        examDate: tkaExamDate,
-        notes: tkaNotes
-      };
-      await onUpdateStudent({ ...selectedStudent, tkaScore: updatedTkaScore });
-      showAlert('Nilai TKA berhasil disimpan.', 'success');
-    } catch (e) {
-      showAlert('Gagal menyimpan nilai TKA.', 'error');
-    } finally {
-      setIsSavingTka(false);
-    }
-  };
 
   // -- CALCULATE ATTENDANCE STATS --
   const attendanceStats = useMemo(() => {
@@ -150,6 +111,46 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
 
       return { ...subjectData, average };
   }, [grades, selectedStudent, selectedSubjectId]);
+
+  // -- TKA SCORE DATA FOR CLASS 6 --
+  const myTkaData = useMemo(() => {
+      if (!selectedStudent || !selectedStudent.classId?.startsWith('6')) return null;
+      
+      const studentGrades = grades.find(g => g.studentId === selectedStudent.id);
+      const matSubject = studentGrades?.subjects?.['mat'];
+      const indoSubject = studentGrades?.subjects?.['indo'];
+
+      // Default TKA list
+      const titlesSet = new Set<string>(['TKA 1', 'TKA 2', 'TKA 3']);
+      if (matSubject?.tka_scores) {
+        Object.keys(matSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      if (indoSubject?.tka_scores) {
+        Object.keys(indoSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      const titles = Array.from(titlesSet);
+
+      return titles.map(title => {
+        let matScore = matSubject?.tka_scores?.[title];
+        if (matScore === undefined && title === 'TKA 1' && matSubject?.tka !== undefined) {
+          matScore = matSubject.tka;
+        }
+        matScore = matScore || 0;
+
+        let indoScore = indoSubject?.tka_scores?.[title];
+        if (indoScore === undefined && title === 'TKA 1' && indoSubject?.tka !== undefined) {
+          indoScore = indoSubject.tka;
+        }
+        indoScore = indoScore || 0;
+
+        return {
+          title,
+          mat: matScore,
+          indo: indoScore,
+          average: Math.round((matScore + indoScore) / 2)
+        };
+      });
+  }, [grades, selectedStudent]);
 
   const handleSaveNotes = async () => {
     if (!selectedStudent) return;
@@ -300,142 +301,84 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
                         </div>
                     </div>
 
-                    {/* Nilai TKA - Khusus Kelas 6 */}
-                    {selectedStudent.classId?.startsWith('6') && (
-                        <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-gray-100 pb-3">
-                                <div>
-                                    <h3 className="font-bold text-gray-800 flex items-center gap-2 text-base">
-                                        <Award className="text-amber-500 animate-pulse" size={20}/>
-                                        Hasil Tes Kemampuan Akademik (TKA)
-                                    </h3>
-                                    <p className="text-xs text-gray-500">Monitor dan perbarui nilai subtes kesiapan masuk jenjang SMP.</p>
-                                </div>
-                                <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2.5 py-1 rounded-full border border-amber-200">
-                                    Khusus Kelas 6
-                                </span>
-                            </div>
-
-                            {/* Subtests Score Grid */}
-                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1">
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Verbal</label>
-                                    <input 
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={tkaVerbal || ''}
-                                        onChange={(e) => setTkaVerbal(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                                        className="w-full bg-white border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg px-2.5 py-1.5 text-base font-bold text-slate-700 outline-none transition-all"
-                                    />
-                                    <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                        <div className="bg-indigo-500 h-full" style={{ width: `${tkaVerbal || 0}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1">
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kuantitatif</label>
-                                    <input 
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={tkaKuantitatif || ''}
-                                        onChange={(e) => setTkaKuantitatif(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                                        className="w-full bg-white border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg px-2.5 py-1.5 text-base font-bold text-slate-700 outline-none transition-all"
-                                    />
-                                    <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                        <div className="bg-emerald-500 h-full" style={{ width: `${tkaKuantitatif || 0}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1">
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Penalaran</label>
-                                    <input 
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={tkaPenalaran || ''}
-                                        onChange={(e) => setTkaPenalaran(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                                        className="w-full bg-white border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg px-2.5 py-1.5 text-base font-bold text-slate-700 outline-none transition-all"
-                                    />
-                                    <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                        <div className="bg-amber-500 h-full" style={{ width: `${tkaPenalaran || 0}%` }}></div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-slate-50 border border-slate-100 p-3 rounded-xl space-y-1">
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Spasial</label>
-                                    <input 
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        value={tkaSpasial || ''}
-                                        onChange={(e) => setTkaSpasial(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                                        className="w-full bg-white border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-lg px-2.5 py-1.5 text-base font-bold text-slate-700 outline-none transition-all"
-                                    />
-                                    <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden mt-1">
-                                        <div className="bg-rose-500 h-full" style={{ width: `${tkaSpasial || 0}%` }}></div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Additional Info Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="sm:col-span-1 space-y-1">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal Ujian / Simulasi</label>
-                                    <input 
-                                        type="date"
-                                        value={tkaExamDate}
-                                        onChange={(e) => setTkaExamDate(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700 outline-none transition-all"
-                                    />
-                                </div>
-                                <div className="sm:col-span-2 space-y-1">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Catatan Khusus Evaluasi</label>
-                                    <input 
-                                        type="text"
-                                        value={tkaNotes}
-                                        onChange={(e) => setTkaNotes(e.target.value)}
-                                        placeholder="Contoh: Sangat baik di penalaran spasial, pertahankan."
-                                        className="w-full bg-gray-50 border border-gray-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl px-3 py-2 text-sm font-semibold text-gray-700 outline-none transition-all"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Calculation & Save Button */}
-                            <div className="flex flex-col sm:flex-row justify-between items-center bg-amber-50/70 p-4 rounded-xl border border-amber-100 gap-4">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex flex-col items-center justify-center text-white shadow-md">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider leading-none">RATA2</span>
-                                        <span className="text-xl font-black leading-none mt-1">
-                                            {Math.round((Number(tkaVerbal) + Number(tkaKuantitatif) + Number(tkaPenalaran) + Number(tkaSpasial)) / 4)}
-                                        </span>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold text-gray-500 uppercase leading-none">PREDIKAT KESIAPAN</p>
-                                        <p className="text-base font-black text-amber-800 mt-1 leading-tight">
-                                            {(() => {
-                                                const avg = Math.round((Number(tkaVerbal) + Number(tkaKuantitatif) + Number(tkaPenalaran) + Number(tkaSpasial)) / 4);
-                                                if (avg === 0) return 'Belum Ada Data';
-                                                if (avg < 60) return 'Perlu Pendampingan Khusus';
-                                                if (avg < 75) return 'Kesiapan Cukup';
-                                                if (avg < 90) return 'Kesiapan Baik (Sangat Siap)';
-                                                return 'Kesiapan Sangat Tinggi (Unggul)';
-                                            })()}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <button
-                                    onClick={handleSaveTka}
-                                    disabled={isSavingTka}
-                                    className="w-full sm:w-auto flex items-center justify-center gap-2 bg-amber-600 text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-amber-600/20 hover:bg-amber-700 transition-all active:scale-95 disabled:opacity-50 text-sm"
-                                >
-                                    {isSavingTka ? <Loader2 size={16} className="animate-spin"/> : <Save size={16}/>}
-                                    {isSavingTka ? 'Menyimpan...' : 'Simpan Nilai TKA'}
-                                </button>
-                            </div>
+                    {/* TKA Recap Section (Khusus Kelas 6) */}
+                    {selectedStudent.classId?.startsWith('6') && myTkaData && (
+                    <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm animate-fade-in-up">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-gray-800 flex items-center">
+                                <Calculator className="mr-2 text-indigo-500" size={20}/> Hasil Nilai Tryout TKA (Tes Kemampuan Akademik)
+                            </h3>
+                            <span className="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full font-bold border border-indigo-100 uppercase">
+                                Kelas 6
+                            </span>
                         </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {myTkaData.map((tka, index) => {
+                                const matPred = tka.mat > 90 ? 'Istimewa' : tka.mat >= 76 ? 'Baik' : tka.mat >= 60 ? 'Memadai' : tka.mat > 0 ? 'Kurang' : '-';
+                                const indoPred = tka.indo > 90 ? 'Istimewa' : tka.indo >= 76 ? 'Baik' : tka.indo >= 60 ? 'Memadai' : tka.indo > 0 ? 'Kurang' : '-';
+                                const hasData = tka.mat > 0 || tka.indo > 0;
+                                
+                                return (
+                                    <div key={index} className="bg-slate-50 rounded-xl p-3 border border-slate-100 flex flex-col justify-between hover:shadow-sm transition-all">
+                                        <div className="border-b pb-1.5 mb-2.5 flex justify-between items-center">
+                                            <span className="font-extrabold text-slate-800 text-xs uppercase tracking-wide">{tka.title}</span>
+                                            {hasData && (
+                                                <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded">
+                                                    Rata2: {tka.average}
+                                                </span>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center text-[11px]">
+                                                <span className="text-slate-500 font-bold">Matematika</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`font-bold ${tka.mat > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                        {tka.mat > 0 ? tka.mat : '-'}
+                                                    </span>
+                                                    {tka.mat > 0 && (
+                                                        <span className={`text-[9px] px-1 rounded font-bold ${
+                                                            matPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                            matPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                            matPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                            {matPred}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex justify-between items-center text-[11px]">
+                                                <span className="text-slate-500 font-bold">B. Indonesia</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`font-bold ${tka.indo > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                        {tka.indo > 0 ? tka.indo : '-'}
+                                                    </span>
+                                                    {tka.indo > 0 && (
+                                                        <span className={`text-[9px] px-1 rounded font-bold ${
+                                                            indoPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                            indoPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                            indoPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                            'bg-gray-100 text-gray-600'
+                                                        }`}>
+                                                            {indoPred}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {!hasData && (
+                                            <div className="text-center text-[10px] text-slate-400 italic mt-2 border-t pt-1.5">
+                                                Belum diinput.
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
                     )}
 
                     {/* 2. Kesehatan & Minat */}

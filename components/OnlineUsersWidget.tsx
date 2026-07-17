@@ -167,17 +167,11 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     }
   };
 
-  const isOverlapPage = pathname === '/' || pathname === '/dashboard' || pathname === '/absensi' || pathname === '/nilai';
-  
   let positionClasses = "";
   if (ttsEnabled) {
-    positionClasses = isOverlapPage
-      ? "bottom-[240px] md:bottom-[184px]"
-      : "bottom-[168px] md:bottom-[112px]";
+    positionClasses = "bottom-[168px] md:bottom-[112px]";
   } else {
-    positionClasses = isOverlapPage
-      ? "bottom-[168px] md:bottom-[112px]"
-      : "bottom-[96px] md:bottom-[40px]";
+    positionClasses = "bottom-[96px] md:bottom-[40px]";
   }
 
   return (

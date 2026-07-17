@@ -6,7 +6,7 @@ import {
   HelpCircle, Check, X, ListFilter, User as UserIcon, LogIn, Monitor,
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
   Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2,
-  ArrowUp, HeartHandshake, Medal, Calculator, Compass, Music, Trophy, Book, Globe
+  ArrowUp, HeartHandshake, Medal, Calculator, Compass, Music, Trophy, Book, Globe, Printer
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
 import { apiService } from '../services/apiService';
@@ -3839,6 +3839,138 @@ const SumatifManualGrading: React.FC<{
   );
 };
 
+// --- STUDENT RESULT PRINT COMPONENT ---
+const SumatifStudentResultPrint: React.FC<{
+  sumatif: Sumatif,
+  result: SumatifResult,
+  student: Student,
+  onClose: () => void
+}> = ({ sumatif, result, student, onClose }) => {
+  const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
+
+  const durationStr = '-';
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header (No Print) */}
+        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 no-print shrink-0">
+          <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
+          <div className="flex space-x-2">
+            <button onClick={() => window.print()} className="px-4 py-2 bg-[#5AB2FF] text-white rounded-lg font-bold flex items-center space-x-2 hover:bg-[#4A9FE6] transition-colors">
+              <Printer size={16} />
+              <span>Cetak</span>
+            </button>
+            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-500">
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Printable Area */}
+        <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
+          <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm">
+            
+            <h1 className="text-2xl font-black text-center mb-8 uppercase tracking-widest">{sumatif.type === 'sas' ? 'Sumatif Akhir Semester' : 'Ujian Sumatif'}</h1>
+            
+            <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="space-y-2">
+                <div className="flex"><span className="w-32 font-bold">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
+                <div className="flex"><span className="w-32 font-bold">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
+                <div className="flex"><span className="w-32 font-bold">MATA PELAJARAN</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
+                <div className="flex"><span className="w-32 font-bold">JUDUL SUMATIF</span><span className="mr-2">:</span><span className="uppercase">{sumatif.title}</span></div>
+              </div>
+              <div className="space-y-2">
+                <div className="flex"><span className="w-32 font-bold">NILAI</span><span className="mr-2">:</span><span className="font-black text-xl">{result.score}</span></div>
+                <div className="flex"><span className="w-32 font-bold">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
+              </div>
+            </div>
+
+            <div className="flex justify-end mb-8">
+              <div className="w-48 text-center">
+                <p className="font-bold mb-16">Tanda Tangan Orang Tua</p>
+                <div className="border-b border-black"></div>
+              </div>
+            </div>
+
+            <div className="border-t-2 border-black pt-6">
+              <h2 className="font-bold text-lg mb-4">Hasil Pekerjaan Siswa</h2>
+              
+              <div className="space-y-6">
+                {sumatif.questions.map((q, idx) => {
+                  const studentAnswer = result.answers[q.id];
+                  let isCorrect = false;
+                  let studentAnswerText = studentAnswer;
+                  let correctAnswerText = '';
+
+                  if (q.type === 'pg') {
+                    isCorrect = studentAnswer === q.correctAnswer;
+                    const studentOpt = q.options?.find(o => o.id === studentAnswer);
+                    const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
+                    studentAnswerText = studentOpt?.text || studentAnswer || '-';
+                    correctAnswerText = correctOpt?.text || q.correctAnswer || '-';
+                  } else if (q.type === 'pgk') {
+                    const studentAnswersArr = Array.isArray(studentAnswer) ? studentAnswer : [];
+                    const correctAnswersArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
+                    isCorrect = studentAnswersArr.length === correctAnswersArr.length && 
+                                studentAnswersArr.every(a => correctAnswersArr.includes(a));
+                    
+                    studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                    correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                  } else if (q.type === 'bs') {
+                    isCorrect = studentAnswer === q.correctAnswer;
+                    studentAnswerText = studentAnswer === 'B' ? 'Benar' : studentAnswer === 'S' ? 'Salah' : '-';
+                    correctAnswerText = q.correctAnswer === 'B' ? 'Benar' : q.correctAnswer === 'S' ? 'Salah' : '-';
+                  } else if (q.type === 'uraian') {
+                    // For uraian, there is no automatic correctness, we just show what they wrote and the rubrics/keywords if any
+                    isCorrect = (result.manualScores?.[q.id] || 0) > 0;
+                    studentAnswerText = studentAnswer || '-';
+                    correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
+                  }
+
+                  return (
+                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid">
+                      <div className="flex gap-4">
+                        <div className="font-bold w-6">{idx + 1}.</div>
+                        <div className="flex-1 space-y-2">
+                          <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
+                          
+                          <div className="flex mt-2">
+                            <div className="w-1/2 pr-4">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
+                              <div className={`p-2 rounded border ${isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                                {studentAnswerText}
+                              </div>
+                            </div>
+                            <div className="w-1/2 pl-4 border-l border-slate-200">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
+                              <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                                {correctAnswerText}
+                              </div>
+                            </div>
+                          </div>
+
+                          {q.type === 'uraian' && (
+                            <div className="mt-2 text-sm">
+                              <span className="font-bold">Skor Uraian: </span> 
+                              <span>{result.manualScores?.[q.id] || 0} / {q.points || 0}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+};
+
 // --- RESULTS VIEW COMPONENT ---
 const SumatifResultsView: React.FC<{
   sumatif: Sumatif,
@@ -3851,6 +3983,7 @@ const SumatifResultsView: React.FC<{
 }> = ({ sumatif, results, students, onBack, onSync, onReset, onSaveGrading }) => {
   const [viewMode, setViewMode] = useState<'list' | 'analysis'>('list');
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
+  const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative">
@@ -3902,6 +4035,15 @@ const SumatifResultsView: React.FC<{
         />
       )}
 
+      {viewingPrintResult && (
+        <SumatifStudentResultPrint
+          sumatif={sumatif}
+          result={viewingPrintResult}
+          student={students.find(s => s.id === viewingPrintResult.studentId)!}
+          onClose={() => setViewingPrintResult(null)}
+        />
+      )}
+
       {viewMode === 'list' ? (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -3949,6 +4091,14 @@ const SumatifResultsView: React.FC<{
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center space-x-2">
+                        <button
+                          onClick={() => setViewingPrintResult(r)}
+                          className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all flex items-center space-x-1"
+                          title="Lihat Lembar Jawaban"
+                        >
+                          <Eye size={14} />
+                          <span>Lembar Jawaban</span>
+                        </button>
                         {sumatif.questions.some(q => q.type === 'uraian') && (
                           <button
                             onClick={() => setGradingResult(r)}

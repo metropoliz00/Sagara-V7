@@ -1125,13 +1125,42 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       />
 
        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-          <div>
+          <div className="w-full md:w-auto">
               <h2 className="text-2xl font-bold text-gray-800">Manajemen Absensi</h2>
-              <p className="text-gray-500">
+              <p className="text-gray-500 text-sm mt-1">
                   {isReadOnly ? 'Pantau kehadiran Anda.' : 'Kelola kehadiran harian, input rentang, rekap bulanan, dan hari libur.'}
               </p>
           </div>
-          <div className="flex bg-white p-1 rounded-xl border border-[#CAF4FF] shadow-sm overflow-x-auto">
+
+          {/* Mobile view dropdown */}
+          <div className="relative w-full md:hidden flex flex-col gap-1.5">
+             <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Pilih Menu Absensi</label>
+             <div className="relative">
+                <select 
+                  value={viewMode} 
+                  onChange={(e) => setViewMode(e.target.value as ViewMode)} 
+                  className="w-full bg-white border border-gray-200 text-gray-700 px-4 py-3 pr-10 rounded-xl font-semibold shadow-sm outline-none focus:ring-2 focus:ring-[#5AB2FF] appearance-none cursor-pointer"
+                >
+                   {!isReadOnly && <option value="daily">📅 Input Harian</option>}
+                   {!isReadOnly && <option value="range">⏰ Input Rentang</option>}
+                   <option value="rekap">📊 Rekap Bulanan</option>
+                   {isSubjectTeacher && (
+                      <>
+                        <option value="rekap_mapel">📖 Rekap Mapel</option>
+                        <option value="semester_mapel">🎓 Rekap Semester Mapel</option>
+                      </>
+                   )}
+                   <option value="semester">🏫 Rekap Semester</option>
+                   {!isReadOnly && <option value="holiday">🏖️ Setelan Libur</option>}
+                </select>
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                    <ChevronDown size={20} />
+                </div>
+             </div>
+          </div>
+
+          {/* Desktop view tabs */}
+          <div className="hidden md:flex bg-white p-1 rounded-xl border border-[#CAF4FF] shadow-sm overflow-x-auto">
              {!isReadOnly && <button onClick={() => setViewMode('daily')} className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${viewMode === 'daily' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-[#FFF9D0]'}`}><Calendar size={16} className="mr-2" /> Input Harian</button>}
              {!isReadOnly && <button onClick={() => setViewMode('range')} className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${viewMode === 'range' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-[#FFF9D0]'}`}><CalendarClock size={16} className="mr-2" /> Input Rentang</button>}
              <button onClick={() => setViewMode('rekap')} className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${viewMode === 'rekap' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-[#FFF9D0]'}`}><FileSpreadsheet size={16} className="mr-2" /> Rekap Bulanan</button>
@@ -1671,14 +1700,52 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
 
        {viewMode === 'daily' && !isReadOnly && (
           <div className="space-y-4">
-             <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-[#CAF4FF]">
-                 <label className="font-bold">Tanggal:</label>
-                 <input type="date" value={selectedDate} onChange={e=>setSelectedDate(e.target.value)} className="border p-2 rounded-lg"/>
-                 <div className="flex items-center gap-2">
-                     <button onClick={handleMarkAllPresent} className="bg-emerald-100 text-emerald-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-emerald-200 transition-colors"><CheckSquare size={16} className="inline mr-1"/> Isi Hadir</button>
-                     <button onClick={handleResetAttendance} className="bg-rose-100 text-rose-700 px-3 py-2 rounded-lg font-bold text-sm hover:bg-rose-200 transition-colors"><RotateCcw size={16} className="inline mr-1"/> Reset</button>
+             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-xl border border-[#CAF4FF] shadow-sm">
+                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full lg:w-auto">
+                     <div className="flex items-center gap-2 w-full sm:w-auto">
+                         <label className="font-bold text-gray-700 text-sm whitespace-nowrap">Tanggal:</label>
+                         <input 
+                             type="date" 
+                             value={selectedDate} 
+                             onChange={e=>setSelectedDate(e.target.value)} 
+                             className="border border-gray-300 p-2.5 rounded-lg text-sm text-gray-700 font-medium focus:ring-2 focus:ring-[#5AB2FF] outline-none bg-gray-50 focus:bg-white transition-all w-full sm:w-auto"
+                         />
+                     </div>
+                     <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
+                         <button 
+                             onClick={handleMarkAllPresent} 
+                             className="flex items-center justify-center bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2.5 rounded-lg font-bold text-xs hover:bg-emerald-100 transition-colors"
+                         >
+                             <CheckSquare size={16} className="mr-1.5 shrink-0"/> 
+                             <span>Isi Hadir</span>
+                         </button>
+                         <button 
+                             onClick={handleResetAttendance} 
+                             className="flex items-center justify-center bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2.5 rounded-lg font-bold text-xs hover:bg-rose-100 transition-colors"
+                         >
+                             <RotateCcw size={16} className="mr-1.5 shrink-0"/> 
+                             <span>Reset</span>
+                         </button>
+                     </div>
                  </div>
-                 <button onClick={handleSaveDaily} disabled={saving} className="bg-gradient-to-r from-[#5AB2FF] to-[#A0DEFF] text-white px-6 py-2 rounded-lg font-bold disabled:opacity-50 shadow-md"><Save size={18} className="inline mr-2"/> {saving ? 'Menyimpan...' : 'Simpan'}</button>
+                 
+                 <button 
+                     onClick={handleSaveDaily} 
+                     disabled={saving} 
+                     className="bg-gradient-to-r from-[#5AB2FF] to-[#A0DEFF] text-white px-6 py-2.5 rounded-lg font-bold text-sm disabled:opacity-50 shadow-md hover:brightness-105 active:scale-95 transition-all flex items-center justify-center w-full lg:w-auto shrink-0"
+                 >
+                     {saving ? (
+                         <>
+                             <Loader2 size={16} className="animate-spin mr-2"/>
+                             <span>Menyimpan...</span>
+                         </>
+                     ) : (
+                         <>
+                             <Save size={16} className="mr-2"/>
+                             <span>Simpan Presensi</span>
+                         </>
+                     )}
+                 </button>
              </div>
              <div className="bg-white rounded-xl border overflow-x-auto">
                 <table className="w-full text-sm min-w-[650px]">

@@ -1395,11 +1395,10 @@ const GradesView: React.FC<GradesViewProps> = ({
                              <td className="p-4 sticky left-0 bg-white text-center border-r z-10 w-12 font-medium print:text-black hidden md:table-cell">
                                  {idx + 1}
                               </td>
-                              <td className="p-4 sticky left-0 md:left-12 bg-white font-medium print:text-black border-r z-10 max-w-[124px] md:max-w-none">
-                                <div className="flex flex-col truncate">
+                              <td className="p-4 border-r w-24 text-center text-sm">{s.nis}</td>
+                              <td className="p-4 border-r w-24 text-center text-sm">{s.nisn || '-'}</td>
+                              <td className="p-4 sticky left-0 md:left-[240px] bg-white font-medium print:text-black border-r z-10 max-w-[124px] md:max-w-none">
                                      <span className="truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span>
-                                     <div className="flex gap-1 text-[9px] text-gray-400 no-print truncate"><span>NIS: {s.nis}</span>{s.nisn && <span className="hidden sm:inline">• NISN: {s.nisn}</span>}</div>
-                                 </div>
                              </td>
                              {(['sum1','sum2','sum3','sum4', ...customColumns, 'sas'] as string[]).map(f => {
                                 const score = Number(g[f]) || 0;

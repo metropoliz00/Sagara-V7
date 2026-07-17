@@ -505,32 +505,43 @@ export const apiService = {
   getStudents: async (currentUser: User | null): Promise<Student[]> => {
     const { data, error } = await supabase.from('students').select('*');
     if (error) return [];
-    return data.map((s: any) => ({
-      ...s,
-      classId: s.class_id,
-      birthPlace: s.birth_place,
-      birthDate: s.birth_date,
-      fatherName: s.father_name,
-      fatherJob: s.father_job,
-      fatherEducation: s.father_education,
-      motherName: s.mother_name,
-      motherJob: s.mother_job,
-      motherEducation: s.mother_education,
-      parentName: s.parent_name,
-      parentPhone: s.parent_phone,
-      parentJob: s.parent_job,
-      economyStatus: s.economy_status,
-      bloodType: s.blood_type,
-      healthNotes: s.health_notes,
-      behaviorScore: Number(s.behavior_score),
-      attendance: {
-        present: Number(s.present),
-        sick: Number(s.sick),
-        permit: Number(s.permit),
-        alpha: Number(s.alpha)
-      },
-      teacherNotes: s.teacher_notes
-    })).sort((a: Student, b: Student) => a.name.localeCompare(b.name));
+    return data.map((s: any) => {
+      let parsedTka = null;
+      if (s.tka_score) {
+        try {
+          parsedTka = typeof s.tka_score === 'string' ? JSON.parse(s.tka_score) : s.tka_score;
+        } catch (e) {
+          console.error("Error parsing tka_score:", e);
+        }
+      }
+      return {
+        ...s,
+        classId: s.class_id,
+        birthPlace: s.birth_place,
+        birthDate: s.birth_date,
+        fatherName: s.father_name,
+        fatherJob: s.father_job,
+        fatherEducation: s.father_education,
+        motherName: s.mother_name,
+        motherJob: s.mother_job,
+        motherEducation: s.mother_education,
+        parentName: s.parent_name,
+        parentPhone: s.parent_phone,
+        parentJob: s.parent_job,
+        economyStatus: s.economy_status,
+        bloodType: s.blood_type,
+        healthNotes: s.health_notes,
+        behaviorScore: Number(s.behavior_score),
+        attendance: {
+          present: Number(s.present),
+          sick: Number(s.sick),
+          permit: Number(s.permit),
+          alpha: Number(s.alpha)
+        },
+        teacherNotes: s.teacher_notes,
+        tkaScore: parsedTka
+      };
+    }).sort((a: Student, b: Student) => a.name.localeCompare(b.name));
   },
 
   createStudent: async (student: Omit<Student, 'id'>): Promise<Student> => {
@@ -624,7 +635,7 @@ export const apiService = {
   },
 
   updateStudent: async (student: Student): Promise<void> => {
-    const dbStudent = {
+    const dbStudent: any = {
       class_id: student.classId,
       nis: student.nis,
       nisn: student.nisn,
@@ -660,7 +671,13 @@ export const apiService = {
       photo: student.photo,
       teacher_notes: student.teacherNotes
     };
-    await supabase.from('students').update(dbStudent).eq('id', student.id);
+    
+    // Attempt update with tka_score column, falling back if database column does not exist
+    const { error } = await supabase.from('students').update({ ...dbStudent, tka_score: student.tkaScore }).eq('id', student.id);
+    if (error) {
+      console.warn("Retrying student update without tka_score column:", error.message);
+      await supabase.from('students').update(dbStudent).eq('id', student.id);
+    }
     
     // Sync to user
     const { data: user } = await supabase.from('users').select('id').eq('student_id', student.id).single();

@@ -553,6 +553,19 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     newWindow?.document.close();
   };
 
+  const tabsList = [
+    { id: 'schedule', label: 'Jadwal', icon: Calendar },
+    { id: 'piket', label: 'Piket', icon: ClipboardList },
+    { id: 'seating', label: 'Denah', icon: Map },
+    { id: 'organization', label: 'Struktur', icon: Users },
+    { id: 'calendar', label: 'Kalender', icon: CalendarDays },
+    { id: 'inventory', label: 'Inventaris', icon: CheckCircle },
+    { id: 'guestbook', label: 'Buku Tamu', icon: BookOpen },
+  ];
+
+  const activeTabItem = tabsList.find(t => t.id === activeTab) || tabsList[0];
+  const ActiveTabIcon = activeTabItem.icon;
+
   return (
     <div className="space-y-6 animate-fade-in page-landscape">
       
@@ -565,17 +578,10 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
            </h2>
            <p className="text-gray-500">Buku administrasi dengan sistem digital terintegrasi</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-           <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm mr-2">
-              {[
-                { id: 'schedule', label: 'Jadwal', icon: Calendar },
-                { id: 'piket', label: 'Piket', icon: ClipboardList },
-                { id: 'seating', label: 'Denah', icon: Map },
-                { id: 'organization', label: 'Struktur', icon: Users },
-                { id: 'calendar', label: 'Kalender', icon: CalendarDays },
-                { id: 'inventory', label: 'Inventaris', icon: CheckCircle },
-                { id: 'guestbook', label: 'Buku Tamu', icon: BookOpen },
-              ].map((tab) => (
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full xl:w-auto">
+           {/* Desktop Tabs */}
+           <div className="hidden md:flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm mr-2">
+              {tabsList.map((tab) => (
                 <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
@@ -590,17 +596,41 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                 </button>
               ))}
            </div>
+
+           {/* Mobile Dropdown */}
+           <div className="md:hidden w-full relative">
+             <div className="flex items-center space-x-3 w-full bg-white border border-[#CAF4FF] rounded-xl px-4 py-3 shadow-sm">
+               <ActiveTabIcon className="text-indigo-600 shrink-0" size={20} />
+               <select
+                 value={activeTab}
+                 onChange={(e) => setActiveTab(e.target.value as any)}
+                 className="w-full bg-transparent text-base font-semibold text-gray-700 outline-none cursor-pointer appearance-none pr-10"
+                 style={{
+                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234F46E5' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+                   backgroundPosition: 'right center',
+                   backgroundSize: '1.25rem',
+                   backgroundRepeat: 'no-repeat'
+                 }}
+               >
+                 {tabsList.map((tab) => (
+                   <option key={tab.id} value={tab.id}>
+                     {tab.label}
+                   </option>
+                 ))}
+               </select>
+             </div>
+           </div>
            
            {/* Action Buttons */}
-           <div className="flex space-x-1">
-             <button onClick={fetchClassroomData} title="Refresh Data" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-indigo-600">
+           <div className="flex space-x-2 justify-end w-full md:w-auto">
+             <button onClick={fetchClassroomData} title="Refresh Data" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-indigo-600 shadow-sm">
                 <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
              </button>
              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
-             <button onClick={handleDownloadTemplate} title="Download Template" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><FileSpreadsheet size={18} /></button>
-             <button onClick={handleImportClick} title="Import" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Upload size={18} /></button>
-             <button onClick={handleExport} title="Export Excel" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Download size={18} /></button>
-             <button onClick={handlePrint} title="Cetak" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Printer size={18} /></button>
+             <button onClick={handleDownloadTemplate} title="Download Template" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><FileSpreadsheet size={18} /></button>
+             <button onClick={handleImportClick} title="Import" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Upload size={18} /></button>
+             <button onClick={handleExport} title="Export Excel" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Download size={18} /></button>
+             <button onClick={handlePrint} title="Cetak" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Printer size={18} /></button>
            </div>
         </div>
       </div>

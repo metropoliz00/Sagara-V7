@@ -2227,7 +2227,7 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 z-[-10] flex items-center justify-center pointer-events-none overflow-hidden">
             <img 
               src="https://www.image2url.com/r2/default/images/1776528081180-f5356afe-2059-4426-8309-4f5af1b9227e.png"
               alt="Watermark"
@@ -2417,7 +2417,7 @@ const AppContent: React.FC = () => {
             </div>
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24 lg:pb-8 scroll-smooth print:p-0 relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24 lg:pb-8 scroll-smooth print:p-0 relative">
            <div className="max-w-[1440px] mx-auto print:w-full">
              {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between no-print">
@@ -3004,7 +3004,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {isPermissionModalOpen && !isStudentRole && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsPermissionModalOpen(false)}>
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsPermissionModalOpen(false)}>
               <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                   <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                       <h3 className="font-bold text-lg text-gray-800">Permintaan Ijin / Sakit</h3>

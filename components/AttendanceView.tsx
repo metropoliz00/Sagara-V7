@@ -2107,7 +2107,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
 
             {isScannerOpen && (
-                <div className="fixed inset-0 z-[60] bg-black flex flex-col animate-fade-in">
+                <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
                     {/* Header / Controls */}
                     <div className="p-4 flex justify-between items-center z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
                         <button 

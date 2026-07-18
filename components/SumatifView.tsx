@@ -5,7 +5,7 @@ import {
   Clock, BookOpen, AlertCircle, Save, ChevronLeft, ChevronRight,
   HelpCircle, Check, X, ListFilter, User as UserIcon, LogIn, Monitor,
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
-  Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2,
+  Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2, FileText,
   ArrowUp, HeartHandshake, Medal, Calculator, Compass, Music, Trophy, Book, Globe, Printer
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
+import html2pdf from 'html2pdf.js';
 import { PrintButton } from './PrintButton';
 import PrintLayout from './PrintLayout';
 
@@ -3886,13 +3887,75 @@ const SumatifStudentResultPrint: React.FC<{
     ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
     : '-';
 
+  const handleDownloadPDF = () => {
+    const element = document.getElementById('print-area');
+    if (!element) return;
+    
+    const opt = {
+      margin:       0,
+      filename:     `Hasil_${sumatif.title}_${student.name}.pdf`.replace(/\s+/g, '_'),
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2, useCORS: true, logging: false },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    // @ts-ignore
+    html2pdf().from(element).set(opt).save();
+  };
+
+  // Group questions into pages
+  const firstPageQuestions = sumatif.questions.slice(0, 2);
+  const remainingQuestions = sumatif.questions.slice(2);
+  const questionPages = [firstPageQuestions];
+  for (let i = 0; i < remainingQuestions.length; i += 3) {
+    questionPages.push(remainingQuestions.slice(i, i + 3));
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <style>{`
+        .pdf-page-container {
+          width: 210mm;
+          min-height: 297mm;
+          background: white;
+          margin: 0 auto 20px auto;
+          padding: 15mm;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          position: relative;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+        }
+        @media print {
+          .pdf-page-container {
+            margin: 0;
+            box-shadow: none;
+            width: 100%;
+            min-height: 100vh;
+            padding: 10mm;
+            page-break-after: always;
+          }
+          .pdf-page-container:last-child {
+            page-break-after: auto;
+          }
+        }
+      `}</style>
+      <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header (No Print) */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 no-print shrink-0">
-          <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
+          <div>
+            <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
+            <p className="text-xs text-slate-500">Preview cetak PDF (A4)</p>
+          </div>
           <div className="flex space-x-2">
+            <button 
+              onClick={handleDownloadPDF}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center space-x-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+            >
+              <FileText size={18} />
+              <span>Unduh PDF</span>
+            </button>
             <PrintButton />
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-500">
               <X size={20} />
@@ -3901,129 +3964,143 @@ const SumatifStudentResultPrint: React.FC<{
         </div>
 
         {/* Printable Area */}
-        <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
+        <div className="overflow-y-auto flex-1 p-4 bg-slate-100 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 sm:origin-center sm:m-auto m-0 print:break-inside-auto">
-            
-            <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
-            <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
-            
-            <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
-              <div className="space-y-2 text-sm">
-                <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
-              </div>
-              
-              <div className="flex flex-col items-center justify-center gap-2">
-                <span className="font-black text-xl text-slate-800">NILAI</span>
-                <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
-              </div>
+            <div id="print-area" className="origin-top scale-[0.4] xs:scale-[0.5] sm:scale-[0.6] md:scale-[0.8] lg:scale-100 print:scale-100 sm:m-auto m-0 flex flex-col items-center">
+              {questionPages.map((questions, pageIdx) => (
+                <div key={pageIdx} className="pdf-page-container">
+                  {pageIdx === 0 && (
+                    <>
+                      <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
+                      <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
+                      
+                      <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <span className="font-black text-xl text-slate-800">NILAI</span>
+                          <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
+                        </div>
 
-              <div className="flex flex-col gap-4 items-end">
-                <div className="w-48 text-center">
-                  <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
-                  <div className="border-b border-black"></div>
-                </div>
-                <div className="w-48 text-center">
-                  <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
-                  <div className="border-b border-black"></div>
-                </div>
-              </div>
-            </div>
+                        <div className="flex flex-col gap-4 items-end">
+                          <div className="w-48 text-center">
+                            <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
+                            <div className="border-b border-black"></div>
+                          </div>
+                          <div className="w-48 text-center">
+                            <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
+                            <div className="border-b border-black"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="border-t-2 border-black pt-4 mb-4">
+                        <h2 className="font-bold text-lg">Hasil Pekerjaan Siswa</h2>
+                      </div>
+                    </>
+                  )}
 
-            <div className="border-t-2 border-black pt-6">
-              <h2 className="font-bold text-lg mb-4">Hasil Pekerjaan Siswa</h2>
-              
-              <div className="space-y-6">
-                {sumatif.questions.map((q, idx) => {
-                  const studentAnswer = result.answers[q.id];
-                  let isCorrect = false;
-                  let studentAnswerText = studentAnswer;
-                  let correctAnswerText = '';
+                  {pageIdx > 0 && (
+                    <div className="flex justify-between items-center mb-6 border-b pb-2 text-slate-400 text-xs italic">
+                      <span>{sumatif.title} - {student.name}</span>
+                      <span>Halaman {pageIdx + 1}</span>
+                    </div>
+                  )}
 
-                  if (q.type === 'pg') {
-                    isCorrect = studentAnswer === q.correctAnswer;
-                    const studentOpt = q.options?.find(o => o.id === studentAnswer);
-                    const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
-                    studentAnswerText = studentOpt?.text || studentAnswer || '-';
-                    correctAnswerText = correctOpt?.text || q.correctAnswer || '-';
-                  } else if (q.type === 'pgk') {
-                    const studentAnswersArr = Array.isArray(studentAnswer) ? studentAnswer : [];
-                    const correctAnswersArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
-                    isCorrect = studentAnswersArr.length === correctAnswersArr.length && 
-                                studentAnswersArr.every(a => correctAnswersArr.includes(a));
-                    
-                    studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
-                    correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
-                  } else if (q.type === 'bs') {
-                    const subAnswers = studentAnswer || {};
-                    const subQuestions = q.subQuestions || [];
-                    
-                    let allCorrect = true;
-                    const studentTextArr: string[] = [];
-                    const correctTextArr: string[] = [];
-                    
-                    subQuestions.forEach((sq, i) => {
-                      const ans = subAnswers[sq.id];
-                      const correct = sq.correctAnswer;
-                      if (ans !== correct) allCorrect = false;
-                      studentTextArr.push(`${i + 1}. ${ans || '-'}`);
-                      correctTextArr.push(`${i + 1}. ${correct}`);
-                    });
-                    
-                    isCorrect = allCorrect;
-                    studentAnswerText = studentTextArr.join('\n');
-                    correctAnswerText = correctTextArr.join('\n');
-                  } else if (q.type === 'uraian') {
-                    // For uraian, there is no automatic correctness, we just show what they wrote and the rubrics/keywords if any
-                    isCorrect = (result.manualScores?.[q.id] || 0) > 0;
-                    studentAnswerText = studentAnswer || '-';
-                    correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
-                  }
+                  <div className="space-y-6 flex-1">
+                    {questions.map((q) => {
+                      const absoluteIdx = sumatif.questions.findIndex(sq => sq.id === q.id);
+                      const studentAnswer = result.answers[q.id];
+                      let isCorrect = false;
+                      let studentAnswerText = studentAnswer;
+                      let correctAnswerText = '';
 
-                  return (
-                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid avoid-break">
-                      <div className="flex gap-4">
-                        <div className="font-bold w-6">{idx + 1}.</div>
-                        <div className="flex-1 space-y-2">
-                          {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
-                            <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : q.imageUrl ? (
-                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
-                              {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
-                            </div>
-                          ) : null}
-                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap" />
-                          
-                          <div className="flex mt-2 items-start">
-                            <div className="w-[40%] pr-4">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
-                              <div className={`p-2 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                                {studentAnswerText}
-                              </div>
-                            </div>
-                            <div className="w-[40%] pl-4 border-l border-slate-200">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
-                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
-                                {correctAnswerText}
-                              </div>
-                            </div>
-                            <div className="w-[20%] pl-4 border-l border-slate-200">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Skor:</div>
-                              <div className={`p-2 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
-                                {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)} / {q.points || 0}
+                      if (q.type === 'pg') {
+                        isCorrect = studentAnswer === q.correctAnswer;
+                        const studentOpt = q.options?.find(o => o.id === studentAnswer);
+                        const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
+                        studentAnswerText = studentOpt?.text || studentAnswer || '-';
+                        correctAnswerText = correctOpt?.text || q.correctAnswer || '-';
+                      } else if (q.type === 'pgk') {
+                        const studentAnswersArr = Array.isArray(studentAnswer) ? studentAnswer : [];
+                        const correctAnswersArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
+                        isCorrect = studentAnswersArr.length === correctAnswersArr.length && 
+                                    studentAnswersArr.every(a => correctAnswersArr.includes(a));
+                        
+                        studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                        correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                      } else if (q.type === 'bs') {
+                        const subAnswers = studentAnswer || {};
+                        const subQuestions = q.subQuestions || [];
+                        
+                        let allCorrect = true;
+                        const studentTextArr: string[] = [];
+                        const correctTextArr: string[] = [];
+                        
+                        subQuestions.forEach((sq, i) => {
+                          const ans = subAnswers[sq.id];
+                          const correct = sq.correctAnswer;
+                          if (ans !== correct) allCorrect = false;
+                          studentTextArr.push(`${i + 1}. ${ans || '-'}`);
+                          correctTextArr.push(`${i + 1}. ${correct}`);
+                        });
+                        
+                        isCorrect = allCorrect;
+                        studentAnswerText = studentTextArr.join('\n');
+                        correctAnswerText = correctTextArr.join('\n');
+                      } else if (q.type === 'uraian') {
+                        isCorrect = (result.manualScores?.[q.id] || 0) > 0;
+                        studentAnswerText = studentAnswer || '-';
+                        correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
+                      }
+
+                      return (
+                        <div key={q.id} className="border-b border-slate-100 pb-4 break-inside-avoid avoid-break">
+                          <div className="flex gap-4">
+                            <div className="font-bold w-6">{absoluteIdx + 1}.</div>
+                            <div className="flex-1 space-y-2">
+                              {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
+                                <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[150px] rounded-lg my-1 border border-slate-200 object-contain" />
+                              ) : null}
+                              <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium" />
+                              
+                              <div className="flex mt-2 items-start text-[11px]">
+                                <div className="w-[42%] pr-2">
+                                  <div className="font-bold text-slate-500 mb-0.5">Jawaban:</div>
+                                  <div className={`p-1.5 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                    {studentAnswerText}
+                                  </div>
+                                </div>
+                                <div className="w-[42%] px-2 border-l border-slate-200">
+                                  <div className="font-bold text-slate-500 mb-0.5">Kunci:</div>
+                                  <div className="p-1.5 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
+                                    {correctAnswerText}
+                                  </div>
+                                </div>
+                                <div className="w-[16%] pl-2 border-l border-slate-200">
+                                  <div className="font-bold text-slate-500 mb-0.5">Skor:</div>
+                                  <div className={`p-1.5 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
+                                    {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)}/{q.points || 0}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-4 pt-2 border-t border-slate-100 flex justify-between text-[10px] text-slate-400">
+                    <span>Dicetak pada: {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}</span>
+                    <span>Halaman {pageIdx + 1} dari {questionPages.length}</span>
+                  </div>
+                </div>
+              ))}
             </div>
           </PrintLayout>
         </div>

@@ -366,7 +366,7 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
        )}
 
        {/* Main: Classroom Layout */}
-       <div className="flex-1 bg-slate-100 p-6 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center min-h-[700px] print:bg-white print:border-2 print:border-black print:w-full print:p-0 relative overflow-auto">
+       <div className="flex-1 bg-slate-100 p-6 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-start md:items-center min-h-[700px] print:bg-white print:border-2 print:border-black print:w-full print:p-0 relative overflow-auto">
           
           {/* Layout Controls & Show Panel Button */}
           <div className="absolute top-4 left-6 right-4 flex justify-between items-center no-print z-20">
@@ -419,10 +419,10 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
                   {layoutMode === 'groups' && renderGroupsLayout()}
                   {layoutMode === 'ushape' && renderUShapeLayout()}
               </div>
-          </div>
-          
-          <div className="mt-8 text-center text-xs text-gray-400 italic print:hidden">
-              Depan (Papan Tulis)
+
+              <div className="mt-8 text-center text-xs text-gray-400 italic print:hidden w-full">
+                  Depan (Papan Tulis)
+              </div>
           </div>
        </div>
     </div>

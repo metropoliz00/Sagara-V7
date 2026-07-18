@@ -3903,14 +3903,14 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white min-h-[297mm] print:min-h-0 w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
+            <div className="bg-white w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 sm:origin-center sm:m-auto m-0 print:break-inside-auto">
             
             <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
             <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
             
-            <div className="grid grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
               <div className="space-y-2 text-sm">
-                <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase truncate">{student?.name}</span></div>
+                <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
                 <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
                 <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
                 <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>

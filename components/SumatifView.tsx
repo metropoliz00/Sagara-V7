@@ -2750,7 +2750,7 @@ const SumatifTaking: React.FC<{
                           {String.fromCharCode(65 + idx)}
                         </div>
                         <div className={`flex-1 flex items-center z-10 ${scaleMode === 'kecil' ? 'space-x-3' : 'space-x-4'}`}>
-                          {opt.imageUrl && (
+                          {opt.imageUrl && (opt.imageUrl.startsWith('http') || opt.imageUrl.startsWith('data:image/') || opt.imageUrl.startsWith('/')) ? (
                             <div className={`rounded-lg overflow-hidden border border-slate-100 shrink-0 bg-slate-50 ${
                               scaleMode === 'kecil' ? 'w-12 h-12 md:w-16 md:h-16' : 'w-20 h-20'
                             }`}>
@@ -2759,9 +2759,14 @@ const SumatifTaking: React.FC<{
                                 alt={`Option ${idx}`} 
                                 className="w-full h-full object-cover"
                                 referrerPolicy="no-referrer"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />
                             </div>
-                          )}
+                          ) : opt.imageUrl ? (
+                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-xs">
+                              {opt.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                            </div>
+                          ) : null}
                           {opt.text && !opt.text.startsWith('http') && !opt.text.startsWith('data:image/') && (
                             <span className={`font-bold ${
                               answers[currentQuestion.id] === opt.id ? 'text-slate-800' : 'text-slate-600'
@@ -2821,7 +2826,7 @@ const SumatifTaking: React.FC<{
                           </div>
                         </div>
                         <div className={`flex-1 flex items-center z-10 ${scaleMode === 'kecil' ? 'space-x-3' : 'space-x-4'}`}>
-                          {opt.imageUrl && (
+                          {opt.imageUrl && (opt.imageUrl.startsWith('http') || opt.imageUrl.startsWith('data:image/') || opt.imageUrl.startsWith('/')) ? (
                             <div className={`rounded-lg overflow-hidden border border-slate-100 shrink-0 bg-slate-50 ${
                               scaleMode === 'kecil' ? 'w-12 h-12 md:w-16 md:h-16' : 'w-20 h-20'
                             }`}>
@@ -2830,9 +2835,14 @@ const SumatifTaking: React.FC<{
                                 alt={`Option ${idx}`} 
                                 className="w-full h-full object-cover"
                                 referrerPolicy="no-referrer"
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
                               />
                             </div>
-                          )}
+                          ) : opt.imageUrl ? (
+                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-xs">
+                              {opt.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                            </div>
+                          ) : null}
                           {opt.text && !opt.text.startsWith('http') && !opt.text.startsWith('data:image/') && (
                             <span className={`font-bold ${
                               isSelected ? 'text-slate-800' : 'text-slate-600'
@@ -2875,16 +2885,21 @@ const SumatifTaking: React.FC<{
                               <tr key={sq.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className={scaleMode === 'kecil' ? 'px-4 py-2.5' : 'px-6 py-4'}>
                                   <div className="space-y-2">
-                                    {sq.imageUrl && (
+                                    {sq.imageUrl && (sq.imageUrl.startsWith('http') || sq.imageUrl.startsWith('data:image/') || sq.imageUrl.startsWith('/')) ? (
                                       <div className="rounded-lg overflow-hidden border border-slate-100 max-h-[80px] inline-block">
                                         <img 
                                           src={sq.imageUrl} 
                                           alt="Statement" 
                                           className="max-w-full h-auto object-contain"
                                           referrerPolicy="no-referrer"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
                                       </div>
-                                    )}
+                                    ) : sq.imageUrl ? (
+                                      <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-xs">
+                                        {sq.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                                      </div>
+                                    ) : null}
                                     <p className={`font-bold text-slate-700 leading-tight whitespace-pre-wrap ${
                                       scaleMode === 'kecil' 
                                         ? (fontSize === 'sm' ? 'text-[10px]' : fontSize === 'md' ? 'text-xs' : 'text-sm') 
@@ -3474,13 +3489,17 @@ const SumatifPembahasan: React.FC<{
                           {currentQuestion.type === 'pg' ? String.fromCharCode(65 + idx) : (isCorrect ? <Check size={scaleMode === 'kecil' ? 14 : 18} /> : '')}
                         </div>
                         <div className="flex-1 flex items-center space-x-3 md:space-x-4 pr-16 md:pr-24">
-                          {opt.imageUrl && (
+                          {opt.imageUrl && (opt.imageUrl.startsWith('http') || opt.imageUrl.startsWith('data:image/') || opt.imageUrl.startsWith('/')) ? (
                             <div className={`rounded-lg overflow-hidden border border-slate-100 shrink-0 bg-slate-50 ${
                               scaleMode === 'kecil' ? 'w-12 h-12 md:w-16 md:h-16' : 'w-16 h-16 md:w-20 md:h-20'
                             }`}>
-                              <img src={opt.imageUrl} alt={`Option ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                              <img src={opt.imageUrl} alt={`Option ${idx}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                             </div>
-                          )}
+                          ) : opt.imageUrl ? (
+                            <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-xs">
+                              {opt.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                            </div>
+                          ) : null}
                           {opt.text && !opt.text.startsWith('http') && !opt.text.startsWith('data:image/') && (
                             <span className={`font-bold ${
                               scaleMode === 'kecil' 
@@ -3528,11 +3547,15 @@ const SumatifPembahasan: React.FC<{
                               <tr key={sq.id} className="hover:bg-slate-50/50 transition-colors">
                                 <td className={scaleMode === 'kecil' ? 'px-4 py-2.5' : 'px-4 md:px-6 py-3 md:py-4'}>
                                   <div className="space-y-2">
-                                    {sq.imageUrl && (
+                                    {sq.imageUrl && (sq.imageUrl.startsWith('http') || sq.imageUrl.startsWith('data:image/') || sq.imageUrl.startsWith('/')) ? (
                                       <div className="rounded-lg overflow-hidden border border-slate-100 max-h-[80px] inline-block">
-                                        <img src={sq.imageUrl} alt="Statement" className="max-w-full h-auto object-contain" referrerPolicy="no-referrer" />
+                                        <img src={sq.imageUrl} alt="Statement" className="max-w-full h-auto object-contain" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                                       </div>
-                                    )}
+                                    ) : sq.imageUrl ? (
+                                      <div className="p-2 bg-slate-50 border border-slate-100 rounded-lg text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-xs">
+                                        {sq.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                                      </div>
+                                    ) : null}
                                     <p className={`font-bold text-slate-700 leading-tight whitespace-pre-wrap ${
                                       scaleMode === 'kecil' 
                                         ? 'text-[10px] md:text-xs' 
@@ -3747,6 +3770,13 @@ const SumatifManualGrading: React.FC<{
             </div>
 
             <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 leading-relaxed whitespace-pre-wrap">
+              {currentQuestion.imageUrl && (currentQuestion.imageUrl.startsWith('http') || currentQuestion.imageUrl.startsWith('data:image/') || currentQuestion.imageUrl.startsWith('/')) ? (
+                <img src={currentQuestion.imageUrl} alt="Question" className="max-w-full h-auto max-h-[300px] rounded-lg mb-4 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+              ) : currentQuestion.imageUrl ? (
+                <div className="p-4 bg-white border border-slate-200 rounded-xl text-slate-700 not-italic mb-4">
+                  {currentQuestion.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                </div>
+              ) : null}
               {currentQuestion.text}
             </div>
 
@@ -3933,9 +3963,13 @@ const SumatifStudentResultPrint: React.FC<{
                       <div className="flex gap-4">
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">
-                          {q.imageUrl && (
-                            <img src={q.imageUrl} alt="Question" className="max-w-[50%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" />
-                          )}
+                          {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
+                            <img src={q.imageUrl} alt="Question" className="max-w-[50%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                          ) : q.imageUrl ? (
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
+                              {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                            </div>
+                          ) : null}
                           <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
                           
                           <div className="flex mt-2 items-start">

@@ -17,6 +17,8 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
+import { PrintButton } from './PrintButton';
+import PrintLayout from './PrintLayout';
 
 const SUBJECT_DECORATIONS: {
   [key: string]: {
@@ -217,6 +219,7 @@ const checkCorrect = (q: Question, studentAnswer: any) => {
 const renderFormattedText = (text: string | null | undefined) => {
   if (!text) return null;
   const formattedText = text
+    .replace(/<img[^>]*>/g, '')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/\\n/g, '\n')
     .replace(/\r\n/g, '\n')
@@ -3890,10 +3893,7 @@ const SumatifStudentResultPrint: React.FC<{
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 no-print shrink-0">
           <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
           <div className="flex space-x-2">
-            <button onClick={() => window.print()} className="px-4 py-2 bg-[#5AB2FF] text-white rounded-lg font-bold flex items-center space-x-2 hover:bg-[#4A9FE6] transition-colors">
-              <Printer size={16} />
-              <span>Cetak</span>
-            </button>
+            <PrintButton />
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-500">
               <X size={20} />
             </button>
@@ -3902,7 +3902,8 @@ const SumatifStudentResultPrint: React.FC<{
 
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
-          <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
+          <PrintLayout>
+            <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
             
             <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
             <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
@@ -3948,9 +3949,24 @@ const SumatifStudentResultPrint: React.FC<{
                     studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
                     correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
                   } else if (q.type === 'bs') {
-                    isCorrect = studentAnswer === q.correctAnswer;
-                    studentAnswerText = studentAnswer === 'B' ? 'Benar' : studentAnswer === 'S' ? 'Salah' : '-';
-                    correctAnswerText = q.correctAnswer === 'B' ? 'Benar' : q.correctAnswer === 'S' ? 'Salah' : '-';
+                    const subAnswers = studentAnswer || {};
+                    const subQuestions = q.subQuestions || [];
+                    
+                    let allCorrect = true;
+                    const studentTextArr: string[] = [];
+                    const correctTextArr: string[] = [];
+                    
+                    subQuestions.forEach((sq, i) => {
+                      const ans = subAnswers[sq.id];
+                      const correct = sq.correctAnswer;
+                      if (ans !== correct) allCorrect = false;
+                      studentTextArr.push(`${i + 1}. ${ans || '-'}`);
+                      correctTextArr.push(`${i + 1}. ${correct}`);
+                    });
+                    
+                    isCorrect = allCorrect;
+                    studentAnswerText = studentTextArr.join('\n');
+                    correctAnswerText = correctTextArr.join('\n');
                   } else if (q.type === 'uraian') {
                     // For uraian, there is no automatic correctness, we just show what they wrote and the rubrics/keywords if any
                     isCorrect = (result.manualScores?.[q.id] || 0) > 0;
@@ -3970,7 +3986,7 @@ const SumatifStudentResultPrint: React.FC<{
                               {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
                             </div>
                           ) : null}
-                          <div dangerouslySetInnerHTML={{ __html: q.text }} className="prose prose-sm max-w-none" />
+                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none" />
                           
                           <div className="flex mt-2 items-start">
                             <div className="w-[40%] pr-4">
@@ -3998,8 +4014,9 @@ const SumatifStudentResultPrint: React.FC<{
                   );
                 })}
               </div>
+              </div>
             </div>
-          </div>
+          </PrintLayout>
         </div>
       </div>
     </div>,

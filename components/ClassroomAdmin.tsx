@@ -622,6 +622,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                  <div className="absolute left-0 right-0 mt-2 bg-white border border-[#CAF4FF] rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100 max-h-80 overflow-y-auto">
                    {tabsList.map((tab) => {
                      const TabIcon = tab.icon;
+                     const isSelected = activeTab === tab.id;
                      return (
                        <button
                          key={tab.id}
@@ -630,14 +631,27 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                            setActiveTab(tab.id as any);
                            setIsDropdownOpen(false);
                          }}
-                         className={`flex items-center space-x-3 w-full px-4 py-3.5 text-left text-sm font-medium transition-colors ${
-                           activeTab === tab.id 
-                           ? 'bg-indigo-50 text-indigo-700 font-semibold' 
-                           : 'text-gray-600 hover:bg-gray-50'
+                         className={`flex items-center justify-between w-full px-4 py-4 text-left text-base font-semibold transition-colors ${
+                           isSelected 
+                           ? 'bg-indigo-50/70 text-indigo-700' 
+                           : 'text-gray-700 hover:bg-gray-50'
                          }`}
                        >
-                         <TabIcon className={activeTab === tab.id ? 'text-indigo-600 font-semibold' : 'text-gray-400'} size={18} />
-                         <span>{tab.label}</span>
+                         <div className="flex items-center space-x-3.5">
+                           <TabIcon className={isSelected ? 'text-indigo-600' : 'text-gray-500'} size={20} />
+                           <span>{tab.label}</span>
+                         </div>
+                         
+                         {/* Radio Button Indicator */}
+                         <div className="shrink-0 ml-3">
+                           {isSelected ? (
+                             <div className="w-5.5 h-5.5 rounded-full border-2 border-indigo-600 flex items-center justify-center bg-indigo-50">
+                               <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+                             </div>
+                           ) : (
+                             <div className="w-5.5 h-5.5 rounded-full border-2 border-gray-300"></div>
+                           )}
+                         </div>
                        </button>
                      );
                    })}

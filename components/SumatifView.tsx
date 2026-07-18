@@ -3964,7 +3964,7 @@ const SumatifStudentResultPrint: React.FC<{
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">
                           {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
-                            <img src={q.imageUrl} alt="Question" className="max-w-[50%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                            <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : q.imageUrl ? (
                             <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
                               {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}

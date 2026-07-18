@@ -3984,7 +3984,7 @@ const SumatifStudentResultPrint: React.FC<{
                   }
 
                   return (
-                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid avoid-break">
+                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-auto">
                       <div className="flex gap-4">
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">

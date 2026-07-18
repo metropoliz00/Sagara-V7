@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Calendar, ClipboardList, Map, CheckCircle, BookOpen, Users,
-  Printer, FileSpreadsheet, Upload, Download, Loader2, CalendarDays, RefreshCw
+  Printer, FileSpreadsheet, Upload, Download, Loader2, CalendarDays, RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { getLocalISODate } from '../utils/dateUtils';
@@ -43,6 +44,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   schoolProfile
 }) => {
   const [activeTab, setActiveTab] = useState<'schedule' | 'piket' | 'seating' | 'inventory' | 'guestbook' | 'calendar' | 'organization'>('schedule');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -598,27 +600,50 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
            </div>
 
            {/* Mobile Dropdown */}
-           <div className="md:hidden w-full relative">
-             <div className="flex items-center space-x-3 w-full bg-white border border-[#CAF4FF] rounded-xl px-4 py-3 shadow-sm">
-               <ActiveTabIcon className="text-indigo-600 shrink-0" size={20} />
-               <select
-                 value={activeTab}
-                 onChange={(e) => setActiveTab(e.target.value as any)}
-                 className="w-full bg-transparent text-base font-semibold text-gray-700 outline-none cursor-pointer appearance-none pr-10"
-                 style={{
-                   backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%234F46E5' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
-                   backgroundPosition: 'right center',
-                   backgroundSize: '1.25rem',
-                   backgroundRepeat: 'no-repeat'
-                 }}
-               >
-                 {tabsList.map((tab) => (
-                   <option key={tab.id} value={tab.id}>
-                     {tab.label}
-                   </option>
-                 ))}
-               </select>
-             </div>
+           <div className="md:hidden w-full relative z-[150]">
+             <button 
+               type="button"
+               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+               className="flex items-center justify-between w-full bg-white border border-[#CAF4FF] rounded-xl px-4 py-3 shadow-sm hover:bg-slate-50 transition-colors focus:outline-none"
+             >
+               <div className="flex items-center space-x-3">
+                 <ActiveTabIcon className="text-indigo-600 shrink-0" size={20} />
+                 <span className="text-base font-semibold text-gray-700">{activeTabItem.label}</span>
+               </div>
+               <ChevronDown className={`text-indigo-600 shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'transform rotate-180' : ''}`} size={20} />
+             </button>
+             
+             {isDropdownOpen && (
+               <>
+                 <div 
+                   className="fixed inset-0 z-10" 
+                   onClick={() => setIsDropdownOpen(false)}
+                 />
+                 <div className="absolute left-0 right-0 mt-2 bg-white border border-[#CAF4FF] rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                   {tabsList.map((tab) => {
+                     const TabIcon = tab.icon;
+                     return (
+                       <button
+                         key={tab.id}
+                         type="button"
+                         onClick={() => {
+                           setActiveTab(tab.id as any);
+                           setIsDropdownOpen(false);
+                         }}
+                         className={`flex items-center space-x-3 w-full px-4 py-3.5 text-left text-sm font-medium transition-colors ${
+                           activeTab === tab.id 
+                           ? 'bg-indigo-50 text-indigo-700 font-semibold' 
+                           : 'text-gray-600 hover:bg-gray-50'
+                         }`}
+                       >
+                         <TabIcon className={activeTab === tab.id ? 'text-indigo-600 font-semibold' : 'text-gray-400'} size={18} />
+                         <span>{tab.label}</span>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </>
+             )}
            </div>
            
            {/* Action Buttons */}

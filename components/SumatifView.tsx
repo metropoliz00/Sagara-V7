@@ -3975,13 +3975,13 @@ const SumatifStudentResultPrint: React.FC<{
                           <div className="flex mt-2 items-start">
                             <div className="w-[40%] pr-4">
                               <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
-                              <div className={`p-2 rounded border ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                              <div className={`p-2 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                                 {studentAnswerText}
                               </div>
                             </div>
                             <div className="w-[40%] pl-4 border-l border-slate-200">
                               <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
-                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700">
+                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
                                 {correctAnswerText}
                               </div>
                             </div>

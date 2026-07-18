@@ -3903,9 +3903,8 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 print:h-auto print:min-h-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0 print:scale-100 print:transform-none print:origin-top">
+            <div className="bg-white min-h-[297mm] print:min-h-0 w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
             
-            <div className="avoid-break">
             <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
             <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
             
@@ -3933,10 +3932,9 @@ const SumatifStudentResultPrint: React.FC<{
                 </div>
               </div>
             </div>
-            </div>
 
             <div className="border-t-2 border-black pt-6">
-              <h2 className="font-bold text-lg mb-4 avoid-break">Hasil Pekerjaan Siswa</h2>
+              <h2 className="font-bold text-lg mb-4">Hasil Pekerjaan Siswa</h2>
               
               <div className="space-y-6">
                 {sumatif.questions.map((q, idx) => {
@@ -3986,37 +3984,35 @@ const SumatifStudentResultPrint: React.FC<{
                   }
 
                   return (
-                    <div key={q.id} className="border-b border-slate-200 py-6 avoid-break">
+                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid avoid-break">
                       <div className="flex gap-4">
-                        <div className="font-bold w-8 text-indigo-700">{idx + 1}.</div>
-                        <div className="flex-1 space-y-3">
+                        <div className="font-bold w-6">{idx + 1}.</div>
+                        <div className="flex-1 space-y-2">
                           {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
-                            <div className="mb-3">
-                              <img src={q.imageUrl} alt="Question" className="max-w-[200px] h-auto rounded-lg border border-slate-200 object-contain shadow-sm" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                            </div>
+                            <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                           ) : q.imageUrl ? (
-                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
+                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
                               {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
                             </div>
                           ) : null}
-                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap text-slate-800 font-medium" />
+                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap" />
                           
-                          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-4 items-stretch">
-                            <div className="md:col-span-5 flex flex-col">
-                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Jawaban Siswa</div>
-                              <div className={`p-3 rounded-xl border flex-1 whitespace-pre-wrap text-sm ${isCorrect ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'}`}>
+                          <div className="flex mt-2 items-start">
+                            <div className="w-[40%] pr-4">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
+                              <div className={`p-2 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                                 {studentAnswerText}
                               </div>
                             </div>
-                            <div className="md:col-span-5 flex flex-col">
-                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Kunci Jawaban</div>
-                              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex-1 text-slate-700 text-sm whitespace-pre-wrap">
+                            <div className="w-[40%] pl-4 border-l border-slate-200">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
+                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
                                 {correctAnswerText}
                               </div>
                             </div>
-                            <div className="md:col-span-2 flex flex-col">
-                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1 text-center">Skor</div>
-                              <div className={`p-3 rounded-xl border font-black text-center flex items-center justify-center text-sm flex-1 ${q.type === 'uraian' ? 'bg-indigo-100 text-indigo-700 border-indigo-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
+                            <div className="w-[20%] pl-4 border-l border-slate-200">
+                              <div className="text-xs font-bold text-slate-500 mb-1">Skor:</div>
+                              <div className={`p-2 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
                                 {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)} / {q.points || 0}
                               </div>
                             </div>

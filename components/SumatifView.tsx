@@ -3903,7 +3903,7 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white min-h-[297mm] print:min-h-0 w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
+            <div className="bg-white w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 sm:origin-center sm:m-auto m-0 print:break-inside-auto">
             
             <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
             <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>

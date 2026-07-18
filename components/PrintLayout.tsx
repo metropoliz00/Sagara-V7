@@ -13,23 +13,45 @@ const PrintLayout: React.FC<PrintLayoutProps> = ({ children }) => {
             size: A4;
             margin: 10mm;
           }
-          body {
-            margin: 0;
-            padding: 0;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print-only {
-            display: block !important;
-          }
-          /* Avoid page breaks inside important elements */
-          .avoid-break {
-            break-inside: avoid;
-          }
-          /* Force page break */
-          .page-break {
-            page-break-after: always;
+          @media print {
+            body {
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact;
+              print-color-adjust: exact;
+            }
+            .no-print {
+              display: none !important;
+            }
+            .print-only {
+              display: block !important;
+            }
+            /* Reset transform and scaling for print */
+            #print-area, #print-area > div {
+              transform: none !important;
+              width: 100% !important;
+              max-width: none !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              box-shadow: none !important;
+              min-height: 0 !important;
+            }
+            /* Avoid page breaks inside important elements */
+            .avoid-break {
+              break-inside: avoid;
+              page-break-inside: avoid;
+            }
+            /* Force page break */
+            .page-break {
+              break-before: page;
+            }
+            /* Typography fixes for print */
+            h1, h2, h3, h4 {
+              break-after: avoid;
+            }
+            img {
+              max-width: 100% !important;
+            }
           }
         `}
       </style>

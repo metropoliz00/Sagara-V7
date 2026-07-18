@@ -3903,22 +3903,31 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white min-h-[297mm] w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
+            <div className="bg-white min-h-[297mm] print:min-h-0 w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 scale-[0.6] sm:origin-center sm:m-auto m-0">
             
             <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
             <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
             
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="space-y-2">
-                <div className="flex"><span className="w-32 font-bold">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
-                <div className="flex"><span className="w-32 font-bold">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
-                <div className="flex"><span className="w-32 font-bold">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
-                <div className="flex"><span className="w-32 font-bold">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
+            <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
+              <div className="space-y-2 text-sm">
+                <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
+                <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
+                <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
+                <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
               </div>
-              <div className="space-y-4">
-                <div className="flex items-center"><span className="w-48 font-bold">NILAI</span><span className="mr-2">:</span><span className="font-black text-2xl bg-indigo-100 text-indigo-800 px-4 py-1 rounded-lg inline-block border border-indigo-200 shadow-sm">{result.score}</span></div>
-                <div className="w-48 mt-4">
-                  <p className="font-bold mb-12">Tanda Tangan Orang Tua</p>
+              
+              <div className="flex flex-col items-center justify-center gap-2">
+                <span className="font-black text-xl text-slate-800">NILAI</span>
+                <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
+              </div>
+
+              <div className="flex flex-col gap-4 items-end">
+                <div className="w-48 text-center">
+                  <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
+                  <div className="border-b border-black"></div>
+                </div>
+                <div className="w-48 text-center">
+                  <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
                   <div className="border-b border-black"></div>
                 </div>
               </div>
@@ -3975,7 +3984,7 @@ const SumatifStudentResultPrint: React.FC<{
                   }
 
                   return (
-                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid">
+                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid avoid-break">
                       <div className="flex gap-4">
                         <div className="font-bold w-6">{idx + 1}.</div>
                         <div className="flex-1 space-y-2">
@@ -3986,7 +3995,7 @@ const SumatifStudentResultPrint: React.FC<{
                               {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
                             </div>
                           ) : null}
-                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none" />
+                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap" />
                           
                           <div className="flex mt-2 items-start">
                             <div className="w-[40%] pr-4">

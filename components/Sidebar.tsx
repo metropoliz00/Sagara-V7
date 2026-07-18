@@ -201,12 +201,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
     <>
       {/* Mobile Overlay */}
       <div 
-        className={`fixed inset-0 z-20 bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[120] bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
       {/* Sidebar Container */}
-      <div className={`fixed inset-y-0 left-0 z-30 ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-[130] ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Header Logo */}
         <div className={`p-8 pb-4 relative ${isCollapsed ? 'px-4' : ''}`}>

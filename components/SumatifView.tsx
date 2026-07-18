@@ -18,7 +18,8 @@ import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
-import { PrintButton } from './PrintButton';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import PrintLayout from './PrintLayout';
 
 const SUBJECT_DECORATIONS: {
@@ -3882,29 +3883,63 @@ const SumatifStudentResultPrint: React.FC<{
 }> = ({ sumatif, result, student, onClose }) => {
   const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const startTime = result.createdAt || result.startedAt || (result as any).created_at;
   const durationStr = result.submittedAt && startTime 
     ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
     : '-';
 
-  const handleDownloadPDF = () => {
-    const element = document.getElementById('print-area');
-    if (!element) return;
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    document.body.classList.add('pdf-generating');
     
-    const opt = {
-      margin:       0,
-      filename:     `Hasil_${sumatif.title}_${student.name}.pdf`.replace(/\s+/g, '_'),
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  { scale: 2, useCORS: true, logging: false },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+    // Give browser a short window to apply styles and recalculate 1:1 layouts
+    await new Promise(resolve => setTimeout(resolve, 300));
     
-    // @ts-ignore
-    html2pdf().from(element).set(opt).save();
+    try {
+      const pages = document.querySelectorAll('.pdf-page-container');
+      if (!pages.length) {
+        setIsGenerating(false);
+        document.body.classList.remove('pdf-generating');
+        return;
+      }
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 794 // 210mm at 96dpi
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        // Exact proportions to fit A4 page perfectly
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      pdf.save(`Hasil_${sumatif.title}_${student.name}.pdf`.replace(/\s+/g, '_'));
+    } catch (err) {
+      console.error('Gagal mengunduh PDF:', err);
+    } finally {
+      document.body.classList.remove('pdf-generating');
+      setIsGenerating(false);
+    }
   };
 
-  // Group questions into pages
+  // Group questions into pages: Page 1 gets 2 questions, others get 3
   const firstPageQuestions = sumatif.questions.slice(0, 2);
   const remainingQuestions = sumatif.questions.slice(2);
   const questionPages = [firstPageQuestions];
@@ -3914,10 +3949,17 @@ const SumatifStudentResultPrint: React.FC<{
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+      {isGenerating && (
+        <div className="absolute inset-0 bg-white/90 backdrop-blur-md z-[110] flex flex-col items-center justify-center space-y-4 rounded-2xl">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          <p className="text-slate-800 font-bold text-lg">Sedang Mengunduh PDF...</p>
+          <p className="text-slate-500 text-sm">Dokumen sedang diproses...</p>
+        </div>
+      )}
       <style>{`
         .pdf-page-container {
           width: 210mm;
-          min-height: 297mm;
+          height: 297mm;
           background: white;
           margin: 0 auto 20px auto;
           padding: 15mm;
@@ -3926,22 +3968,31 @@ const SumatifStudentResultPrint: React.FC<{
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
+          page-break-after: always;
+          overflow: hidden;
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          font-variant-ligatures: none;
+        }
+        .pdf-page-container * {
+          letter-spacing: normal !important;
+          word-spacing: normal !important;
+        }
+        body.pdf-generating .pdf-scale-wrapper {
+          transform: none !important;
+          scale: none !important;
         }
         @media print {
           .pdf-page-container {
             margin: 0;
             box-shadow: none;
             width: 100%;
-            min-height: 100vh;
-            padding: 10mm;
-            page-break-after: always;
-          }
-          .pdf-page-container:last-child {
-            page-break-after: auto;
+            height: 100vh;
+            padding: 15mm;
           }
         }
       `}</style>
-      <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
         {/* Header (No Print) */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 no-print shrink-0">
           <div>
@@ -3956,7 +4007,6 @@ const SumatifStudentResultPrint: React.FC<{
               <FileText size={18} />
               <span>Unduh PDF</span>
             </button>
-            <PrintButton />
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-500">
               <X size={20} />
             </button>
@@ -3966,8 +4016,9 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-4 bg-slate-100 print:bg-white print:p-0">
           <PrintLayout>
-            <div id="print-area" className="origin-top scale-[0.4] xs:scale-[0.5] sm:scale-[0.6] md:scale-[0.8] lg:scale-100 print:scale-100 sm:m-auto m-0 flex flex-col items-center">
-              {questionPages.map((questions, pageIdx) => (
+            <div className="pdf-scale-wrapper flex flex-col items-center min-w-max sm:min-w-0 origin-top scale-[0.45] xs:scale-[0.55] sm:scale-[0.75] md:scale-[0.9] lg:scale-100 print:scale-100">
+              <div id="print-area" className="w-[210mm] text-slate-800 text-sm flex flex-col items-center">
+                {questionPages.map((questions, pageIdx) => (
                 <div key={pageIdx} className="pdf-page-container">
                   {pageIdx === 0 && (
                     <>
@@ -4101,6 +4152,7 @@ const SumatifStudentResultPrint: React.FC<{
                   </div>
                 </div>
               ))}
+              </div>
             </div>
           </PrintLayout>
         </div>

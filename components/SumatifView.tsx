@@ -3939,13 +3939,82 @@ const SumatifStudentResultPrint: React.FC<{
     }
   };
 
-  // Group questions into pages: Page 1 gets 2 questions, others get 3
-  const firstPageQuestions = sumatif.questions.slice(0, 2);
-  const remainingQuestions = sumatif.questions.slice(2);
-  const questionPages = [firstPageQuestions];
-  for (let i = 0; i < remainingQuestions.length; i += 3) {
-    questionPages.push(remainingQuestions.slice(i, i + 3));
-  }
+  // Group questions into pages: dynamic based on question length/complexity
+  const paginateQuestions = (questions: Question[]): Question[][] => {
+    if (!questions.length) return [];
+    
+    // Evaluate if a question is considered long
+    const isQuestionLong = (q: Question): boolean => {
+      const textLen = (q.text || '').replace(/<[^>]*>/g, '').length;
+      const studentAnswer = result.answers[q.id];
+      let answerLen = 0;
+      if (typeof studentAnswer === 'string') {
+        answerLen = studentAnswer.length;
+      } else if (Array.isArray(studentAnswer)) {
+        answerLen = studentAnswer.join(', ').length;
+      } else if (studentAnswer && typeof studentAnswer === 'object') {
+        answerLen = Object.values(studentAnswer).join(', ').length;
+      }
+      
+      const hasImage = !!(q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')));
+      
+      return textLen > 150 || answerLen > 100 || hasImage || q.type === 'bs';
+    };
+
+    // Calculate space usage score for page budgeting
+    const getSpaceUsage = (q: Question): number => {
+      const isLong = isQuestionLong(q);
+      const plainText = (q.text || '').replace(/<[^>]*>/g, '');
+      const hasImage = !!(q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')));
+      
+      let score = 1.0;
+      if (isLong) score += 0.5;
+      if (plainText.length > 300) score += 0.5;
+      if (hasImage) score += 0.8;
+      if (q.type === 'bs') score += 0.3;
+      return score;
+    };
+
+    const longCount = questions.filter(isQuestionLong).length;
+    const isMostlyLong = longCount > questions.length / 2;
+    
+    const pages: Question[][] = [];
+    let currentPage: Question[] = [];
+    
+    // Standard total page capacity budget
+    // For mostly long questions: max 2 per page
+    // For mostly short questions: max 3 per page
+    const pageCapacity = isMostlyLong ? 2.2 : 3.2; 
+    const maxItemsPerPage = isMostlyLong ? 2 : 3;
+
+    let currentAccumSpace = 0;
+
+    for (const q of questions) {
+      const isFirstPage = pages.length === 0;
+      // Page 1 has less space due to headers, so limit is reduced by 1
+      const currentMaxItems = isFirstPage ? Math.max(1, maxItemsPerPage - 1) : maxItemsPerPage;
+      const currentCapacity = isFirstPage ? Math.max(1.2, pageCapacity - 1.0) : pageCapacity;
+      
+      const qSpace = getSpaceUsage(q);
+      
+      if (currentPage.length > 0 && (currentPage.length >= currentMaxItems || currentAccumSpace + qSpace > currentCapacity)) {
+        pages.push(currentPage);
+        currentPage = [q];
+        currentAccumSpace = qSpace;
+      } else {
+        currentPage.push(q);
+        currentAccumSpace += qSpace;
+      }
+    }
+    
+    if (currentPage.length > 0) {
+      pages.push(currentPage);
+    }
+    
+    return pages;
+  };
+
+  const questionPages = paginateQuestions(sumatif.questions);
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">

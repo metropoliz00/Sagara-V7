@@ -9,7 +9,6 @@ import {
   Search, UserPlus, BookOpen, Monitor, AlertCircle
 } from 'lucide-react';
 import CustomModal from './CustomModal';
-import AgendaView from './AgendaView';
 
 interface ActivitiesViewProps {
   students: Student[];
@@ -328,155 +327,132 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Kegiatan</h2>
-          <p className="text-gray-500">Daftar ekskul dan agenda kelas.</p>
+          <h2 className="text-2xl font-bold text-gray-800">Ekstrakurikuler</h2>
+          <p className="text-gray-500">Daftar ekskul kelas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
-            <div className="flex bg-white p-1 rounded-xl border border-[#CAF4FF] shadow-sm mr-2">
-              <button onClick={() => setActiveTab('ekskul')} className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'ekskul' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Tent size={16} /><span>Ekskul</span></button>
-              <button onClick={() => setActiveTab('agenda')} className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><ListTodo size={16} /><span>Agenda</span></button>
-            </div>
             
-            {activeTab === 'ekskul' && (
-              <>
-                <button 
-                  onClick={handleDownloadTemplate}
-                  className="flex items-center space-x-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-semibold"
-                  title="Unduh Template Excel"
-                >
-                  <Download size={16} />
-                  <span>Unduh Template</span>
-                </button>
-                <button 
-                  onClick={handleImportClick}
-                  className="flex items-center space-x-2 bg-amber-50 text-amber-600 border border-amber-200 px-3 py-2 rounded-lg hover:bg-amber-100 transition text-sm font-semibold"
-                  title="Import Ekskul dari Excel"
-                >
-                  <Upload size={16} />
-                  <span>Import Excel</span>
-                </button>
-                <button 
-                  onClick={handleExport}
-                  className="flex items-center space-x-2 bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-semibold"
-                  title="Export Ekskul ke Excel"
-                >
-                  <FileSpreadsheet size={16} />
-                  <span>Export Excel</span>
-                </button>
-                <button 
-                    onClick={handleAddNewActivity} 
-                    className="p-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] shadow-md flex items-center gap-2 text-sm font-bold"
-                    title="Tambah Ekskul Manual"
-                >
-                    <Plus size={18} /> <span className="hidden sm:inline">Tambah Lainnya</span>
-                </button>
-              </>
-            )}
+            <button 
+              onClick={handleDownloadTemplate}
+              className="flex items-center space-x-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-semibold"
+              title="Unduh Template Excel"
+            >
+              <Download size={16} />
+              <span>Unduh Template</span>
+            </button>
+            <button 
+              onClick={handleImportClick}
+              className="flex items-center space-x-2 bg-amber-50 text-amber-600 border border-amber-200 px-3 py-2 rounded-lg hover:bg-amber-100 transition text-sm font-semibold"
+              title="Import Ekskul dari Excel"
+            >
+              <Upload size={16} />
+              <span>Import Excel</span>
+            </button>
+            <button 
+              onClick={handleExport}
+              className="flex items-center space-x-2 bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-semibold"
+              title="Export Ekskul ke Excel"
+            >
+              <FileSpreadsheet size={16} />
+              <span>Export Excel</span>
+            </button>
+            <button 
+                onClick={handleAddNewActivity} 
+                className="p-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] shadow-md flex items-center gap-2 text-sm font-bold"
+                title="Tambah Ekskul Manual"
+            >
+                <Plus size={18} /> <span className="hidden sm:inline">Tambah Lainnya</span>
+            </button>
 
             <button onClick={handlePrint} className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"><Printer size={18}/></button>
         </div>
       </div>
 
       <div className="print-container">
-        {activeTab === 'ekskul' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2">
-            {displayActivities.map((ekskul: any, index) => {
-                const CategoryIcon = getCategoryIcon(ekskul.category);
-                const { bg, text } = getThemeHeaderColor(index);
-                const isVirtual = ekskul.isVirtual;
-                
-                return (
-                <div 
-                    key={ekskul.id} 
-                    className={`bg-white rounded-2xl shadow-sm border ${isVirtual ? 'border-dashed border-gray-300' : 'border-[#CAF4FF]'} overflow-hidden hover:shadow-lg transition-all print:border-black print:break-inside-avoid flex flex-col relative`}
-                >
-                    <div className={`${isVirtual ? 'bg-gray-100 text-gray-500' : bg + ' ' + text} p-4 print:bg-gray-200 print:text-black flex justify-between items-start`}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg">
-                                <CategoryIcon size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg leading-tight">{ekskul.name}</h3>
-                                <span className={`text-xs font-semibold opacity-90 px-2 py-0.5 rounded mt-1 inline-block ${isVirtual ? 'bg-gray-200' : 'bg-black/10'}`}>{ekskul.category}</span>
-                            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2">
+        {displayActivities.map((ekskul: any, index) => {
+            const CategoryIcon = getCategoryIcon(ekskul.category);
+            const { bg, text } = getThemeHeaderColor(index);
+            const isVirtual = ekskul.isVirtual;
+            
+            return (
+            <div 
+                key={ekskul.id} 
+                className={`bg-white rounded-2xl shadow-sm border ${isVirtual ? 'border-dashed border-gray-300' : 'border-[#CAF4FF]'} overflow-hidden hover:shadow-lg transition-all print:border-black print:break-inside-avoid flex flex-col relative`}
+            >
+                <div className={`${isVirtual ? 'bg-gray-100 text-gray-500' : bg + ' ' + text} p-4 print:bg-gray-200 print:text-black flex justify-between items-start`}>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg">
+                            <CategoryIcon size={20} />
                         </div>
-                        <button 
-                            onClick={() => setEditingActivity(ekskul)} 
-                            className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs no-print flex items-center gap-1 transition-colors font-bold`}
-                        >
-                            {isVirtual ? <><Plus size={12}/> Aktifkan</> : <><PenTool size={12}/> Edit</>}
-                        </button>
+                        <div>
+                            <h3 className="font-bold text-lg leading-tight">{ekskul.name}</h3>
+                            <span className={`text-xs font-semibold opacity-90 px-2 py-0.5 rounded mt-1 inline-block ${isVirtual ? 'bg-gray-200' : 'bg-black/10'}`}>{ekskul.category}</span>
+                        </div>
                     </div>
-                    
-                    <div className="p-5 space-y-4 flex-1">
-                        {isVirtual && (
-                            <div className="bg-amber-50 border border-amber-100 p-2 rounded-lg text-xs text-amber-700 flex items-start">
-                                <AlertCircle size={14} className="mr-1.5 mt-0.5 shrink-0"/>
-                                <span>Ekskul ini adalah template default. Edit & Simpan untuk mulai menambahkan anggota.</span>
-                            </div>
-                        )}
-                        <div className="space-y-3">
-                            <div className="flex items-start text-sm group">
-                                <Clock size={16} className="mr-3 text-gray-400 mt-0.5" />
-                                <div><span className="text-xs text-gray-400 font-bold uppercase block">Jadwal</span><span className="font-medium text-gray-700">{ekskul.schedule || '-'}</span></div>
-                            </div>
-                            <div className="flex items-start text-sm group">
-                                <User size={16} className="mr-3 text-gray-400 mt-0.5" />
-                                <div><span className="text-xs text-gray-400 font-bold uppercase block">Pelatih</span><span className="font-medium text-gray-700">{ekskul.coach || '-'}</span></div>
-                            </div>
+                    <button 
+                        onClick={() => setEditingActivity(ekskul)} 
+                        className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs no-print flex items-center gap-1 transition-colors font-bold`}
+                    >
+                        {isVirtual ? <><Plus size={12}/> Aktifkan</> : <><PenTool size={12}/> Edit</>}
+                    </button>
+                </div>
+                
+                <div className="p-5 space-y-4 flex-1">
+                    {isVirtual && (
+                        <div className="bg-amber-50 border border-amber-100 p-2 rounded-lg text-xs text-amber-700 flex items-start">
+                            <AlertCircle size={14} className="mr-1.5 mt-0.5 shrink-0"/>
+                            <span>Ekskul ini adalah template default. Edit & Simpan untuk mulai menambahkan anggota.</span>
                         </div>
-                        <div className="border-t pt-3 mt-2">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-gray-500 uppercase flex items-center"><Users size={12} className="mr-1"/> Anggota ({ekskul.members.length})</span>
-                                {!isVirtual && (
-                                    <button 
-                                        onClick={() => setEditingActivity(ekskul)} 
-                                        className="text-[10px] text-[#5AB2FF] font-bold hover:underline flex items-center no-print"
-                                    >
-                                        <UserPlus size={10} className="mr-1"/> Kelola
-                                    </button>
-                                )}
-                            </div>
-                            {ekskul.members.length > 0 ? (
-                                <div className="bg-[#FFF9D0]/50 rounded-lg p-2 max-h-[120px] overflow-y-auto custom-scrollbar border border-amber-100">
-                                    <ul className="text-xs text-gray-700 space-y-1.5">
-                                        {ekskul.members.map((mid: string, idx: number) => (
-                                            <li key={idx} className="flex items-center justify-between group/item hover:bg-white p-1 rounded transition-colors">
-                                                <div className="flex items-center overflow-hidden">
-                                                    <span className="truncate max-w-[150px] uppercase">{students.find(st => st.id === mid)?.name.toUpperCase() || `ID: ${mid}`}</span>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleQuickRemoveMember(ekskul, mid)}
-                                                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all no-print"
-                                                    title="Hapus anggota"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : <div className="bg-gray-50 rounded-lg p-3 text-center border-dashed border text-xs text-gray-400 italic">Belum ada anggota.</div>}
+                    )}
+                    <div className="space-y-3">
+                        <div className="flex items-start text-sm group">
+                            <Clock size={16} className="mr-3 text-gray-400 mt-0.5" />
+                            <div><span className="text-xs text-gray-400 font-bold uppercase block">Jadwal</span><span className="font-medium text-gray-700">{ekskul.schedule || '-'}</span></div>
                         </div>
+                        <div className="flex items-start text-sm group">
+                            <User size={16} className="mr-3 text-gray-400 mt-0.5" />
+                            <div><span className="text-xs text-gray-400 font-bold uppercase block">Pelatih</span><span className="font-medium text-gray-700">{ekskul.coach || '-'}</span></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-3 mt-2">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase flex items-center"><Users size={12} className="mr-1"/> Anggota ({ekskul.members.length})</span>
+                            {!isVirtual && (
+                                <button 
+                                    onClick={() => setEditingActivity(ekskul)} 
+                                    className="text-[10px] text-[#5AB2FF] font-bold hover:underline flex items-center no-print"
+                                >
+                                    <UserPlus size={10} className="mr-1"/> Kelola
+                                </button>
+                            )}
+                        </div>
+                        {ekskul.members.length > 0 ? (
+                            <div className="bg-[#FFF9D0]/50 rounded-lg p-2 max-h-[120px] overflow-y-auto custom-scrollbar border border-amber-100">
+                                <ul className="text-xs text-gray-700 space-y-1.5">
+                                    {ekskul.members.map((mid: string, idx: number) => (
+                                        <li key={idx} className="flex items-center justify-between group/item hover:bg-white p-1 rounded transition-colors">
+                                            <div className="flex items-center overflow-hidden">
+                                                <span className="truncate max-w-[150px] uppercase">{students.find(st => st.id === mid)?.name.toUpperCase() || `ID: ${mid}`}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleQuickRemoveMember(ekskul, mid)}
+                                                className="text-gray-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all no-print"
+                                                title="Hapus anggota"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : <div className="bg-gray-50 rounded-lg p-3 text-center border-dashed border text-xs text-gray-400 italic">Belum ada anggota.</div>}
                     </div>
                 </div>
-            )})}
             </div>
-        )}
-
-        {activeTab === 'agenda' && (
-            <AgendaView 
-                agendas={agendas}
-                onAddAgenda={onAddAgenda}
-                onUpdateAgenda={onUpdateAgenda}
-                onToggleAgenda={onToggleAgenda}
-                onDeleteAgenda={onDeleteAgenda}
-                onShowNotification={onShowNotification}
-                classId={classId}
-                hideHeader={true}
-            />
-        )}
+        )})}
+        </div>
       </div>
 
       {editingActivity && (

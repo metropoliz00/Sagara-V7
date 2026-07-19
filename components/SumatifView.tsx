@@ -4121,6 +4121,10 @@ const SumatifStudentResultPrint: React.FC<{
                             <div className="flex-1 space-y-2">
                               {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
                                 <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[150px] rounded-lg my-1 border border-slate-200 object-contain" />
+                              ) : q.imageUrl ? (
+                                <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap mb-2">
+                                  {renderFormattedText(q.imageUrl)}
+                                </div>
                               ) : null}
                               <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium" />
                               

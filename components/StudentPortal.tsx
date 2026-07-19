@@ -603,6 +603,27 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [journals, setJournals] = useState<any[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(new Date());
+
+  const handlePrevScheduleDay = () => {
+    setScheduleDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() - 1);
+      return next;
+    });
+  };
+
+  const handleNextScheduleDay = () => {
+    setScheduleDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+  };
+
+  const handleTodayScheduleDay = () => {
+    setScheduleDate(new Date());
+  };
 
   // -- STATES FOR FORMS --
   const [permissionForm, setPermissionForm] = useState({
@@ -1006,6 +1027,31 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     const todayRecord = allAttendance.find((r: any) => String(r.studentId) === String(student.id) && r.date === todayStr);
     const todayStatus = todayRecord ? todayRecord.status : null;
 
+    // Detect if today is a holiday
+    const tYear = now.getFullYear();
+    const tMonth = now.getMonth();
+    const tDay = now.getDate();
+    const tDayOfWeek = now.getDay(); // 0 = Sunday
+    const tMonthKey = `${tYear}-${String(tMonth + 1).padStart(2, '0')}`;
+    const tMonthCalendarData = academicCalendar?.[tMonthKey] || [];
+    
+    let isTodayHoliday = false;
+    let holidayLabel = '';
+    
+    if (tMonthCalendarData[tDay - 1]) {
+        const code = tMonthCalendarData[tDay - 1];
+        if (CALENDAR_CODES[code]) {
+            const label = academicCalendar?.__descriptions__?.[todayStr] || HOLIDAY_DESCRIPTIONS_2025_2026[todayStr] || CALENDAR_CODES[code].label;
+            if (code.startsWith('L') || code === 'CB') {
+                isTodayHoliday = true;
+                holidayLabel = label;
+            }
+        }
+    } else if (tDayOfWeek === 0) {
+        isTodayHoliday = true;
+        holidayLabel = 'Libur Akhir Pekan';
+    }
+
     return { 
         percentage, 
         counts, 
@@ -1013,9 +1059,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
         startMonthName: new Date(currentYear, startMonth).toLocaleString('id-ID', { month: 'long' }),
         semesterName: isSemester1 ? 'Ganjil' : 'Genap',
         year: currentYear,
-        todayStatus 
+        todayStatus,
+        isTodayHoliday,
+        holidayLabel
     };
-  }, [student, allAttendance]);
+  }, [student, allAttendance, academicCalendar]);
 
   const upcomingAgendas = useMemo(() => {
       return agendas
@@ -1222,6 +1270,18 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       .filter(item => item && item.day && item.day.replace("'", "") === currentDayName.replace("'", ""))
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [schedule, currentDayName]);
+
+  const scheduleDayName = useMemo(() => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+    return days[scheduleDate.getDay()];
+  }, [scheduleDate]);
+
+  const selectedSchedule = useMemo(() => {
+    if (!schedule) return [];
+    return schedule
+      .filter(item => item && item.day && item.day.replace("'", "") === scheduleDayName.replace("'", ""))
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [schedule, scheduleDayName]);
 
   const TABS = [
     { id: 'dashboard', label: 'Ringkasan', icon: LayoutDashboard },
@@ -1442,6 +1502,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl flex items-center justify-between">
                           <span className="text-sm font-bold text-gray-700">Status Kehadiran Hari Ini:</span>
                           <span className={`text-sm font-bold px-3 py-1 rounded-lg ${
+                              attendanceStats.isTodayHoliday ? 'bg-rose-100 text-rose-700' :
                               attendanceStats.todayStatus === 'present' ? 'bg-emerald-100 text-emerald-700' :
                               attendanceStats.todayStatus === 'sick' ? 'bg-amber-100 text-amber-700' :
                               attendanceStats.todayStatus === 'permit' ? 'bg-blue-100 text-blue-700' :
@@ -1449,7 +1510,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               attendanceStats.todayStatus === 'dispensation' ? 'bg-purple-100 text-purple-700' :
                               'bg-gray-200 text-gray-600'
                           }`}>
-                              {attendanceStats.todayStatus === 'present' ? 'Hadir' :
+                              {attendanceStats.isTodayHoliday ? (attendanceStats.holidayLabel ? `Libur (${attendanceStats.holidayLabel})` : 'Libur') :
+                               attendanceStats.todayStatus === 'present' ? 'Hadir' :
                                attendanceStats.todayStatus === 'sick' ? 'Sakit' :
                                attendanceStats.todayStatus === 'permit' ? 'Izin' :
                                attendanceStats.todayStatus === 'alpha' ? 'Alpha' :
@@ -2563,18 +2625,43 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           {activeTab === 'schedule' && (
               <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
                   <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col">
-                      <div className="flex items-center justify-between mb-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 pb-6 border-b border-gray-100">
                           <div className="flex items-center gap-4">
                               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner">
                                   <Calendar size={28} />
                               </div>
                               <div>
                                   <h3 className="font-bold text-gray-800 text-xl tracking-tight">Jadwal Pelajaran</h3>
-                                  <p className="text-sm text-gray-500 font-medium tracking-tight">Hari ini: {currentDayName}, {currentDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                  <p className="text-sm text-gray-500 font-medium tracking-tight">
+                                      {scheduleDayName}, {scheduleDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </p>
                               </div>
                           </div>
-                          <div className="text-right">
-                               <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">{todaySchedule.length} Sesi</p>
+                          
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <button 
+                                  onClick={handlePrevScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 border border-indigo-100/30 shadow-sm"
+                                  title="Jadwal Kemarin"
+                              >
+                                  <ChevronLeft size={14} /> Kemarin
+                              </button>
+                              <button 
+                                  onClick={handleTodayScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-black rounded-xl transition-all shadow-sm"
+                              >
+                                  Hari Ini
+                              </button>
+                              <button 
+                                  onClick={handleNextScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 border border-indigo-100/30 shadow-sm"
+                                  title="Jadwal Besok"
+                              >
+                                  Besok <ChevronRight size={14} />
+                              </button>
+                              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100/30">
+                                  {selectedSchedule.length} Sesi
+                              </span>
                           </div>
                       </div>
 
@@ -2583,17 +2670,19 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               <Loader2 className="animate-spin text-indigo-300 mb-4" size={40} />
                               <p className="text-sm text-gray-400 font-bold italic tracking-wide">Menyiapkan buku-buku...</p>
                           </div>
-                      ) : todaySchedule.length === 0 ? (
+                      ) : selectedSchedule.length === 0 ? (
                           <div className="flex flex-col items-center justify-center p-24 text-center bg-gray-50/30 rounded-3xl border border-dashed border-gray-200">
                               <div className="w-20 h-20 bg-white rounded-3xl shadow-md flex items-center justify-center text-indigo-200 mb-6 rotate-6 transform hover:rotate-12 transition-transform">
                                   <Coffee size={40} />
                               </div>
                               <p className="text-xl text-gray-700 font-black">Waktunya Santai!</p>
-                              <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto leading-relaxed">Tidak ada jadwal pelajaran untuk hari ini. Gunakan waktumu untuk belajar mandiri atau beristirahat!</p>
+                              <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                                  Tidak ada jadwal pelajaran untuk {scheduleDayName === currentDayName ? 'hari ini' : 'hari ' + scheduleDayName}. Gunakan waktumu untuk belajar mandiri atau beristirahat!
+                              </p>
                           </div>
                       ) : (
                           <div className="relative pl-6 sm:pl-8 border-l-2 border-dashed border-gray-100 space-y-6 ml-4">
-                              {todaySchedule.map((item, idx) => {
+                              {selectedSchedule.map((item, idx) => {
                                   const isBreak = item.subject.toLowerCase().includes('istirahat');
                                   const colorClass = getSubjectColor(item.subject);
                                   

@@ -3906,6 +3906,25 @@ const SumatifStudentResultPrint: React.FC<{
 
   const [isGenerating, setIsGenerating] = useState(false);
 
+  const getSumatifTypeLabel = (type: string) => {
+    switch (type) {
+      case 'sum1':
+        return 'Asesmen Sumatif 1';
+      case 'sum2':
+        return 'Asesmen Sumatif 2';
+      case 'sum3':
+        return 'Asesmen Sumatif 3';
+      case 'sum4':
+        return 'Asesmen Sumatif 4';
+      case 'sas':
+        return 'Asesmen Sumatif Akhir Semester';
+      case 'tka':
+        return 'Tes Kemampuan Akademik';
+      default:
+        return 'Asesmen Sumatif';
+    }
+  };
+
   const startTime = result.createdAt || result.startedAt || (result as any).created_at;
   const durationStr = result.submittedAt && startTime 
     ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
@@ -4043,7 +4062,7 @@ const SumatifStudentResultPrint: React.FC<{
                 <div key={pageIdx} className="pdf-page-container">
                   {pageIdx === 0 && (
                     <>
-                      <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
+                      <h1 className="text-2xl font-black text-center uppercase tracking-widest">{getSumatifTypeLabel(sumatif.type)}</h1>
                       <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
                       
                       <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">

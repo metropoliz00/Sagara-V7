@@ -2966,6 +2966,11 @@ const SumatifTaking: React.FC<{
                       <textarea
                         value={answers[currentQuestion.id] || ''}
                         onChange={e => handleAnswer(currentQuestion.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.stopPropagation();
+                          }
+                        }}
                         placeholder="Ketikkan jawaban uraian Anda di sini..."
                         className={`w-full px-4 rounded-xl border-2 border-slate-100 focus:border-[#5AB2FF] focus:bg-blue-50/20 outline-none transition-all shadow-sm text-slate-700 font-medium leading-relaxed ${
                           scaleMode === 'kecil' 

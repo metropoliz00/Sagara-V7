@@ -1449,8 +1449,10 @@ const SumatifEditor: React.FC<{
                   onChange={e => setFormData({ ...formData, subjectId: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] focus:border-transparent outline-none transition-all"
                 >
-                  {MOCK_SUBJECTS.filter(s => formData.type !== 'tka' || s.id === 'mat' || s.id === 'indo').map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                  {MOCK_SUBJECTS.filter(s => formData.type !== 'tka' || s.id === 'mat' || s.id === 'indo' || s.id === 'ipas').map(s => (
+                    <option key={s.id} value={s.id}>
+                      {formData.type === 'tka' && s.id === 'ipas' ? 'IPA' : s.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1463,7 +1465,7 @@ const SumatifEditor: React.FC<{
                     let newSubjectId = formData.subjectId;
                     let newTitle = formData.title;
                     if (newType === 'tka') {
-                      if (newSubjectId !== 'mat' && newSubjectId !== 'indo') {
+                      if (newSubjectId !== 'mat' && newSubjectId !== 'indo' && newSubjectId !== 'ipas') {
                         newSubjectId = 'mat';
                       }
                       // Find default TKA title if current title isn't a TKA title

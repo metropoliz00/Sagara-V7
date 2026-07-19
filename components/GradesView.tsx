@@ -281,24 +281,26 @@ const GradesView: React.FC<GradesViewProps> = ({
   };
 
   const handleExportTKA = () => {
-    const headers = ["No", "NIS", "NISN", "Nama Siswa", "Tryout TKA", "Matematika", "Predikat Matematika", "Bahasa Indonesia", "Predikat Bahasa Indonesia"];
+    const headers = ["No", "NIS", "NISN", "Nama Siswa", "Tryout TKA", "Matematika", "Predikat Matematika", "Bahasa Indonesia", "Predikat Bahasa Indonesia", "IPA", "Predikat IPA"];
     const rows = students.map((student, idx) => {
-      const studentRecord = grades.find(g => g.studentId === student.id);
-      const matScore = studentRecord?.subjects['mat']?.tka || 0;
+      const matScore = getTKAScore(student.id, 'mat');
       const matPredicate = getPredicate(matScore);
-      const indoScore = studentRecord?.subjects['indo']?.tka || 0;
+      const indoScore = getTKAScore(student.id, 'indo');
       const indoPredicate = getPredicate(indoScore);
-      const title = tkaTitles[student.id] || "Tes Kemampuan Akademik (TKA)";
+      const ipaScore = getTKAScore(student.id, 'ipas');
+      const ipaPredicate = getPredicate(ipaScore);
       return [
         idx + 1,
         student.nis,
         student.nisn || '-',
         student.name.toUpperCase(),
-        title,
+        selectedTkaTitle,
         matScore,
         matPredicate,
         indoScore,
-        indoPredicate
+        indoPredicate,
+        ipaScore,
+        ipaPredicate
       ];
     });
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
@@ -1185,7 +1187,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                 {!isSubjectEditable && !isReadOnly && viewMode === 'input' && <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded border border-gray-200 flex items-center"><Lock size={12} className="mr-1"/> Read Only</span>}
              </h2>
              <p className="text-gray-500 text-sm">
-                {viewMode === 'input' ? `Kelola nilai sumatif & formatif. Ambang batas (KKTP): ${currentKktp}.` : (viewMode === 'recap' ? 'Ringkasan nilai akhir semua mapel dan kalkulasi peringkat siswa.' : (viewMode === 'tka_recap' ? 'Rekapitulasi hasil Tes Kemampuan Akademik (TKA) Mata Pelajaran Matematika dan Bahasa Indonesia.' : 'Kumpulan data nilai siswa dari semester atau tahun ajaran sebelumnya.'))}
+                {viewMode === 'input' ? `Kelola nilai sumatif & formatif. Ambang batas (KKTP): ${currentKktp}.` : (viewMode === 'recap' ? 'Ringkasan nilai akhir semua mapel dan kalkulasi peringkat siswa.' : (viewMode === 'tka_recap' ? 'Rekapitulasi hasil Tes Kemampuan Akademik (TKA) Mata Pelajaran Matematika, Bahasa Indonesia, dan IPA.' : 'Kumpulan data nilai siswa dari semester atau tahun ajaran sebelumnya.'))}
              </p>
           </div>
           
@@ -1500,6 +1502,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-amber-50/50 text-amber-800">Predikat</th>
                             <th className="p-3 w-36 text-center border-r border-indigo-100 bg-sky-50 text-sky-800">Bahasa Indonesia</th>
                             <th className="p-3 w-24 text-center border-r border-indigo-100 bg-sky-50/50 text-sky-800">Predikat</th>
+                            <th className="p-3 w-32 text-center border-r border-indigo-100 bg-emerald-50 text-emerald-800">IPA</th>
+                            <th className="p-3 w-24 text-center border-r border-indigo-100 bg-emerald-50/50 text-emerald-800">Predikat</th>
                             <th className="p-3 w-16 text-center no-print">Aksi</th>
                         </tr>
                     </thead>
@@ -1509,6 +1513,8 @@ const GradesView: React.FC<GradesViewProps> = ({
                             const matPredicate = getPredicate(matScore);
                             const indoScore = getTKAScore(student.id, 'indo');
                             const indoPredicate = getPredicate(indoScore);
+                            const ipaScore = getTKAScore(student.id, 'ipas');
+                            const ipaPredicate = getPredicate(ipaScore);
                             return (
                                 <tr key={student.id} className="hover:bg-gray-50 transition-colors border-b">
                                     <td className="p-3 w-12 text-center text-gray-500 border-r sticky left-0 bg-white group-hover:bg-gray-50 z-10 hidden md:table-cell">{idx + 1}</td>
@@ -1558,6 +1564,26 @@ const GradesView: React.FC<GradesViewProps> = ({
                                     <td className="p-3 w-24 text-center border-r bg-sky-50/10">
                                         <span className={getPredicateBadgeClass(indoPredicate)}>
                                             {indoPredicate}
+                                        </span>
+                                    </td>
+                                    <td className="p-3 w-32 text-center border-r bg-emerald-50/20">
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={ipaScore === 0 ? '' : ipaScore}
+                                            placeholder="0"
+                                            onChange={e => {
+                                                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                                updateLocalTKAGrade(student.id, 'ipas', val);
+                                            }}
+                                            onBlur={() => handleSaveTKARow(student.id)}
+                                            className="w-16 text-center py-1 border border-gray-200 rounded-lg font-bold text-gray-800 outline-none focus:ring-1 focus:ring-emerald-400"
+                                        />
+                                    </td>
+                                    <td className="p-3 w-24 text-center border-r bg-emerald-50/10">
+                                        <span className={getPredicateBadgeClass(ipaPredicate)}>
+                                            {ipaPredicate}
                                         </span>
                                     </td>
                                     <td className="p-3 w-16 text-center no-print bg-white">

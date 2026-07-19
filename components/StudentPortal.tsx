@@ -1172,6 +1172,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       const studentGrades = grades.find(g => g.studentId === student.id);
       const matSubject = studentGrades?.subjects?.['mat'];
       const indoSubject = studentGrades?.subjects?.['indo'];
+      const ipaSubject = studentGrades?.subjects?.['ipas'];
 
       // Default TKA list
       const titlesSet = new Set<string>(['TKA 1']);
@@ -1180,6 +1181,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       }
       if (indoSubject?.tka_scores) {
         Object.keys(indoSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      if (ipaSubject?.tka_scores) {
+        Object.keys(ipaSubject.tka_scores).forEach(t => titlesSet.add(t));
       }
       const titles = Array.from(titlesSet);
 
@@ -1196,11 +1200,18 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
         }
         indoScore = indoScore || 0;
 
+        let ipaScore = ipaSubject?.tka_scores?.[title];
+        if (ipaScore === undefined && title === 'TKA 1' && ipaSubject?.tka !== undefined) {
+          ipaScore = ipaSubject.tka;
+        }
+        ipaScore = ipaScore || 0;
+
         return {
           title,
           mat: matScore,
           indo: indoScore,
-          average: Math.round((matScore + indoScore) / 2)
+          ipa: ipaScore,
+          average: Math.round((matScore + indoScore + ipaScore) / 3)
         };
       });
   }, [grades, student.id, student.classId]);
@@ -1622,7 +1633,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           {myTkaData.map((tka, index) => {
                               const matPred = tka.mat > 90 ? 'Istimewa' : tka.mat >= 76 ? 'Baik' : tka.mat >= 60 ? 'Memadai' : tka.mat > 0 ? 'Kurang' : '-';
                               const indoPred = tka.indo > 90 ? 'Istimewa' : tka.indo >= 76 ? 'Baik' : tka.indo >= 60 ? 'Memadai' : tka.indo > 0 ? 'Kurang' : '-';
-                              const hasData = tka.mat > 0 || tka.indo > 0;
+                              const ipaPred = tka.ipa > 90 ? 'Istimewa' : tka.ipa >= 76 ? 'Baik' : tka.ipa >= 60 ? 'Memadai' : tka.ipa > 0 ? 'Kurang' : '-';
+                              const hasData = tka.mat > 0 || tka.indo > 0 || tka.ipa > 0;
                               
                               return (
                                   <div key={index} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all">
@@ -1669,6 +1681,25 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                           'bg-gray-100 text-gray-600'
                                                       }`}>
                                                           {indoPred}
+                                                      </span>
+                                                  )}
+                                              </div>
+                                          </div>
+
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="text-slate-500 font-bold">IPA (TKA)</span>
+                                              <div className="flex items-center gap-2">
+                                                  <span className={`font-bold ${tka.ipa > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                      {tka.ipa > 0 ? tka.ipa : '-'}
+                                                  </span>
+                                                  {tka.ipa > 0 && (
+                                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                                          ipaPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                          ipaPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                          ipaPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                          'bg-gray-100 text-gray-600'
+                                                      }`}>
+                                                          {ipaPred}
                                                       </span>
                                                   )}
                                               </div>

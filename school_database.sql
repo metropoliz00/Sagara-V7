@@ -353,6 +353,7 @@ CREATE TABLE IF NOT EXISTS book_inventory (
   stock NUMERIC DEFAULT 0,
   total_stock NUMERIC DEFAULT 0,
   cover_url TEXT,
+  digital_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -502,6 +503,7 @@ CREATE TABLE IF NOT EXISTS learning_plans (
   asesmen_akhir TEXT,
   attachments JSONB DEFAULT '[]'::jsonb,
   created_date TEXT,
+  tempat_pengesahan TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

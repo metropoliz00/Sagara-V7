@@ -3958,12 +3958,12 @@ const SumatifStudentResultPrint: React.FC<{
       )}
       <style>{`
         .pdf-page-container {
-          width: 100%;
-          height: auto;
+          width: 210mm;
+          height: 297mm;
           background: white;
-          margin: 0 auto 12px auto;
-          padding: 16px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          margin: 0 auto 20px auto;
+          padding: 15mm;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
           position: relative;
           box-sizing: border-box;
           display: flex;
@@ -3973,17 +3973,6 @@ const SumatifStudentResultPrint: React.FC<{
           text-rendering: optimizeLegibility;
           -webkit-font-smoothing: antialiased;
           font-variant-ligatures: none;
-          border-radius: 12px;
-        }
-        @media (min-width: 640px) {
-          .pdf-page-container {
-            width: 210mm;
-            height: 297mm;
-            padding: 15mm;
-            border-radius: 0;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            margin: 0 auto 20px auto;
-          }
         }
         .pdf-page-container * {
           letter-spacing: normal !important;
@@ -3992,14 +3981,6 @@ const SumatifStudentResultPrint: React.FC<{
         body.pdf-generating .pdf-scale-wrapper {
           transform: none !important;
           scale: none !important;
-        }
-        body.pdf-generating .pdf-page-container {
-          width: 210mm !important;
-          height: 297mm !important;
-          padding: 15mm !important;
-          border-radius: 0 !important;
-          box-shadow: none !important;
-          margin: 0 !important;
         }
         @media print {
           .pdf-page-container {
@@ -4035,8 +4016,8 @@ const SumatifStudentResultPrint: React.FC<{
         {/* Printable Area */}
         <div className="overflow-y-auto flex-1 p-4 bg-slate-100 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="pdf-scale-wrapper flex flex-col items-center w-full sm:w-auto origin-top sm:scale-[0.75] md:scale-[0.9] lg:scale-100 print:scale-100">
-              <div id="print-area" className="w-full sm:w-[210mm] text-slate-800 text-sm flex flex-col items-center">
+            <div className="pdf-scale-wrapper flex flex-col items-center min-w-max sm:min-w-0 origin-top scale-[0.45] xs:scale-[0.55] sm:scale-[0.75] md:scale-[0.9] lg:scale-100 print:scale-100">
+              <div id="print-area" className="w-[210mm] text-slate-800 text-sm flex flex-col items-center">
                 {questionPages.map((questions, pageIdx) => (
                 <div key={pageIdx} className="pdf-page-container">
                   {pageIdx === 0 && (
@@ -4044,25 +4025,25 @@ const SumatifStudentResultPrint: React.FC<{
                       <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
                       <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
                       
-                      <div className="grid grid-cols-1 sm:grid-cols-[1.3fr_0.7fr_1fr] print:grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
-                        <div className="space-y-2 text-sm text-left w-full">
+                      <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
+                        <div className="space-y-2 text-sm">
                           <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
                           <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
                           <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
                           <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
                         </div>
                         
-                        <div className="flex flex-col items-center justify-center gap-2 py-2 sm:py-0">
+                        <div className="flex flex-col items-center justify-center gap-2">
                           <span className="font-black text-xl text-slate-800">NILAI</span>
                           <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
                         </div>
 
-                        <div className="flex flex-col gap-4 items-center sm:items-end w-full sm:w-auto">
-                          <div className="w-full sm:w-48 text-center">
+                        <div className="flex flex-col gap-4 items-end">
+                          <div className="w-48 text-center">
                             <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
                             <div className="border-b border-black"></div>
                           </div>
-                          <div className="w-full sm:w-48 text-center">
+                          <div className="w-48 text-center">
                             <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
                             <div className="border-b border-black"></div>
                           </div>
@@ -4138,20 +4119,20 @@ const SumatifStudentResultPrint: React.FC<{
                               ) : null}
                               <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium" />
                               
-                              <div className="flex flex-col sm:flex-row print:flex-row gap-3 mt-2 items-stretch text-[11px]">
-                                <div className="w-full sm:w-[42%] print:w-[42%]">
+                              <div className="flex mt-2 items-start text-[11px]">
+                                <div className="w-[42%] pr-2">
                                   <div className="font-bold text-slate-500 mb-0.5">Jawaban:</div>
-                                  <div className={`p-1.5 rounded border whitespace-pre-wrap h-full ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                  <div className={`p-1.5 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
                                     {studentAnswerText}
                                   </div>
                                 </div>
-                                <div className="w-full sm:w-[42%] print:w-[42%] sm:px-3 print:px-3 sm:border-l print:border-l border-slate-200 flex flex-col">
+                                <div className="w-[42%] px-2 border-l border-slate-200">
                                   <div className="font-bold text-slate-500 mb-0.5">Kunci:</div>
-                                  <div className="p-1.5 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap h-full">
+                                  <div className="p-1.5 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
                                     {correctAnswerText}
                                   </div>
                                 </div>
-                                <div className="w-full sm:w-[16%] print:w-[16%] sm:pl-3 print:pl-3 sm:border-l print:border-l border-slate-200 flex flex-col justify-between">
+                                <div className="w-[16%] pl-2 border-l border-slate-200">
                                   <div className="font-bold text-slate-500 mb-0.5">Skor:</div>
                                   <div className={`p-1.5 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
                                     {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)}/{q.points || 0}

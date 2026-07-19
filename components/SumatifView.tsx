@@ -1606,27 +1606,35 @@ const SumatifEditor: React.FC<{
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    {!q.imageUrl ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="bg-white p-2 rounded-lg border border-slate-200">
-                          <ImageIcon size={18} className="text-slate-400" />
+                    {(!q.imageUrl || (!q.imageUrl.startsWith('data:image/') && !q.imageUrl.startsWith('http://') && !q.imageUrl.startsWith('https://') && !q.imageUrl.startsWith('/') && !q.imageUrl.startsWith('blob:'))) ? (
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="bg-white p-2 rounded-lg border border-slate-200">
+                            <ImageIcon size={18} className="text-slate-400" />
+                          </div>
+                          <textarea
+                            value={q.imageUrl || ''}
+                            onChange={e => updateQuestion(idx, { imageUrl: e.target.value })}
+                            placeholder="Link Gambar Soal atau Deskripsi Teks / Wacana (Opsional)"
+                            className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-sm min-h-[40px] resize-y"
+                          />
+                          <label className="p-2 cursor-pointer bg-slate-100 rounded-lg hover:bg-slate-200">
+                            <Upload size={18} className="text-slate-600" />
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if(file) {
+                                    const base64 = await compressImage(file, 1024, 0.85);
+                                    updateQuestion(idx, { imageUrl: base64 });
+                                }
+                            }}/>
+                          </label>
                         </div>
-                        <textarea
-                          value={q.imageUrl || ''}
-                          onChange={e => updateQuestion(idx, { imageUrl: e.target.value })}
-                          placeholder="Link Gambar Soal (Opsional)"
-                          className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-sm min-h-[40px] resize-y"
-                        />
-                        <label className="p-2 cursor-pointer bg-slate-100 rounded-lg hover:bg-slate-200">
-                          <Upload size={18} className="text-slate-600" />
-                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if(file) {
-                                  const base64 = await compressImage(file, 1024, 0.85);
-                                  updateQuestion(idx, { imageUrl: base64 });
-                              }
-                          }}/>
-                        </label>
+                        {q.imageUrl && (
+                          <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap">
+                            <span className="font-bold block text-amber-700 mb-1">Preview Deskripsi Teks / Wacana:</span>
+                            {renderFormattedText(q.imageUrl)}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -1813,31 +1821,39 @@ const SumatifEditor: React.FC<{
                           <div className="flex items-center space-x-2 pl-6">
                             <ImageIcon size={14} className="text-slate-300" />
                             <div className="flex-1 space-y-2">
-                              {!sq.imageUrl ? (
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="text"
-                                    value={sq.imageUrl || ''}
-                                    onChange={e => {
-                                      const newSQs = [...(q.subQuestions || [])];
-                                      newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: e.target.value };
-                                      updateQuestion(idx, { subQuestions: newSQs });
-                                    }}
-                                    placeholder="Link Gambar Pernyataan"
-                                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-100 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-[10px]"
-                                  />
-                                  <label className="p-1.5 cursor-pointer bg-slate-50 rounded-lg hover:bg-slate-100 shrink-0">
-                                    <Upload size={14} className="text-slate-600" />
-                                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if(file) {
-                                            const base64 = await compressImage(file, 800, 0.8);
-                                            const newSQs = [...(q.subQuestions || [])];
-                                            newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: base64 };
-                                            updateQuestion(idx, { subQuestions: newSQs });
-                                        }
-                                    }}/>
-                                  </label>
+                              {(!sq.imageUrl || (!sq.imageUrl.startsWith('data:image/') && !sq.imageUrl.startsWith('http://') && !sq.imageUrl.startsWith('https://') && !sq.imageUrl.startsWith('/') && !sq.imageUrl.startsWith('blob:'))) ? (
+                                <div className="flex flex-col space-y-2">
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="text"
+                                      value={sq.imageUrl || ''}
+                                      onChange={e => {
+                                        const newSQs = [...(q.subQuestions || [])];
+                                        newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: e.target.value };
+                                        updateQuestion(idx, { subQuestions: newSQs });
+                                      }}
+                                      placeholder="Link Gambar Pernyataan atau Deskripsi Teks / Wacana"
+                                      className="flex-1 px-3 py-1.5 rounded-lg border border-slate-100 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-[10px]"
+                                    />
+                                    <label className="p-1.5 cursor-pointer bg-slate-50 rounded-lg hover:bg-slate-100 shrink-0">
+                                      <Upload size={14} className="text-slate-600" />
+                                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if(file) {
+                                              const base64 = await compressImage(file, 800, 0.8);
+                                              const newSQs = [...(q.subQuestions || [])];
+                                              newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: base64 };
+                                              updateQuestion(idx, { subQuestions: newSQs });
+                                          }
+                                      }}/>
+                                    </label>
+                                  </div>
+                                  {sq.imageUrl && (
+                                    <div className="p-2 bg-amber-50/50 border border-amber-100 rounded-lg text-amber-900 text-[10px] font-medium leading-relaxed whitespace-pre-wrap">
+                                      <span className="font-bold block text-amber-700 mb-0.5">Preview Deskripsi Teks / Wacana:</span>
+                                      {renderFormattedText(sq.imageUrl)}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="space-y-2">

@@ -160,7 +160,7 @@ export const apiService = {
       position: user.position,
       rank: user.rank,
       class_id: user.classId,
-      email: user.email,
+      email: (user.email && user.email.trim() !== '' && user.email.trim() !== '-') ? user.email.trim() : null,
       phone: user.phone,
       address: user.address,
       photo: user.photo,
@@ -202,7 +202,7 @@ export const apiService = {
 
   saveUserBatch: async (users: Omit<User, 'id'>[]): Promise<void> => {
     const dbUsers = users.map(u => ({
-      username: u.username,
+      username: u.username.trim().toLowerCase(),
       password: u.password,
       role: u.role,
       full_name: u.fullName,
@@ -213,7 +213,7 @@ export const apiService = {
       position: u.position,
       rank: u.rank,
       class_id: u.classId,
-      email: u.email,
+      email: (u.email && u.email.trim() !== '' && u.email.trim() !== '-') ? u.email.trim().toLowerCase() : null,
       phone: u.phone,
       address: u.address,
       photo: u.photo,
@@ -221,11 +221,12 @@ export const apiService = {
       student_id: u.studentId
     }));
     
-    // Chunk for stability
-    const chunkSize = 50;
+    // Chunk for stability (increase to 100 for high efficiency)
+    const chunkSize = 100;
     for (let i = 0; i < dbUsers.length; i += chunkSize) {
         const chunk = dbUsers.slice(i, i + chunkSize);
-        const { error } = await supabase.from('users').insert(chunk);
+        // Use upsert onConflict username to gracefully handle existing records and updates
+        const { error } = await supabase.from('users').upsert(chunk, { onConflict: 'username' });
         if (error) {
             console.error("Error batch inserting users chunk:", error);
             throw error;

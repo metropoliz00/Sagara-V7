@@ -212,18 +212,68 @@ const AccountManagement: React.FC<AccountManagementProps> = ({ users, students, 
       const rows = data.slice(1) as any[];
       
       setIsSaving(true);
-      const newUsersBatch: Omit<User, 'id'>[] = [];
+      
+      const parsedUsers: Omit<User, 'id'>[] = [];
+      const seenUsernames = new Set<string>();
+      const seenEmails = new Set<string>();
+
       for (const row of rows) {
-        if (!row[0] || !row[3]) continue; 
-        newUsersBatch.push({
-          username: String(row[0]), password: String(row[1] || '123456'), role: String(row[2] || 'guru').toLowerCase() as any, fullName: String(row[3]),
-          nip: row[4] ? String(row[4]) : '', nuptk: row[5] ? String(row[5]) : '', birthPlace: row[6] ? String(row[6]) : '', birthDate: '', education: row[7] ? String(row[7]) : '',
-          position: row[8] ? String(row[8]) : 'Guru Kelas', rank: row[9] ? String(row[9]) : '', classId: row[10] ? String(row[10]) : '', email: row[11] ? String(row[11]) : '',
-          phone: row[12] ? String(row[12]) : '', address: row[13] ? String(row[13]) : ''
+        if (!row || !row[0] || !row[3]) continue; 
+        
+        const rawUsername = String(row[0]).trim().toLowerCase();
+        const rawFullName = String(row[3]).trim();
+        
+        if (!rawUsername || !rawFullName) continue;
+
+        // Skip duplicates within the spreadsheet to prevent cardinality violations on upsert
+        if (seenUsernames.has(rawUsername)) {
+          continue;
+        }
+        seenUsernames.add(rawUsername);
+
+        // Sanitize email: nullify if empty, and filter out internal spreadsheet duplicates
+        let emailValue: string | null = null;
+        if (row[11]) {
+          const cleanedEmail = String(row[11]).trim().toLowerCase();
+          if (cleanedEmail !== '' && cleanedEmail !== '-' && cleanedEmail !== '0') {
+            if (!seenEmails.has(cleanedEmail)) {
+              seenEmails.add(cleanedEmail);
+              emailValue = cleanedEmail;
+            } else {
+              emailValue = null; // Duplicate email in sheet, skip it to prevent constraint violation
+            }
+          }
+        }
+
+        parsedUsers.push({
+          username: rawUsername, 
+          password: String(row[1] || '123456').trim(), 
+          role: String(row[2] || 'guru').toLowerCase().trim() as any, 
+          fullName: rawFullName,
+          nip: row[4] ? String(row[4]).trim() : '', 
+          nuptk: row[5] ? String(row[5]).trim() : '', 
+          birthPlace: row[6] ? String(row[6]).trim() : '', 
+          birthDate: '', 
+          education: row[7] ? String(row[7]).trim() : '',
+          position: row[8] ? String(row[8]).trim() : 'Guru Kelas', 
+          rank: row[9] ? String(row[9]).trim() : '', 
+          classId: row[10] ? String(row[10]).trim() : '', 
+          email: emailValue || '',
+          phone: row[12] ? String(row[12]).trim() : '', 
+          address: row[13] ? String(row[13]).trim() : ''
         });
       }
-      if (newUsersBatch.length > 0 && onBatchAdd) {
-          try { await onBatchAdd(newUsersBatch); } catch (e) { showAlert("Gagal import batch.", "error"); }
+
+      if (parsedUsers.length > 0 && onBatchAdd) {
+          try { 
+            await onBatchAdd(parsedUsers); 
+            showAlert(`Berhasil menyelaraskan ${parsedUsers.length} data pengguna dari Excel! Jika ada username yang sama, data otomatis diperbarui.`, "success");
+          } catch (error: any) { 
+            console.error("Gagal import batch:", error);
+            showAlert(`Gagal mengimpor data. Pastikan format kolom sesuai dan coba kembali.`, "error"); 
+          }
+      } else {
+          showAlert("Tidak ada data baru atau valid dalam file Excel yang dapat diimpor.", "alert");
       }
       setIsSaving(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -469,6 +519,19 @@ const AccountManagement: React.FC<AccountManagementProps> = ({ users, students, 
                 Simpan Akun
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Saving/Importing Overlay */}
+      {isSaving && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] animate-fade-in">
+          <div className="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center max-w-sm w-full mx-4 border border-gray-100">
+            <Loader2 size={48} className="text-indigo-600 animate-spin mb-4" />
+            <h3 className="text-lg font-extrabold text-gray-900 mb-2">Memproses Unggahan</h3>
+            <p className="text-sm text-gray-500 text-center leading-relaxed">
+              Sedang memproses, membersihkan duplikat, dan mengunggah data akun ke database. Mohon tunggu beberapa saat dan jangan tutup halaman ini...
+            </p>
           </div>
         </div>
       )}

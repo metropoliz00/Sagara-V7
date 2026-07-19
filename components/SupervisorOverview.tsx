@@ -207,10 +207,13 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   };
 
   // 7. Notifications
+  const isNisnIncomplete = (nisn?: string) => !nisn || nisn.trim() === '' || nisn === '-';
+  const isPhoneIncomplete = (phone?: string) => !phone || phone.trim() === '' || phone === '-' || phone === '0';
+
   const notifications = useMemo(() => {
       const pendingPermits = permissionRequests.filter(p => p.status === 'Pending');
       const negativeLogs = counselingLogs.filter(l => l.type === 'negative');
-      const incompleteData = students.filter(s => !s.nisn || !s.parentPhone);
+      const incompleteData = students.filter(s => isNisnIncomplete(s.nisn) || isPhoneIncomplete(s.parentPhone));
       const pendingLiaison = liaisonLogs.filter(l => l.status === 'Pending').length;
 
       return [
@@ -647,14 +650,14 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {students.filter(s => !s.nisn || !s.parentPhone).map(s => (
+                                    {students.filter(s => isNisnIncomplete(s.nisn) || isPhoneIncomplete(s.parentPhone)).map(s => (
                                         <tr key={s.id}>
                                             <td className="p-4 font-semibold uppercase">{s.name.toUpperCase()}</td>
                                             <td className="p-4">{s.classId}</td>
                                             <td className="p-4 font-mono">{s.nis}</td>
                                             <td className="p-4 text-red-500 text-xs font-bold">
-                                                {!s.nisn && <span className="block">• NISN Kosong</span>}
-                                                {!s.parentPhone && <span className="block">• No HP Ortu Kosong</span>}
+                                                {isNisnIncomplete(s.nisn) && <span className="block">• NISN Kosong / Tidak Valid</span>}
+                                                {isPhoneIncomplete(s.parentPhone) && <span className="block">• No HP Ortu Kosong / Tidak Valid</span>}
                                             </td>
                                         </tr>
                                     ))}

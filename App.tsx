@@ -2440,6 +2440,7 @@ const AppContent: React.FC = () => {
                         grades={grades}
                         liaisonLogs={liaisonLogs}
                         filteredCounseling={filteredCounseling}
+                        counselingLogs={counselingLogs}
                         permissionRequests={permissionRequests}
                         karakterAssessments={karakterAssessments}
                         onSavePermission={handleSavePermissionRequest}

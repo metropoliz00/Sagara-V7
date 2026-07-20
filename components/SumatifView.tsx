@@ -866,6 +866,13 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                     </span>
                   </div>
 
+                  {/* Info Tambahan */}
+                  <div className="flex items-center gap-3 text-[9px] font-semibold text-slate-500 mb-2 relative z-10">
+                    <span className="bg-slate-100 px-1.5 py-0.5 rounded">{s.type.toUpperCase()}</span>
+                    <span>{s.duration} Menit</span>
+                    <span>{s.questions.length} Soal</span>
+                  </div>
+
                   <h3 className={`text-sm font-black ${decoration.textColor} mb-2 leading-tight tracking-tight relative z-10 group-hover:text-blue-600 transition-colors line-clamp-2`}>
                     {s.title}
                   </h3>

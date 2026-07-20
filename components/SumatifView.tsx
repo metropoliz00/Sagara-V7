@@ -269,6 +269,20 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   const [results, setResults] = useState<SumatifResult[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubjectId, setFilterSubjectId] = useState('all');
+
+  const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
+
+  const filteredSumatifs = useMemo(() => {
+    let list = isTeacher ? sumatifs : sumatifs.filter(s => s.isVisible);
+    if (searchQuery) {
+      list = list.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    if (filterSubjectId !== 'all') {
+      list = list.filter(s => s.subjectId === filterSubjectId);
+    }
+    return list;
+  }, [sumatifs, isTeacher, searchQuery, filterSubjectId]);
+
   const [modal, setModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -289,7 +303,6 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     cancelText: 'Batal'
   });
 
-  const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
   const isStudent = currentUser?.role === 'siswa';
 
   const isGuru6 = useMemo(() => {
@@ -801,33 +814,18 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-        {(() => {
-          const filteredSumatifs = useMemo(() => {
-            let list = isTeacher ? sumatifs : sumatifs.filter(s => s.isVisible);
-            if (searchQuery) {
-              list = list.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
-            }
-            if (filterSubjectId !== 'all') {
-              list = list.filter(s => s.subjectId === filterSubjectId);
-            }
-            return list;
-          }, [sumatifs, isTeacher, searchQuery, filterSubjectId]);
-
-          if (filteredSumatifs.length === 0) {
-            return (
-              <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BookOpen size={40} className="text-slate-300" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-700">Belum ada Sumatif</h3>
-                <p className="text-slate-500 max-w-xs mx-auto mt-2">
-                  {isTeacher ? 'Mulai buat sumatif baru untuk kelas ini.' : 'Belum ada tugas sumatif yang tersedia.'}
-                </p>
-              </div>
-            );
-          }
-
-          return filteredSumatifs.map((s) => {
+        {filteredSumatifs.length === 0 ? (
+          <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BookOpen size={40} className="text-slate-300" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-700">Belum ada Sumatif</h3>
+            <p className="text-slate-500 max-w-xs mx-auto mt-2">
+              {isTeacher ? 'Mulai buat sumatif baru untuk kelas ini.' : 'Belum ada tugas sumatif yang tersedia.'}
+            </p>
+          </div>
+        ) : (
+          filteredSumatifs.map((s) => {
             const decoration = SUBJECT_DECORATIONS[s.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS['default'];
             const IconComponent = decoration.icon;
             
@@ -904,7 +902,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
               </div>
             );
           })
-        })()}
+        )}
       </div>
 
       <Modal 

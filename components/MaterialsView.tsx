@@ -580,7 +580,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 
                 {/* Card Content */}
                 <div className="p-6 flex-1 flex flex-col justify-between">
-                  <div className="space-y-4">
+                  <div className="flex gap-4">
+                  <div className="flex-1 space-y-4">
                     {/* Header: Subject & Actions */}
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex flex-col gap-1.5">
@@ -637,6 +638,18 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                       )}
                     </div>
                   </div>
+                  
+                  {/* Thumbnail */}
+                  {material.infographic && (
+                    <div className="w-20 shrink-0 self-start mt-1">
+                      <img 
+                        src={material.infographic} 
+                        alt="Poster" 
+                        className="w-full h-auto rounded-lg object-cover shadow-sm border border-slate-100" 
+                      />
+                    </div>
+                  )}
+                </div>
 
                   {/* Footer Stats & Actions */}
                   <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-3">

@@ -422,6 +422,7 @@ export interface Material {
   description?: string;
   link: string;
   videoLink?: string;
+  infographic?: string;
   isVisible: boolean;
   createdAt: string;
 }

@@ -750,12 +750,14 @@ export const apiService = {
     }
     console.log("Materials fetched from Supabase:", data);
     return data.map((m: any) => {
-      let link = m.link;
+      let link = m.link || '';
       let videoLink = '';
+      let infographic = '';
       if (link && link.includes('|||')) {
           const parts = link.split('|||');
-          link = parts[0];
+          link = parts[0] || '';
           videoLink = parts[1] || '';
+          infographic = parts[2] || '';
       }
       return {
         id: m.id,
@@ -765,13 +767,16 @@ export const apiService = {
         description: m.description,
         link: link,
         videoLink: videoLink,
+        infographic: infographic,
         isVisible: m.is_visible,
         createdAt: m.created_at
       };
     });
   },
   createMaterial: async (material: Omit<Material, 'id' | 'createdAt'> & { createdAt?: string }): Promise<void> => {
-    const combinedLink = material.videoLink ? `${material.link}|||${material.videoLink}` : material.link;
+    const combinedLink = (material.videoLink || material.infographic)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}`
+      : material.link;
     const { error } = await supabase.from('materials').insert([{
       class_id: material.classId,
       subject_id: material.subjectId,
@@ -787,7 +792,9 @@ export const apiService = {
     }
   },
   updateMaterial: async (material: Material): Promise<void> => {
-    const combinedLink = material.videoLink ? `${material.link}|||${material.videoLink}` : material.link;
+    const combinedLink = (material.videoLink || material.infographic)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}`
+      : material.link;
     const { error } = await supabase.from('materials').update({
       subject_id: material.subjectId,
       title: material.title,

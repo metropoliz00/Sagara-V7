@@ -4,10 +4,53 @@ import {
   BookOpen, Plus, Search, ExternalLink, Trash2, Edit2, 
   Filter, Calendar, Link as LinkIcon, FileText, X, Youtube,
   Eye, EyeOff, Sparkles, Award, BookMarked, Video, Layers, Globe, PenTool, Binary,
-  Upload, Download, FileSpreadsheet
+  Upload, Download, FileSpreadsheet, Image as ImageIcon
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CustomModal from './CustomModal';
+
+// Helper to compress image and convert to Base64 (lightweight but sharp)
+const compressImageToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Max dimension of 1200px for high clarity and print readability
+        const MAX_DIM = 1200;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // 0.75 JPEG compression provides an amazing balance between crystal clear text and extremely low file size (~80KB)
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+          resolve(compressedBase64);
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
 
 interface MaterialsViewProps {
   materials: Material[];
@@ -124,7 +167,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const [previewItem, setPreviewItem] = useState<{
     title: string;
     url: string;
-    type: 'video' | 'material';
+    type: 'video' | 'material' | 'infographic';
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -293,6 +336,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     description: '',
     link: '',
     videoLink: '',
+    infographic: '',
     isVisible: true,
     createdAt: ''
   });
@@ -314,6 +358,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         description: editingMaterial.description || '',
         link: editingMaterial.link,
         videoLink: editingMaterial.videoLink || '',
+        infographic: editingMaterial.infographic || '',
         isVisible: editingMaterial.isVisible,
         createdAt: getFormattedDate(editingMaterial.createdAt)
       });
@@ -324,6 +369,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         description: '',
         link: '',
         videoLink: '',
+        infographic: '',
         isVisible: true,
         createdAt: getFormattedDate()
       });
@@ -357,6 +403,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           description: formData.description,
           link: formData.link,
           videoLink: formData.videoLink,
+          infographic: formData.infographic,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -369,6 +416,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           description: formData.description,
           link: formData.link,
           videoLink: formData.videoLink,
+          infographic: formData.infographic,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -567,7 +615,21 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                       <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
                     </div>
                     
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 flex-wrap justify-end">
+                      {material.infographic && (
+                        <button 
+                          onClick={() => setPreviewItem({
+                            title: material.title,
+                            url: material.infographic || '',
+                            type: 'infographic'
+                          })}
+                          className="flex items-center gap-1.5 px-3 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                          title="Lihat Poster / Infografis"
+                        >
+                          <ImageIcon size={12} className="text-indigo-500" />
+                          <span>Poster</span>
+                        </button>
+                      )}
                       {material.videoLink && (
                         <button 
                           onClick={() => setPreviewItem({
@@ -695,6 +757,82 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     />
                   </div>
                 </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wide">
+                      Poster / Infografis Materi (Opsional)
+                    </label>
+                    {formData.infographic && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, infographic: ''})}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        Hapus Poster
+                      </button>
+                    )}
+                  </div>
+
+                  {formData.infographic ? (
+                    <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-white p-2 flex items-center gap-3">
+                      {formData.infographic.startsWith('data:image/') ? (
+                        <img 
+                          src={formData.infographic} 
+                          alt="Pratinjau Poster" 
+                          className="w-16 h-16 object-cover rounded border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 flex items-center justify-center rounded border border-indigo-100 shrink-0">
+                          <ImageIcon size={24} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800 truncate">Poster Terpasang</p>
+                        <p className="text-[10px] text-slate-400 truncate leading-tight">
+                          {formData.infographic.startsWith('data:image/') 
+                            ? 'Format gambar (Sangat ringan & tajam)' 
+                            : formData.infographic}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* URL Option */}
+                      <div className="relative flex items-center">
+                        <ImageIcon className="absolute left-3 text-gray-400" size={16} />
+                        <input 
+                          type="url" 
+                          className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+                          placeholder="Link Gambar Poster (URL)..."
+                          value={formData.infographic}
+                          onChange={e => setFormData({...formData, infographic: e.target.value})}
+                        />
+                      </div>
+                      
+                      {/* File Upload Option */}
+                      <label className="flex items-center justify-center gap-2 cursor-pointer border border-dashed border-gray-300 hover:border-[#5AB2FF] rounded-xl py-2 px-3 bg-white hover:bg-slate-50 transition-colors text-xs font-bold text-slate-600">
+                        <Upload size={14} className="text-slate-400" />
+                        <span>Unggah Foto Poster</span>
+                        <input 
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const base64 = await compressImageToBase64(file);
+                                setFormData({...formData, infographic: base64});
+                              } catch (err) {
+                                onShowNotification('Gagal memproses gambar. Coba format lain.', 'error');
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
                   <label className="text-sm font-bold text-gray-700">Tampilkan ke Siswa</label>
                   <button
@@ -741,12 +879,18 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
             {/* Modal Header */}
             <div className="p-4 md:p-5 flex justify-between items-center bg-slate-950/80 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${previewItem.type === 'video' ? 'bg-red-500/10 text-red-500' : 'bg-sky-500/10 text-sky-400'}`}>
-                  {previewItem.type === 'video' ? <Youtube size={20} /> : <FileText size={20} />}
+                <div className={`p-2 rounded-xl ${
+                  previewItem.type === 'video' 
+                    ? 'bg-red-500/10 text-red-500' 
+                    : previewItem.type === 'infographic'
+                    ? 'bg-indigo-500/10 text-indigo-400'
+                    : 'bg-sky-500/10 text-sky-400'
+                }`}>
+                  {previewItem.type === 'video' ? <Youtube size={20} /> : previewItem.type === 'infographic' ? <ImageIcon size={20} /> : <FileText size={20} />}
                 </div>
                 <div className="text-left">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                    Pratinjau {previewItem.type === 'video' ? 'Video' : 'Materi'}
+                    Pratinjau {previewItem.type === 'video' ? 'Video' : previewItem.type === 'infographic' ? 'Poster' : 'Materi'}
                   </span>
                   <h3 className="font-extrabold text-sm md:text-base text-slate-200 line-clamp-1 max-w-[200px] sm:max-w-[400px] md:max-w-[600px]">
                     {previewItem.title}
@@ -754,6 +898,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {previewItem.type === 'infographic' && (
+                  <a 
+                    href={previewItem.url}
+                    download={`Poster_${previewItem.title.replace(/\s+/g, '_')}.jpg`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-bold text-white rounded-xl transition-all active:scale-95 duration-200 shrink-0 cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span className="hidden sm:inline">Unduh Poster</span>
+                  </a>
+                )}
                 <a 
                   href={previewItem.url}
                   target="_blank"
@@ -773,7 +927,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
             </div>
 
             {/* Modal Content / Preview Area */}
-            <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4">
+            <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4 overflow-auto">
               {previewItem.type === 'video' ? (
                 (() => {
                   const embedUrl = getYoutubeEmbedUrl(previewItem.url);
@@ -806,6 +960,15 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     );
                   }
                 })()
+              ) : previewItem.type === 'infographic' ? (
+                <div className="w-full h-full flex items-center justify-center p-2 overflow-auto">
+                  <img 
+                    src={previewItem.url} 
+                    alt={previewItem.title} 
+                    className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl border border-slate-800/80 bg-slate-900"
+                    referrerPolicy="no-referrer"
+                  />
+                </div>
               ) : (
                 (() => {
                   const driveEmbedUrl = getGoogleDriveEmbedUrl(previewItem.url);

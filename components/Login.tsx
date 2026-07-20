@@ -206,6 +206,14 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         return;
     }
 
+    // Check if in Data Pusat mode (not connected to custom school DB)
+    const isConnectedToSchool = !!localStorage.getItem('CUSTOM_SUPABASE_URL');
+    if (!isConnectedToSchool && username.toLowerCase() !== 'superadmin') {
+        setError('Login tidak diperbolehkan di Mode Data Pusat. Silakan klik icon gerigi di kiri bawah dan masukkan NPSN sekolah untuk masuk ke Mode Sekolah.');
+        setLoading(false);
+        return;
+    }
+
     try {
       const user = await apiService.login(username, password);
       if (user) {

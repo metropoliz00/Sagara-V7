@@ -813,7 +813,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredSumatifs.length === 0 ? (
           <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -881,7 +881,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                       <button onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} className="p-1 bg-orange-100 text-orange-600 rounded"><List size={10} /></button>
                       <button onClick={() => handleDeleteSumatif(s.id)} className="p-1 bg-red-100 text-red-600 rounded"><Trash2 size={10} /></button>
                       {s.token && (
-                        <button onClick={() => { navigator.clipboard.writeText(s.token || ''); onShowNotification('Token disalin', 'success'); }} className="p-1 bg-slate-100 text-slate-600 rounded font-mono" title={`Token: ${s.token}`}>{s.token}</button>
+                        <button onClick={() => { navigator.clipboard.writeText(s.token || ''); onShowNotification('Token disalin', 'success'); }} className="px-2 py-1 bg-slate-100 text-slate-800 rounded font-mono text-base font-black tracking-widest" title={`Token: ${s.token}`}>{s.token}</button>
                       )}
                     </div>
                   ) : (

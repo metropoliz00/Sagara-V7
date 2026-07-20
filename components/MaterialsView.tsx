@@ -983,14 +983,14 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 })()
               ) : previewItem.type === 'infographic' ? (
                 <div 
-                  className="w-full h-full flex items-center justify-center relative p-2 overflow-hidden select-none bg-slate-950/40"
+                  className="w-full h-full flex flex-col relative select-none bg-slate-950/40"
                   onMouseDown={handleMouseDown}
                   onMouseMove={handleMouseMove}
                   onMouseUp={handleMouseUpOrLeave}
                   onMouseLeave={handleMouseUpOrLeave}
                 >
                   {/* Floating Zoom & Reset Control Bar */}
-                  <div className="absolute bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
+                  <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-5 py-3 flex items-center justify-center gap-4 w-full shadow-md z-20">
                     <button 
                       type="button"
                       onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}

@@ -879,24 +879,23 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         {s.title}
                       </h3>
 
-                      <div className="flex items-center gap-2 text-[9px] font-semibold text-slate-500 mt-1">
-                        <span>⏱️ {s.duration} Menit</span>
-                        <span>•</span>
-                        <span>📝 {s.questions.length} Soal</span>
+                      <div className="flex flex-col gap-0.5 text-[9px] font-semibold text-slate-500 mt-1">
+                        <div>⏱️ Durasi: {s.duration} Menit</div>
+                        <div>📝 Jumlah soal: {s.questions.length} Soal</div>
                       </div>
                     </div>
 
-                    {/* Right: Token (Middle Right) */}
+                    {/* Right: Token (Middle Right) - Enlarged by 50% */}
                     {s.token && (
-                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/90 border border-slate-200/60 p-1.5 rounded-xl shadow-sm text-center min-w-[70px] max-w-[85px]">
-                        <span className="text-[7px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5">TOKEN</span>
+                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/95 border border-slate-200/85 p-2 rounded-2xl shadow-md text-center min-w-[105px] max-w-[125px]">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">TOKEN</span>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(s.token || '');
                             onShowNotification('Token disalin', 'success');
                           }}
-                          className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 hover:bg-rose-100/50 transition-colors tracking-widest cursor-pointer w-full"
+                          className="font-mono font-black text-rose-600 text-base md:text-lg bg-rose-50 px-2 py-1 rounded-xl border-2 border-rose-100 hover:bg-rose-100/70 transition-all tracking-widest cursor-pointer w-full text-center hover:scale-105 active:scale-95"
                           title="Klik untuk menyalin token"
                         >
                           {s.token}

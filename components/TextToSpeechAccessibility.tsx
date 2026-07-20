@@ -268,7 +268,7 @@ export const TextToSpeechAccessibility: React.FC<TextToSpeechAccessibilityProps>
     v.lang.startsWith('id') || v.lang.startsWith('en') || v.lang.includes('indonesian')
   );
 
-  const positionClasses = "bottom-[96px] md:bottom-[40px] left-6 lg:left-6 lg:right-auto right-6";
+  const positionClasses = "bottom-[96px] md:bottom-[40px] left-6";
 
   return (
     <div id="tts-accessibility-root" className={`fixed ${positionClasses} w-14 h-14 z-[200] no-print`}>

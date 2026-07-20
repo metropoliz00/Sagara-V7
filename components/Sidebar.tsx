@@ -8,9 +8,7 @@ import {
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
   AlertTriangle, ClipboardList, Code
 } from 'lucide-react';
-import { ViewState, User, Student, SchoolProfileData } from '../types';
-import OnlineUsersWidget from './OnlineUsersWidget';
-import { TextToSpeechAccessibility } from './TextToSpeechAccessibility';
+import { ViewState, User } from '../types';
 
 interface SidebarProps {
   currentUser: User | null;
@@ -18,9 +16,6 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
-  students: Student[];
-  schoolProfile: SchoolProfileData | null;
-  pathname: string;
 }
 
 // 1. Dashboard dipisahkan sebagai item mandiri

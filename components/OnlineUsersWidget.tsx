@@ -181,7 +181,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
       {/* Floating Button Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed ${positionClasses} left-6 lg:left-6 lg:right-auto right-6 z-[200] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
+        className={`fixed ${positionClasses} left-6 z-[200] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
         title="Lihat Status Online"
       >
         <div className="relative">

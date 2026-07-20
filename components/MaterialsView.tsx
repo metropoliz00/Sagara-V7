@@ -641,7 +641,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                   
                   {/* Thumbnail */}
                   {material.infographic && (
-                    <div className="w-20 shrink-0 self-start mt-1">
+                    <div className="w-32 shrink-0 self-start mt-1">
                       <img 
                         src={material.infographic} 
                         alt="Poster" 

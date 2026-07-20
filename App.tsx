@@ -3072,8 +3072,8 @@ const AppContent: React.FC = () => {
         onCancel={modalConfig.onCancel || (() => setModalConfig(prev => ({...prev, isOpen: false})))}
       />
 
-      {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ON ALL PAGES WHEN LOGGED IN) --- */}
-      {currentUser && (
+      {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ONLY ON DASHBOARD) --- */}
+      {(location.pathname === '/dashboard' || location.pathname === '/dashboard-student') && (
         <>
           <OnlineUsersWidget 
             currentUser={currentUser} 

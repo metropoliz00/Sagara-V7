@@ -938,15 +938,6 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     <span className="hidden sm:inline">Unduh Poster</span>
                   </a>
                 )}
-                <a 
-                  href={previewItem.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs md:text-sm font-bold text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 duration-200 shrink-0"
-                >
-                  <ExternalLink size={14} />
-                  <span className="hidden sm:inline">Buka di Tab Baru</span>
-                </a>
                 <button 
                   onClick={() => setPreviewItem(null)} 
                   className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer shrink-0"
@@ -999,7 +990,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                   onMouseLeave={handleMouseUpOrLeave}
                 >
                   {/* Floating Zoom & Reset Control Bar */}
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
+                  <div className="absolute bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
                     <button 
                       type="button"
                       onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}

@@ -133,7 +133,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
   // Admin sees all
   // Kepala Sekolah (supervisor) sees Guru & Siswa
   // Guru sees Siswa
-  // Siswa sees nothing (widget won't be shown or empty)
+  // Siswa sees all online users (to encourage connection and check active teachers/students)
   let visibleRoles: string[] = [];
   if (currentUser.role === 'admin') {
     visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
@@ -141,6 +141,8 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     visibleRoles = ['guru', 'siswa'];
   } else if (currentUser.role === 'guru') {
     visibleRoles = ['siswa'];
+  } else if (currentUser.role === 'siswa') {
+    visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
   }
 
   if (visibleRoles.length === 0) return null;

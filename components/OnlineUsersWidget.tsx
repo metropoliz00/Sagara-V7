@@ -181,7 +181,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
       {/* Floating Button Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed ${positionClasses} left-6 z-40 bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
+        className={`fixed ${positionClasses} left-6 z-[200] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
         title="Lihat Status Online"
       >
         <div className="relative">
@@ -196,7 +196,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
 
       {/* Pop Up */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
           <div 
             className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl h-[80vh] sm:h-auto sm:max-h-[80vh] flex flex-col transform transition-all translate-y-0"
             onClick={e => e.stopPropagation()}

@@ -4,7 +4,7 @@ import {
   BookOpen, Plus, Search, ExternalLink, Trash2, Edit2, 
   Filter, Calendar, Link as LinkIcon, FileText, X, Youtube,
   Eye, EyeOff, Sparkles, Award, BookMarked, Video, Layers, Globe, PenTool, Binary,
-  Upload, Download, FileSpreadsheet, Image as ImageIcon
+  Upload, Download, FileSpreadsheet, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CustomModal from './CustomModal';
@@ -22,8 +22,8 @@ const compressImageToBase64 = (file: File): Promise<string> => {
         let width = img.width;
         let height = img.height;
         
-        // Max dimension of 1200px for high clarity and print readability
-        const MAX_DIM = 1200;
+        // Max dimension of 2400px for outstanding visual detail and pristine text readability
+        const MAX_DIM = 2400;
         if (width > MAX_DIM || height > MAX_DIM) {
           if (width > height) {
             height = Math.round((height * MAX_DIM) / width);
@@ -39,8 +39,8 @@ const compressImageToBase64 = (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, width, height);
-          // 0.75 JPEG compression provides an amazing balance between crystal clear text and extremely low file size (~80KB)
-          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.75);
+          // 0.90 JPEG compression preserves crisp vectors and legible fine print at highly optimized file sizes
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.90);
           resolve(compressedBase64);
         } else {
           resolve(event.target?.result as string);
@@ -169,6 +169,36 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     url: string;
     type: 'video' | 'material' | 'infographic';
   } | null>(null);
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setZoomScale(1);
+    setPan({ x: 0, y: 0 });
+  }, [previewItem]);
+
+  useEffect(() => {
+    if (zoomScale === 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [zoomScale]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -961,13 +991,74 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                   }
                 })()
               ) : previewItem.type === 'infographic' ? (
-                <div className="w-full h-full flex items-center justify-center p-2 overflow-auto">
-                  <img 
-                    src={previewItem.url} 
-                    alt={previewItem.title} 
-                    className="max-w-full max-h-[70vh] object-contain rounded-2xl shadow-2xl border border-slate-800/80 bg-slate-900"
-                    referrerPolicy="no-referrer"
-                  />
+                <div 
+                  className="w-full h-full flex items-center justify-center relative p-2 overflow-hidden select-none bg-slate-950/40"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                >
+                  {/* Floating Zoom & Reset Control Bar */}
+                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
+                    <button 
+                      type="button"
+                      onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                      disabled={zoomScale <= 0.5}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={16} />
+                    </button>
+                    <span className="text-xs font-mono font-extrabold text-slate-300 select-none min-w-[40px] text-center tracking-tight">
+                      {Math.round(zoomScale * 100)}%
+                    </span>
+                    <button 
+                      type="button"
+                      onClick={() => setZoomScale(prev => Math.min(4, prev + 0.25))}
+                      disabled={zoomScale >= 4}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={16} />
+                    </button>
+                    <div className="w-px h-5 bg-slate-800" />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setZoomScale(1);
+                        setPan({ x: 0, y: 0 });
+                      }}
+                      disabled={zoomScale === 1 && pan.x === 0 && pan.y === 0}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Reset Tampilan"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                  </div>
+
+                  {/* Interactive Panning Canvas */}
+                  <div 
+                    className={`w-full h-full flex items-center justify-center ${
+                      zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''
+                    }`}
+                  >
+                    <div
+                      style={{
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})`,
+                        transformOrigin: 'center center',
+                        transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      className="max-w-full max-h-[70vh] flex items-center justify-center"
+                    >
+                      <img 
+                        src={previewItem.url} 
+                        alt={previewItem.title} 
+                        className="max-w-full max-h-[68vh] object-contain rounded-xl shadow-2xl border border-slate-800/80 bg-slate-900"
+                        referrerPolicy="no-referrer"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 (() => {

@@ -12,7 +12,7 @@ import {
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
   Camera, ChevronLeft, ChevronRight, Link2, Download,
   Sun, Moon, CloudSun, Sunset, Coffee, Youtube, Printer, ExternalLink,
-  Calculator, Globe, Compass, Music
+  Calculator, Globe, Compass, Music, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
@@ -523,6 +523,38 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [viewingMaterialLink, setViewingMaterialLink] = useState<string | null>(null);
   const [viewingVideoLink, setViewingVideoLink] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [viewingPoster, setViewingPoster] = useState<Material | null>(null);
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setZoomScale(1);
+    setPan({ x: 0, y: 0 });
+  }, [viewingPoster]);
+
+  useEffect(() => {
+    if (zoomScale === 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [zoomScale]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
+
   const { showAlert } = useModal();
   
   const getDocumentEmbedUrl = (url: string) => {
@@ -2339,6 +2371,27 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                           </span>
                                                       </div>
 
+                                                      {/* Poster Thumbnail inside Card */}
+                                                      {material.infographic && (
+                                                        <div 
+                                                          onClick={() => setViewingPoster(material)}
+                                                          className="mb-4 rounded-xl overflow-hidden border border-gray-150/80 aspect-video relative group/poster bg-slate-900 cursor-pointer shadow-md"
+                                                        >
+                                                          <img 
+                                                            src={material.infographic} 
+                                                            alt={`Poster ${material.title}`}
+                                                            className="w-full h-full object-cover group-hover/poster:scale-105 transition-transform duration-300"
+                                                            referrerPolicy="no-referrer"
+                                                          />
+                                                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/poster:opacity-100 flex items-center justify-center transition-all duration-300">
+                                                            <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-[11px] font-black text-slate-800 flex items-center gap-1 shadow-md scale-90 group-hover/poster:scale-100 transition-all duration-300">
+                                                              <ImageIcon size={12} className="text-indigo-600 animate-pulse" />
+                                                              <span>Zoom Poster</span>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                      )}
+
                                                       {/* Title and Description */}
                                                       <h4 className={`font-black text-base md:text-lg ${decoration.textColor} mb-2 leading-tight tracking-tight group-hover:text-blue-600 transition-colors relative z-10`}>
                                                           {material.title}
@@ -2350,6 +2403,15 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                                   {/* Interactive Action Button Panels */}
                                                   <div className="flex flex-col gap-2.5 mt-auto relative z-10">
+                                                    {material.infographic && (
+                                                      <button 
+                                                          type="button"
+                                                          onClick={() => setViewingPoster(material)}
+                                                          className="w-full flex items-center justify-center py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs md:text-sm font-extrabold shadow-md shadow-indigo-500/15 hover:shadow-indigo-500/20 active:scale-98 transition-all transform hover:scale-[1.02] cursor-pointer"
+                                                      >
+                                                          <ImageIcon size={18} className="mr-2" /> Lihat Poster / Infografis
+                                                      </button>
+                                                    )}
                                                     {material.videoLink && (
                                                       <button 
                                                           type="button"
@@ -3080,6 +3142,119 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       allowFullScreen
                       allow="autoplay; encrypted-media; fullscreen"
                   />
+              </div>,
+              document.body
+          )}
+
+          {/* --- POSTER PREVIEW MODAL --- */}
+          {viewingPoster && viewingPoster.infographic && createPortal(
+              <div className="fixed inset-0 z-[99999] bg-slate-950/95 flex flex-col justify-between select-none animate-fade-in">
+                  {/* Modal Header */}
+                  <div className="p-4 md:p-5 flex justify-between items-center bg-slate-950/80 border-b border-slate-800/80">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                              <ImageIcon size={20} />
+                          </div>
+                          <div className="text-left">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                                  Pratinjau Poster Materi
+                              </span>
+                              <h3 className="font-extrabold text-sm md:text-base text-slate-200 line-clamp-1 max-w-[200px] sm:max-w-[400px] md:max-w-[600px]">
+                                  {viewingPoster.title}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <a 
+                              href={viewingPoster.infographic}
+                              download={`Poster_${viewingPoster.title.replace(/\s+/g, '_')}.jpg`}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-bold text-white rounded-xl transition-all active:scale-95 duration-200 shrink-0 cursor-pointer"
+                          >
+                              <Download size={14} />
+                              <span className="hidden sm:inline">Unduh Poster</span>
+                          </a>
+                          <button 
+                              onClick={() => setViewingPoster(null)}
+                              className="p-2 text-slate-400 hover:text-slate-100 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition-all active:scale-95 duration-200 cursor-pointer"
+                              title="Tutup (Esc)"
+                          >
+                              <X size={16} />
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* Modal Content / Preview Area */}
+                  <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4 overflow-hidden">
+                      <div 
+                          className="w-full h-full flex items-center justify-center relative p-2 overflow-hidden select-none bg-slate-950/40"
+                          onMouseDown={handleMouseDown}
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUpOrLeave}
+                          onMouseLeave={handleMouseUpOrLeave}
+                      >
+                          {/* Floating Zoom & Reset Control Bar */}
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
+                              <button 
+                                  type="button"
+                                  onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                                  disabled={zoomScale <= 0.5}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Zoom Out"
+                              >
+                                  <ZoomOut size={16} />
+                              </button>
+                              <span className="text-xs font-mono font-extrabold text-slate-300 select-none min-w-[40px] text-center tracking-tight">
+                                  {Math.round(zoomScale * 100)}%
+                              </span>
+                              <button 
+                                  type="button"
+                                  onClick={() => setZoomScale(prev => Math.min(4, prev + 0.25))}
+                                  disabled={zoomScale >= 4}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Zoom In"
+                              >
+                                  <ZoomIn size={16} />
+                              </button>
+                              <div className="w-px h-5 bg-slate-800" />
+                              <button 
+                                  type="button"
+                                  onClick={() => {
+                                      setZoomScale(1);
+                                      setPan({ x: 0, y: 0 });
+                                  }}
+                                  disabled={zoomScale === 1 && pan.x === 0 && pan.y === 0}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Reset Tampilan"
+                              >
+                                  <RotateCcw size={14} />
+                              </button>
+                          </div>
+
+                          {/* Interactive Panning Canvas */}
+                          <div 
+                              className={`w-full h-full flex items-center justify-center ${
+                                  zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''
+                              }`}
+                          >
+                              <div
+                                  style={{
+                                      transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})`,
+                                      transformOrigin: 'center center',
+                                      transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  }}
+                                  className="max-w-full max-h-[70vh] flex items-center justify-center"
+                              >
+                                  <img 
+                                      src={viewingPoster.infographic} 
+                                      alt={viewingPoster.title} 
+                                      className="max-w-full max-h-[68vh] object-contain rounded-xl shadow-2xl border border-slate-800/80 bg-slate-900"
+                                      referrerPolicy="no-referrer"
+                                      draggable={false}
+                                  />
+                              </div>
+                          </div>
+                      </div>
+                  </div>
               </div>,
               document.body
           )}

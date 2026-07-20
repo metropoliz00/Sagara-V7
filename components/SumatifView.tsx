@@ -871,13 +871,18 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                   </h3>
                 </div>
 
-                <div className="flex items-center justify-between gap-1 pt-2 border-t border-slate-200/30 mt-auto relative z-10 w-full text-[10px]">
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/30 mt-auto relative z-10 w-full text-[10px]">
                   {isTeacher ? (
-                    <div className="flex gap-1">
-                      <button onClick={() => handleToggleVisibility(s)} title={s.isVisible ? 'Sembunyikan' : 'Tampilkan'} className={`p-1.5 rounded-lg ${s.isVisible ? 'bg-blue-100' : 'bg-slate-100'}`}><Eye size={12} /></button>
-                      <button onClick={() => handleToggleActive(s)} title={s.isActive ? 'Nonaktifkan' : 'Aktifkan'} className={`p-1.5 rounded-lg ${s.isActive ? 'bg-amber-100' : 'bg-green-100'}`}><Play size={12} /></button>
-                      <button onClick={() => { setCurrentSumatif(s); setIsEditing(true); }} className="p-1.5 bg-blue-100 rounded-lg"><Edit2 size={12} /></button>
-                      <button onClick={() => handleViewResults(s)} className="p-1.5 bg-purple-100 rounded-lg"><BarChart2 size={12} /></button>
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => handleToggleVisibility(s)} title={s.isVisible ? 'Sembunyikan' : 'Tampilkan'} className={`p-1 rounded ${s.isVisible ? 'bg-blue-100 text-blue-600' : 'bg-slate-100'}`}><Eye size={10} /></button>
+                      <button onClick={() => handleToggleActive(s)} title={s.isActive ? 'Nonaktifkan' : 'Aktifkan'} className={`p-1 rounded ${s.isActive ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}><Play size={10} /></button>
+                      <button onClick={() => { setCurrentSumatif(s); setIsEditing(true); }} className="p-1 bg-blue-100 text-blue-600 rounded"><Edit2 size={10} /></button>
+                      <button onClick={() => handleViewResults(s)} className="p-1 bg-purple-100 text-purple-600 rounded"><BarChart2 size={10} /></button>
+                      <button onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} className="p-1 bg-orange-100 text-orange-600 rounded"><List size={10} /></button>
+                      <button onClick={() => handleDeleteSumatif(s.id)} className="p-1 bg-red-100 text-red-600 rounded"><Trash2 size={10} /></button>
+                      {s.token && (
+                        <button onClick={() => { navigator.clipboard.writeText(s.token || ''); onShowNotification('Token disalin', 'success'); }} className="p-1 bg-slate-100 text-slate-600 rounded font-mono" title={`Token: ${s.token}`}>{s.token}</button>
+                      )}
                     </div>
                   ) : (
                     <button
@@ -891,7 +896,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         if (s.token) setIsEnteringToken(true);
                         else setIsTaking(true);
                       }}
-                      className={`flex-1 py-1.5 rounded-lg font-bold text-[10px] ${
+                      className={`w-full py-1 rounded font-bold text-[10px] ${
                         s.isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
                       }`}
                     >

@@ -311,7 +311,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
-    XLSX.writeFile(wb, `Materi_Pembelajaran_${classId}.xlsx`);
+    XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
     onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
   };
 

@@ -312,14 +312,14 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
     const worksheet = XLSX.utils.aoa_to_sheet([['No', 'Kegiatan'], ...formData.kegiatan.map((k, i) => [i + 1, k])]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Langkah Pembelajaran');
-    XLSX.writeFile(workbook, 'Langkah_Pembelajaran_RPK.xlsx');
+    XLSX.writeFile(workbook, `Dokumen_Langkah_Pembelajaran_RPK_Kelas_${classId}.xlsx`);
   };
 
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.aoa_to_sheet([['No', 'Kegiatan'], [1, ''], [2, ''], [3, '']]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Langkah Pembelajaran');
-    XLSX.writeFile(workbook, 'Template_Langkah_Pembelajaran.xlsx');
+    XLSX.writeFile(workbook, 'Template_Langkah_Pembelajaran_RPK.xlsx');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

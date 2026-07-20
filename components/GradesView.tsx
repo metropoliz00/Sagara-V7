@@ -850,7 +850,7 @@ const GradesView: React.FC<GradesViewProps> = ({
       const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Template Nilai");
-      XLSX.writeFile(workbook, `template_nilai_${selectedSubject}.xlsx`);
+      XLSX.writeFile(workbook, `Template_Nilai_${selectedSubject}.xlsx`);
   };
   
   const handleExport = () => { 
@@ -871,7 +871,7 @@ const GradesView: React.FC<GradesViewProps> = ({
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Rapor");
-          XLSX.writeFile(workbook, `rekap_nilai_rapor_kelas_${classId}.xlsx`);
+          XLSX.writeFile(workbook, `Dokumen_Rekap_Nilai_Rapor_Kelas_${classId}.xlsx`);
       } else {
           const subjectName = activeSubject?.name || selectedSubject;
           const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS", "Nilai Akhir", "Status"];
@@ -884,7 +884,7 @@ const GradesView: React.FC<GradesViewProps> = ({
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, `Nilai ${selectedSubject}`);
-          XLSX.writeFile(workbook, `nilai_${selectedSubject}.xlsx`);
+          XLSX.writeFile(workbook, `Dokumen_Nilai_${selectedSubject}_Kelas_${classId}.xlsx`);
       }
   };
   

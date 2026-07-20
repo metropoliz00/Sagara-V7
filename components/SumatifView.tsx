@@ -839,7 +839,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                   {decoration.emoji}
                 </div>
 
-                <div>
+                <div className="flex-1 flex flex-col justify-between min-h-0">
+                  {/* Header Row */}
                   <div className="flex justify-between items-center mb-2 relative z-10">
                     <div className="flex items-center space-x-1.5">
                       <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
@@ -855,27 +856,54 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         </span>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex items-center gap-2 mb-2 relative z-10">
-                    <div className={`p-1.5 rounded-xl ${decoration.accentColor} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                      <IconComponent size={16} className="stroke-[2.5]" />
-                    </div>
-                    <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${decoration.badgeBg}`}>
-                      {MOCK_SUBJECTS.find(sub => sub.id === s.subjectId)?.name || s.subjectId}
+                    {/* Jenis Sumatif di Pojok Kanan Atas */}
+                    <span className="text-[8px] font-black uppercase bg-white/80 px-2 py-0.5 rounded-full border border-slate-200/40 shadow-sm text-slate-600 backdrop-blur-sm">
+                      {s.type.toUpperCase()}
                     </span>
                   </div>
 
-                  {/* Info Tambahan */}
-                  <div className="flex items-center gap-3 text-[9px] font-semibold text-slate-500 mb-2 relative z-10">
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded">{s.type.toUpperCase()}</span>
-                    <span>{s.duration} Menit</span>
-                    <span>{s.questions.length} Soal</span>
-                  </div>
+                  {/* Middle Row with Split Layout */}
+                  <div className="flex justify-between items-center gap-3 relative z-10 min-h-0 my-1">
+                    {/* Left: Detail Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className={`p-1 rounded-lg ${decoration.accentColor} shrink-0`}>
+                          <IconComponent size={12} className="stroke-[2.5]" />
+                        </div>
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${decoration.badgeBg} truncate max-w-full`}>
+                          {MOCK_SUBJECTS.find(sub => sub.id === s.subjectId)?.name || s.subjectId}
+                        </span>
+                      </div>
 
-                  <h3 className={`text-sm font-black ${decoration.textColor} mb-2 leading-tight tracking-tight relative z-10 group-hover:text-blue-600 transition-colors line-clamp-2`}>
-                    {s.title}
-                  </h3>
+                      <h3 className={`text-xs font-black ${decoration.textColor} leading-tight tracking-tight group-hover:text-blue-600 transition-colors line-clamp-2`}>
+                        {s.title}
+                      </h3>
+
+                      <div className="flex items-center gap-2 text-[9px] font-semibold text-slate-500 mt-1">
+                        <span>⏱️ {s.duration} Menit</span>
+                        <span>•</span>
+                        <span>📝 {s.questions.length} Soal</span>
+                      </div>
+                    </div>
+
+                    {/* Right: Token (Middle Right) */}
+                    {s.token && (
+                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/90 border border-slate-200/60 p-1.5 rounded-xl shadow-sm text-center min-w-[70px] max-w-[85px]">
+                        <span className="text-[7px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5">TOKEN</span>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(s.token || '');
+                            onShowNotification('Token disalin', 'success');
+                          }}
+                          className="font-mono font-black text-rose-600 text-xs bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 hover:bg-rose-100/50 transition-colors tracking-widest cursor-pointer w-full"
+                          title="Klik untuk menyalin token"
+                        >
+                          {s.token}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/30 mt-auto relative z-10 w-full text-[10px]">
@@ -887,9 +915,6 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                       <button onClick={() => handleViewResults(s)} className="p-1 bg-purple-100 text-purple-600 rounded"><BarChart2 size={10} /></button>
                       <button onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} className="p-1 bg-orange-100 text-orange-600 rounded"><List size={10} /></button>
                       <button onClick={() => handleDeleteSumatif(s.id)} className="p-1 bg-red-100 text-red-600 rounded"><Trash2 size={10} /></button>
-                      {s.token && (
-                        <button onClick={() => { navigator.clipboard.writeText(s.token || ''); onShowNotification('Token disalin', 'success'); }} className="px-2 py-1 bg-slate-100 text-slate-800 rounded font-mono text-base font-black tracking-widest" title={`Token: ${s.token}`}>{s.token}</button>
-                      )}
                     </div>
                   ) : (
                     <button

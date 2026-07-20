@@ -2223,6 +2223,9 @@ const AppContent: React.FC = () => {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onLogout={handleLogout}
+          students={students}
+          schoolProfile={schoolProfile}
+          pathname={location.pathname}
         />
       )}
 
@@ -3074,7 +3077,7 @@ const AppContent: React.FC = () => {
 
       {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ONLY ON DASHBOARD) --- */}
       {(location.pathname === '/dashboard' || location.pathname === '/dashboard-student') && (
-        <>
+        <div className="hidden lg:block">
           <OnlineUsersWidget 
             currentUser={currentUser} 
             students={students} 
@@ -3085,7 +3088,7 @@ const AppContent: React.FC = () => {
           {(schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined) && (
             <TextToSpeechAccessibility pathname={location.pathname} />
           )}
-        </>
+        </div>
       )}
 
       {/* --- CHANGE PASSWORD DIALOG --- */}

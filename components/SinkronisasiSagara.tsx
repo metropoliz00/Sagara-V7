@@ -135,6 +135,10 @@ export const SinkronisasiSagara: React.FC = () => {
   const [centralMonitoringData, setCentralMonitoringData] = useState<any[]>([]);
   const [centralSchools, setCentralSchools] = useState<any[]>([]);
 
+  const [showPullModal, setShowPullModal] = useState(false);
+  const [pullNpsnInput, setPullNpsnInput] = useState('');
+  const [pulling, setPulling] = useState(false);
+
   const [rombelList, setRombelList] = useState<RombelItem[]>([
     { id: 'rom-1', namaRombel: 'Kelas VII-A', tingkat: 'Tingkat 7', waliKelas: 'Siti Rahmawati, S.Pd.', totalSiswa: 32, status: 'SYNCED' },
     { id: 'rom-2', namaRombel: 'Kelas VII-B', tingkat: 'Tingkat 7', waliKelas: 'Ahmad Dahlan, S.Si.', totalSiswa: 30, status: 'SYNCED' },
@@ -534,16 +538,59 @@ export const SinkronisasiSagara: React.FC = () => {
     setSuccessMsg(`Berhasil memperbaiki data: ${namaItem}. Status data berubah dari INVALID ke LOCAL (Siap disinkronkan).`);
   };
 
-  // Force Item Sync
+  // Trigger item sync individually
   const handleSyncItem = (id: string, nama: string) => {
     setDataChanges(prev => prev.map(chg => chg.id === id ? { ...chg, status: 'SYNCED' } : chg));
     setSuccessMsg(`Berhasil mensinkronkan data "${nama}" secara individu ke Server Pusat SAGARA.`);
+  };
+
+  const handlePullData = async () => {
+    if (pullNpsnInput.trim() !== schoolCode.trim()) {
+      setError(`Konfirmasi NPSN Gagal. Kode yang Anda masukkan (${pullNpsnInput}) tidak sesuai dengan NPSN sekolah terdaftar (${schoolCode}).`);
+      return;
+    }
+
+    setPulling(true);
+    setError('');
+    setSuccessMsg('');
+    addLog("=== MEMULAI PROSES TARIK DATA DARI CLOUD (PULL SYNC) ===");
+    addLog(`Target: NPSN ${schoolCode} - ${schoolName}`);
+
+    try {
+      addLog("[1/4] Menghubungkan ke Sagara Cloud Cluster ID-JKT-01...");
+      const centralData = await apiService.fetchCentralRestoreData(schoolCode);
+      
+      if (!centralData || Object.keys(centralData).length === 0) {
+        throw new Error('Tidak ada snapshot data yang ditemukan di database pusat untuk NPSN ini.');
+      }
+      
+      addLog(`[2/4] Snapshot ditemukan. Mengunduh payload terenkripsi...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      addLog(`[3/4] Rekonstruksi basis data lokal dari snapshot cloud...`);
+      await apiService.restoreData(centralData);
+      
+      addLog(`[4/4] Sinkronisasi lokal selesai. Membersihkan cache...`);
+      setSuccessMsg('Data berhasil ditarik dari Database Pusat. Aplikasi akan memuat ulang untuk sinkronisasi state.');
+      
+      setShowPullModal(false);
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+
+    } catch (err: any) {
+      setError('Gagal menarik data dari Pusat: ' + (err.message || 'Koneksi terputus.'));
+      addLog(`CRITICAL ERROR: Pull Data Gagal - ${err.message}`);
+    } finally {
+      setPulling(false);
+    }
   };
 
   // Render sub menus sidebar list
   const menus = [
     { id: 'dashboard', label: '1. Dashboard Data', icon: LayoutDashboard },
     ...(viewMode === 'PUSAT' ? [{ id: 'monitor-pusat', label: '★ Monitor Data Pusat', icon: Globe }] : []),
+    { id: 'tarik-data', label: '★ Tarik Data Pusat', icon: CloudLightning },
     { id: 'status-sync', label: '2. Status Sinkronisasi', icon: RefreshCw },
     { id: 'perubahan-data', label: '3. Data Perubahan', icon: ArrowRightLeft },
     { id: 'validasi', label: '4. Data Belum Valid', icon: AlertCircle },
@@ -858,6 +905,82 @@ export const SinkronisasiSagara: React.FC = () => {
                   </div>
                 </div>
 
+              </div>
+            </div>
+          )}
+
+          {/* TARIK DATA PUSAT */}
+          {activeTab === 'tarik-data' && (
+            <div className="space-y-6 animate-slide-up">
+              <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl"></div>
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-indigo-600 rounded-xl">
+                        <CloudLightning className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-black tracking-tight">Tarik Data dari Cloud Pusat</h3>
+                    </div>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Sagara cloud pull synchronization protocol</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setPullNpsnInput('');
+                      setShowPullModal(true);
+                    }}
+                    className="px-6 py-3 bg-indigo-600 hover:bg-emerald-600 text-white rounded-2xl font-black text-sm tracking-widest uppercase transition-all shadow-xl shadow-indigo-900/40 active:scale-95 flex items-center gap-2"
+                  >
+                    <ArrowUpRight className="w-5 h-5" /> Inisialisasi Penarikan
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+                    <div className="p-2.5 bg-blue-50 rounded-xl">
+                      <Info className="w-5 h-5 text-blue-500" />
+                    </div>
+                    <h4 className="font-black text-xs text-slate-800 uppercase tracking-widest">Informasi Protokol</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      Fitur ini memungkinkan sekolah untuk menarik kembali seluruh snapshot data yang telah berhasil tersinkronisasi di <b>Database Pusat (Sagara Cloud)</b>.
+                    </p>
+                    <ul className="space-y-3">
+                      {[
+                        'Mengembalikan data jika terjadi kerusakan basis data lokal.',
+                        'Sinkronisasi antar perangkat operator sekolah.',
+                        'Snapshot data atomik berdasarkan NPSN terverifikasi.',
+                        'Keamanan berlapis dengan enkripsi AES-256.'
+                      ].map((text, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-slate-500 font-bold">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> {text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 rounded-[2rem] border border-amber-100 p-8 shadow-sm space-y-6">
+                  <div className="flex items-center gap-3 border-b border-amber-100 pb-4">
+                    <div className="p-2.5 bg-amber-100 rounded-xl">
+                      <AlertTriangle className="w-5 h-5 text-amber-600" />
+                    </div>
+                    <h4 className="font-black text-xs text-amber-800 uppercase tracking-widest">Peringatan Penting</h4>
+                  </div>
+                  <div className="space-y-4">
+                    <p className="text-sm text-amber-900 font-bold leading-relaxed">
+                      Proses ini bersifat <span className="underline">DESTRUKTIF</span> terhadap data lokal yang belum tersinkronisasi.
+                    </p>
+                    <div className="p-4 bg-white/50 rounded-2xl text-[11px] text-amber-800 space-y-2 border border-amber-200">
+                      <p>● Seluruh data di aplikasi ini akan diganti dengan data dari Cloud.</p>
+                      <p>● Pastikan koneksi internet stabil selama proses penarikan.</p>
+                      <p>● Kode NPSN wajib dimasukkan dengan benar untuk verifikasi identitas sekolah.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1846,6 +1969,76 @@ export const SinkronisasiSagara: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* NPSN Verification Modal */}
+      {showPullModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl border border-white/20 animate-scale-in">
+            <div className="bg-slate-900 p-8 text-white relative">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full"></div>
+              <button 
+                onClick={() => setShowPullModal(false)}
+                className="absolute top-6 right-6 p-2 hover:bg-white/10 rounded-xl transition-all"
+              >
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+              
+              <div className="relative z-10 space-y-2">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-600 rounded-lg">
+                    <ShieldCheck className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-xl font-black tracking-tight">Verifikasi NPSN</h3>
+                </div>
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Keamanan Penarikan Data Cloud</p>
+              </div>
+            </div>
+
+            <div className="p-8 space-y-6">
+              <div className="p-4 bg-amber-50 border border-amber-100 rounded-2xl">
+                <p className="text-[11px] text-amber-800 font-bold leading-relaxed">
+                  Masukkan Kode NPSN sekolah Anda untuk mengkonfirmasi bahwa Anda berhak menarik data snapshot dari Cloud Pusat.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kode NPSN Sekolah</label>
+                <input
+                  type="text"
+                  placeholder="Masukkan NPSN (8 Digit)..."
+                  value={pullNpsnInput}
+                  onChange={e => setPullNpsnInput(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 font-black tracking-[0.2em] text-slate-800 focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all placeholder:tracking-normal placeholder:font-bold placeholder:text-slate-300"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPullModal(false)}
+                  className="flex-1 px-4 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-black text-xs tracking-widest uppercase transition-all active:scale-95"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={handlePullData}
+                  disabled={pulling || !pullNpsnInput}
+                  className="flex-[2] px-4 py-4 bg-blue-600 hover:bg-emerald-600 disabled:bg-slate-300 text-white rounded-2xl font-black text-xs tracking-widest uppercase transition-all shadow-xl shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {pulling ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" /> PROSES...
+                    </>
+                  ) : (
+                    <>
+                      <CloudLightning className="w-4 h-4" /> TARIK DATA
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

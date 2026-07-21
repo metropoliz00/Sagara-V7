@@ -11,6 +11,10 @@ export default defineConfig(({ mode }) => {
       // Gunakan JSON.stringify untuk memastikan nilai terdefinisi dengan benar sebagai string/objek di client
       'process.env': JSON.stringify(env)
     },
+    server: {
+      port: 3000,
+      host: '0.0.0.0',
+    },
     build: {
       chunkSizeWarningLimit: 1600, // Menaikkan batas peringatan ukuran chunk menjadi 1600 kB
     },

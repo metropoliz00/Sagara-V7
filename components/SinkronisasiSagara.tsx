@@ -229,11 +229,12 @@ export const SinkronisasiSagara: React.FC = () => {
       }
 
       // 4. Load Live Counts & Real Data Validation
-      const [students, gtk, inventory, assets] = await Promise.all([
+      const [students, gtk, inventory, assets, users] = await Promise.all([
         apiService.getStudents(null),
         apiService.getGtkData(),
         apiService.getInventory('ALL'),
-        apiService.getSchoolAssets()
+        apiService.getSchoolAssets(),
+        apiService.getUsers(null)
       ]);
 
       setStudentList(students);
@@ -246,6 +247,46 @@ export const SinkronisasiSagara: React.FC = () => {
         kondisi: a.condition as any || 'Baik',
         status: 'SYNCED'
       })));
+
+      // Calculate dynamic Rombel List from database students and users
+      const uniqueClassIds = [...new Set(students.map(s => String(s.classId || '').trim().toUpperCase()).filter(Boolean))].sort();
+      
+      const getTingkat = (classId: string) => {
+        const clean = classId.toUpperCase();
+        if (clean.startsWith('VII') || clean.startsWith('7')) return '7';
+        if (clean.startsWith('VIII') || clean.startsWith('8')) return '8';
+        if (clean.startsWith('IX') || clean.startsWith('9')) return '9';
+        if (clean.startsWith('XII') || clean.startsWith('12')) return '12';
+        if (clean.startsWith('XI') || clean.startsWith('11')) return '11';
+        if (clean.startsWith('X') || clean.startsWith('10')) return '10';
+        if (clean.startsWith('VI') || clean.startsWith('6')) return '6';
+        if (clean.startsWith('V') || clean.startsWith('5')) return '5';
+        if (clean.startsWith('IV') || clean.startsWith('4')) return '4';
+        if (clean.startsWith('III') || clean.startsWith('3')) return '3';
+        if (clean.startsWith('II') || clean.startsWith('2')) return '2';
+        if (clean.startsWith('I') || clean.startsWith('1')) return '1';
+        return classId;
+      };
+
+      const mappedRombelList: RombelItem[] = uniqueClassIds.map((clsId, index) => {
+        const classStudents = students.filter(s => String(s.classId || '').trim().toUpperCase() === clsId);
+        // Find Wali Kelas: user with role 'guru' whose classId is this clsId
+        const wali = users.find(u => u.classId && String(u.classId).trim().toUpperCase() === clsId && u.role === 'guru');
+        return {
+          id: `rom-${clsId}-${index}`,
+          namaRombel: `Kelas ${clsId}`,
+          tingkat: getTingkat(clsId),
+          waliKelas: wali ? (wali.fullName || wali.username) : 'Belum Ditunjuk',
+          totalSiswa: classStudents.length,
+          status: 'SYNCED'
+        };
+      });
+
+      setRombelList(mappedRombelList.length > 0 ? mappedRombelList : [
+        { id: 'rom-1', namaRombel: 'Kelas VII-A', tingkat: '7', waliKelas: 'Siti Rahmawati, S.Pd.', totalSiswa: 32, status: 'SYNCED' },
+        { id: 'rom-2', namaRombel: 'Kelas VII-B', tingkat: '7', waliKelas: 'Ahmad Dahlan, S.Si.', totalSiswa: 30, status: 'SYNCED' },
+        { id: 'rom-3', namaRombel: 'Kelas VIII-A', tingkat: '8', waliKelas: 'Joko Susilo, M.Pd.', totalSiswa: 34, status: 'UPDATED' }
+      ]);
 
       // Perform Real Validation
       const realErrors: ValidationErrorItem[] = [];
@@ -298,7 +339,7 @@ export const SinkronisasiSagara: React.FC = () => {
       setStats({
         siswa: students.length,
         gtk: gtk.length,
-        rombel: [...new Set(students.map(s => s.classId).filter(Boolean))].length || 12,
+        rombel: mappedRombelList.length || 12,
         sarpras: assets.length,
         attendance: 0,
         grades: 0,
@@ -306,7 +347,7 @@ export const SinkronisasiSagara: React.FC = () => {
         pendingSyncCount: realErrors.length > 0 ? 5 : 0 // Simplified pending count
       });
 
-      addLog(`Kalkulasi statistik selesai: Single Source of Truth (Siswa: ${students.length}, Guru/GTK: ${gtk.length}).`);
+      addLog(`Kalkulasi statistik selesai: Single Source of Truth (Siswa: ${students.length}, Guru/GTK: ${gtk.length}, Rombel: ${mappedRombelList.length}).`);
       setIsRegisteredCentral(true);
 
     } catch (err: any) {
@@ -1244,7 +1285,7 @@ export const SinkronisasiSagara: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {gtkList.filter(g => g.name.toLowerCase().includes(searchQuery.toLowerCase())).map((guru) => (
+                    {gtkList.filter(g => (g.nama || g.name || '').toLowerCase().includes(searchQuery.toLowerCase())).map((guru) => (
                       <tr key={guru.id} className="hover:bg-slate-50/50 transition-colors group">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">

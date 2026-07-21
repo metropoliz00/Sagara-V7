@@ -545,15 +545,7 @@ export const SinkronisasiSagara: React.FC = () => {
         <div className="absolute -left-10 -bottom-10 w-48 h-48 bg-indigo-600/10 rounded-full blur-3xl"></div>
         
         <div className="relative z-10">
-          <div className="flex items-center gap-2.5">
-            <span className="text-[10px] font-black tracking-[0.2em] bg-blue-600 px-3 py-1 rounded-lg text-white uppercase shadow-lg shadow-blue-600/20">
-              SAGARA CENTRAL ENGINE
-            </span>
-            <div className="flex items-center gap-1.5 text-[10px] text-sky-400 font-bold bg-sky-500/10 px-3 py-1 rounded-lg border border-sky-500/20 backdrop-blur-sm">
-              <span className="w-1.5 h-1.5 bg-sky-400 rounded-full animate-pulse"></span>
-              SINGLE SOURCE OF TRUTH (SSOT)
-            </div>
-          </div>
+
           <h2 className="text-3xl font-black tracking-tight mt-3 flex items-center gap-3">
             <ShieldCheck className="w-10 h-10 text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.4)]" /> PUSAT DATA & SINKRONISASI
           </h2>
@@ -699,15 +691,9 @@ export const SinkronisasiSagara: React.FC = () => {
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                   <div className="space-y-1">
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight">Executive Summary Dashboard</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                      <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Metrics Aggregated by Single Source of Truth</p>
-                    </div>
+
                   </div>
-                  <div className="bg-slate-900 text-white px-4 py-2 rounded-xl flex items-center gap-2.5">
-                    <Terminal className="w-3.5 h-3.5 text-blue-400" />
-                    <span className="text-[10px] font-black tracking-widest uppercase">SAGARA OS v1.2</span>
-                  </div>
+
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-5 relative z-10">

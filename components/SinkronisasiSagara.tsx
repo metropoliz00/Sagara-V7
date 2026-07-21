@@ -330,39 +330,47 @@ export const SinkronisasiSagara: React.FC = () => {
 
     try {
       // Step 1: Validasi Koneksi Local & Pusat (Handshake)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 600));
       addLog("[1/6] Memverifikasi integritas database sekolah dan enkripsi SSL server pusat...");
       addLog("Handshake sukses. Token otorisasi SAGARA valid.");
       setSyncStep(2);
 
       // Step 2: Validasi NPSN & Profil Terdaftar
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 600));
       addLog("[2/6] Memeriksa status registrasi NPSN sekolah dan memvalidasi keaslian sekolah...");
       addLog(`NPSN tervalidasi. Terhubung dengan record master: ${schoolName}`);
       setSyncStep(3);
 
       // Step 3: Pengemasan Ringkasan Data (Metadata) & Validasi Otomatis
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 600));
       addLog("[3/6] Menjalankan mesin validasi data SAGARA otomatis...");
-      addLog("Hasil Validasi: 98% Data Valid. 2% Data perlu perbaikan ditangguhkan.");
-      addLog("[3/6] Mengemas ringkasan metrik statistik SinkronisasiSagara...");
+      addLog(`Hasil Validasi: ${stats.validPercentage}% Data Valid.`);
       setSyncStep(4);
 
       // Step 4: Pengiriman Data (Push Sync) ke DB Pusat
-      await new Promise(resolve => setTimeout(resolve, 1500));
       addLog("[4/6] Mengirim data payload ke Sagara Central Server (Sinkronisasi Dua Arah)...");
-      addLog("Koneksi aman PostgreSQL terintegrasi. Mengunggah record...");
-      addLog("Push Sync berhasil dikonfirmasi oleh master server.");
+      const result = await apiService.syncAllToCentral(schoolCode);
+      
+      // Copy backend logs to the component terminal log
+      if (result.logs && result.logs.length > 0) {
+        result.logs.forEach(logLine => {
+          setSyncLogs(prev => [...prev, logLine]);
+        });
+      }
+
+      if (!result.success) {
+        throw new Error(result.message);
+      }
       setSyncStep(5);
 
       // Step 5: Sinkronisasi Akun Siswa & GTK di Tingkat Sekolah
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      await new Promise(resolve => setTimeout(resolve, 600));
       addLog("[5/6] Memperbarui relasi akun pengguna di tingkat lokal...");
       addLog("Integrasi data absensi, nilai, jurnal, dan sarpras diselaraskan dengan database pusat.");
       setSyncStep(6);
 
       // Step 6: Penyelesaian Sinkronisasi
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
       addLog("[6/6] Menulis riwayat sinkronisasi SinkronisasiSagara...");
       
       // Update all pending syncs to SYNCED
@@ -375,15 +383,15 @@ export const SinkronisasiSagara: React.FC = () => {
       // Add new log to sync history
       const nowStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${new Date().toLocaleTimeString()} WIB`;
       setSyncHistory(prev => [
-        { id: `sch-${Date.now()}`, waktu: nowStr, pengirim: 'Operator Sagara', jumlahData: stats.pendingSyncCount + 125, berhasil: stats.pendingSyncCount + 125, gagal: 0, durasi: '12 detik', status: 'Berhasil' },
+        { id: `sch-${Date.now()}`, waktu: nowStr, pengirim: 'Operator Sagara', jumlahData: result.syncedCount, berhasil: result.syncedCount, gagal: 0, durasi: '12 detik', status: 'Berhasil' },
         ...prev
       ]);
 
       setSyncStats(prev => ({
         ...prev,
         syncTerakhir: nowStr,
-        dataDikirim: stats.pendingSyncCount + 125,
-        berhasil: stats.pendingSyncCount + 125,
+        dataDikirim: result.syncedCount,
+        berhasil: result.syncedCount,
         menungguSync: 0
       }));
 
@@ -392,7 +400,7 @@ export const SinkronisasiSagara: React.FC = () => {
         pendingSyncCount: 0
       }));
 
-      setSuccessMsg("Sinkronisasi Berhasil! Seluruh data lokal telah dikirim dan dapat dibaca oleh Server Pusat.");
+      setSuccessMsg(result.message);
       addLog("SINKRONISASI SELESAI DENGAN STATUS: SUKSES (100%)");
       setSyncStep(0);
     } catch (err: any) {

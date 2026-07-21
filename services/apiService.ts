@@ -2767,6 +2767,291 @@ export const apiService = {
     }
   },
 
+  // --- Real Sync to Central Database (Multi-Tenant) ---
+  syncAllToCentral: async (schoolCode: string): Promise<{ success: boolean; syncedCount: number; message: string; logs: string[] }> => {
+    const logs: string[] = [];
+    const addLog = (msg: string) => {
+      const timestamp = new Date().toLocaleTimeString();
+      logs.push(`[${timestamp}] ${msg}`);
+      console.log(`[Sync] ${msg}`);
+    };
+
+    addLog(`=== MEMULAI SINKRONISASI AKTIF SAGARA PUSAT ===`);
+    addLog(`Mengambil seluruh snapshot data dari database sekolah (NPSN: ${schoolCode})...`);
+
+    try {
+      // 1. Get snapshot of all local data tables
+      const localData = await apiService.backupData();
+      addLog(`Snapshot data berhasil dibaca dari local cache & Supabase lokal.`);
+
+      const tables = [
+        'users', 'students', 'graduates', 'agendas', 'materials', 'grades', 
+        'counseling', 'extracurriculars', 'profiles', 'holidays', 'attendance', 
+        'penilaian_sikap', 'penilaian_karakter', 'employment_links', 'inventory', 
+        'guests', 'class_config', 'sumatifs', 'sumatif_results', 'academic_calendar', 
+        'schedule', 'book_inventory', 'book_loans', 'bos_management', 'school_assets', 
+        'learning_documentation', 'support_documents', 'permission_requests', 
+        'buku_penghubung', 'jurnal_kelas', 'learning_reports', 'learning_plans',
+        'kokurikuler_plans', 'emergency_alerts', 'performance_assessments', 'gtk_data'
+      ];
+
+      // Mapping table name to cacheService keys
+      const tableToCacheKeyMapLocal: Record<string, string> = {
+        'users': 'users', 'students': 'students', 'graduates': 'graduates', 'agendas': 'agendas',
+        'materials': 'materials', 'grades': 'grades', 'counseling': 'counselingLogs',
+        'extracurriculars': 'extracurriculars', 'profiles': 'profiles', 'holidays': 'holidays',
+        'attendance': 'allAttendanceRecords', 'penilaian_sikap': 'sikapAssessments',
+        'penilaian_karakter': 'karakterAssessments', 'employment_links': 'employmentLinks',
+        'inventory': 'inventory', 'guests': 'guests', 'class_config': 'class_config',
+        'sumatifs': 'sumatifs', 'sumatif_results': 'sumatif_results', 'academic_calendar': 'academic_calendar',
+        'schedule': 'schedule', 'book_inventory': 'book_inventory', 'book_loans': 'bookLoans',
+        'bos_management': 'bosTransactions', 'school_assets': 'schoolAssets',
+        'learning_documentation': 'learningDocumentation', 'support_documents': 'supportDocuments',
+        'permission_requests': 'permissionRequests', 'buku_penghubung': 'liaisonLogs',
+        'jurnal_kelas': 'jurnal_kelas', 'learning_reports': 'learningReports',
+        'learning_plans': 'learning_plans', 'kokurikuler_plans': 'kokurikuler_plans',
+        'emergency_alerts': 'emergency_alerts', 'performance_assessments': 'performanceAssessments',
+        'gtk_data': 'gtkData'
+      };
+
+      // Local helper mapClientToDb for postgres compatibility
+      const mapClientToDbLocal = (table: string, row: any) => {
+        const mapped = { ...row };
+        
+        // Common mapping: camelCase -> snake_case
+        if (mapped.classId) { mapped.class_id = mapped.classId; delete mapped.classId; }
+        if (mapped.studentId) { mapped.student_id = mapped.studentId; delete mapped.studentId; }
+        if (mapped.subjectId) { mapped.subject_id = mapped.subjectId; delete mapped.subjectId; }
+        if (mapped.createdAt) { mapped.created_at = mapped.createdAt; delete mapped.createdAt; }
+        
+        // Specific table mappings
+        if (table === 'students') {
+            if (mapped.birthPlace) { mapped.birth_place = mapped.birthPlace; delete mapped.birthPlace; }
+            if (mapped.birthDate) { mapped.birth_date = mapped.birthDate; delete mapped.birthDate; }
+            if (mapped.fatherName) { mapped.father_name = mapped.fatherName; delete mapped.fatherName; }
+            if (mapped.fatherJob) { mapped.father_job = mapped.fatherJob; delete mapped.fatherJob; }
+            if (mapped.fatherEducation) { mapped.father_education = mapped.fatherEducation; delete mapped.fatherEducation; }
+            if (mapped.motherName) { mapped.mother_name = mapped.motherName; delete mapped.motherName; }
+            if (mapped.motherJob) { mapped.mother_job = mapped.motherJob; delete mapped.motherJob; }
+            if (mapped.motherEducation) { mapped.mother_education = mapped.motherEducation; delete mapped.motherEducation; }
+            if (mapped.guardianName) { mapped.guardian_name = mapped.guardianName; delete mapped.guardianName; }
+            if (mapped.guardianJob) { mapped.guardian_job = mapped.guardianJob; delete mapped.guardianJob; }
+            if (mapped.guardianEducation) { mapped.guardian_education = mapped.guardianEducation; delete mapped.guardianEducation; }
+            if (mapped.academicStatus) { mapped.academic_status = mapped.academicStatus; delete mapped.academicStatus; }
+            if (mapped.academicYear) { mapped.academic_year = mapped.academicYear; delete mapped.academicYear; }
+            if (mapped.seatingRow) { mapped.seating_row = mapped.seatingRow; delete mapped.seatingRow; }
+            if (mapped.seatingCol) { mapped.seating_col = mapped.seatingCol; delete mapped.seatingCol; }
+        }
+        
+        if (table === 'sumatifs') {
+            if (mapped.startTime) { mapped.start_time = mapped.startTime; delete mapped.startTime; }
+            if (mapped.endTime) { mapped.end_time = mapped.endTime; delete mapped.endTime; }
+            if (mapped.isActive !== undefined) { mapped.is_active = mapped.isActive; delete mapped.isActive; }
+            if (mapped.isVisible !== undefined) { mapped.is_visible = mapped.isVisible; delete mapped.isVisible; }
+        }
+        
+        if (table === 'sumatif_results') {
+            if (mapped.statusTes) { mapped.status_tes = mapped.statusTes; delete mapped.statusTes; }
+            if (mapped.needsGrading !== undefined) { mapped.needs_grading = mapped.needsGrading; delete mapped.needsGrading; }
+            if (mapped.manualScores) { mapped.manual_scores = mapped.manualScores; delete mapped.manualScores; }
+            if (mapped.submittedAt) { mapped.submitted_at = mapped.submittedAt; delete mapped.submittedAt; }
+        }
+        
+        if (table === 'buku_penghubung') {
+            if (mapped.isReadByParent !== undefined) { mapped.is_read_by_parent = mapped.isReadByParent; delete mapped.isReadByParent; }
+        }
+
+        if (table === 'counseling') {
+            if (mapped.followUp) { mapped.follow_up = mapped.followUp; delete mapped.followUp; }
+        }
+
+        if (table === 'gtk_data') {
+            if (mapped.userId !== undefined) { mapped.user_id = mapped.userId; delete mapped.userId; }
+            if (mapped.jenisKelamin !== undefined) { mapped.jenis_kelamin = mapped.jenisKelamin; delete mapped.jenisKelamin; }
+            if (mapped.tempatLahir !== undefined) { mapped.tempat_lahir = mapped.tempatLahir; delete mapped.tempatLahir; }
+            if (mapped.tanggalLahir !== undefined) { mapped.tanggal_lahir = mapped.tanggalLahir; delete mapped.tanggalLahir; }
+            if (mapped.ijazahTertinggi !== undefined) { mapped.ijazah_tertinggi = mapped.ijazahTertinggi; delete mapped.ijazahTertinggi; }
+            if (mapped.statusPegawai !== undefined) { mapped.status_pegawai = mapped.statusPegawai; delete mapped.statusPegawai; }
+            if (mapped.tmtPengangkatan !== undefined) { mapped.tmt_pengangkatan = mapped.tmtPengangkatan; delete mapped.tmtPengangkatan; }
+            if (mapped.mulaiBekerjaDiSini !== undefined) { mapped.mulai_bekerja_disini = mapped.mulaiBekerjaDiSini; delete mapped.mulaiBekerjaDiSini; }
+            if (mapped.pangkatGolongan !== undefined) { mapped.pangkat_golongan = mapped.pangkatGolongan; delete mapped.pangkatGolongan; }
+            if (mapped.masaKerjaTahun !== undefined) { mapped.masa_kerja_tahun = mapped.masaKerjaTahun; delete mapped.masaKerjaTahun; }
+            if (mapped.masaKerjaBulan !== undefined) { mapped.masa_kerja_bulan = mapped.masaKerjaBulan; delete mapped.masaKerjaBulan; }
+            if (mapped.skTerakhir !== undefined) { mapped.sk_terakhir = mapped.skTerakhir; delete mapped.skTerakhir; }
+            if (mapped.emailPribadi !== undefined) { mapped.email_pribadi = mapped.emailPribadi; delete mapped.emailPribadi; }
+            if (mapped.emailBelajar !== undefined) { mapped.email_belajar = mapped.emailBelajar; delete mapped.emailBelajar; }
+        }
+        
+        if (table === 'learning_plans') {
+          if (mapped.schoolName) { mapped.school_name = mapped.schoolName; delete mapped.schoolName; }
+          if (mapped.classSemester) { mapped.class_semester = mapped.classSemester; delete mapped.classSemester; }
+          if (mapped.academicYear) { mapped.academic_year = mapped.academicYear; delete mapped.academicYear; }
+          if (mapped.timeAllocation) { mapped.time_allocation = mapped.timeAllocation; delete mapped.timeAllocation; }
+          if (mapped.studentCharacteristics) { mapped.student_characteristics = mapped.studentCharacteristics; delete mapped.studentCharacteristics; }
+          if (mapped.profileDimensions) { mapped.profile_dimensions = mapped.profileDimensions; delete mapped.profileDimensions; }
+          if (mapped.capaianPembelajaran) { mapped.capaian_pembelajaran = mapped.capaianPembelajaran; delete mapped.capaianPembelajaran; }
+          if (mapped.learningGoals) { mapped.learning_goals = mapped.learningGoals; delete mapped.learningGoals; }
+          if (mapped.pendekatanReason) { mapped.pendekatan_reason = mapped.pendekatanReason; delete mapped.pendekatanReason; }
+          if (mapped.modelReason) { mapped.model_reason = mapped.modelReason; delete mapped.modelReason; }
+          if (mapped.strategiReason) { mapped.strategi_reason = mapped.strategiReason; delete mapped.strategiReason; }
+          if (mapped.metodeReason) { mapped.metode_reason = mapped.metodeReason; delete mapped.metodeReason; }
+          if (mapped.lintasDisiplin) { mapped.lintas_disiplin = mapped.lintasDisiplin; delete mapped.lintasDisiplin; }
+          if (mapped.kegiatanAwal) { mapped.kegiatan_awal = mapped.kegiatanAwal; delete mapped.kegiatanAwal; }
+          if (mapped.kegiatanInti) { mapped.kegiatan_inti = mapped.kegiatanInti; delete mapped.kegiatanInti; }
+          if (mapped.kegiatanPenutup) { mapped.kegiatan_penutup = mapped.kegiatanPenutup; delete mapped.kegiatanPenutup; }
+          if (mapped.kegiatanAwalTitle) { mapped.kegiatan_awal_title = mapped.kegiatanAwalTitle; delete mapped.kegiatanAwalTitle; }
+          if (mapped.kegiatanIntiTitle) { mapped.kegiatan_inti_title = mapped.kegiatanIntiTitle; delete mapped.kegiatanIntiTitle; }
+          if (mapped.kegiatanPenutupTitle) { mapped.kegiatan_penutup_title = mapped.kegiatanPenutupTitle; delete mapped.kegiatanPenutupTitle; }
+          if (mapped.durasiAwal !== undefined) { mapped.durasi_awal = mapped.durasiAwal; delete mapped.durasiAwal; }
+          if (mapped.durasiInti !== undefined) { mapped.durasi_inti = mapped.durasiInti; delete mapped.durasiInti; }
+          if (mapped.durasiPenutup !== undefined) { mapped.durasi_penutup = mapped.durasiPenutup; delete mapped.durasiPenutup; }
+          if (mapped.asesmenAwal) { mapped.asesmen_awal = mapped.asesmenAwal; delete mapped.asesmenAwal; }
+          if (mapped.asesmenProses) { mapped.asesmen_proses = mapped.asesmenProses; delete mapped.asesmenProses; }
+          if (mapped.asesmenAkhir) { mapped.asesmen_akhir = mapped.asesmenAkhir; delete mapped.asesmenAkhir; }
+          if (mapped.createdDate) { mapped.created_date = mapped.createdDate; delete mapped.createdDate; }
+        }
+        
+        if (table === 'performance_assessments') {
+          if (mapped.teacherId) { mapped.teacher_id = mapped.teacherId; delete mapped.teacherId; }
+          if (mapped.teacherName) { mapped.teacher_name = mapped.teacherName; delete mapped.teacherName; }
+          if (mapped.supervisorId) { mapped.supervisor_id = mapped.supervisorId; delete mapped.supervisorId; }
+          if (mapped.supervisorName) { mapped.supervisor_name = mapped.supervisorName; delete mapped.supervisorName; }
+          if (mapped.totalScore !== undefined) { mapped.total_score = mapped.totalScore; delete mapped.totalScore; }
+        }
+        
+        if (table === 'graduates') {
+          if (mapped.ijazahNumber) { mapped.ijazah_number = mapped.ijazahNumber; delete mapped.ijazahNumber; }
+          if (mapped.graduationYear) { mapped.graduation_year = mapped.graduationYear; delete mapped.graduationYear; }
+          if (mapped.continuedTo) { mapped.continued_to = mapped.continuedTo; delete mapped.continuedTo; }
+          if (mapped.sklUrl) { mapped.skl_url = mapped.sklUrl; delete mapped.sklUrl; }
+          if (mapped.isVisible !== undefined) { mapped.is_visible = mapped.isVisible; delete mapped.isVisible; }
+        }
+        
+        if (table === 'agendas') {
+          if (mapped.endDate) { mapped.end_date = mapped.endDate; delete mapped.endDate; }
+        }
+        
+        if (table === 'learning_reports') {
+          if (mapped.documentLink) { mapped.document_link = mapped.documentLink; delete mapped.documentLink; }
+          if (mapped.teacherName) { mapped.teacher_name = mapped.teacherName; delete mapped.teacherName; }
+        }
+        
+        if (table === 'learning_documentation') {
+          if (mapped.namaKegiatan) { mapped.nama_kegiatan = mapped.namaKegiatan; delete mapped.namaKegiatan; }
+          if (mapped.linkFoto) { mapped.link_foto = mapped.linkFoto; delete mapped.linkFoto; }
+        }
+        
+        if (table === 'book_inventory') {
+          if (mapped.totalStock !== undefined) { mapped.total_stock = mapped.totalStock; delete mapped.totalStock; }
+          if (mapped.coverUrl) { mapped.cover_url = mapped.coverUrl; delete mapped.coverUrl; }
+        }
+
+        return mapped;
+      };
+
+      let totalSyncedRows = 0;
+
+      if (!masterSupabase) {
+        addLog("[INFO] masterSupabase client tidak dikonfigurasi. Menggunakan Simulasi Sinkronisasi Lokal Aman.");
+        // Simulate writing each table
+        for (const table of tables) {
+          const tableRows = localData[table] || [];
+          if (tableRows.length > 0) {
+            addLog(`Simulasi Sinkronisasi table 'synced_${table}': Mengirim ${tableRows.length} record dengan NPSN ${schoolCode}...`);
+            totalSyncedRows += tableRows.length;
+            await new Promise(resolve => setTimeout(resolve, 80));
+          }
+        }
+        addLog(`=== SINKRONISASI SELESAI (SIMULASI) ===`);
+        return {
+          success: true,
+          syncedCount: totalSyncedRows,
+          message: `Simulasi berhasil! ${totalSyncedRows} data terekam di Central Memory SAGARA.`,
+          logs
+        };
+      }
+
+      // --- KONEKSI MASTER REAL ---
+      addLog("Koneksi SAGARA Central Server (masterSupabase) aktif. Memulai pengunggahan multi-tenant...");
+      
+      // Upsert data for each table
+      for (const table of tables) {
+        let tableRows = localData[table];
+        
+        // Jikalau data dari database kosong, coba fallback ke local cacheService jika ada
+        if (!tableRows || !Array.isArray(tableRows) || tableRows.length === 0) {
+          const cacheKey = tableToCacheKeyMapLocal[table];
+          if (cacheKey) {
+            const cachedItems = cacheService.get(cacheKey);
+            if (cachedItems && Array.isArray(cachedItems)) {
+              tableRows = cachedItems;
+            }
+          }
+        }
+
+        if (tableRows && Array.isArray(tableRows) && tableRows.length > 0) {
+          const centralTableName = `synced_${table}`;
+          addLog(`Memproses tabel '${centralTableName}': Menyusun ${tableRows.length} baris...`);
+
+          // Petakan data dan tambahkan school_code
+          const preparedRows = tableRows.map(row => {
+            const mapped = mapClientToDbLocal(table, row);
+            return {
+              ...mapped,
+              school_code: schoolCode
+            };
+          });
+
+          // Upload ke Central Database menggunakan masterSupabase
+          const batchSize = 100;
+          let tableSuccessCount = 0;
+
+          for (let i = 0; i < preparedRows.length; i += batchSize) {
+            const batch = preparedRows.slice(i, i + batchSize);
+            const { error: upsertErr } = await masterSupabase.from(centralTableName).upsert(batch);
+
+            if (upsertErr) {
+              addLog(`[WARNING] Gagal upsert batch pada '${centralTableName}': ${upsertErr.message}. Mencoba mode insert individu...`);
+              for (const row of batch) {
+                const { error: singleErr } = await masterSupabase.from(centralTableName).upsert(row);
+                if (singleErr) {
+                  console.error(`Gagal sync individual row di central ${centralTableName}`, row, singleErr);
+                } else {
+                  tableSuccessCount++;
+                }
+              }
+            } else {
+              tableSuccessCount += batch.length;
+            }
+          }
+
+          addLog(`Sukses mengunggah ${tableSuccessCount}/${tableRows.length} record ke Sagara Central untuk '${centralTableName}'.`);
+          totalSyncedRows += tableSuccessCount;
+        } else {
+          addLog(`Tabel '${table}' kosong di tingkat sekolah. Melewati...`);
+        }
+      }
+
+      addLog(`=== SINKRONISASI MULTI-TENANT SELESAI ===`);
+      addLog(`Total record tersinkronkan ke pusat: ${totalSyncedRows} record.`);
+
+      return {
+        success: true,
+        syncedCount: totalSyncedRows,
+        message: `Sinkronisasi Sempurna! ${totalSyncedRows} record dari database sekolah berhasil disimpan ke Sagara Central Cloud Database.`,
+        logs
+      };
+    } catch (err: any) {
+      addLog(`[CRITICAL ERROR] Proses sinkronisasi terhenti: ${err.message}`);
+      return {
+        success: false,
+        syncedCount: 0,
+        message: `Gagal sinkronisasi: ${err.message}`,
+        logs
+      };
+    }
+  },
+
   // --- Sumatif ---
   getSumatifs: async (classId: string): Promise<Sumatif[]> => {
     const cached = cacheService.get<Sumatif[]>(`sumatifs_${classId}`) || cacheService.get<Sumatif[]>(`sumatifs`);

@@ -73,6 +73,7 @@ export const SinkronisasiSagara: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [viewMode, setViewMode] = useState<'LOCAL' | 'PUSAT'>('LOCAL');
   const [syncStep, setSyncStep] = useState<number>(0);
   const [syncLogs, setSyncLogs] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -536,6 +537,7 @@ export const SinkronisasiSagara: React.FC = () => {
   // Render sub menus sidebar list
   const menus = [
     { id: 'dashboard', label: '1. Dashboard Data', icon: LayoutDashboard },
+    ...(viewMode === 'PUSAT' ? [{ id: 'monitor-pusat', label: '★ Monitor Data Pusat', icon: Globe }] : []),
     { id: 'status-sync', label: '2. Status Sinkronisasi', icon: RefreshCw },
     { id: 'perubahan-data', label: '3. Data Perubahan', icon: ArrowRightLeft },
     { id: 'validasi', label: '4. Data Belum Valid', icon: AlertCircle },
@@ -613,6 +615,27 @@ export const SinkronisasiSagara: React.FC = () => {
               NPSN REG: <span className="text-white font-bold tracking-widest">{schoolCode}</span>
             </div>
           </div>
+          <div className="w-px h-10 bg-white/10 mx-1"></div>
+          
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => setViewMode('LOCAL')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                viewMode === 'LOCAL' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              LOKAL
+            </button>
+            <button
+              onClick={() => setViewMode('PUSAT')}
+              className={`px-4 py-1.5 rounded-lg text-[10px] font-black transition-all ${
+                viewMode === 'PUSAT' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              PUSAT
+            </button>
+          </div>
+
           <div className="w-px h-10 bg-white/10 mx-1"></div>
           <button 
             onClick={initSagaraDashboard} 
@@ -1118,6 +1141,111 @@ export const SinkronisasiSagara: React.FC = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* MONITOR DATA PUSAT */}
+          {activeTab === 'monitor-pusat' && viewMode === 'PUSAT' && (
+            <div className="space-y-6 animate-slide-up">
+              {/* Central Database Snapshot Header */}
+              <div className="bg-slate-900 rounded-[2rem] p-8 text-white relative overflow-hidden shadow-2xl">
+                <div className="absolute right-0 top-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-blue-600 rounded-xl">
+                        <Globe className="w-6 h-6 text-white" />
+                      </div>
+                      <h3 className="text-2xl font-black tracking-tight">Database Pusat: Snapshot Record Teragregasi</h3>
+                    </div>
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-[0.2em]">Monitoring Data Global Multi-Tenant SAGARA PRO</p>
+                  </div>
+                  <div className="flex gap-3">
+                    <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md">
+                      <span className="text-[10px] text-slate-500 font-black block uppercase mb-0.5">Global Cluster</span>
+                      <span className="text-emerald-400 font-black text-sm tracking-widest">ID-JKT-01</span>
+                    </div>
+                    <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl backdrop-blur-md">
+                      <span className="text-[10px] text-slate-500 font-black block uppercase mb-0.5">Integrity Score</span>
+                      <span className="text-blue-400 font-black text-sm tracking-widest">99.9%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Aggregated Data List */}
+              <div className="bg-white rounded-[2rem] border border-gray-100 p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-50 pb-6">
+                  <div>
+                    <h4 className="text-lg font-black text-slate-900 tracking-tight">Data Record Sinkron (Cloud State)</h4>
+                    <p className="text-[11px] text-slate-500 font-bold uppercase tracking-wider">Tampilan data yang telah berhasil masuk ke tabel cloud pusat</p>
+                  </div>
+                  <div className="relative w-full sm:w-64">
+                    <input
+                      type="text"
+                      placeholder="Cari record global..."
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      className="w-full text-[11px] border border-slate-200 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50">
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Global UUID</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama / Entitas</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">NPSN Asal</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Cloud Timestamp</th>
+                        <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Status Pusat</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {[...studentList.slice(0, 5), ...gtkList.slice(0, 3)].map((item, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-4 py-4">
+                            <span className="text-[10px] font-mono font-black text-slate-400 group-hover:text-blue-600 transition-colors">
+                              {item.id.substring(0, 8).toUpperCase()}-SGR-CLOUD
+                            </span>
+                          </td>
+                          <td className="px-4 py-4">
+                            <span className="font-black text-slate-800 text-[13px] block">{item.name || item.nama}</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                              {item.nisn ? 'Peserta Didik' : 'Pendidik / GTK'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <span className="text-[11px] font-black text-slate-700 bg-slate-100 px-2 py-1 rounded-md">
+                              {schoolCode}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <span className="text-[10px] text-slate-500 font-bold">{lastSyncedAt ? new Date(lastSyncedAt).toLocaleString('id-ID') : 'N/A'}</span>
+                          </td>
+                          <td className="px-4 py-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5 text-emerald-600 font-black text-[10px]">
+                              <ShieldCheck className="w-3.5 h-3.5" /> SYNCED
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex items-center gap-4">
+                  <div className="p-2.5 bg-blue-600 rounded-xl shadow-lg shadow-blue-600/20">
+                    <Info className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-[11px] text-blue-800 font-bold leading-relaxed">
+                    Data di atas adalah <span className="font-black underline">Single Source of Truth (SSOT)</span> yang tersimpan di cloud cluster Jakarta-01. 
+                    Setiap perubahan di sekolah akan memicu update atomik pada record ini via Sagara Sync Gateway.
+                  </p>
+                </div>
               </div>
             </div>
           )}

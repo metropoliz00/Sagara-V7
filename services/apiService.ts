@@ -3795,6 +3795,72 @@ export const apiService = {
     }
   },
 
+  getCentralSchools: async (): Promise<any[]> => {
+    if (!masterSupabase) return [];
+    try {
+      const { data, error } = await masterSupabase
+        .from('synced_profiles')
+        .select('*');
+      
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.error("Error fetching central schools:", err);
+      return [];
+    }
+  },
+
+  // --- Central Monitoring ---
+  getCentralGlobalMonitoring: async (): Promise<any[]> => {
+    if (!masterSupabase) {
+      console.warn("Master Supabase client not configured for global monitoring.");
+      return [];
+    }
+
+    try {
+      // Fetch from students and GTK synced tables in parallel
+      const [studentsRes, gtkRes] = await Promise.all([
+        masterSupabase.from('synced_students').select('*').limit(100),
+        masterSupabase.from('synced_gtk_data').select('*').limit(50)
+      ]);
+
+      const globalData: any[] = [];
+
+      if (studentsRes.data) {
+        studentsRes.data.forEach((s: any) => {
+          globalData.push({
+            ...s,
+            entityType: 'Peserta Didik',
+            globalId: s.id,
+            origin: s.school_code || 'Unknown'
+          });
+        });
+      }
+
+      if (gtkRes.data) {
+        gtkRes.data.forEach((g: any) => {
+          globalData.push({
+            ...g,
+            name: g.nama, // normalization
+            entityType: 'Pendidik / GTK',
+            globalId: g.id,
+            origin: g.school_code || 'Unknown'
+          });
+        });
+      }
+
+      // Sort by last sync or timestamp if available
+      return globalData.sort((a, b) => {
+        const dateA = new Date(a.updated_at || a.created_at || 0).getTime();
+        const dateB = new Date(b.updated_at || b.created_at || 0).getTime();
+        return dateB - dateA;
+      });
+    } catch (err) {
+      console.error("Error fetching global central monitoring data:", err);
+      return [];
+    }
+  },
+
   // --- Audit Logs ---
   getAuditLogs: async (): Promise<any[]> => {
     try {

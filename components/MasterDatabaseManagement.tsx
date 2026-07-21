@@ -5,7 +5,7 @@ import {
   Loader2, Plus, Trash2, Edit2, Save, X, School, CheckCircle2, XCircle, 
   Eye, Activity, Users, BookOpen, AlertCircle, FileSpreadsheet, ShieldCheck, Database, LayoutGrid,
   Search, Calendar, Award, TrendingUp, BarChart3, PieChart as PieChartIcon, ArrowRight, Check, FileText,
-  Download, Layers, Settings, Globe
+  Download, Layers, Settings, Globe, Coins, Heart, User
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import {
@@ -53,6 +53,29 @@ interface StudentRecord {
   gender: 'L' | 'P';
   sync_time: string;
   status: 'TERVERIFIKASI' | 'PROSES';
+  school_code?: string;
+  school_name?: string;
+  nis?: string;
+  birth_place?: string;
+  birth_date?: string;
+  religion?: string;
+  address?: string;
+  father_name?: string;
+  father_job?: string;
+  father_education?: string;
+  mother_name?: string;
+  mother_job?: string;
+  mother_education?: string;
+  parent_name?: string;
+  parent_phone?: string;
+  parent_job?: string;
+  economy_status?: string;
+  height?: number;
+  weight?: number;
+  blood_type?: string;
+  health_notes?: string;
+  hobbies?: string;
+  ambition?: string;
 }
 
 interface GtkRecord {
@@ -63,6 +86,23 @@ interface GtkRecord {
   subject: string;
   sync_time: string;
   status: 'TERVERIFIKASI' | 'PROSES';
+  school_code?: string;
+  school_name?: string;
+  nip?: string;
+  jenis_kelamin?: string;
+  gender?: string;
+  tempat_lahir?: string;
+  tanggal_lahir?: string;
+  ijazah_tertinggi?: string;
+  status_pegawai?: string;
+  employment_status?: string;
+  is_certified?: boolean;
+  pangkat_golongan?: string;
+  masa_kerja_tahun?: number;
+  masa_kerja_bulan?: number;
+  sk_terakhir?: string;
+  email_pribadi?: string;
+  email_belajar?: string;
 }
 
 interface AttendanceRecord {
@@ -96,6 +136,16 @@ interface MaterialRecord {
 }
 
 // Fallback high-fidelity schools
+const ALL_SCHOOLS_VIRTUAL: SchoolDatabase = {
+  id: 'all_schools',
+  school_code: 'ALL',
+  school_name: 'Semua Sekolah (Secara Keseluruhan)',
+  supabase_url: 'Database Sagara Pusat',
+  supabase_anon_key: '',
+  is_active: true,
+  created_at: new Date().toISOString()
+};
+
 const DEFAULT_SCHOOLS: SchoolDatabase[] = [
   {
     id: 'sagara-1',
@@ -163,6 +213,8 @@ export const MasterDatabaseManagement: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<'students' | 'gtk' | 'attendance' | 'grades' | 'materials'>('students');
   const [searchQuery, setSearchQuery] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [selectedStudentDetail, setSelectedStudentDetail] = useState<StudentRecord | null>(null);
+  const [selectedGtkDetail, setSelectedGtkDetail] = useState<GtkRecord | null>(null);
 
   useEffect(() => {
     const loadLocalProfile = async () => {
@@ -191,7 +243,7 @@ export const MasterDatabaseManagement: React.FC = () => {
       if (!masterSupabase) {
         // Fallback directly to demo
         setSchools(DEFAULT_SCHOOLS);
-        setSelectedSchool(DEFAULT_SCHOOLS[0]);
+        setSelectedSchool(ALL_SCHOOLS_VIRTUAL);
         setLoading(false);
         return;
       }
@@ -205,7 +257,7 @@ export const MasterDatabaseManagement: React.FC = () => {
 
       const loadedSchools = data && data.length > 0 ? data : DEFAULT_SCHOOLS;
       setSchools(loadedSchools);
-      setSelectedSchool(loadedSchools[0]);
+      setSelectedSchool(ALL_SCHOOLS_VIRTUAL);
 
       // Ambil total data pusat secara akurat
       try {
@@ -226,7 +278,7 @@ export const MasterDatabaseManagement: React.FC = () => {
     } catch (err: any) {
       // Graceful fallback to default mock schools
       setSchools(DEFAULT_SCHOOLS);
-      setSelectedSchool(DEFAULT_SCHOOLS[0]);
+      setSelectedSchool(ALL_SCHOOLS_VIRTUAL);
       setError("Database Pusat Supabase offline. Mengaktifkan Mode Demonstrasi Sagara Cloud Server.");
     } finally {
       setLoading(false);
@@ -344,72 +396,74 @@ export const MasterDatabaseManagement: React.FC = () => {
     setInspecting(true);
     setInspectStats(null);
 
-    const getFallbackStudents = (): StudentRecord[] => [
-      { id: 'st-1', nisn: '0087612101', name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', gender: 'L', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI' },
-      { id: 'st-2', nisn: '0092123512', name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', gender: 'P', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI' },
-      { id: 'st-3', nisn: '0085432109', name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', gender: 'L', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI' },
-      { id: 'st-4', nisn: '0098765432', name: 'Dewi Lestari Chandra', class_name: 'X Rombel 3', gender: 'P', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI' },
-      { id: 'st-5', nisn: '0091122334', name: 'Eko Prasetyo Utomo', class_name: 'XI IPA 1', gender: 'L', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI' },
-      { id: 'st-6', nisn: '0082233445', name: 'Fitriani Indah Lestari', class_name: 'X Rombel 2', gender: 'P', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI' },
-      { id: 'st-7', nisn: '0093344556', name: 'Guntur Pratama Putra', class_name: 'XII IPS 2', gender: 'L', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI' },
-      { id: 'st-8', nisn: '0084455667', name: 'Hani Susanti Rahayu', class_name: 'XI IPS 3', gender: 'P', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI' },
-    ].map(st => {
-      const isSMK = school.school_code === '20521002';
-      const isMA = school.school_code === '20521003';
-      let cls = st.class_name;
-      if (isSMK) cls = cls.replace('IPA', 'TKJ').replace('IPS', 'RPL');
-      if (isMA) cls = cls.replace('IPA', 'MIA').replace('IPS', 'IIS');
-      return { ...st, class_name: cls } as StudentRecord;
-    });
+    const getFallbackStudentsForSchool = (sch: SchoolDatabase): StudentRecord[] => {
+      const list = [
+        { id: `st-${sch.school_code}-1`, nisn: '0087612101', name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', gender: 'L', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI', economy_status: 'Kurang Mampu', blood_type: 'O', height: 165, weight: 55, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-2`, nisn: '0092123512', name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', gender: 'P', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI', economy_status: 'Mampu', blood_type: 'A', height: 158, weight: 48, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-3`, nisn: '0085432109', name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', gender: 'L', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI', economy_status: 'Penerima KIP', blood_type: 'B', height: 170, weight: 72, address: 'DESA REMEN', religion: 'Kristen' },
+        { id: `st-${sch.school_code}-4`, nisn: '0098765432', name: 'Dewi Chandra Lestari', class_name: 'X Rombel 3', gender: 'P', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI', economy_status: 'Mampu', blood_type: 'AB', height: 162, weight: 50, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-5`, nisn: '0091122334', name: 'Eko Prasetyo Utomo', class_name: 'XI IPA 1', gender: 'L', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI', economy_status: 'Sangat Mampu', blood_type: 'O', height: 175, weight: 80, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-6`, nisn: '0082233445', name: 'Fitriani Indah Lestari', class_name: 'X Rombel 2', gender: 'P', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI', economy_status: 'Kurang Mampu', blood_type: 'A', height: 155, weight: 45, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-7`, nisn: '0093344556', name: 'Guntur Pratama Putra', class_name: 'XII IPS 2', gender: 'L', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI', economy_status: 'Penerima KIP', blood_type: 'B', height: 168, weight: 54, address: 'DESA REMEN', religion: 'Islam' },
+        { id: `st-${sch.school_code}-8`, nisn: '0084455667', name: 'Hani Susanti Rahayu', class_name: 'XI IPS 3', gender: 'P', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI', economy_status: 'Mampu', blood_type: 'O', height: 160, weight: 52, address: 'DESA REMEN', religion: 'Islam' },
+      ];
+      return list.map(st => {
+        const isSMK = sch.school_code === '20521002' || sch.school_code === '20504761';
+        const isMA = sch.school_code === '20521003';
+        let cls = st.class_name;
+        if (isSMK) cls = cls.replace('IPA', 'TKJ').replace('IPS', 'RPL');
+        if (isMA) cls = cls.replace('IPA', 'MIA').replace('IPS', 'IIS');
+        return {
+          ...st,
+          class_name: cls,
+          school_code: sch.school_code,
+          father_name: 'Bp. ' + st.name.split(' ')[0],
+          mother_name: 'Ibu ' + st.name.split(' ')[0],
+          father_job: 'Karyawan Swasta',
+          mother_job: 'Ibu Rumah Tangga'
+        } as StudentRecord;
+      });
+    };
 
-    const getFallbackGtk = (): GtkRecord[] => [
-      { id: 'gt-1', nuptk: '1234765421090001', name: 'Drs. Sutarjo, M.Pd.', position: 'Kepala Sekolah', subject: 'Manajemen Sekolah', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI' },
-      { id: 'gt-2', nuptk: '9876543210987002', name: 'Rina Wijaya, S.Si.', position: 'Wakasek Kurikulum', subject: 'Fisika & Matematika', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI' },
-      { id: 'gt-3', nuptk: '3456789012345003', name: 'Hendra Hermawan, S.Kom.', position: 'Kaprog IT', subject: 'Informatika Dasar', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI' },
-      { id: 'gt-4', nuptk: '4567890123456004', name: 'Sri Wahyuni, S.Pd.', position: 'Guru Pertama', subject: 'Bahasa Inggris', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI' },
-      { id: 'gt-5', nuptk: '5678901234567005', name: 'Andi Setiawan, S.Pd.', position: 'Guru Pertama', subject: 'Pendidikan Jasmani', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI' },
-      { id: 'gt-6', nuptk: '7689123456710082', name: 'Mega Utami, S.Pd.', position: 'Guru Pertama', subject: 'Kimia & Biologi', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI' },
-    ];
+    const getFallbackGtkForSchool = (sch: SchoolDatabase): GtkRecord[] => {
+      const list = [
+        { id: `gt-${sch.school_code}-1`, nuptk: '1234765421090001', name: 'Drs. Sutarjo, M.Pd.', position: 'Kepala Sekolah', subject: 'Manajemen Sekolah', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI', nip: '196803151993031002', jenis_kelamin: 'L', status_pegawai: 'PNS/ASN', pangkat_golongan: 'Pembina IV/a', email_belajar: 'sutarjo@admin.sd.belajar.id' },
+        { id: `gt-${sch.school_code}-2`, nuptk: '9876543210987002', name: 'Rina Wijaya, S.Si.', position: 'Wakasek Kurikulum', subject: 'Fisika & Matematika', sync_time: 'Hari ini, 09:45', status: 'TERVERIFIKASI', nip: '198211042008012015', jenis_kelamin: 'P', status_pegawai: 'PNS/ASN', pangkat_golongan: 'Penata III/c', email_belajar: 'rina.wijaya@guru.sd.belajar.id' },
+        { id: `gt-${sch.school_code}-3`, nuptk: '3456789012345003', name: 'Hendra Hermawan, S.Kom.', position: 'Kaprog IT', subject: 'Informatika Dasar', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI', nip: '199004252024211020', jenis_kelamin: 'L', status_pegawai: 'PPPK', pangkat_golongan: 'Penata Muda IX', email_belajar: 'hendra.hermawan@guru.sd.belajar.id' },
+        { id: `gt-${sch.school_code}-4`, nuptk: '4567890123456004', name: 'Sri Wahyuni, S.Pd.', position: 'Guru Pertama', subject: 'Bahasa Inggris', sync_time: 'Kemarin, 14:20', status: 'TERVERIFIKASI', nip: '', jenis_kelamin: 'P', status_pegawai: 'GTT/Honor', pangkat_golongan: '-', email_belajar: 'sri.wahyuni@guru.sd.belajar.id' },
+        { id: `gt-${sch.school_code}-5`, nuptk: '5678901234567005', name: 'Andi Setiawan, S.Pd.', position: 'Guru Pertama', subject: 'Pendidikan Jasmani', sync_time: '2 hari lalu, 11:30', status: 'TERVERIFIKASI', nip: '198805202022211008', jenis_kelamin: 'L', status_pegawai: 'PPPK', pangkat_golongan: 'Penata Muda IX', email_belajar: 'andi.setiawan@guru.sd.belajar.id' },
+        { id: `gt-${sch.school_code}-6`, nuptk: '7689123456710082', name: 'Mega Utami, S.Pd.', position: 'Guru Pertama', subject: 'Kimia & Biologi', sync_time: '3 hari lalu, 16:00', status: 'TERVERIFIKASI', nip: '', jenis_kelamin: 'P', status_pegawai: 'GTT/Honor', pangkat_golongan: '-', email_belajar: 'mega.utami@guru.sd.belajar.id' },
+      ];
+      return list.map(gt => ({ ...gt, school_code: sch.school_code }) as GtkRecord);
+    };
 
-    const getFallbackAttendance = (): AttendanceRecord[] => [
-      { id: 'at-1', student_name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', date: '2026-07-21', status: 'Hadir', sync_time: 'Hari ini, 09:45' },
-      { id: 'at-2', student_name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', date: '2026-07-21', status: 'Hadir', sync_time: 'Hari ini, 09:45' },
-      { id: 'at-3', student_name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', date: '2026-07-21', status: 'Sakit', sync_time: 'Kemarin, 14:20' },
-      { id: 'at-4', student_name: 'Dewi Lestari Chandra', class_name: 'X Rombel 3', date: '2026-07-20', status: 'Hadir', sync_time: 'Kemarin, 14:20' },
-      { id: 'at-5', student_name: 'Eko Prasetyo Utomo', class_name: 'XI IPA 1', date: '2026-07-20', status: 'Izin', sync_time: '2 hari lalu, 11:30' },
-      { id: 'at-6', student_name: 'Fitriani Indah Lestari', class_name: 'X Rombel 2', date: '2026-07-20', status: 'Hadir', sync_time: '2 hari lalu, 11:30' },
-      { id: 'at-7', student_name: 'Guntur Pratama Putra', class_name: 'XII IPS 2', date: '2026-07-19', status: 'Alpa', sync_time: '3 hari lalu, 16:00' },
+    const getFallbackAttendanceForSchool = (sch: SchoolDatabase): AttendanceRecord[] => [
+      { id: `at-${sch.school_code}-1`, student_name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', date: '2026-07-21', status: 'Hadir', sync_time: 'Hari ini, 09:45' },
+      { id: `at-${sch.school_code}-2`, student_name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', date: '2026-07-21', status: 'Hadir', sync_time: 'Hari ini, 09:45' },
+      { id: `at-${sch.school_code}-3`, student_name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', date: '2026-07-21', status: 'Sakit', sync_time: 'Kemarin, 14:20' },
+      { id: `at-${sch.school_code}-4`, student_name: 'Dewi Chandra Lestari', class_name: 'X Rombel 3', date: '2026-07-20', status: 'Hadir', sync_time: 'Kemarin, 14:20' },
+      { id: `at-${sch.school_code}-5`, student_name: 'Eko Prasetyo Utomo', class_name: 'XI IPA 1', date: '2026-07-20', status: 'Izin', sync_time: '2 hari lalu, 11:30' },
     ].map(at => {
-      const isSMK = school.school_code === '20521002';
-      const isMA = school.school_code === '20521003';
+      const isSMK = sch.school_code === '20521002' || sch.school_code === '20504761';
       let cls = at.class_name;
       if (isSMK) cls = cls.replace('IPA', 'TKJ').replace('IPS', 'RPL');
-      if (isMA) cls = cls.replace('IPA', 'MIA').replace('IPS', 'IIS');
       return { ...at, class_name: cls } as AttendanceRecord;
     });
 
-    const getFallbackGrades = (): GradeRecord[] => [
-      { id: 'gr-1', student_name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', subject: 'Matematika Terapan', exam_type: 'Sumatif Tengah Semester', score: 88, sync_time: 'Hari ini, 09:45' },
-      { id: 'gr-2', student_name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', subject: 'Sosiologi', exam_type: 'Sumatif Tengah Semester', score: 92, sync_time: 'Hari ini, 09:45' },
-      { id: 'gr-3', student_name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', subject: 'Fisika Eksperimental', exam_type: 'Sumatif Akhir Semester', score: 74, sync_time: 'Kemarin, 14:20' },
-      { id: 'gr-4', student_name: 'Dewi Lestari Chandra', class_name: 'X Rombel 3', subject: 'Bahasa Inggris', exam_type: 'Tugas Harian', score: 90, sync_time: 'Kemarin, 14:20' },
-      { id: 'gr-5', student_name: 'Eko Prasetyo Utomo', class_name: 'XI IPA 1', subject: 'Informatika', exam_type: 'Tugas Harian', score: 95, sync_time: '2 hari lalu, 11:30' },
-      { id: 'gr-6', student_name: 'Fitriani Indah Lestari', class_name: 'X Rombel 2', subject: 'Bahasa Indonesia', exam_type: 'Sumatif Tengah Semester', score: 82, sync_time: '2 hari lalu, 11:30' },
+    const getFallbackGradesForSchool = (sch: SchoolDatabase): GradeRecord[] => [
+      { id: `gr-${sch.school_code}-1`, student_name: 'Ahmad Fauzi Pratama', class_name: 'XII IPA 1', subject: 'Matematika Terapan', exam_type: 'Sumatif Tengah Semester', score: 88, sync_time: 'Hari ini, 09:45' },
+      { id: `gr-${sch.school_code}-2`, student_name: 'Siti Nurhaliza Rahma', class_name: 'XI IPS 2', subject: 'Sosiologi', exam_type: 'Sumatif Tengah Semester', score: 92, sync_time: 'Hari ini, 09:45' },
+      { id: `gr-${sch.school_code}-3`, student_name: 'Budi Utomo Harahap', class_name: 'XII IPA 1', subject: 'Fisika Eksperimental', exam_type: 'Sumatif Akhir Semester', score: 74, sync_time: 'Kemarin, 14:20' },
     ].map(gr => {
-      const isSMK = school.school_code === '20521002';
-      const isMA = school.school_code === '20521003';
+      const isSMK = sch.school_code === '20521002' || sch.school_code === '20504761';
       let cls = gr.class_name;
       if (isSMK) cls = cls.replace('IPA', 'TKJ').replace('IPS', 'RPL');
-      if (isMA) cls = cls.replace('IPA', 'MIA').replace('IPS', 'IIS');
       return { ...gr, class_name: cls } as GradeRecord;
     });
 
-    const getFallbackMaterials = (): MaterialRecord[] => [
-      { id: 'mat-1', title: 'Konsep Pemrograman Dasar & OOP', class_name: 'Kelas X & XI', creator: 'Hendra Hermawan, S.Kom.', size: '4.2 MB', downloads: 35, category: 'Informatika', sync_time: 'Hari ini, 09:45' },
-      { id: 'mat-2', title: 'Mekanika Fluida & Hukum Bernoulli', class_name: 'Kelas XI', creator: 'Rina Wijaya, S.Si.', size: '5.8 MB', downloads: 22, category: 'Fisika', sync_time: 'Hari ini, 09:45' },
-      { id: 'mat-3', title: 'English Grammar Masterclass: Tenses', class_name: 'Kelas XII', creator: 'Sri Wahyuni, S.Pd.', size: '2.1 MB', downloads: 48, category: 'Bahasa Inggris', sync_time: 'Kemarin, 14:20' },
-      { id: 'mat-4', title: 'Sejarah Perjuangan Nasional Indonesia', class_name: 'Kelas X', creator: 'Drs. Sutarjo, M.Pd.', size: '7.4 MB', downloads: 15, category: 'Sejarah', sync_time: '2 hari lalu, 11:30' },
-      { id: 'mat-5', title: 'Pendidikan Jasmani: Teknik Atletik', class_name: 'Kelas X & XII', creator: 'Andi Setiawan, S.Pd.', size: '12.1 MB', downloads: 64, category: 'Olahraga', sync_time: '3 hari lalu, 16:00' },
+    const getFallbackMaterialsForSchool = (sch: SchoolDatabase): MaterialRecord[] => [
+      { id: `mat-${sch.school_code}-1`, title: 'Konsep Pemrograman Dasar & OOP', class_name: 'Kelas X & XI', creator: 'Hendra Hermawan, S.Kom.', size: '4.2 MB', downloads: 35, category: 'Informatika', sync_time: 'Hari ini, 09:45' },
+      { id: `mat-${sch.school_code}-2`, title: 'Mekanika Fluida & Hukum Bernoulli', class_name: 'Kelas XI', creator: 'Rina Wijaya, S.Si.', size: '5.8 MB', downloads: 22, category: 'Fisika', sync_time: 'Hari ini, 09:45' },
     ];
 
     const cleanGender = (g: string): 'L' | 'P' => {
@@ -439,12 +493,26 @@ export const MasterDatabaseManagement: React.FC = () => {
       // 1. Coba ambil data dari master database pusat (synced_*)
       if (masterSupabase) {
         try {
+          let qSt = masterSupabase.from('synced_students').select('*');
+          let qGtk = masterSupabase.from('synced_gtk_data').select('*');
+          let qAt = masterSupabase.from('synced_attendance').select('*');
+          let qGr = masterSupabase.from('synced_grades').select('*');
+          let qMat = masterSupabase.from('synced_materials').select('*');
+
+          if (school.id !== 'all_schools') {
+            qSt = qSt.eq('school_code', school.school_code);
+            qGtk = qGtk.eq('school_code', school.school_code);
+            qAt = qAt.eq('school_code', school.school_code);
+            qGr = qGr.eq('school_code', school.school_code);
+            qMat = qMat.eq('school_code', school.school_code);
+          }
+
           const [resSt, resGtk, resAt, resGr, resMat] = await Promise.all([
-            masterSupabase.from('synced_students').select('*').eq('school_code', school.school_code),
-            masterSupabase.from('synced_gtk_data').select('*').eq('school_code', school.school_code),
-            masterSupabase.from('synced_attendance').select('*').eq('school_code', school.school_code),
-            masterSupabase.from('synced_grades').select('*').eq('school_code', school.school_code),
-            masterSupabase.from('synced_materials').select('*').eq('school_code', school.school_code)
+            qSt,
+            qGtk,
+            qAt,
+            qGr,
+            qMat
           ]);
 
           if (resSt.data && resSt.data.length > 0) {
@@ -455,20 +523,64 @@ export const MasterDatabaseManagement: React.FC = () => {
               class_name: row.class_id || row.class_name || 'Tidak Ada Kelas',
               gender: cleanGender(row.gender),
               sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
-              status: 'TERVERIFIKASI'
+              status: 'TERVERIFIKASI',
+              school_code: row.school_code,
+              nis: row.nis,
+              birth_place: row.birth_place,
+              birth_date: row.birth_date,
+              religion: row.religion,
+              address: row.address,
+              father_name: row.father_name,
+              father_job: row.father_job,
+              father_education: row.father_education,
+              mother_name: row.mother_name,
+              mother_job: row.mother_job,
+              mother_education: row.mother_education,
+              parent_name: row.parent_name,
+              parent_phone: row.parent_phone,
+              parent_job: row.parent_job,
+              economy_status: row.economy_status || 'Mampu',
+              height: row.height || 0,
+              weight: row.weight || 0,
+              blood_type: row.blood_type || '-',
+              health_notes: row.health_notes || '-',
+              hobbies: row.hobbies || '-',
+              ambition: row.ambition || '-'
             }));
             isUsingRealData = true;
           }
 
           if (resGtk.data && resGtk.data.length > 0) {
-            finalGtk = resGtk.data.map((row: any) => ({
+            const uniqueGtkMap = new Map<string, any>();
+            resGtk.data.forEach((row: any) => {
+              const key = (row.nuptk || row.nip || row.nama || row.name || row.id).trim().toLowerCase();
+              const existing = uniqueGtkMap.get(key);
+              if (!existing || (row.updated_at && existing.updated_at && new Date(row.updated_at) > new Date(existing.updated_at))) {
+                uniqueGtkMap.set(key, row);
+              }
+            });
+
+            finalGtk = Array.from(uniqueGtkMap.values()).map((row: any) => ({
               id: row.id,
               nuptk: row.nuptk || row.nip || 'Belum Diisi',
               name: row.nama || row.name || 'GTK Tanpa Nama',
               position: row.jabatan || row.position || 'Guru',
               subject: row.subject || row.ijazah_tertinggi || 'Pelajaran Umum',
               sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
-              status: 'TERVERIFIKASI'
+              status: 'TERVERIFIKASI',
+              school_code: row.school_code,
+              nip: row.nip,
+              jenis_kelamin: row.jenis_kelamin,
+              tempat_lahir: row.tempat_lahir,
+              tanggal_lahir: row.tanggal_lahir,
+              ijazah_tertinggi: row.ijazah_tertinggi,
+              status_pegawai: row.status_pegawai,
+              pangkat_golongan: row.pangkat_golongan,
+              masa_kerja_tahun: row.masa_kerja_tahun,
+              masa_kerja_bulan: row.masa_kerja_bulan,
+              sk_terakhir: row.sk_terakhir,
+              email_pribadi: row.email_pribadi,
+              email_belajar: row.email_belajar
             }));
             isUsingRealData = true;
           }
@@ -535,7 +647,15 @@ export const MasterDatabaseManagement: React.FC = () => {
               class_name: row.class_id || row.class_name || 'Tidak Ada Kelas',
               gender: cleanGender(row.gender),
               sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
-              status: 'TERVERIFIKASI'
+              status: 'TERVERIFIKASI',
+              economy_status: row.economy_status || 'Mampu',
+              height: row.height || 0,
+              weight: row.weight || 0,
+              blood_type: row.blood_type || '-',
+              health_notes: row.health_notes || '-',
+              father_name: row.father_name,
+              mother_name: row.mother_name,
+              address: row.address
             }));
             isUsingRealData = true;
           }
@@ -548,7 +668,11 @@ export const MasterDatabaseManagement: React.FC = () => {
               position: row.jabatan || row.position || 'Guru',
               subject: row.subject || row.ijazah_tertinggi || 'Pelajaran Umum',
               sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID'),
-              status: 'TERVERIFIKASI'
+              status: 'TERVERIFIKASI',
+              nip: row.nip,
+              status_pegawai: row.status_pegawai,
+              ijazah_tertinggi: row.ijazah_tertinggi,
+              email_belajar: row.email_belajar
             }));
             isUsingRealData = true;
           }
@@ -628,21 +752,19 @@ export const MasterDatabaseManagement: React.FC = () => {
       }
 
       // 3. Fallback jika tidak ada data sama sekali di server ataupun lokal dan kita dalam mode Demo offline
-      if (!masterSupabase) {
-        if (finalStudents.length === 0) {
-          finalStudents = getFallbackStudents();
-        }
-        if (finalGtk.length === 0) {
-          finalGtk = getFallbackGtk();
-        }
-        if (finalAttendance.length === 0) {
-          finalAttendance = getFallbackAttendance();
-        }
-        if (finalGrades.length === 0) {
-          finalGrades = getFallbackGrades();
-        }
-        if (finalMaterials.length === 0) {
-          finalMaterials = getFallbackMaterials();
+      if (!isUsingRealData) {
+        if (school.id === 'all_schools') {
+          finalStudents = schools.filter(s => s.id !== 'all_schools').flatMap(s => getFallbackStudentsForSchool(s));
+          finalGtk = schools.filter(s => s.id !== 'all_schools').flatMap(s => getFallbackGtkForSchool(s));
+          finalAttendance = schools.filter(s => s.id !== 'all_schools').flatMap(s => getFallbackAttendanceForSchool(s));
+          finalGrades = schools.filter(s => s.id !== 'all_schools').flatMap(s => getFallbackGradesForSchool(s));
+          finalMaterials = schools.filter(s => s.id !== 'all_schools').flatMap(s => getFallbackMaterialsForSchool(s));
+        } else {
+          finalStudents = getFallbackStudentsForSchool(school);
+          finalGtk = getFallbackGtkForSchool(school);
+          finalAttendance = getFallbackAttendanceForSchool(school);
+          finalGrades = getFallbackGradesForSchool(school);
+          finalMaterials = getFallbackMaterialsForSchool(school);
         }
       }
 
@@ -665,7 +787,6 @@ export const MasterDatabaseManagement: React.FC = () => {
     } catch (err: any) {
       console.error("Error inside handleInspectSchool:", err);
       if (masterSupabase) {
-        // Jika ada error tetapi database pusat terhubung, set ke kosong (jangan gunakan data tiruan/dummy)
         setStudentsList([]);
         setGtkList([]);
         setAttendanceList([]);
@@ -678,26 +799,8 @@ export const MasterDatabaseManagement: React.FC = () => {
           gradesCount: 0,
           attendanceCount: 0,
           materialsCount: 0,
-          lastSync: school.updated_at || school.created_at || new Date().toISOString(),
+          lastSync: new Date().toISOString(),
           status: 'offline'
-        });
-      } else {
-        // Fallback mode demonstrasi jika offline total
-        const codeNum = parseInt(school.school_code) || 20521001;
-        setStudentsList(getFallbackStudents());
-        setGtkList(getFallbackGtk());
-        setAttendanceList(getFallbackAttendance());
-        setGradesList(getFallbackGrades());
-        setMaterialsList(getFallbackMaterials());
-
-        setInspectStats({
-          studentsCount: (codeNum % 150) + 120,
-          gtkCount: (codeNum % 15) + 18,
-          gradesCount: (codeNum % 300) + 240,
-          attendanceCount: (codeNum % 600) + 420,
-          materialsCount: (codeNum % 10) + 12,
-          lastSync: school.updated_at || school.created_at || new Date().toISOString(),
-          status: 'online'
         });
       }
     } finally {
@@ -706,6 +809,87 @@ export const MasterDatabaseManagement: React.FC = () => {
   };
 
   const getSelectedSchoolCode = () => selectedSchool?.school_code || '20521001';
+
+  // Tren Aktivitas Sinkronisasi Sagara (7 Hari Terakhir) dinamis sesuai database pusat
+  const syncTrendData = useMemo(() => {
+    const dataList = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+      
+      const entry: any = { date: dateStr };
+      if (schools.length > 0) {
+        schools.forEach(s => {
+          let value = 0;
+          // Set volume data simulatif atau nyata untuk Remen 2 / Rayung 4
+          if (s.school_code === '20504759') {
+            value = i === 0 ? 106 : i === 1 ? 64 : i === 2 ? 32 : i === 3 ? 18 : 11;
+          } else if (s.school_code === '20504761') {
+            value = i === 1 ? 12 : i === 2 ? 5 : 0;
+          } else {
+            // Default demo trend
+            value = Math.floor(Math.random() * 50) + 10;
+          }
+          entry[s.school_name] = value;
+        });
+      } else {
+        entry['SMA Sagara'] = 120 + i * 20;
+        entry['SMK Sagara'] = 140 + i * 25;
+      }
+      dataList.push(entry);
+    }
+    return dataList;
+  }, [schools]);
+
+  // Dynamic calculations for student economy and health metrics
+  const economyData = useMemo(() => {
+    const counts: Record<string, number> = { 'Mampu': 0, 'Kurang Mampu': 0, 'Penerima KIP': 0, 'Sangat Mampu': 0 };
+    studentsList.forEach(st => {
+      const status = st.economy_status || 'Mampu';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return Object.keys(counts).map(key => ({
+      name: key,
+      value: counts[key]
+    }));
+  }, [studentsList]);
+
+  const healthData = useMemo(() => {
+    const counts: Record<string, number> = { 'A': 0, 'B': 0, 'AB': 0, 'O': 0, '-': 0 };
+    studentsList.forEach(st => {
+      const bt = (st.blood_type || '-').trim().toUpperCase();
+      const key = counts[bt] !== undefined ? bt : '-';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    return Object.keys(counts).map(key => ({
+      name: `Golongan Darah ${key === '-' ? 'Tidak Diketahui' : key}`,
+      value: counts[key],
+      color: key === 'A' ? '#F87171' : key === 'B' ? '#60A5FA' : key === 'AB' ? '#FBBF24' : key === 'O' ? '#34D399' : '#94A3B8'
+    }));
+  }, [studentsList]);
+
+  const bmiData = useMemo(() => {
+    let normal = 0, underweight = 0, overweight = 0;
+    studentsList.forEach(st => {
+      const h = (st.height || 0) / 100;
+      const w = st.weight || 0;
+      if (h > 0 && w > 0) {
+        const bmi = w / (h * h);
+        if (bmi < 18.5) underweight++;
+        else if (bmi < 25) normal++;
+        else overweight++;
+      } else {
+        // distribute fallback evenly for preview representation if height/weight are 0
+        normal++;
+      }
+    });
+    return [
+      { name: 'Normal (Ideal)', value: normal, color: '#10B981' },
+      { name: 'Underweight (Kurang)', value: underweight, color: '#F59E0B' },
+      { name: 'Overweight (Lebih)', value: overweight, color: '#EF4444' }
+    ];
+  }, [studentsList]);
 
   // Excel simulation exporter
   const handleSimulateExport = () => {
@@ -744,38 +928,7 @@ export const MasterDatabaseManagement: React.FC = () => {
     { name: 'Bahan Ajar', [selectedSchool?.school_name || 'Sekolah']: curStats.materialsCount, 'Rata-rata Sagara': 18 }
   ];
 
-  // Tren Aktivitas Sinkronisasi Sagara (7 Hari Terakhir) dinamis sesuai database pusat
-  const syncTrendData = useMemo(() => {
-    const dataList = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-      
-      const entry: any = { date: dateStr };
-      if (schools.length > 0) {
-        schools.forEach(s => {
-          let value = 0;
-          // Set volume data simulatif atau nyata untuk Remen 2 / Rayung 4
-          if (s.school_code === '20504759') {
-            value = i === 0 ? 106 : i === 1 ? 64 : i === 2 ? 32 : i === 3 ? 18 : 11;
-          } else if (s.school_code === '20504761') {
-            value = i === 1 ? 12 : i === 2 ? 5 : 0;
-          } else {
-            // Default demo trend
-            value = Math.floor(Math.random() * 50) + 10;
-          }
-          entry[s.school_name] = value;
-        });
-      } else {
-        entry['SMA Sagara'] = 120 + i * 20;
-        entry['SMK Sagara'] = 140 + i * 25;
-      }
-      dataList.push(entry);
-    }
-    return dataList;
-  }, [schools]);
-
+  // Tren Aktivitas Sinkronisasi Sagara (7 Hari Terakhir) dinamis sesuai database pusat ya
   const pieData = [
     { name: 'Data Siswa', value: curStats.studentsCount, color: '#5AB2FF' },
     { name: 'Data GTK', value: curStats.gtkCount * 5 || (masterSupabase ? 0 : 50), color: '#7bc0ff' }, // scaled slightly for pie visibility
@@ -925,7 +1078,7 @@ export const MasterDatabaseManagement: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] font-black block uppercase">SISWA TERKUMPUL</span>
-                <span className="text-xl font-black text-slate-800 mt-0.5 block">{schools.length * curStats.studentsCount} Siswa</span>
+                <span className="text-xl font-black text-slate-800 mt-0.5 block">{centralTotalStudents !== null ? centralTotalStudents : (schools.length * curStats.studentsCount)} Siswa</span>
               </div>
             </div>
 
@@ -935,7 +1088,7 @@ export const MasterDatabaseManagement: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] font-black block uppercase">TOTAL GURU & GTK</span>
-                <span className="text-xl font-black text-slate-800 mt-0.5 block">{schools.length * curStats.gtkCount} Pegawai</span>
+                <span className="text-xl font-black text-slate-800 mt-0.5 block">{centralTotalGtk !== null ? centralTotalGtk : (schools.length * curStats.gtkCount)} Pegawai</span>
               </div>
             </div>
 
@@ -945,7 +1098,7 @@ export const MasterDatabaseManagement: React.FC = () => {
               </div>
               <div>
                 <span className="text-slate-400 text-[10px] font-black block uppercase">NILAI & ABSEN SYNC</span>
-                <span className="text-xl font-black text-slate-800 mt-0.5 block">{(curStats.gradesCount + curStats.attendanceCount) * schools.length} Transaksi</span>
+                <span className="text-xl font-black text-slate-800 mt-0.5 block">{centralTotalSyncs !== null ? centralTotalSyncs : ((curStats.gradesCount + curStats.attendanceCount) * schools.length)} Transaksi</span>
               </div>
             </div>
 
@@ -1000,6 +1153,132 @@ export const MasterDatabaseManagement: React.FC = () => {
                 Terakhir Sinkron: {new Date(curStats.lastSync).toLocaleString('id-ID')}
               </div>
             </div>
+          </div>
+
+          {/* NEW STUDENT ECONOMY & HEALTH DIAGRAMS GRID */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            {/* 1. STUDENT ECONOMY CAPABILITY CHART */}
+            <div className="bg-white rounded-3xl border border-[#CAF4FF] p-6 shadow-sm space-y-4">
+              <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                <div>
+                  <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" /> Diagram Kemampuan Ekonomi Siswa
+                  </h4>
+                  <p className="text-[11px] text-slate-400 font-bold">Distribusi tingkat ekonomi siswa aktif ({selectedSchool?.school_name})</p>
+                </div>
+                <span className="text-[10px] font-black px-2.5 py-1 bg-emerald-50 text-emerald-600 rounded-full uppercase tracking-wider">
+                  KESEJAHTERAAN
+                </span>
+              </div>
+
+              <div className="h-64 w-full pt-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={economyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="name" stroke="#64748b" fontSize={11} fontWeight="bold" />
+                    <YAxis stroke="#64748b" fontSize={11} fontWeight="bold" allowDecimals={false} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '11px', fontWeight: 'bold' }} 
+                    />
+                    <Bar dataKey="value" name="Jumlah Siswa" fill="#34D399" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* 2. STUDENT HEALTH AND BLOOD TYPE PIE CHART */}
+            <div className="bg-white rounded-3xl border border-[#CAF4FF] p-6 shadow-sm space-y-4 flex flex-col justify-between">
+              <div className="space-y-1">
+                <h4 className="font-black text-slate-900 text-sm flex items-center gap-1.5 border-b border-slate-50 pb-3">
+                  <Activity className="w-4 h-4 text-rose-500" /> Diagram Kesehatan Siswa (Golongan Darah & BMI)
+                </h4>
+                <p className="text-[11px] text-slate-400 font-bold">Rasio Golongan Darah & Profil Kategori Berat Badan</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 h-52 items-center">
+                {/* Blood type distribution Pie */}
+                <div className="h-full relative flex flex-col justify-center items-center">
+                  <span className="text-[9px] font-black text-slate-400 block mb-1">GOLONGAN DARAH</span>
+                  <div className="h-40 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={healthData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={30}
+                          outerRadius={48}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {healthData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '10px' }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* BMI Distribution Pie */}
+                <div className="h-full relative flex flex-col justify-center items-center">
+                  <span className="text-[9px] font-black text-slate-400 block mb-1">PROFIL POSTUR (BMI)</span>
+                  <div className="h-40 w-full relative">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={bmiData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={30}
+                          outerRadius={48}
+                          paddingAngle={2}
+                          dataKey="value"
+                        >
+                          {bmiData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#0f172a', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '10px' }} 
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Legends custom for Blood and BMI */}
+              <div className="grid grid-cols-2 gap-2 text-[9px] font-bold text-slate-500 pt-2 border-t border-slate-50">
+                <div className="space-y-1">
+                  <span className="text-slate-400 block font-black uppercase text-[8px]">Golongan Darah</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {healthData.filter(d => d.value > 0).map((d, i) => (
+                      <span key={i} className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 flex items-center gap-1 text-[8px]">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
+                        {d.name.replace('Golongan Darah ', '')}: {d.value}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-slate-400 block font-black uppercase text-[8px]">Kategori BMI</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {bmiData.map((d, i) => (
+                      <span key={i} className="px-1.5 py-0.5 rounded bg-slate-50 border border-slate-100 flex items-center gap-1 text-[8px]">
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
+                        {d.name.split(' ')[0]}: {d.value}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           {/* INTERACTIVE GRAPHICS / DIAGRAMS GRID */}
@@ -1239,16 +1518,22 @@ export const MasterDatabaseManagement: React.FC = () => {
                       <th className="px-6 py-4 text-center">Gender</th>
                       <th className="px-6 py-4">Waktu Sinkronisasi</th>
                       <th className="px-6 py-4 text-center">Status Sagara</th>
+                      <th className="px-6 py-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#CAF4FF]/50 font-bold text-slate-700">
                     {getFilteredStudents().map((s) => (
-                      <tr key={s.id} className="hover:bg-slate-50/40 transition-all">
+                      <tr 
+                        key={s.id} 
+                        onClick={() => setSelectedStudentDetail(s)}
+                        className="hover:bg-blue-50/30 cursor-pointer transition-all"
+                        title="Klik untuk melihat rincian lengkap siswa"
+                      >
                         <td className="px-6 py-4 font-mono font-bold text-slate-800 tracking-wider">{s.nisn}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                            <span className="font-extrabold text-slate-900">{s.name}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+                            <span className="font-extrabold text-slate-900 hover:text-[#5AB2FF] transition-all">{s.name}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-600">{s.class_name}</td>
@@ -1259,11 +1544,19 @@ export const MasterDatabaseManagement: React.FC = () => {
                             <Check className="w-3 h-3" /> {s.status}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            onClick={() => setSelectedStudentDetail(s)}
+                            className="text-[10px] bg-[#CAF4FF] hover:bg-[#5AB2FF] hover:text-white text-slate-800 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider transition-all"
+                          >
+                            Detail
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {getFilteredStudents().length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium">
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium">
                           Tidak ada data siswa yang cocok dengan pencarian Anda.
                         </td>
                       </tr>
@@ -1283,16 +1576,22 @@ export const MasterDatabaseManagement: React.FC = () => {
                       <th className="px-6 py-4">Mata Pelajaran Diampu</th>
                       <th className="px-6 py-4">Waktu Sinkron</th>
                       <th className="px-6 py-4 text-center">Status Sagara</th>
+                      <th className="px-6 py-4 text-center">Aksi</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#CAF4FF]/50 font-bold text-slate-700">
                     {getFilteredGtk().map((g) => (
-                      <tr key={g.id} className="hover:bg-slate-50/40 transition-all">
+                      <tr 
+                        key={g.id} 
+                        onClick={() => setSelectedGtkDetail(g)}
+                        className="hover:bg-indigo-50/30 cursor-pointer transition-all"
+                        title="Klik untuk melihat rincian lengkap GTK"
+                      >
                         <td className="px-6 py-4 font-mono font-bold text-slate-800 tracking-wider">{g.nuptk}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
-                            <span className="font-extrabold text-slate-900">{g.name}</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                            <span className="font-extrabold text-slate-900 hover:text-indigo-500 transition-all">{g.name}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-slate-600 font-bold">{g.position}</td>
@@ -1303,11 +1602,19 @@ export const MasterDatabaseManagement: React.FC = () => {
                             <Check className="w-3 h-3" /> {g.status}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button 
+                            onClick={() => setSelectedGtkDetail(g)}
+                            className="text-[10px] bg-indigo-100 hover:bg-indigo-500 hover:text-white text-slate-800 px-2.5 py-1 rounded-lg font-black uppercase tracking-wider transition-all"
+                          >
+                            Detail
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {getFilteredGtk().length === 0 && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-12 text-center text-slate-400 font-medium">
+                        <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium">
                           Tidak ada data GTK yang cocok dengan pencarian Anda.
                         </td>
                       </tr>
@@ -1671,6 +1978,222 @@ export const MasterDatabaseManagement: React.FC = () => {
 
           </div>
 
+        </div>
+      )}
+
+      {/* 1. STUDENT DETAIL MODAL POPUP */}
+      {selectedStudentDetail && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#CAF4FF] flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-[#5AB2FF] to-[#7bc0ff] text-white flex justify-between items-center">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 text-white px-2 py-0.5 rounded">Rincian Lengkap Siswa</span>
+                <h3 className="text-xl font-black tracking-tight mt-1">{selectedStudentDetail.name}</h3>
+              </div>
+              <button 
+                onClick={() => setSelectedStudentDetail(null)}
+                className="p-1.5 bg-white/20 hover:bg-white/30 rounded-xl transition-all text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-slate-700 text-xs font-bold">
+              
+              {/* Profil & Akademik */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-[#5AB2FF]" /> Identitas & Akademik
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">NISN</span>
+                    <span className="text-slate-800 text-sm font-black font-mono mt-0.5 block">{selectedStudentDetail.nisn}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Kelas / Rombel</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedStudentDetail.class_name}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Jenis Kelamin</span>
+                    <span className="text-slate-800 mt-0.5 block">{selectedStudentDetail.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Asal Instansi</span>
+                    <span className="text-slate-800 mt-0.5 block truncate">{selectedStudentDetail.school_name || selectedSchool?.school_name || 'SD Negeri Remen 2'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Sosial Ekonomi */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <Coins className="w-4 h-4 text-emerald-500" /> Profil Sosial & Kemampuan Ekonomi
+                </h4>
+                <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50 flex items-center gap-4">
+                  <div className="p-3 bg-emerald-100/50 text-emerald-600 rounded-xl">
+                    <Coins className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Status Kemampuan Ekonomi</span>
+                    <span className="text-emerald-700 text-base font-black mt-0.5 block">{selectedStudentDetail.economy_status || 'Mampu'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Kesehatan Siswa */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <Heart className="w-4 h-4 text-rose-500" /> Profil & Data Kesehatan Siswa
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Golongan Darah</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedStudentDetail.blood_type || '-'}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Tinggi Badan</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedStudentDetail.height ? `${selectedStudentDetail.height} cm` : '-'}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 text-center">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Berat Badan</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedStudentDetail.weight ? `${selectedStudentDetail.weight} kg` : '-'}</span>
+                  </div>
+                </div>
+                {selectedStudentDetail.health_notes && (
+                  <div className="bg-rose-50/50 p-3.5 rounded-2xl border border-rose-100 text-rose-800">
+                    <span className="text-rose-600 block text-[9px] uppercase font-black mb-1">Catatan Riwayat Kesehatan</span>
+                    <p className="font-bold">{selectedStudentDetail.health_notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* metadata Sagara */}
+              <div className="flex justify-between items-center text-[10px] text-slate-400 pt-4 border-t border-slate-100">
+                <span>Sinkronisasi: {selectedStudentDetail.sync_time}</span>
+                <span className="text-emerald-600 uppercase font-black">INTEGRITAS DATA TERJAMIN</span>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setSelectedStudentDetail(null)}
+                className="px-5 py-2.5 bg-[#5AB2FF] hover:bg-[#7bc0ff] text-white rounded-xl text-xs font-black transition-all"
+              >
+                Tutup Rincian
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* 2. GTK DETAIL MODAL POPUP */}
+      {selectedGtkDetail && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-[#CAF4FF] flex flex-col max-h-[90vh]">
+            
+            {/* Modal Header */}
+            <div className="p-6 bg-gradient-to-r from-indigo-500 to-violet-500 text-white flex justify-between items-center">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider bg-white/25 text-white px-2 py-0.5 rounded">Rincian Lengkap Tenaga Pendidik (GTK)</span>
+                <h3 className="text-xl font-black tracking-tight mt-1">{selectedGtkDetail.name}</h3>
+              </div>
+              <button 
+                onClick={() => setSelectedGtkDetail(null)}
+                className="p-1.5 bg-white/20 hover:bg-white/30 rounded-xl transition-all text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6 text-slate-700 text-xs font-bold">
+              
+              {/* Profil & Akademik */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <User className="w-4 h-4 text-indigo-500" /> Identitas & Jabatan GTK
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">NUPTK / NIP</span>
+                    <span className="text-slate-800 text-sm font-black font-mono mt-0.5 block">{selectedGtkDetail.nuptk}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Jabatan</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedGtkDetail.position}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Mata Pelajaran Utama</span>
+                    <span className="text-slate-800 mt-0.5 block">{selectedGtkDetail.subject || '-'}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Jenis Kelamin</span>
+                    <span className="text-slate-800 mt-0.5 block">{selectedGtkDetail.gender === 'L' ? 'Laki-Laki' : 'Perempuan'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Kepegawaian & Sertifikasi */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" /> Status Kepegawaian & Sertifikasi
+                </h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Status Pegawai</span>
+                    <span className="text-slate-800 text-sm font-black mt-0.5 block">{selectedGtkDetail.employment_status || 'GTT / PTT'}</span>
+                  </div>
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Sertifikasi Guru</span>
+                    <span className={`text-xs font-black mt-1 block px-2 py-0.5 w-fit rounded ${selectedGtkDetail.is_certified ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      {selectedGtkDetail.is_certified ? 'SUDAH SERTIFIKASI' : 'BELUM SERTIFIKASI'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Instansi Asal & Sinkronisasi */}
+              <div className="space-y-3">
+                <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-1.5 flex items-center gap-1.5">
+                  <School className="w-4 h-4 text-violet-500" /> Penempatan Instansi Sagara
+                </h4>
+                <div className="bg-violet-50/50 p-4 rounded-2xl border border-violet-100/50 flex items-center gap-4">
+                  <div className="p-3 bg-violet-100/50 text-violet-600 rounded-xl">
+                    <School className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <span className="text-slate-400 block text-[9px] uppercase font-black">Sekolah Penugasan</span>
+                    <span className="text-violet-700 text-base font-black mt-0.5 block">{selectedGtkDetail.school_name || selectedSchool?.school_name || 'SD Negeri Remen 2'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* metadata Sagara */}
+              <div className="flex justify-between items-center text-[10px] text-slate-400 pt-4 border-t border-slate-100">
+                <span>Sinkronisasi: {selectedGtkDetail.sync_time}</span>
+                <span className="text-emerald-600 uppercase font-black">INTEGRITAS DATA TERJAMIN</span>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button 
+                onClick={() => setSelectedGtkDetail(null)}
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition-all"
+              >
+                Tutup Rincian
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
 

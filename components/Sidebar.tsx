@@ -6,7 +6,7 @@ import {
   UserCog, HeartHandshake, Tent, BookText, Smile, Link2, FileText, Contact, BookOpen, 
   UserCheck, Database, NotebookPen, Files, Activity, Building, Wallet, Camera, Book,
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
-  AlertTriangle, ClipboardList, Code
+  AlertTriangle, ClipboardList, Code, RefreshCw
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 
@@ -98,6 +98,7 @@ const menuGroups = [
        { id: 'tautan-kepegawaian', label: 'Aplikasi Terintegrasi', icon: Link2, roles: ['admin'] },
        { id: 'manajemen-database-pusat', label: 'Manajemen Pusat', icon: Database, roles: ['superadmin'] },
        { id: 'cadangan-pemulihan', label: 'Backup & Restore', icon: Database, roles: ['admin'] },
+       { id: 'sinkronisasi-sagara', label: 'Sinkronisasi Pusat', icon: RefreshCw, roles: ['admin', 'superadmin'] },
     ]
   }
 ];

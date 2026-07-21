@@ -470,6 +470,7 @@ export type ViewState =
   | 'mitigasi-bencana'
   | 'manajemen-database-pusat'
   | 'edit-pengembang'
+  | 'sinkronisasi-sagara'
   | 'data-gtk';
 
 export type QuestionType = 'pg' | 'pgk' | 'bs' | 'uraian';

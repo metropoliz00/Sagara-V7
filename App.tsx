@@ -67,6 +67,7 @@ import OnlineUsersWidget from './components/OnlineUsersWidget';
 import { DeveloperInfoView } from './components/DeveloperInfoView';
 import { TextToSpeechAccessibility } from './components/TextToSpeechAccessibility';
 import { MasterDatabaseManagement } from './components/MasterDatabaseManagement';
+import { SinkronisasiSagara } from './components/SinkronisasiSagara';
 import { masterSupabase, setTemporarySupabase } from './services/supabaseClient';
 import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Sumatif, GtkRecord, PerformanceAssessment } from './types';
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
@@ -149,6 +150,7 @@ const AppContent: React.FC = () => {
       'monitor-siswa': 'Monitor Siswa',
       'buku-penghubung': 'Buku Penghubung',
       'cadangan-pemulihan': 'Backup & Restore',
+      'sinkronisasi-sagara': 'Sinkronisasi Sagara',
       'administrasi/bukti-dukung': 'Dokumen Pendukung',
       'supervisi': 'Supervisi',
       'administrasi/sarana-prasarana': 'Sarana Prasarana',
@@ -2933,6 +2935,10 @@ const AppContent: React.FC = () => {
                 <Route path="/manajemen-database-pusat" element={
                     currentUser.role !== 'superadmin' ? <Navigate to="/" replace /> :
                     <MasterDatabaseManagement />
+                } />
+                <Route path="/sinkronisasi-sagara" element={
+                    (currentUser.role !== 'admin' && currentUser.role !== 'superadmin') ? <Navigate to="/" replace /> :
+                    <SinkronisasiSagara />
                 } />
                 <Route path="/edit-pengembang" element={
                     currentUser.role !== 'superadmin' ? <Navigate to="/" replace /> :

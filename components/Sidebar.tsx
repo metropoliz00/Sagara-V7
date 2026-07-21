@@ -97,7 +97,6 @@ const menuGroups = [
        { id: 'manajemen-akun', label: 'Manajemen Akun', icon: UserCog, roles: ['admin'] },
        { id: 'tautan-kepegawaian', label: 'Aplikasi Terintegrasi', icon: Link2, roles: ['admin'] },
        { id: 'manajemen-database-pusat', label: 'Manajemen Pusat', icon: Database, roles: ['superadmin'] },
-       { id: 'cadangan-pemulihan', label: 'Backup & Restore', icon: Database, roles: ['admin'] },
        { id: 'sinkronisasi-sagara', label: 'Sinkronisasi Pusat', icon: RefreshCw, roles: ['admin', 'superadmin'] },
     ]
   }

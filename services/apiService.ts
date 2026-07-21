@@ -1036,7 +1036,7 @@ export const apiService = {
   },
 
   // --- Profiles ---
-  getProfiles: async (): Promise<{ teacher?: TeacherProfileData, school?: SchoolProfileData }> => {
+  getProfiles: async (): Promise<{ teacher?: TeacherProfileData, school?: SchoolProfileData, service_info?: any }> => {
     const { data, error } = await supabase.from('profiles').select('*');
     if (error) return {};
     const profiles: any = {};
@@ -3750,6 +3750,62 @@ export const apiService = {
     if (error) {
       console.error("Error updating password:", error);
       throw error;
+    }
+  },
+
+  // --- Audit Logs ---
+  getAuditLogs: async (): Promise<any[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('timestamp', { ascending: false });
+      
+      if (error) {
+        if (error.code === '42P01') { 
+            return [];
+        }
+        throw error;
+      }
+      return data.map((l: any) => ({
+        id: l.id,
+        timestamp: l.timestamp,
+        user_id: l.user_id,
+        userName: l.user_name,
+        role: l.role,
+        schoolId: l.school_id,
+        tableName: l.table_name,
+        dataId: l.data_id,
+        action: l.action,
+        before: l.before,
+        after: l.after,
+        ipAddress: l.ip_address,
+        device: l.device
+      }));
+    } catch (err) {
+      console.warn("getAuditLogs database query failed:", err);
+      return [];
+    }
+  },
+  createAuditLog: async (log: any): Promise<void> => {
+    try {
+      const { error } = await supabase.from('audit_logs').insert([{
+        timestamp: log.timestamp || new Date().toISOString(),
+        user_id: log.user_id || log.userId,
+        user_name: log.userName,
+        role: log.role,
+        school_id: log.schoolId,
+        table_name: log.tableName,
+        data_id: log.dataId,
+        action: log.action,
+        before: typeof log.before === 'string' ? log.before : JSON.stringify(log.before),
+        after: typeof log.after === 'string' ? log.after : JSON.stringify(log.after),
+        ip_address: log.ipAddress,
+        device: log.device
+      }]);
+      if (error) throw error;
+    } catch (err) {
+      console.warn("createAuditLog database insert failed:", err);
     }
   },
 };

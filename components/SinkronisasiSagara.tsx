@@ -194,10 +194,18 @@ export const SinkronisasiSagara: React.FC = () => {
         addLog("Database Pusat (Sagara Central Cloud Server) tersambung via Sagara REST Bridge.");
       }
 
-      // 3. Load School Profile
+      // 3. Load School Profile & Integration Config
       addLog("Membaca profil sekolah dan mengkalkulasi statistik data dari modul terintegrasi...");
       const profiles = await apiService.getProfiles();
       const sProfile = profiles.school;
+      
+      // Load Integration Config if exists
+      if (profiles.service_info) {
+        setIntegrasiSistem(prev => ({
+          ...prev,
+          ...profiles.service_info
+        }));
+      }
       
       if (sProfile) {
         setSchoolCode((sProfile.npsn || '20521001').trim());
@@ -207,16 +215,18 @@ export const SinkronisasiSagara: React.FC = () => {
       }
 
       // 4. Load Live Counts & Real Data Validation
-      const [students, gtk, inventory, assets, users] = await Promise.all([
+      const [students, gtk, inventory, assets, users, audits] = await Promise.all([
         apiService.getStudents(null),
         apiService.getGtkData(),
         apiService.getInventory('ALL'),
         apiService.getSchoolAssets(),
-        apiService.getUsers(null)
+        apiService.getUsers(null),
+        apiService.getAuditLogs()
       ]);
 
       setStudentList(students);
       setGtkList(gtk);
+      setAuditLogs(audits);
       setSarprasList(assets.map(a => ({
         id: a.id,
         namaAset: a.name,
@@ -425,6 +435,25 @@ export const SinkronisasiSagara: React.FC = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
       addLog("[6/6] Menulis riwayat sinkronisasi SinkronisasiSagara...");
       
+      // Add audit log for sync
+      const currentSyncLog: AuditLogItem = {
+        id: `aud-sync-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        user_id: 'system',
+        userName: 'Sagara Sync Engine',
+        role: 'system',
+        schoolId: schoolCode,
+        tableName: 'ALL_TABLES',
+        dataId: 'MULTIPLE_RECORDS',
+        action: 'SYNC',
+        before: 'PENDING_SYNC',
+        after: `SYNCED (${result.syncedCount} records)`,
+        ipAddress: '127.0.0.1',
+        device: 'SAGARA Server Engine v1.2'
+      };
+      await apiService.createAuditLog(currentSyncLog);
+      setAuditLogs(prev => [currentSyncLog, ...prev]);
+
       // Update all pending syncs to SYNCED
       setDataChanges(prev => prev.map(chg => ({ ...chg, status: 'SYNCED' })));
       setRombelList(prev => prev.map(rom => ({ ...rom, status: 'SYNCED' })));
@@ -1587,7 +1616,34 @@ export const SinkronisasiSagara: React.FC = () => {
               <div className="flex justify-between items-center pt-8 border-t border-slate-50 relative z-10">
                 <span className="text-[10px] text-slate-400 font-black font-mono tracking-widest">BUILD_ID: {integrasiSistem.syncVersion}</span>
                 <button
-                  onClick={() => setSuccessMsg("Konfigurasi integrasi SAGARA API berhasil disimpan!")}
+                  onClick={async () => {
+                    try {
+                      await apiService.saveProfile('service_info', integrasiSistem);
+                      
+                      // Audit log for config change
+                      const configAudit: AuditLogItem = {
+                        id: `aud-cfg-${Date.now()}`,
+                        timestamp: new Date().toISOString(),
+                        user_id: 'admin',
+                        userName: 'Administrator',
+                        role: 'admin',
+                        schoolId: schoolCode,
+                        tableName: 'profiles',
+                        dataId: 'service_info',
+                        action: 'UPDATE',
+                        before: 'OLD_CONFIG',
+                        after: JSON.stringify(integrasiSistem),
+                        ipAddress: '127.0.0.1',
+                        device: navigator.userAgent
+                      };
+                      await apiService.createAuditLog(configAudit);
+                      setAuditLogs(prev => [configAudit, ...prev]);
+                      
+                      setSuccessMsg("Konfigurasi integrasi SAGARA API berhasil disimpan!");
+                    } catch (err) {
+                      setError("Gagal menyimpan konfigurasi integrasi.");
+                    }
+                  }}
                   className="px-10 py-4 bg-slate-900 hover:bg-emerald-600 text-white font-black text-[11px] rounded-2xl transition-all shadow-xl shadow-slate-900/10 active:scale-95 uppercase tracking-widest"
                 >
                   Terapkan Enkripsi

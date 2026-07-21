@@ -2292,6 +2292,48 @@ export const apiService = {
   },
 
   // --- Backup/Restore ---
+  fetchCentralRestoreData: async (schoolCode: string): Promise<any> => {
+    if (!masterSupabase) {
+      throw new Error("Master database client is not configured.");
+    }
+
+    const tables = [
+      'users', 'students', 'graduates', 'agendas', 'materials', 'grades', 
+      'counseling', 'extracurriculars', 'profiles', 'holidays', 'attendance', 
+      'penilaian_sikap', 'penilaian_karakter', 'employment_links', 'inventory', 
+      'guests', 'class_config', 'sumatifs', 'sumatif_results', 'academic_calendar', 
+      'schedule', 'book_inventory', 'book_loans', 'bos_management', 'school_assets', 
+      'learning_documentation', 'support_documents', 'permission_requests', 
+      'buku_penghubung', 'jurnal_kelas', 'learning_reports', 'learning_plans',
+      'kokurikuler_plans', 'emergency_alerts', 'performance_assessments', 'gtk_data'
+    ];
+
+    const backup: any = {};
+    
+    try {
+      const results = await Promise.all(tables.map(table => 
+        masterSupabase!.from(`synced_${table}`).select('*').eq('school_code', schoolCode)
+      ));
+      
+      results.forEach((res, index) => {
+        if (!res.error && res.data) {
+          // Remove school_code before returning to restoreData
+          const cleanedData = res.data.map((row: any) => {
+            const { school_code, ...rest } = row;
+            return rest;
+          });
+          backup[tables[index]] = cleanedData;
+        } else {
+          console.warn(`Warning: Table synced_${tables[index]} could not be fetched or does not exist for NPSN ${schoolCode}.`);
+        }
+      });
+      
+      return backup;
+    } catch (error) {
+      console.error("Error during central database restore fetch:", error);
+      throw error;
+    }
+  },
   backupData: async (): Promise<any> => {
     const tables = [
       'users', 'students', 'graduates', 'agendas', 'materials', 'grades', 

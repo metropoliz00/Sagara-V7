@@ -122,37 +122,15 @@ export const SinkronisasiSagara: React.FC = () => {
   const [studentList, setStudentList] = useState<any[]>([]);
   const [gtkList, setGtkList] = useState<any[]>([]);
 
-  // 1. Dashboard Data Breakdown States (Mock Database Tables)
-  const [dataChanges, setDataChanges] = useState<DataChange[]>([
-    { id: 'chg-1', jenisData: 'Peserta Didik', namaData: 'Ahmad Fauzan', dataLama: 'Kelas V-A', dataBaru: 'Kelas VI-A', diubahOleh: 'Operator Sagara', waktu: '21 Juli 2026, 14:20 WIB', status: 'PENDING_SYNC' },
-    { id: 'chg-2', jenisData: 'GTK', namaData: 'Siti Rahmawati, S.Pd.', dataLama: 'Masa Kerja 5 Tahun', dataBaru: 'Masa Kerja 6 Tahun', diubahOleh: 'Kepala Sekolah', waktu: '21 Juli 2026, 11:15 WIB', status: 'UPDATED' },
-    { id: 'chg-3', jenisData: 'Rombel', namaData: 'Kelas X-MIPA 1', dataLama: 'Siswa: 32', dataBaru: 'Siswa: 34', diubahOleh: 'Operator Sagara', waktu: '21 Juli 2026, 09:30 WIB', status: 'SYNCED' },
-    { id: 'chg-4', jenisData: 'Sarpras', namaData: 'Infocus Epson X400', dataLama: 'Kondisi: Baik', dataBaru: 'Kondisi: Rusak Ringan', diubahOleh: 'Wakasek Sarpras', waktu: '20 Juli 2026, 16:45 WIB', status: 'SYNCED' },
-    { id: 'chg-5', jenisData: 'Nilai Siswa', namaData: 'Salsa Bila (Bahasa Indonesia)', dataLama: 'Nilai: 78', dataBaru: 'Nilai: 88', diubahOleh: 'Siti Rahmawati, S.Pd.', waktu: '21 Juli 2026, 14:10 WIB', status: 'PENDING_SYNC' }
-  ]);
+  // 1. Dashboard Data Breakdown States
+  const [dataChanges, setDataChanges] = useState<DataChange[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationErrorItem[]>([]);
+  const [syncHistory, setSyncHistory] = useState<{ id: string; waktu: string; pengirim: string; jumlahData: number; berhasil: number; gagal: number; durasi: string; status: string }[]>(() => {
+    const saved = localStorage.getItem('sagara_sync_history');
+    return saved ? JSON.parse(saved) : [];
+  });
 
-  const [validationErrors, setValidationErrors] = useState<ValidationErrorItem[]>([
-    { id: 'err-1', kategori: 'Perlu Diperbaiki', jenisData: 'Peserta Didik', namaItem: 'Budi Santoso', keterangan: 'Format NIK tidak valid (harus 16 digit)', rekomendasi: 'Periksa kembali KTP/KK Budi Santoso dan input ulang NIK', status: 'INVALID' },
-    { id: 'err-2', kategori: 'Tidak Lengkap', jenisData: 'Peserta Didik', namaItem: 'Dian Wijaya', keterangan: 'Peserta didik belum dimasukkan ke Rombongan Belajar (Rombel)', rekomendasi: 'Masuk ke menu Rombel dan tambahkan Dian Wijaya ke rombel aktif', status: 'INVALID' },
-    { id: 'err-3', kategori: 'Duplikat', jenisData: 'Peserta Didik', namaItem: 'Rani Safitri', keterangan: 'Duplikasi Nomor Induk Siswa Nasional (NISN: 0102938475)', rekomendasi: 'Pastikan NISN unik, hapus salah satu duplikasi', status: 'INVALID' },
-    { id: 'err-4', kategori: 'Tidak Lengkap', jenisData: 'Guru & GTK', namaItem: 'Joko Susilo, M.Pd.', keterangan: 'Data NIK dan Gelar Akademik belum lengkap', rekomendasi: 'Buka profil guru Joko Susilo dan lengkapi atribut wajib', status: 'INVALID' },
-    { id: 'err-5', kategori: 'Gagal Validasi', jenisData: 'Rombongan Belajar', namaItem: 'Kelas XI-IPS 3', keterangan: 'Rombel tidak memiliki Wali Kelas yang ditunjuk', rekomendasi: 'Tunjuk guru aktif sebagai wali kelas untuk XI-IPS 3', status: 'INVALID' },
-    { id: 'err-6', kategori: 'Gagal Validasi', jenisData: 'Guru & GTK', namaItem: 'Anisa Bahar, S.T.', keterangan: 'Guru terdaftar tetapi belum memiliki jadwal mengajar', rekomendasi: 'Petakan mata pelajaran dan jam mengajar di jadwal kelas', status: 'INVALID' }
-  ]);
-
-  const [syncHistory, setSyncHistory] = useState([
-    { id: 'sch-1', waktu: '21 Juli 2026, 14:35 WIB', pengirim: 'Operator Sagara', jumlahData: 125, berhasil: 125, gagal: 0, durasi: '12 detik', status: 'Berhasil' },
-    { id: 'sch-2', waktu: '20 Juli 2026, 10:00 WIB', pengirim: 'Operator Sagara', jumlahData: 94, berhasil: 94, gagal: 0, durasi: '9 detik', status: 'Berhasil' },
-    { id: 'sch-3', waktu: '19 Juli 2026, 16:15 WIB', pengirim: 'Siti Rahmawati (Guru)', jumlahData: 48, berhasil: 45, gagal: 3, durasi: '6 detik', status: 'Gagal Sebagian' },
-    { id: 'sch-4', waktu: '18 Juli 2026, 08:30 WIB', pengirim: 'Operator Sagara', jumlahData: 156, berhasil: 156, gagal: 0, durasi: '15 detik', status: 'Berhasil' }
-  ]);
-
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([
-    { id: 'aud-1', timestamp: '2026-07-21T14:35:00Z', user_id: 'usr-99', userName: 'Operator Sagara', role: 'admin', schoolId: 'sch-bandung-01', tableName: 'students', dataId: 'std-201', action: 'SYNC', before: '{"sync_status": "PENDING_SYNC"}', after: '{"sync_status": "SYNCED"}', ipAddress: '192.168.1.100', device: 'Chrome on Windows 11' },
-    { id: 'aud-2', timestamp: '2026-07-21T14:20:12Z', user_id: 'usr-99', userName: 'Operator Sagara', role: 'admin', schoolId: 'sch-bandung-01', tableName: 'students', dataId: 'std-201', action: 'UPDATE', before: '{"class_id": "Kelas V-A"}', after: '{"class_id": "Kelas VI-A"}', ipAddress: '192.168.1.100', device: 'Chrome on Windows 11' },
-    { id: 'aud-3', timestamp: '2026-07-21T14:10:45Z', user_id: 'usr-32', userName: 'Siti Rahmawati, S.Pd.', role: 'guru', schoolId: 'sch-bandung-01', tableName: 'grade_records', dataId: 'grd-842', action: 'CREATE', before: '{}', after: '{"student_id": "Salsa Bila", "subject": "Bahasa Indonesia", "score": 88}', ipAddress: '192.168.1.102', device: 'Safari on iPad OS' },
-    { id: 'aud-4', timestamp: '2026-07-21T11:15:30Z', user_id: 'usr-01', userName: 'Drs. H. Mulyana (Kepala Sekolah)', role: 'kepala_sekolah', schoolId: 'sch-bandung-01', tableName: 'teachers', dataId: 'tcr-105', action: 'UPDATE', before: '{"years_of_service": 5}', after: '{"years_of_service": 6}', ipAddress: '192.168.1.10', device: 'Firefox on macOS Monterey' }
-  ]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
 
   const [rombelList, setRombelList] = useState<RombelItem[]>([
     { id: 'rom-1', namaRombel: 'Kelas VII-A', tingkat: 'Tingkat 7', waliKelas: 'Siti Rahmawati, S.Pd.', totalSiswa: 32, status: 'SYNCED' },
@@ -334,6 +312,39 @@ export const SinkronisasiSagara: React.FC = () => {
 
       setValidationErrors(realErrors);
 
+      // Generate real-time data changes list (simulated based on pending status or recent dates)
+      const mockChanges: DataChange[] = [];
+      
+      // Identify students with missing class or NISN as "Pending Sync"
+      students.filter(s => !s.classId || !s.nisn).slice(0, 5).forEach(s => {
+        mockChanges.push({
+          id: `chg-std-${s.id}`,
+          jenisData: 'Peserta Didik',
+          namaData: s.name,
+          dataLama: 'Record Baru / Belum Lengkap',
+          dataBaru: 'Menunggu Validasi Pusat',
+          diubahOleh: 'Sistem Sagara',
+          waktu: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          status: 'PENDING_SYNC'
+        });
+      });
+
+      // Identify GTK with missing NIP
+      gtk.filter(g => !g.nip).slice(0, 3).forEach(g => {
+        mockChanges.push({
+          id: `chg-gtk-${g.id}`,
+          jenisData: 'GTK',
+          namaData: g.nama,
+          dataLama: 'Data Lokal',
+          dataBaru: 'Update Profil GTK',
+          diubahOleh: 'Operator Sekolah',
+          waktu: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+          status: 'UPDATED'
+        });
+      });
+
+      setDataChanges(mockChanges);
+
       const validPct = students.length > 0 ? Math.round(((students.length - realErrors.filter(e => e.jenisData === 'Peserta Didik').length) / students.length) * 100) : 100;
 
       setStats({
@@ -423,10 +434,12 @@ export const SinkronisasiSagara: React.FC = () => {
       
       // Add new log to sync history
       const nowStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) + `, ${new Date().toLocaleTimeString()} WIB`;
-      setSyncHistory(prev => [
+      const newHistory = [
         { id: `sch-${Date.now()}`, waktu: nowStr, pengirim: 'Operator Sagara', jumlahData: result.syncedCount, berhasil: result.syncedCount, gagal: 0, durasi: '12 detik', status: 'Berhasil' },
-        ...prev
-      ]);
+        ...syncHistory
+      ];
+      setSyncHistory(newHistory);
+      localStorage.setItem('sagara_sync_history', JSON.stringify(newHistory));
 
       setSyncStats(prev => ({
         ...prev,

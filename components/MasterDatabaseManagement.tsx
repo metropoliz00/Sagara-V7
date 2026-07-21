@@ -586,27 +586,97 @@ export const MasterDatabaseManagement: React.FC = () => {
           }
 
           if (resAt.data && resAt.data.length > 0) {
-            finalAttendance = resAt.data.map((row: any) => ({
-              id: row.id,
-              student_name: row.student_name || 'Siswa',
-              class_name: row.class_name || 'Tidak Ada Kelas',
-              date: row.date || new Date().toISOString().split('T')[0],
-              status: cleanStatus(row.status),
-              sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
-            }));
+            const studentMap = new Map<string, { name: string; className: string }>();
+            finalStudents.forEach(s => {
+              studentMap.set(s.id, { name: s.name, className: s.class_name });
+            });
+
+            const parsedAttendance: AttendanceRecord[] = [];
+            resAt.data.forEach((row: any) => {
+              if (row.records) {
+                const recordsList = typeof row.records === 'string' ? JSON.parse(row.records) : row.records;
+                if (Array.isArray(recordsList)) {
+                  const parts = row.id.split('_');
+                  const classId = parts[0] || 'Tidak Ada Kelas';
+                  const dateStr = parts[1] || (row.created_at ? new Date(row.created_at).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
+                  
+                  recordsList.forEach((rec: any, idx: number) => {
+                    const studentIdVal = rec.studentId || rec.student_id;
+                    const sInfo = studentMap.get(studentIdVal) || { name: rec.student_name || rec.student_id || 'Siswa', className: classId };
+                    parsedAttendance.push({
+                      id: `${row.id}-${idx}`,
+                      student_name: sInfo.name,
+                      class_name: sInfo.className,
+                      date: dateStr,
+                      status: cleanStatus(rec.status),
+                      sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+                    });
+                  });
+                }
+              }
+            });
+            finalAttendance = parsedAttendance;
             isUsingRealData = true;
           }
 
           if (resGr.data && resGr.data.length > 0) {
-            finalGrades = resGr.data.map((row: any) => ({
-              id: row.id,
-              student_name: row.student_name || 'Siswa',
-              class_name: row.class_name || 'Tidak Ada Kelas',
-              subject: row.subject || 'Mata Pelajaran',
-              exam_type: (row.exam_type === 'Sumatif Tengah Semester' || row.exam_type === 'Sumatif Akhir Semester' ? row.exam_type : 'Tugas Harian'),
-              score: Number(row.score) || 0,
-              sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
-            }));
+            const studentMap = new Map<string, { name: string; className: string }>();
+            finalStudents.forEach(s => {
+              studentMap.set(s.id, { name: s.name, className: s.class_name });
+            });
+
+            const parsedGrades: GradeRecord[] = [];
+            resGr.data.forEach((row: any) => {
+              const sInfo = studentMap.get(row.student_id) || { name: 'Siswa', className: row.class_id || 'Kelas' };
+              
+              if (row.sum1 !== undefined && row.sum1 !== null && Number(row.sum1) > 0) {
+                parsedGrades.push({
+                  id: `${row.student_id}-${row.subject_id}-sum1`,
+                  student_name: sInfo.name,
+                  class_name: sInfo.className,
+                  subject: row.subject_id || 'Mata Pelajaran',
+                  exam_type: 'Tugas Harian',
+                  score: Number(row.sum1),
+                  sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+                });
+              }
+              if (row.sum2 !== undefined && row.sum2 !== null && Number(row.sum2) > 0) {
+                parsedGrades.push({
+                  id: `${row.student_id}-${row.subject_id}-sum2`,
+                  student_name: sInfo.name,
+                  class_name: sInfo.className,
+                  subject: row.subject_id || 'Mata Pelajaran',
+                  exam_type: 'Sumatif Tengah Semester',
+                  score: Number(row.sum2),
+                  sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+                });
+              }
+              if (row.sas !== undefined && row.sas !== null && Number(row.sas) > 0) {
+                parsedGrades.push({
+                  id: `${row.student_id}-${row.subject_id}-sas`,
+                  student_name: sInfo.name,
+                  class_name: sInfo.className,
+                  subject: row.subject_id || 'Mata Pelajaran',
+                  exam_type: 'Sumatif Akhir Semester',
+                  score: Number(row.sas),
+                  sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+                });
+              }
+
+              const hasGrades = parsedGrades.some(g => g.id.startsWith(`${row.student_id}-${row.subject_id}`));
+              if (!hasGrades) {
+                parsedGrades.push({
+                  id: `${row.student_id}-${row.subject_id}-default`,
+                  student_name: sInfo.name,
+                  class_name: sInfo.className,
+                  subject: row.subject_id || 'Mata Pelajaran',
+                  exam_type: 'Tugas Harian',
+                  score: Number(row.sum1 || 0),
+                  sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+                });
+              }
+            });
+            finalGrades = parsedGrades;
             isUsingRealData = true;
           }
 
@@ -618,8 +688,8 @@ export const MasterDatabaseManagement: React.FC = () => {
               creator: row.creator || row.author || 'Guru Sagara',
               size: row.size || row.file_size || '1.8 MB',
               downloads: Number(row.downloads) || 0,
-              category: row.category || 'Materi Umum',
-              sync_time: row.updated_at ? new Date(row.updated_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
+              category: row.subject_id || row.category || 'Materi Umum',
+              sync_time: row.created_at ? new Date(row.created_at).toLocaleString('id-ID') : new Date().toLocaleString('id-ID')
             }));
             isUsingRealData = true;
           }

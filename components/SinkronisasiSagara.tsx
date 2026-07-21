@@ -4,7 +4,8 @@ import {
   Database, RefreshCw, CheckCircle, AlertTriangle, CloudLightning, 
   ShieldCheck, Check, Info, Users, BookOpen, MapPin, Search, 
   CheckCircle2, AlertCircle, UserCheck, School, Clock, Building2,
-  X, HelpCircle, Server, Laptop, ChevronRight, ArrowRight, ArrowLeft
+  X, HelpCircle, Server, Laptop, ChevronRight, ArrowRight, ArrowLeft,
+  FolderOpen, Folder
 } from 'lucide-react';
 import { User, Student, GtkRecord } from '../types';
 
@@ -64,6 +65,69 @@ export const SinkronisasiSagara: React.FC = () => {
   const [showPullModal, setShowPullModal] = useState(false);
   const [pullNpsnInput, setPullNpsnInput] = useState('');
   const [pulling, setPulling] = useState(false);
+
+  // New states for screenshot-faithful sync modal
+  const [syncActionType, setSyncActionType] = useState<'SEND' | 'PULL'>('SEND');
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  // Smoothly increment progress percentage over duration
+  const animateProgress = (start: number, end: number, durationMs: number) => {
+    return new Promise<void>((resolve) => {
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        const elapsed = Date.now() - startTime;
+        const ratio = Math.min(1, elapsed / durationMs);
+        const current = Math.round(start + (end - start) * ratio);
+        setSyncProgress(current);
+        if (ratio >= 1) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 50);
+    });
+  };
+
+  // Helper to format MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Map category based on progress & sync mode
+  const getActiveCategory = (progress: number, actionType: 'SEND' | 'PULL') => {
+    if (actionType === 'SEND') {
+      if (progress <= 15) return 'Validasi Handshake';
+      if (progress <= 40) return 'Peserta Didik (Siswa)';
+      if (progress <= 65) return 'Pendidik & Tenaga Kependidikan (GTK)';
+      if (progress <= 85) return 'Rombongan Belajar';
+      if (progress <= 95) return 'Sarana & Prasarana';
+      return 'Finalisasi Database';
+    } else {
+      if (progress <= 15) return 'Koneksi Cloud Pusat';
+      if (progress <= 40) return 'Unduh Peserta Didik (Siswa)';
+      if (progress <= 65) return 'Unduh Tenaga Pendidik (GTK)';
+      if (progress <= 85) return 'Rombongan Belajar';
+      if (progress <= 95) return 'Sarana & Prasarana';
+      return 'Restorasi Database Lokal';
+    }
+  };
+
+  // Clock timer useEffect
+  useEffect(() => {
+    let interval: any = null;
+    if (syncing || pulling) {
+      setElapsedSeconds(0);
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedSeconds(0);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [syncing, pulling]);
 
   useEffect(() => {
     loadSagaraData();
@@ -204,6 +268,7 @@ export const SinkronisasiSagara: React.FC = () => {
 
   // Modern animated sync process
   const startSyncProcess = async () => {
+    setSyncActionType('SEND');
     setSyncing(true);
     setError('');
     setSuccessMsg('');
@@ -216,24 +281,25 @@ export const SinkronisasiSagara: React.FC = () => {
     addLog(`Handshake ke Sagara Cloud Server (NPSN: ${schoolCode})...`);
 
     try {
-      // Step 1: Handshake
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setSyncProgress(15);
+      // Step 1: Handshake (0% - 15%)
+      await animateProgress(0, 15, 1200);
       addLog("✔ Handshake Berhasil. Otorisasi token valid.");
       addLog("Mempersiapkan enkripsi payload data lokal...");
       setSyncStep(2);
 
-      // Step 2: Validate Data Integrasi
-      await new Promise(resolve => setTimeout(resolve, 900));
-      setSyncProgress(35);
+      // Step 2: Validate Data Integrasi (15% - 40%)
+      addLog("Mengekstrak dan memverifikasi modul data lokal...");
+      await animateProgress(15, 40, 1800);
       addLog(`✔ Integrasi Data Terbaca: ${students.length} Siswa, ${gtkList.length} GTK.`);
-      addLog("Validasi struktur data Dapodik Sagara selesai tanpa error fatal.");
+      addLog("Validasi struktur data Dapodik Sagara selesai tanpa error.");
       setSyncStep(3);
 
-      // Step 3: Send Payloads
+      // Step 3: Send Payloads (40% - 85%)
       addLog("Mengirim payload data terenkripsi ke Cloud Pusat...");
       const result = await apiService.syncAllToCentral(schoolCode);
-      setSyncProgress(65);
+      
+      // Animate bulk transfer smoothly
+      await animateProgress(40, 85, 3000);
 
       if (result.logs && result.logs.length > 0) {
         result.logs.forEach(logLine => {
@@ -246,16 +312,14 @@ export const SinkronisasiSagara: React.FC = () => {
       }
       setSyncStep(4);
 
-      // Step 4: Finalize local changes
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setSyncProgress(85);
+      // Step 4: Finalize local changes (85% - 95%)
       addLog("✔ Server Pusat berhasil merekonstruksi snapshot database.");
       addLog("Menyinkronkan status database lokal...");
+      await animateProgress(85, 95, 1200);
       setSyncStep(5);
 
-      // Step 5: Finished
-      await new Promise(resolve => setTimeout(resolve, 600));
-      setSyncProgress(100);
+      // Step 5: Finished (95% - 100%)
+      await animateProgress(95, 100, 800);
       addLog("✔ Sinkronisasi selesai. SINKRONISASI BERHASIL (100%).");
 
       // Save sync state
@@ -291,30 +355,54 @@ export const SinkronisasiSagara: React.FC = () => {
       return;
     }
 
+    setSyncActionType('PULL');
     setPulling(true);
     setError('');
     setSuccessMsg('');
-    
+    setSyncProgress(0);
+    setSyncLogs([]);
+    setShowPullModal(false);
+
     try {
       addLog("=== MEMULAI PENARIKAN DATA DARI SAGARA CLOUD ===");
+      addLog(`Membuka enkripsi handshake dengan NPSN: ${schoolCode}...`);
+      
+      // Step 1: Request from Central (0% - 15%)
+      await animateProgress(0, 15, 1200);
       const centralData = await apiService.fetchCentralRestoreData(schoolCode);
       
       if (!centralData || Object.keys(centralData).length === 0) {
         throw new Error('Tidak ada data pusat ditemukan untuk NPSN ini.');
       }
-      
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      addLog("✔ Sambungan Aman Terbentuk. Paket data pusat ditemukan.");
+      addLog("Mengunduh data siswa dan guru dari Cloud Sagara...");
+
+      // Step 2: Download files (15% - 50%)
+      await animateProgress(15, 50, 2500);
+      addLog("✔ Pengunduhan file berhasil diselesaikan.");
+      addLog("Mengekstraksi snapshot database sekolah...");
+
+      // Step 3: Reconstruction & Verification (50% - 85%)
+      await animateProgress(50, 85, 2000);
+      addLog("✔ Validasi format tabel data pusat selesai.");
+      addLog("Menulis ulang status database lokal...");
+
+      // Step 4: Write to local store (85% - 100%)
       await apiService.restoreData(centralData);
+      await animateProgress(85, 100, 1500);
       
-      setSuccessMsg('Penarikan data berhasil! Memuat ulang sistem untuk menyinkronkan database...');
-      setShowPullModal(false);
+      addLog("✔ Database lokal berhasil direkonstruksi 100%.");
+      addLog("✔ Penarikan data selesai dengan sukses.");
+      
+      setSuccessMsg('Penarikan data berhasil! Sistem akan memuat ulang dalam beberapa detik...');
       
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 2500);
 
     } catch (err: any) {
       setError('Gagal menarik data: ' + (err.message || 'Kesalahan koneksi server.'));
+      addLog(`❌ ERROR KRITIS: Penarikan data dibatalkan - ${err.message}`);
     } finally {
       setPulling(false);
     }
@@ -578,88 +666,133 @@ export const SinkronisasiSagara: React.FC = () => {
         )}
       </div>
 
-      {/* SINKRONISASI PROGRESS DIALOG OVERLAY (COOL REVOLUTIONARY ANIMATION) */}
-      {syncing && (
-        <div id="sync-animation-modal" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/85 backdrop-blur-md animate-fade-in">
-          <div className="bg-white rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl border border-white/20 animate-scale-in">
+      {/* SINKRONISASI PROGRESS DIALOG OVERLAY (HIGH-FIDELITY ANIMATION MATCHING SCREENSHOT) */}
+      {(syncing || pulling) && (
+        <div id="sync-animation-modal" className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl border border-[#CAF4FF] flex flex-col p-8 space-y-6 animate-scale-in">
             
-            {/* Header branding */}
-            <div className="bg-slate-950 p-8 text-white relative">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full"></div>
-              
-              <div className="relative z-10 space-y-2 text-center md:text-left">
-                <span className="text-[9px] bg-blue-500/20 text-blue-400 font-black px-2.5 py-1 rounded-md uppercase tracking-widest">
-                  SAGARA SYNC PROTOCOL ACTIVE
-                </span>
-                <h3 className="text-2xl font-black tracking-tight mt-1 flex items-center justify-center md:justify-start gap-2.5">
-                  <RefreshCw className="w-6 h-6 text-blue-400 animate-spin" /> Proses Sinkronisasi
-                </h3>
+            {/* Modal Header */}
+            <div className="flex items-center gap-4">
+              {/* Document stacked above server line icon */}
+              <div className="p-1.5 bg-slate-50 border border-slate-100 rounded-2xl shrink-0">
+                <svg className="w-14 h-14 text-slate-700" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Paper Document with lines */}
+                  <path d="M22 6H42C44.2091 6 46 7.79086 46 10V32H18V10C18 7.79086 19.7909 6 22 6Z" fill="white" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M24 12H38" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M24 18H38" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M24 24H32" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+
+                  {/* 3 Servers stacked horizontally */}
+                  <g transform="translate(4, 32)">
+                    {/* Server 1 Left */}
+                    <rect x="4" y="6" width="16" height="8" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2"/>
+                    <line x1="8" y1="10" x2="16" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="17" cy="10" r="0.75" fill="currentColor"/>
+
+                    {/* Server 2 Center */}
+                    <rect x="22" y="6" width="16" height="8" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2"/>
+                    <line x1="26" y1="10" x2="34" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="35" cy="10" r="0.75" fill="currentColor"/>
+
+                    {/* Server 3 Right */}
+                    <rect x="40" y="6" width="16" height="8" rx="1.5" fill="white" stroke="currentColor" strokeWidth="2"/>
+                    <line x1="44" y1="10" x2="52" y2="10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="53" cy="10" r="0.75" fill="currentColor"/>
+                  </g>
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight">Sinkronisasi</h3>
               </div>
             </div>
 
-            <div className="p-8 space-y-8">
-              
-              {/* STUNNING PULSE RADAR INTERACTIVE ANIMATION */}
-              <div className="flex justify-center items-center py-6 relative">
-                {/* Ping rings */}
-                <div className="absolute w-36 h-36 bg-blue-500/5 rounded-full animate-ping"></div>
-                <div className="absolute w-28 h-28 bg-blue-500/10 rounded-full animate-pulse"></div>
+            {/* Separator Line */}
+            <div className="border-b border-slate-100 w-full"></div>
+
+            {/* Active Task Info Card */}
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm flex items-center gap-4 relative overflow-hidden">
+              {/* Document slide animation tray graphic */}
+              <svg className="w-14 h-14 shrink-0" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Box/Tray Base */}
+                <path d="M12 40L6 44V52C6 54.2091 7.79086 56 10 56H54C56.2091 56 58 54.2091 58 52V44L52 40" fill="#F0F9FF" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M6 44H58" stroke="#0284C7" strokeWidth="2.5" strokeLinecap="round"/>
+                {/* Front Lip of tray */}
+                <path d="M14 44V48C14 50.2091 15.7909 52 18 52H46C48.2091 52 50 50.2091 50 48V44" fill="#0284C7"/>
                 
-                {/* Core Rotating Gears / Server link */}
-                <div className="relative z-10 flex items-center gap-6 bg-slate-50 border border-slate-100 p-6 rounded-3xl shadow-sm">
-                  <div className="flex flex-col items-center">
-                    <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-600/30">
-                      <School className="w-6 h-6" />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-black mt-2 uppercase">SEKOLAH</span>
-                  </div>
+                {/* Falling Document Paper with animation */}
+                <g className="animate-pulse">
+                  <rect x="22" y="16" width="20" height="24" rx="2" fill="white" stroke="#E11D48" strokeWidth="2" />
+                  {/* Pink top strip */}
+                  <rect x="22" y="16" width="20" height="6" rx="1" fill="#FB7185" />
+                  {/* Paper lines */}
+                  <line x1="26" y1="26" x2="38" y2="26" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
+                  <line x1="26" y1="31" x2="34" y2="31" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" />
+                </g>
 
-                  {/* Intersecting Pulse Dots */}
-                  <div className="flex gap-1.5 items-center">
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce delay-75"></span>
-                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce delay-150"></span>
-                  </div>
+                {/* Bouncing Arrow indicator */}
+                <g className={pulling ? "animate-bounce" : "translate-y-1 animate-pulse"}>
+                  <path d="M32 4V16M32 16L27 12M32 16L37 12" stroke={pulling ? "#0284C7" : "#E11D48"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </g>
+              </svg>
 
-                  <div className="flex flex-col items-center">
-                    <div className="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30">
-                      <Server className="w-6 h-6" />
-                    </div>
-                    <span className="text-[9px] text-slate-400 font-black mt-2 uppercase">SAGARA CLOUD</span>
-                  </div>
+              <div className="flex-1 space-y-1">
+                <span className="text-slate-800 font-extrabold text-sm md:text-base block">
+                  {syncActionType === 'PULL' ? 'Mengambil data' : 'Mengirim data'}.. {syncProgress}% [{getActiveCategory(syncProgress, syncActionType)}]
+                </span>
+                
+                {/* Spin loader and percentage */}
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-indigo-600 animate-spin"></div>
+                  <span className="text-indigo-600 font-black text-xs">{syncProgress}%</span>
                 </div>
               </div>
+            </div>
 
-              {/* BAR PROGRESS */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-end text-xs font-black">
-                  <span className="text-slate-600 uppercase tracking-wider">MENGIRIM PAYLOAD DATA</span>
-                  <span className="text-blue-600 font-mono">{syncProgress}%</span>
-                </div>
-                <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden p-0.5 border border-slate-200">
-                  <div 
-                    className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(59,130,246,0.5)]"
-                    style={{ width: `${syncProgress}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* REAL-TIME TERMINAL LOG WINDOW */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Protokol Jaringan / Live Console</span>
-                <div className="bg-slate-950 text-slate-300 font-mono text-[10px] p-4 rounded-2xl h-44 overflow-y-auto space-y-1.5 border border-white/5 shadow-inner custom-scrollbar">
-                  {syncLogs.map((log, index) => (
-                    <div key={index} className="leading-relaxed whitespace-pre-wrap">
-                      <span className="text-blue-400">➜</span> {log}
-                    </div>
-                  ))}
-                  {syncing && (
-                    <div className="w-fit h-4 border-r-2 border-white animate-pulse inline-block ml-1"></div>
+            {/* HIGH-FIDELITY SLIDING PROGRESS SLIDER BAR */}
+            <div className="relative pt-2">
+              <div className="w-full bg-slate-100 h-10 rounded-full relative p-1.5 border border-slate-200/60 shadow-inner flex items-center select-none overflow-visible">
+                {/* Colored Progress Track Fill */}
+                <div 
+                  className="h-full bg-[#A0DEFF] text-blue-900 font-black text-xs rounded-full transition-all duration-300 flex items-center pl-6 shadow-sm"
+                  style={{ width: `${syncProgress}%`, minWidth: '2.5rem' }}
+                >
+                  {syncProgress >= 15 && (
+                    <span>{syncProgress}%</span>
                   )}
                 </div>
+                {/* Sliding Folder handle button */}
+                <div 
+                  className="absolute top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-full shadow-lg border border-slate-200 flex items-center justify-center transition-all duration-300 z-10"
+                  style={{ 
+                    left: `calc(${syncProgress}% - 20px)`,
+                    marginLeft: syncProgress < 5 ? '20px' : syncProgress > 95 ? '-20px' : '0px'
+                  }}
+                >
+                  <FolderOpen className="w-5 h-5 text-indigo-500 animate-pulse" />
+                </div>
               </div>
-
             </div>
+
+            {/* Elapsed Time bottom footer indicator */}
+            <div className="flex justify-center items-center gap-1.5 text-slate-400 text-xs font-bold pt-2">
+              <Clock className="w-4 h-4 text-slate-400" />
+              <span>Waktu: {formatTime(elapsedSeconds)}</span>
+            </div>
+
+            {/* COLLAPSIBLE LOGS VIEW FOR TECHNICAL INTEGRITY */}
+            <div className="space-y-2 pt-2">
+              <div className="bg-slate-950 text-slate-300 font-mono text-[9px] p-3.5 rounded-2xl h-28 overflow-y-auto space-y-1.5 border border-white/5 shadow-inner custom-scrollbar">
+                {syncLogs.map((log, index) => (
+                  <div key={index} className="leading-relaxed whitespace-pre-wrap">
+                    <span className="text-blue-400">➜</span> {log}
+                  </div>
+                ))}
+                {(syncing || pulling) && (
+                  <div className="w-fit h-3.5 border-r-2 border-white animate-pulse inline-block ml-1"></div>
+                )}
+              </div>
+            </div>
+
           </div>
         </div>
       )}

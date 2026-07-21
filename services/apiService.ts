@@ -3058,6 +3058,41 @@ export const apiService = {
       // --- KONEKSI MASTER REAL ---
       addLog("Koneksi SAGARA Central Server (masterSupabase) aktif. Memulai pengunggahan multi-tenant...");
       
+      // Helper function to identify duplicate entities
+      const getRowUniqueKeyLocal = (row: any, tableName: string) => {
+        if (tableName === 'grades') {
+          return `${row.student_id}_${row.subject_id}`;
+        }
+        if (tableName === 'sumatif_results') {
+          return `${row.sumatif_id}_${row.student_id}`;
+        }
+        if (tableName === 'attendance') {
+          return row.id || `${row.class_id}_${row.date}`;
+        }
+        if (tableName === 'users' && row.username) {
+          return row.username;
+        }
+        if (tableName === 'students') {
+          return row.nisn || row.nis || row.id;
+        }
+        if (tableName === 'graduates') {
+          return row.nisn || row.id;
+        }
+        return row.id;
+      };
+
+      // Helper function to extract a comparable timestamp
+      const getRowTimestampLocal = (row: any) => {
+        const ts = row.updated_at || row.created_at || row.timestamp || row.submitted_at || row.date || 0;
+        if (ts instanceof Date) return ts.getTime();
+        if (typeof ts === 'string') {
+          const parsed = Date.parse(ts);
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        if (typeof ts === 'number') return ts;
+        return 0;
+      };
+
       // Upsert data for each table
       for (const table of tables) {
         let tableRows = localData[table];
@@ -3086,12 +3121,92 @@ export const apiService = {
             };
           });
 
+          // Fetch existing rows from Central database for comparison to handle duplicates
+          let existingCentralRows: any[] = [];
+          try {
+            const { data: centralDataFetch, error: centralFetchErr } = await masterSupabase
+              .from(centralTableName)
+              .select('*')
+              .eq('school_code', schoolCode);
+            
+            if (!centralFetchErr && centralDataFetch) {
+              existingCentralRows = centralDataFetch;
+            }
+          } catch (e) {
+            console.warn(`Gagal memuat data existing di central untuk saringan duplikat ${centralTableName}`, e);
+          }
+
+          // 1. In-memory deduplication of incoming preparedRows to keep only the latest row
+          const deduplicatedIncomingMap = new Map<string, any>();
+          preparedRows.forEach(row => {
+            const key = getRowUniqueKeyLocal(row, table);
+            if (!key) {
+              const randKey = Math.random().toString();
+              deduplicatedIncomingMap.set(randKey, row);
+              return;
+            }
+
+            const existing = deduplicatedIncomingMap.get(key);
+            if (!existing) {
+              deduplicatedIncomingMap.set(key, row);
+            } else {
+              // Compare timestamps, keep latest (highest time or the last row in array if equal)
+              const existingTime = getRowTimestampLocal(existing);
+              const currentTime = getRowTimestampLocal(row);
+              if (currentTime >= existingTime) {
+                deduplicatedIncomingMap.set(key, row);
+              }
+            }
+          });
+
+          let finalRowsToUpload = Array.from(deduplicatedIncomingMap.values());
+          if (finalRowsToUpload.length < preparedRows.length) {
+            addLog(`Deduplikasi internal: menyaring ${preparedRows.length} baris menjadi ${finalRowsToUpload.length} baris unik.`);
+          }
+
+          // 2. Compare with existing central database rows to keep the latest data
+          if (existingCentralRows.length > 0) {
+            const centralMap = new Map<string, any>();
+            existingCentralRows.forEach(crow => {
+              const key = getRowUniqueKeyLocal(crow, table);
+              if (key) {
+                centralMap.set(key, crow);
+              }
+            });
+
+            const beforeFilterCount = finalRowsToUpload.length;
+            finalRowsToUpload = finalRowsToUpload.filter(row => {
+              const key = getRowUniqueKeyLocal(row, table);
+              if (!key) return true;
+
+              const centralRow = centralMap.get(key);
+              if (!centralRow) return true; // Does not exist in central, upload it
+
+              const centralTime = getRowTimestampLocal(centralRow);
+              const incomingTime = getRowTimestampLocal(row);
+
+              // Only upload if incoming row is newer or has same timestamp (to overwrite/sync)
+              // If central row is strictly newer, skip uploading (keep latest in central db)
+              return incomingTime >= centralTime;
+            });
+
+            const skippedCount = beforeFilterCount - finalRowsToUpload.length;
+            if (skippedCount > 0) {
+              addLog(`Saringan Central: melewati ${skippedCount} baris karena data di database pusat sudah lebih baru.`);
+            }
+          }
+
+          if (finalRowsToUpload.length === 0) {
+            addLog(`Seluruh data di '${centralTableName}' sudah up-to-date dengan versi terbaru. Melewati pengunggahan.`);
+            continue;
+          }
+
           // Upload ke Central Database menggunakan masterSupabase
           const batchSize = 100;
           let tableSuccessCount = 0;
 
-          for (let i = 0; i < preparedRows.length; i += batchSize) {
-            const batch = preparedRows.slice(i, i + batchSize);
+          for (let i = 0; i < finalRowsToUpload.length; i += batchSize) {
+            const batch = finalRowsToUpload.slice(i, i + batchSize);
             const { error: upsertErr } = await masterSupabase.from(centralTableName).upsert(batch);
 
             if (upsertErr) {
@@ -3109,7 +3224,7 @@ export const apiService = {
             }
           }
 
-          addLog(`Sukses mengunggah ${tableSuccessCount}/${tableRows.length} record ke Sagara Central untuk '${centralTableName}'.`);
+          addLog(`Sukses mengunggah ${tableSuccessCount}/${finalRowsToUpload.length} record ke Sagara Central untuk '${centralTableName}'.`);
           totalSyncedRows += tableSuccessCount;
         } else {
           addLog(`Tabel '${table}' kosong di tingkat sekolah. Melewati...`);

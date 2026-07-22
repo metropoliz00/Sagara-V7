@@ -44,6 +44,12 @@ const EVALUASI_OPTIONS = {
   ]
 };
 
+const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'istirahat'];
+const isSpecialSubject = (subj?: string) => {
+  const s = (subj || '').toLowerCase();
+  return specialActivities.some(act => s.includes(act));
+};
+
 
 const LearningJournalView: React.FC<LearningJournalViewProps> = ({ 
   classId, isReadOnly, targetDate, onSaveBatch, schoolProfile, teacherProfile, currentUser, onShowNotification
@@ -372,7 +378,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
        'EVALUASI': item.evaluation || '-',
        'REFLEKSI GURU': item.reflection || '-',
        'TINDAK LANJUT': item.followUp || '-',
-       'GURU HADIR': item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir',
+       'GURU HADIR': isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
        'NAMA GURU': item.teacherName || '-'
      }));
 

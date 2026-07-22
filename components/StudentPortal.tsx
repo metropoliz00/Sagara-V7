@@ -524,6 +524,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [viewingVideoLink, setViewingVideoLink] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [viewingPoster, setViewingPoster] = useState<Material | null>(null);
+  const [viewingTask, setViewingTask] = useState<Material | null>(null);
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -2369,6 +2370,12 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                               <span className="text-sm leading-none">{decoration.emoji}</span>
                                                               <span>{subject?.name || material.subjectId}</span>
                                                           </span>
+                                                           {(material.taskLink || material.taskFile || material.taskTitle) && (
+                                                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-black bg-amber-500 text-white shadow-sm uppercase tracking-wide">
+                                                                   <ClipboardList size={12} />
+                                                                   Ada Tugas
+                                                               </span>
+                                                           )}
                                                       </div>
 
                                                       {/* Poster Thumbnail inside Card */}
@@ -2403,6 +2410,15 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                                   {/* Interactive Action Button Panels */}
                                                   <div className="flex flex-col gap-2.5 mt-auto relative z-10">
+                                                     {(material.taskLink || material.taskFile || material.taskTitle) && (
+                                                       <button 
+                                                           type="button"
+                                                           onClick={() => setViewingTask(material)}
+                                                           className="w-full flex items-center justify-center py-2.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs md:text-sm font-extrabold shadow-md shadow-amber-500/15 hover:shadow-amber-500/20 active:scale-98 transition-all transform hover:scale-[1.02] cursor-pointer"
+                                                       >
+                                                           <ClipboardList size={18} className="mr-2" /> Kerjakan / Lihat Tugas
+                                                       </button>
+                                                     )}
                                                     {material.infographic && (
                                                       <button 
                                                           type="button"
@@ -3293,6 +3309,150 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                   );
               })}
           </div>
+          {viewingTask && createPortal(
+              <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300">
+                  <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-scale-in border border-amber-200">
+                      {/* Modal Header */}
+                      <div className="p-5 flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-sm text-white">
+                                  <ClipboardList size={22} />
+                              </div>
+                              <div>
+                                  <span className="text-[10px] text-amber-100 font-extrabold uppercase tracking-wider block">
+                                      Tugas & Latihan Siswa
+                                  </span>
+                                  <h3 className="font-extrabold text-base md:text-lg text-white line-clamp-1">
+                                      {viewingTask.title}
+                                  </h3>
+                              </div>
+                          </div>
+                          <button 
+                              onClick={() => setViewingTask(null)} 
+                              className="p-1.5 hover:bg-white/20 rounded-full transition-colors text-white cursor-pointer"
+                          >
+                              <X size={20} />
+                          </button>
+                      </div>
+
+                      {/* Modal Content */}
+                      <div className="p-6 space-y-5 overflow-y-auto flex-1 bg-amber-50/20">
+                          {/* Task Title & Instruction */}
+                          <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-2">
+                              <div className="flex items-center gap-2 text-amber-700 font-extrabold text-xs uppercase tracking-wider">
+                                  <CheckSquare size={16} />
+                                  <span>Petunjuk / Instruksi Tugas</span>
+                              </div>
+                              <h4 className="text-base font-extrabold text-gray-800">
+                                  {viewingTask.taskTitle || "Selesaikan tugas berikut sesuai instruksi dari guru."}
+                              </h4>
+                              {viewingTask.description && (
+                                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap pt-1 border-t border-gray-100 mt-2">
+                                      {viewingTask.description}
+                                  </p>
+                              )}
+                          </div>
+
+                          {/* Task Link Attachment */}
+                          {viewingTask.taskLink && (
+                              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                                  <div className="flex items-center justify-between">
+                                      <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                                          <Link2 size={14} className="text-amber-600" />
+                                          Tautan / Google Form / Quiz Online
+                                      </span>
+                                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md font-bold uppercase">
+                                          Tugas Online
+                                      </span>
+                                  </div>
+                                  <a
+                                      href={viewingTask.taskLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                                  >
+                                      <ExternalLink size={16} />
+                                      <span>Kerjakan Tugas</span>
+                                  </a>
+                              </div>
+                          )}
+
+                          {/* Task File Attachment */}
+                          {viewingTask.taskFile && (
+                              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                                  <div className="flex items-center justify-between">
+                                      <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                                          <FileText size={14} className="text-amber-600" />
+                                          Berkas Lampiran Tugas
+                                      </span>
+                                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                                          {viewingTask.taskFile.startsWith('data:application/pdf') ? 'Dokumen PDF' : 'Foto Gambar'}
+                                      </span>
+                                  </div>
+
+                                  {viewingTask.taskFile.startsWith('data:image/') ? (
+                                      <div className="space-y-3">
+                                          <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 max-h-80 flex items-center justify-center">
+                                              <img 
+                                                  src={viewingTask.taskFile} 
+                                                  alt="Foto Tugas" 
+                                                  className="max-h-80 object-contain w-full"
+                                              />
+                                          </div>
+                                          <a 
+                                              href={viewingTask.taskFile}
+                                              download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_') + '.jpg'}
+                                              className="flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer"
+                                          >
+                                              <Download size={14} />
+                                              <span>Unduh Foto Tugas</span>
+                                          </a>
+                                      </div>
+                                  ) : viewingTask.taskFile.startsWith('data:application/pdf') ? (
+                                      <div className="space-y-3">
+                                          <iframe 
+                                              src={viewingTask.taskFile}
+                                              title="Dokumen PDF Tugas"
+                                              className="w-full h-80 rounded-xl border border-slate-200"
+                                          />
+                                          <a 
+                                              href={viewingTask.taskFile}
+                                              download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_') + '.pdf'}
+                                              className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                                          >
+                                              <Download size={14} />
+                                              <span>Unduh Dokumen PDF Tugas</span>
+                                          </a>
+                                      </div>
+                                  ) : (
+                                      <a 
+                                          href={viewingTask.taskFile}
+                                          download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_')}
+                                          className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                                      >
+                                          <Download size={14} />
+                                          <span>Unduh File Tugas</span>
+                                      </a>
+                                  )}
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end shrink-0">
+                          <button 
+                              type="button"
+                              onClick={() => setViewingTask(null)}
+                              className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                          >
+                              Tutup
+                          </button>
+                      </div>
+                  </div>
+              </div>,
+              document.body
+          )}
+
           {pdfUrl && (
             <ContentModal 
                 isOpen={!!pdfUrl} 

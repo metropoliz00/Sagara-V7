@@ -886,7 +886,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                     </div>
 
                     {/* Right: Token (Middle Right) - Enlarged by 50% */}
-                    {s.token && (
+                    {isTeacher && s.token && (
                       <div className="flex flex-col items-center justify-center shrink-0 bg-white/95 border border-slate-200/85 p-2 rounded-2xl shadow-md text-center min-w-[105px] max-w-[125px]">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">TOKEN</span>
                         <button 

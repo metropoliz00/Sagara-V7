@@ -54,20 +54,33 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const gtkStats = useMemo(() => {
     const lower = (str: string | undefined) => (str || '').toLowerCase();
 
-    // Kepala Sekolah
-    const headmaster = users.filter(u => {
-        const pos = lower(u.position);
-        return pos.includes('kepala sekolah');
-    }).length;
+    if (gtkData && gtkData.length > 0) {
+      let headmaster = 0;
+      let teachers = 0;
+      let staff = 0;
 
-    // Guru
+      gtkData.forEach(g => {
+        const pos = lower(g.jabatan);
+        if (pos.includes('kepala sekolah')) {
+          headmaster++;
+        } else if (pos.includes('guru') || pos.includes('pendidik')) {
+          teachers++;
+        } else {
+          staff++;
+        }
+      });
+
+      const totalGTK = gtkData.length;
+      return { headmaster, teachers, staff, totalGTK };
+    }
+
+    // Fallback to users if gtkData is empty
+    const headmaster = users.filter(u => lower(u.position).includes('kepala sekolah')).length;
     const teachers = users.filter(u => {
         const pos = lower(u.position);
         if (pos.includes('kepala sekolah')) return false;
         return pos.includes('guru');
     }).length;
-
-    // Tenaga Kependidikan
     const staff = users.filter(u => {
         const pos = lower(u.position);
         if (pos.includes('kepala sekolah')) return false;
@@ -77,7 +90,7 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     const totalGTK = headmaster + teachers + staff;
 
     return { headmaster, teachers, staff, totalGTK };
-  }, [users]);
+  }, [users, gtkData]);
 
   // 2. Student Distribution per Class (Split L/P)
   const classDistribution = useMemo(() => {

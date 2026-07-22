@@ -44,7 +44,7 @@ const EVALUASI_OPTIONS = {
   ]
 };
 
-const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'istirahat'];
+const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'literasi', 'numerasi', 'istirahat', 'senam', 'sholat', 'pramuka', 'kokurikuler', 'p5'];
 const isSpecialSubject = (subj?: string) => {
   const s = (subj || '').toLowerCase();
   return specialActivities.some(act => s.includes(act));
@@ -807,7 +807,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                     <td>${row.evaluation || ''}</td>
                                     <td>${row.reflection || ''}</td>
                                     <td>${row.followUp || ''}</td>
-                                    <td>${row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
                                 </tr>
                             `).join('')}
                         </tbody>
@@ -874,7 +874,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                         <td>${row.evaluation || ''}</td>
                                         <td>${row.reflection || ''}</td>
                                         <td>${row.followUp || ''}</td>
-                                        <td style="text-align: center">${row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}</td>
+                                        <td style="text-align: center">${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -1293,9 +1293,8 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                             <tr><td colSpan={9} className="p-8 text-center text-gray-400 italic">Tidak ada jadwal atau jurnal untuk hari ini.</td></tr>
                         ) : (
                             draftData.map((row, idx) => {
-                                const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'istirahat'];
                                 const subjectLower = row.subject?.toLowerCase() || '';
-                                const isSpecialActivity = specialActivities.some(activity => subjectLower.includes(activity));
+                                const isSpecialActivity = isSpecialSubject(row.subject);
                                 const isBreak = subjectLower.includes('istirahat');
                                 const disabled = !isRowEditable(row) || isSpecialActivity;
                                 return (
@@ -1460,7 +1459,9 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                                 <td className="p-2 align-top text-gray-600">{row.reflection || '-'}</td>
                                                 <td className="p-2 align-top text-gray-600">{row.followUp || '-'}</td>
                                                 <td className="p-2 align-top text-gray-600">
-                                                    {isBreak ? '-' : (
+                                                    {isBreak || isSpecialSubject(row.subject) ? (
+                                                        <span className="text-gray-400 font-medium">-</span>
+                                                    ) : (
                                                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                             {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
                                                         </span>
@@ -1566,9 +1567,13 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                                         <td className="p-3 text-gray-600 leading-relaxed">{row.reflection || '-'}</td>
                                                         <td className="p-3 text-gray-600 leading-relaxed">{row.followUp || '-'}</td>
                                                         <td className="p-3 text-center">
-                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-sm ${row.isTeacherPresent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                                                                {row.isTeacherPresent ? 'Hadir' : 'Absen'}
-                                                            </span>
+                                                            {isSpecialSubject(row.subject) ? (
+                                                                <span className="text-gray-400 font-medium">-</span>
+                                                            ) : (
+                                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-sm ${row.isTeacherPresent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                                                                    {row.isTeacherPresent ? 'Hadir' : 'Absen'}
+                                                                </span>
+                                                            )}
                                                             {row.teacherName && (
                                                                 <span className="block text-[9px] text-gray-500 font-medium mt-1 truncate max-w-[120px] mx-auto" title={row.teacherName}>
                                                                     ({row.teacherName})

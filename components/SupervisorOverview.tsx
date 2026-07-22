@@ -42,7 +42,7 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const [activeModal, setActiveModal] = useState<'permissions' | 'discipline' | 'incomplete' | null>(null);
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [showAllInventory, setShowAllInventory] = useState(false);
-  const [attendanceTimeframe, setAttendanceTimeframe] = useState<'7weeks' | '7days' | 'all'>('7weeks');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>('all');
 
   // 0. Gender Breakdown
   const genderCounts = useMemo(() => {
@@ -184,216 +184,129 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     }));
   }, [students]);
 
-  // 3. Attendance Stats & Trend (7 Weeks / 7 Days / Total)
+  // 3. Attendance Stats
   const attendanceStats = useMemo(() => {
-    const now = new Date();
-    
-    let startDate: Date | null = null;
-    if (attendanceTimeframe === '7days') {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 7);
-    } else if (attendanceTimeframe === '7weeks') {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 49);
+    if (!attendanceRecords || attendanceRecords.length === 0) {
+        return { todayPercentage: 0, donutData: [], trendData: [] };
     }
 
-    const filteredRecords = (attendanceRecords || []).filter(r => {
-      if (!startDate) return true;
-      if (!r.date) return false;
-      const rDate = new Date(r.date.includes('T') ? r.date.split('T')[0] : r.date);
-      return rDate >= startDate;
-    });
+    const totalRecords = attendanceRecords.length;
+    const presentCount = attendanceRecords.filter(r => r.status === 'present' || r.status === 'dispensation').length;
+    const overallPercentage = totalRecords > 0 ? Math.round((presentCount / totalRecords) * 100) : 0;
 
-    const totalRecords = filteredRecords.length;
-    const presentCount = filteredRecords.filter(r => r.status === 'present' || r.status === 'dispensation' || r.status === 'hadir').length;
-    
-    const overallPercentage = totalRecords > 0 
-      ? Math.round((presentCount / totalRecords) * 100) 
-      : (() => {
-          let totP = 0, totAll = 0;
-          students.forEach(s => {
-            if (s.attendance) {
-              const sum = (s.attendance.present || 0) + (s.attendance.sick || 0) + (s.attendance.permit || 0) + (s.attendance.alpha || 0);
-              totP += (s.attendance.present || 0);
-              totAll += sum;
-            }
-          });
-          return totAll > 0 ? Math.round((totP / totAll) * 100) : 100;
-        })();
+    const donutData = [
+      { name: 'Hadir', value: presentCount },
+      { name: 'Tidak Hadir', value: totalRecords - presentCount },
+    ];
 
-    let trendData: { name: string; hadir: number; fullDate?: string }[] = [];
-
-    if (attendanceTimeframe === '7weeks') {
-      const weekBuckets: { label: string; start: Date; end: Date; present: number; total: number }[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const wEnd = new Date(now);
-        wEnd.setDate(now.getDate() - (i * 7));
-        const wStart = new Date(wEnd);
-        wStart.setDate(wEnd.getDate() - 6);
-
-        const startStr = `${wStart.getDate()}/${wStart.getMonth() + 1}`;
-        const endStr = `${wEnd.getDate()}/${wEnd.getMonth() + 1}`;
-        weekBuckets.push({
-          label: `M${7 - i} (${startStr})`,
-          start: wStart,
-          end: wEnd,
-          present: 0,
-          total: 0
-        });
-      }
-
-      (attendanceRecords || []).forEach(r => {
-        if (!r.date) return;
-        const rDate = new Date(r.date.includes('T') ? r.date.split('T')[0] : r.date);
-        for (const bucket of weekBuckets) {
-          if (rDate >= bucket.start && rDate <= bucket.end) {
-            bucket.total += 1;
-            if (r.status === 'present' || r.status === 'dispensation' || r.status === 'hadir') {
-              bucket.present += 1;
-            }
-            break;
-          }
-        }
-      });
-
-      trendData = weekBuckets.map(b => ({
-        name: b.label,
-        hadir: b.total > 0 ? Math.round((b.present / b.total) * 100) : overallPercentage,
-      }));
-    } else {
-      const dateMap: Record<string, { present: number; total: number }> = {};
-      (attendanceRecords || []).forEach(r => {
-        if (!r.date) return;
+    const dateMap: Record<string, { present: number; total: number }> = {};
+    attendanceRecords.forEach(r => {
         const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
         if (!dateMap[dateKey]) dateMap[dateKey] = { present: 0, total: 0 };
         dateMap[dateKey].total += 1;
-        if (r.status === 'present' || r.status === 'dispensation' || r.status === 'hadir') {
-          dateMap[dateKey].present += 1;
-        }
-      });
+        if (r.status === 'present' || r.status === 'dispensation') dateMap[dateKey].present += 1;
+    });
 
-      const sortedDates = Object.keys(dateMap).sort();
-      const recentDates = sortedDates.slice(-7);
+    const sortedDates = Object.keys(dateMap).sort();
+    const recentDates = sortedDates.slice(-7);
 
-      if (recentDates.length > 0) {
-        trendData = recentDates.map(date => {
-          const stats = dateMap[date];
-          const pct = Math.round((stats.present / stats.total) * 100);
-          const d = new Date(date);
-          const label = `${d.getDate()}/${d.getMonth() + 1}`;
-          return { name: label, hadir: pct, fullDate: date };
-        });
-      } else {
-        trendData = Array.from({ length: 7 }, (_, idx) => {
-          const d = new Date();
-          d.setDate(d.getDate() - (6 - idx));
-          return { name: `${d.getDate()}/${d.getMonth() + 1}`, hadir: overallPercentage };
-        });
+    const trendData = recentDates.map(date => {
+        const stats = dateMap[date];
+        const pct = Math.round((stats.present / stats.total) * 100);
+        const d = new Date(date);
+        const label = `${d.getDate()}/${d.getMonth() + 1}`;
+        return { name: label, hadir: pct, fullDate: date };
+    });
+
+    return { todayPercentage: overallPercentage, donutData, trendData };
+  }, [attendanceRecords]);
+
+  // 3.1 Extract 7 recent dates from attendance records
+  const recent7Dates = useMemo(() => {
+    if (!attendanceRecords || attendanceRecords.length === 0) return [];
+    const dateSet = new Set<string>();
+    attendanceRecords.forEach(r => {
+      if (r.date) {
+        const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+        dateSet.add(dateKey);
       }
-    }
+    });
+    return Array.from(dateSet).sort().slice(-7);
+  }, [attendanceRecords]);
 
-    return { todayPercentage: overallPercentage, trendData };
-  }, [attendanceRecords, attendanceTimeframe, students]);
+  // 3.2 Attendance breakdown per class (Hadir, Izin, Sakit, Alpha)
+  const classAttendanceStats = useMemo(() => {
+    const studentClassMap = new Map<string, string>();
+    students.forEach(s => {
+      if (s.id) {
+        studentClassMap.set(s.id, s.classId || 'Lainnya');
+      }
+    });
 
-  // Per-Class Attendance Breakdown (Jumlah Hadir, Sakit, Izin, Alpha per Kelas)
-  const perClassAttendance = useMemo(() => {
     const classSet = new Set<string>();
     students.forEach(s => {
       if (s.classId) classSet.add(s.classId);
     });
 
-    if (classSet.size === 0) {
-      ['1', '2', '3', '4', '5', '6'].forEach(c => classSet.add(c));
-    }
+    const countsPerClass: Record<string, { hadir: number; sakit: number; izin: number; alpha: number }> = {};
+    
+    classSet.forEach(c => {
+      countsPerClass[c] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+    });
 
-    const classList = Array.from(classSet).sort((a, b) => 
-      a.localeCompare(b, undefined, { numeric: true })
-    );
+    const filteredRecords = (attendanceRecords || []).filter(r => {
+      if (!r.date) return false;
+      const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+      if (recent7Dates.length > 0 && !recent7Dates.includes(dateKey)) return false;
+      if (selectedAttendanceDate !== 'all' && dateKey !== selectedAttendanceDate) return false;
+      return true;
+    });
 
-    const now = new Date();
-    let startDate: Date | null = null;
-    if (attendanceTimeframe === '7days') {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 7);
-    } else if (attendanceTimeframe === '7weeks') {
-      startDate = new Date(now);
-      startDate.setDate(now.getDate() - 49);
-    }
-
-    return classList.map(cls => {
-      const classStudents = students.filter(s => s.classId === cls);
-      const studentIdsInClass = new Set(classStudents.map(s => s.id));
-
-      let present = 0;
-      let sick = 0;
-      let permit = 0;
-      let alpha = 0;
-      let hasRecordMatches = false;
-
-      (attendanceRecords || []).forEach(r => {
-        if (!r.date) return;
-        if (startDate) {
-          const rDate = new Date(r.date.includes('T') ? r.date.split('T')[0] : r.date);
-          if (rDate < startDate) return;
+    if (filteredRecords.length > 0) {
+      filteredRecords.forEach(r => {
+        const cls = r.classId || studentClassMap.get(r.studentId) || 'Lainnya';
+        if (!countsPerClass[cls]) {
+          countsPerClass[cls] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
         }
-
-        const isMatch = r.classId === cls || (r.studentId && studentIdsInClass.has(r.studentId));
-        if (isMatch) {
-          hasRecordMatches = true;
-          const st = (r.status || '').toLowerCase();
-          if (st === 'present' || st === 'dispensation' || st === 'hadir') {
-            present++;
-          } else if (st === 'sick' || st === 'sakit') {
-            sick++;
-          } else if (st === 'permit' || st === 'izin') {
-            permit++;
-          } else if (st === 'alpha' || st === 'alpa') {
-            alpha++;
-          }
+        const st = (r.status || '').toLowerCase();
+        if (st === 'present' || st === 'hadir' || st === 'dispensation' || st === 'dispen') {
+          countsPerClass[cls].hadir += 1;
+        } else if (st === 'sick' || st === 'sakit') {
+          countsPerClass[cls].sakit += 1;
+        } else if (st === 'permit' || st === 'izin') {
+          countsPerClass[cls].izin += 1;
+        } else if (st === 'alpha' || st === 'alfa') {
+          countsPerClass[cls].alpha += 1;
         }
       });
+    } else {
+      students.forEach(s => {
+        const cls = s.classId || 'Lainnya';
+        if (!countsPerClass[cls]) {
+          countsPerClass[cls] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+        }
+        if (s.attendance) {
+          countsPerClass[cls].hadir += (s.attendance.present || 0);
+          countsPerClass[cls].sakit += (s.attendance.sick || 0);
+          countsPerClass[cls].izin += (s.attendance.permit || 0);
+          countsPerClass[cls].alpha += (s.attendance.alpha || 0);
+        }
+      });
+    }
 
-      if (!hasRecordMatches) {
-        classStudents.forEach(s => {
-          if (s.attendance) {
-            present += s.attendance.present || 0;
-            sick += s.attendance.sick || 0;
-            permit += s.attendance.permit || 0;
-            alpha += s.attendance.alpha || 0;
-          }
-        });
-      }
-
-      const total = present + sick + permit + alpha;
-      const percentage = total > 0 ? Math.round((present / total) * 100) : 100;
-
-      return {
-        classId: cls,
-        className: `Kelas ${cls}`,
-        studentCount: classStudents.length,
-        present,
-        sick,
-        permit,
-        alpha,
-        total,
-        percentage
-      };
-    });
-  }, [students, attendanceRecords, attendanceTimeframe]);
-
-  const totalPerClass = useMemo(() => {
-    let present = 0, sick = 0, permit = 0, alpha = 0, total = 0, studentCount = 0;
-    perClassAttendance.forEach(c => {
-      present += c.present;
-      sick += c.sick;
-      permit += c.permit;
-      alpha += c.alpha;
-      total += c.total;
-      studentCount += c.studentCount;
-    });
-    const percentage = total > 0 ? Math.round((present / total) * 100) : 100;
-    return { present, sick, permit, alpha, total, studentCount, percentage };
-  }, [perClassAttendance]);
+    return Object.entries(countsPerClass)
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+      .map(([className, data]) => {
+        const total = data.hadir + data.sakit + data.izin + data.alpha;
+        const percentage = total > 0 ? Math.round((data.hadir / total) * 100) : 0;
+        return {
+          className,
+          ...data,
+          total,
+          percentage
+        };
+      });
+  }, [attendanceRecords, students, recent7Dates, selectedAttendanceDate]);
 
   // 4. Low Attendance Students (<75%)
   const atRiskStudents = useMemo(() => {
@@ -650,70 +563,40 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
         </div>
 
-        {/* SECOND ROW: ATTENDANCE TREND & PER CLASS BREAKDOWN */}
+        {/* SECOND ROW: ATTENDANCE TREND & DETAIL PER CLASS */}
         <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
-            {/* Header & Timeframe Selector */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                 <div>
-                    <h3 className="font-bold text-gray-800 text-base flex items-center gap-2">
-                        <Activity size={20} className="text-emerald-500" />
-                        <span>Tren & Detail Kehadiran Siswa</span>
+                    <h3 className="font-bold text-gray-800 flex items-center text-base">
+                        <Activity size={20} className="mr-2 text-emerald-500"/> Tren & Detail Kehadiran Siswa (7 Hari Terakhir)
                     </h3>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                        Monitoring persentase tren serta rincian jumlah Hadir, Izin, Sakit, & Alpha per kelas
-                    </p>
+                    <p className="text-xs text-gray-400 mt-0.5">Grafik tren rerata kehadiran serta rincian Hadir, Izin, Sakit, dan Alpha per kelas.</p>
                 </div>
-
-                {/* Timeframe Selector */}
-                <div className="flex items-center bg-gray-100 p-1 rounded-xl text-xs font-bold gap-1 self-start sm:self-auto">
-                    <button
-                        type="button"
-                        onClick={() => setAttendanceTimeframe('7weeks')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                            attendanceTimeframe === '7weeks' 
-                                ? 'bg-white text-emerald-700 shadow-xs font-black' 
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        7 Minggu Terakhir
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAttendanceTimeframe('7days')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                            attendanceTimeframe === '7days' 
-                                ? 'bg-white text-emerald-700 shadow-xs font-black' 
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        7 Hari Terakhir
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setAttendanceTimeframe('all')}
-                        className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                            attendanceTimeframe === 'all' 
-                                ? 'bg-white text-emerald-700 shadow-xs font-black' 
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        Total Akumulasi
-                    </button>
-                </div>
+                {recent7Dates.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 shrink-0">Filter Tanggal:</span>
+                        <select 
+                            value={selectedAttendanceDate} 
+                            onChange={(e) => setSelectedAttendanceDate(e.target.value)}
+                            className="text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                        >
+                            <option value="all">Akumulasi 7 Hari Terakhir</option>
+                            {recent7Dates.map(d => {
+                                const dateObj = new Date(d);
+                                const formatted = isNaN(dateObj.getTime()) ? d : `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+                                return (
+                                    <option key={d} value={d}>Tgl {formatted}</option>
+                                );
+                            })}
+                        </select>
+                    </div>
+                )}
             </div>
 
-            {/* Charts & High level KPI row */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                {/* Trend Area Chart */}
-                <div className="lg:col-span-2 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-bold text-gray-700">
-                            Grafik Trend Kehadiran ({attendanceTimeframe === '7weeks' ? '7 Minggu Terakhir' : attendanceTimeframe === '7days' ? '7 Hari Terakhir' : 'Semua Periode'})
-                        </span>
-                        <span className="text-xs font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-200">
-                            Kehadiran: {attendanceStats.todayPercentage}%
-                        </span>
-                    </div>
+                {/* Attendance Trend Chart */}
+                <div className="lg:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-3">Grafik Rerata Kehadiran</p>
                     <div className="h-44">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={attendanceStats.trendData} margin={{top:5, right:5, left:-20, bottom:0}}>
@@ -723,129 +606,108 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                                         <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
                                     </linearGradient>
                                 </defs>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                <XAxis dataKey="name" tick={{fontSize: 10, fontWeight: 600, fill: '#64748b'}} />
-                                <YAxis domain={[0, 100]} tick={{fontSize: 10, fill: '#64748b'}} />
-                                <Tooltip contentStyle={{borderRadius: '10px', borderColor: '#cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)'}} />
-                                <Area type="monotone" dataKey="hadir" name="Kehadiran (%)" stroke="#10b981" fillOpacity={1} fill="url(#colorHadir)" strokeWidth={3}/>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                                <XAxis dataKey="name" tick={{fontSize: 10}}/>
+                                <YAxis domain={[0, 100]} tick={{fontSize: 10}}/>
+                                <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}}/>
+                                <Area type="monotone" dataKey="hadir" stroke="#10b981" fillOpacity={1} fill="url(#colorHadir)" strokeWidth={3}/>
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
                 </div>
 
-                {/* Attendance Summary Cards */}
-                <div className="lg:col-span-1 bg-emerald-50/50 p-5 rounded-xl border border-emerald-100 flex flex-col justify-between">
+                {/* Summary Cards */}
+                <div className="lg:col-span-1 bg-emerald-50/40 p-5 rounded-xl border border-emerald-100/80 flex flex-col justify-center">
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">Kehadiran Total</p>
-                        <CheckCircle size={22} className="text-emerald-500"/>
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Kehadiran Total</p>
+                        <CheckCircle size={20} className="text-emerald-500"/>
                     </div>
-                    <div>
-                        <h3 className={`text-4xl font-black ${attendanceStats.todayPercentage >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                            {attendanceStats.todayPercentage}%
-                        </h3>
-                        <p className="text-xs font-medium text-emerald-700/80 mt-1">
-                            {totalPerClass.present} rekam hadir dari {totalPerClass.total} total status.
-                        </p>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-emerald-200/60 flex items-center justify-between text-xs font-bold text-emerald-900">
-                        <span>Rata-rata Sekolah</span>
-                        <span>{attendanceStats.todayPercentage}%</span>
-                    </div>
+                    <h3 className={`text-3xl font-black ${attendanceStats.todayPercentage >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {attendanceStats.todayPercentage}%
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2">Rata-rata kehadiran seluruh siswa.</p>
                 </div>
 
-                <div className="lg:col-span-1 bg-rose-50/50 p-5 rounded-xl border border-rose-100 flex flex-col justify-between">
+                <div className="lg:col-span-1 bg-rose-50/40 p-5 rounded-xl border border-rose-100/80 flex flex-col justify-center">
                     <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-bold text-rose-800 uppercase tracking-wider">Siswa Berisiko</p>
-                        <AlertTriangle size={22} className="text-rose-500"/>
+                        <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Siswa Berisiko</p>
+                        <AlertTriangle size={20} className="text-rose-500"/>
                     </div>
-                    <div>
-                        <h3 className="text-4xl font-black text-rose-600">
-                            {atRiskStudents.length}
-                        </h3>
-                        <p className="text-xs font-medium text-rose-700/80 mt-1">Siswa dengan persentase kehadiran di bawah 75%.</p>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-rose-200/60 flex items-center justify-between text-xs font-bold text-rose-900">
-                        <span>Perlu Perhatian</span>
-                        <span>{atRiskStudents.length} Siswa</span>
-                    </div>
+                    <h3 className="text-3xl font-black text-rose-600">
+                        {atRiskStudents.length}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2">Kehadiran di bawah 75%.</p>
                 </div>
             </div>
 
             {/* DETAIL PER KELAS TABLE */}
             <div className="pt-2">
                 <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-bold text-sm text-gray-800 flex items-center gap-2">
-                        <ClipboardList size={16} className="text-blue-600" />
-                        <span>Rincian Kehadiran Per Kelas ({attendanceTimeframe === '7weeks' ? '7 Minggu Terakhir' : attendanceTimeframe === '7days' ? '7 Hari Terakhir' : 'Semua Data'})</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                        <Users size={14} className="text-emerald-600"/> 
+                        Rincian Kehadiran Per Kelas ({selectedAttendanceDate === 'all' ? 'Total 7 Hari Terakhir' : `Tgl ${selectedAttendanceDate}`})
                     </h4>
-                    <span className="text-xs font-semibold text-gray-500">Total {perClassAttendance.length} Kelas</span>
+                    <span className="text-xs text-gray-400 font-medium">{classAttendanceStats.length} Kelas Terdaftar</span>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-gray-200 shadow-2xs">
-                    <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[11px]">
+                <div className="overflow-x-auto rounded-xl border border-gray-200/80 shadow-2xs">
+                    <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-gray-200">
                             <tr>
-                                <th className="p-3">Kelas</th>
-                                <th className="p-3 text-center">Jumlah Siswa</th>
-                                <th className="p-3 text-center text-emerald-700 bg-emerald-50/80">Hadir (H)</th>
-                                <th className="p-3 text-center text-blue-700 bg-blue-50/80">Izin (I)</th>
-                                <th className="p-3 text-center text-amber-700 bg-amber-50/80">Sakit (S)</th>
-                                <th className="p-3 text-center text-rose-700 bg-rose-50/80">Alpha (A)</th>
-                                <th className="p-3 text-center">Tingkat Kehadiran</th>
+                                <th className="py-2.5 px-3.5">Kelas</th>
+                                <th className="py-2.5 px-3 text-center">Hadir (H)</th>
+                                <th className="py-2.5 px-3 text-center">Izin (I)</th>
+                                <th className="py-2.5 px-3 text-center">Sakit (S)</th>
+                                <th className="py-2.5 px-3 text-center">Alpha (A)</th>
+                                <th className="py-2.5 px-3 text-center">Total Input</th>
+                                <th className="py-2.5 px-3.5 text-right">% Kehadiran</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 font-medium bg-white">
-                            {perClassAttendance.length === 0 ? (
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                            {classAttendanceStats.length === 0 ? (
                                 <tr>
-                                    <td colSpan={7} className="p-6 text-center text-gray-400 italic">
+                                    <td colSpan={7} className="py-4 text-center text-gray-400 italic">
                                         Belum ada data kehadiran kelas.
                                     </td>
                                 </tr>
                             ) : (
-                                perClassAttendance.map((item) => (
-                                    <tr key={item.classId} className="hover:bg-slate-50/80 transition-colors">
-                                        <td className="p-3 font-bold text-gray-800">
-                                            <div className="flex items-center gap-2">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-                                                <span>{item.className}</span>
-                                            </div>
+                                classAttendanceStats.map((item) => (
+                                    <tr key={item.className} className="hover:bg-slate-50 transition-colors">
+                                        <td className="py-2.5 px-3.5 font-bold text-gray-800">
+                                            Kelas {item.className}
                                         </td>
-                                        <td className="p-3 text-center font-semibold text-gray-600">
-                                            {item.studentCount} Siswa
-                                        </td>
-                                        <td className="p-3 text-center font-bold text-emerald-700 bg-emerald-50/30">
-                                            <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-xs">
-                                                {item.present}
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                                                {item.hadir}
                                             </span>
                                         </td>
-                                        <td className="p-3 text-center font-bold text-blue-700 bg-blue-50/30">
-                                            <span className="px-2.5 py-1 bg-blue-100 text-blue-800 rounded-lg text-xs">
-                                                {item.permit}
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.izin > 0 ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
+                                                {item.izin}
                                             </span>
                                         </td>
-                                        <td className="p-3 text-center font-bold text-amber-700 bg-amber-50/30">
-                                            <span className="px-2.5 py-1 bg-amber-100 text-amber-800 rounded-lg text-xs">
-                                                {item.sick}
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.sakit > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
+                                                {item.sakit}
                                             </span>
                                         </td>
-                                        <td className="p-3 text-center font-bold text-rose-700 bg-rose-50/30">
-                                            <span className={`px-2.5 py-1 rounded-lg text-xs ${item.alpha > 0 ? 'bg-rose-100 text-rose-800' : 'bg-gray-100 text-gray-500'}`}>
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.alpha > 0 ? 'bg-rose-50 text-rose-700 border-rose-200 font-black' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
                                                 {item.alpha}
                                             </span>
                                         </td>
-                                        <td className="p-3 text-center">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <div className="w-16 bg-gray-200 h-2 rounded-full overflow-hidden hidden sm:block">
+                                        <td className="py-2.5 px-3 text-center font-semibold text-gray-600">
+                                            {item.total}
+                                        </td>
+                                        <td className="py-2.5 px-3.5 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden hidden sm:block">
                                                     <div 
-                                                        className={`h-full ${
-                                                            item.percentage >= 90 ? 'bg-emerald-500' : item.percentage >= 75 ? 'bg-amber-500' : 'bg-rose-500'
-                                                        }`}
+                                                        className={`h-full rounded-full ${item.percentage >= 90 ? 'bg-emerald-500' : item.percentage >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
                                                         style={{ width: `${Math.min(100, item.percentage)}%` }}
-                                                    ></div>
+                                                    />
                                                 </div>
-                                                <span className={`font-black text-xs ${
-                                                    item.percentage >= 90 ? 'text-emerald-600' : item.percentage >= 75 ? 'text-amber-600' : 'text-rose-600'
-                                                }`}>
+                                                <span className={`font-bold ${item.percentage >= 90 ? 'text-emerald-600' : item.percentage >= 75 ? 'text-amber-600' : 'text-rose-600'}`}>
                                                     {item.percentage}%
                                                 </span>
                                             </div>
@@ -854,21 +716,6 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                                 ))
                             )}
                         </tbody>
-                        <tfoot className="bg-slate-100/90 font-bold text-slate-800 border-t-2 border-slate-300">
-                            <tr>
-                                <td className="p-3 uppercase text-xs">Total Seluruh Kelas</td>
-                                <td className="p-3 text-center text-xs">{totalPerClass.studentCount} Siswa</td>
-                                <td className="p-3 text-center text-emerald-800 bg-emerald-100/60 font-black">{totalPerClass.present}</td>
-                                <td className="p-3 text-center text-blue-800 bg-blue-100/60 font-black">{totalPerClass.permit}</td>
-                                <td className="p-3 text-center text-amber-800 bg-amber-100/60 font-black">{totalPerClass.sick}</td>
-                                <td className="p-3 text-center text-rose-800 bg-rose-100/60 font-black">{totalPerClass.alpha}</td>
-                                <td className="p-3 text-center">
-                                    <span className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg font-black text-xs">
-                                        {totalPerClass.percentage}%
-                                    </span>
-                                </td>
-                            </tr>
-                        </tfoot>
                     </table>
                 </div>
             </div>

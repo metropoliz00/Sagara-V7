@@ -54,6 +54,25 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const gtkStats = useMemo(() => {
     const lower = (str: string | undefined) => (str || '').toLowerCase();
 
+    // Helper to check if record/user is system admin or Admin Sagara (not GTK/Tendik)
+    const isSystemAdmin = (pos?: string, name?: string, username?: string, role?: string) => {
+      const p = lower(pos);
+      const n = lower(name);
+      const u = lower(username);
+      const r = lower(role);
+      
+      return (
+        n.includes('admin sagara') ||
+        n.includes('admin sistem') ||
+        u === 'admin' ||
+        u.includes('admin') ||
+        p.includes('admin') ||
+        p.includes('operator sistem') ||
+        r === 'superadmin' ||
+        (r === 'admin' && (n.includes('admin') || p.includes('admin') || !p))
+      );
+    };
+
     if (gtkData && gtkData.length > 0) {
       let headmaster = 0;
       let teachers = 0;
@@ -61,6 +80,10 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
 
       gtkData.forEach(g => {
         const pos = lower(g.jabatan);
+        const name = lower(g.nama);
+        if (isSystemAdmin(pos, name, '', '')) {
+          return; // Exclude system admin / Admin Sagara from GTK count
+        }
         if (pos.includes('kepala sekolah')) {
           headmaster++;
         } else if (pos.includes('guru') || pos.includes('pendidik')) {
@@ -70,21 +93,27 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
         }
       });
 
-      const totalGTK = gtkData.length;
+      const totalGTK = headmaster + teachers + staff;
       return { headmaster, teachers, staff, totalGTK };
     }
 
     // Fallback to users if gtkData is empty
-    const headmaster = users.filter(u => lower(u.position).includes('kepala sekolah')).length;
-    const teachers = users.filter(u => {
-        const pos = lower(u.position);
-        if (pos.includes('kepala sekolah')) return false;
-        return pos.includes('guru');
+    const headmaster = users.filter(u => {
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('kepala sekolah') || lower(u.role).includes('kepala sekolah');
     }).length;
+
+    const teachers = users.filter(u => {
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('guru') || u.role === 'guru';
+    }).length;
+
     const staff = users.filter(u => {
-        const pos = lower(u.position);
-        if (pos.includes('kepala sekolah')) return false;
-        return pos.includes('staff') || pos.includes('tata usaha') || pos.includes('operator') || pos.includes('penjaga') || pos.includes('administrasi');
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('staff') || pos.includes('tata usaha') || pos.includes('operator') || pos.includes('penjaga') || pos.includes('administrasi') || pos.includes('tendik');
     }).length;
 
     const totalGTK = headmaster + teachers + staff;

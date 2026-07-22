@@ -616,6 +616,29 @@ const StudentList: React.FC<StudentListProps> = ({
     }
   };
 
+  const parseExcelDate = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'number') {
+      const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+      return '';
+    }
+    const str = String(val).trim();
+    if (!str || str === '-') return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const parts = str.split(/[\/\.-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      } else if (parts[2].length === 4) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    return str;
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -645,6 +668,8 @@ const StudentList: React.FC<StudentListProps> = ({
               const genderRaw = String(row['Gender (L/P)'] || row['Gender'] || row['Jenis Kelamin'] || 'L').trim().toUpperCase();
               const gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN') || genderRaw.includes('WANITA')) ? 'P' : 'L';
 
+              const rawBirthDate = row['Tanggal Lahir (YYYY-MM-DD)'] || row['Tanggal Lahir'] || row['Tanggal Lahir (YYYY-MM-DD)*'];
+
               const newStudent: Omit<Student, 'id'> = {
                 classId: classIdInput || classId,
                 nis,
@@ -653,7 +678,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 name,
                 gender,
                 birthPlace: String(row['Tempat Lahir'] || '').trim(),
-                birthDate: String(row['Tanggal Lahir (YYYY-MM-DD)'] || row['Tanggal Lahir'] || '').trim(),
+                birthDate: parseExcelDate(rawBirthDate),
                 religion: String(row['Agama'] || 'Islam').trim(),
                 address: String(row['Alamat'] || '').trim(),
                 fatherName: String(row['Nama Ayah'] || '').trim().toUpperCase(),
@@ -704,7 +729,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 name,
                 gender,
                 birthPlace: row[6] ? String(row[6]).trim() : '',
-                birthDate: row[7] ? String(row[7]).trim() : '',
+                birthDate: parseExcelDate(row[7]),
                 religion: row[8] ? String(row[8]).trim() : 'Islam',
                 address: row[9] ? String(row[9]).trim() : '',
                 fatherName: row[10] ? String(row[10]).trim().toUpperCase() : '',

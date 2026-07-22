@@ -580,48 +580,78 @@ export const apiService = {
   },
 
   createStudentBatch: async (students: Omit<Student, 'id'>[]): Promise<any> => {
-    const dbStudents = students.map(s => ({
-      class_id: s.classId,
-      nis: s.nis,
-      nisn: s.nisn,
-      name: s.name,
-      gender: s.gender,
-      birth_place: s.birthPlace,
-      birth_date: s.birthDate,
-      religion: s.religion,
-      address: s.address,
-      father_name: s.fatherName,
-      father_job: s.fatherJob,
-      father_education: s.fatherEducation,
-      mother_name: s.motherName,
-      mother_job: s.motherJob,
-      mother_education: s.motherEducation,
-      parent_name: s.parentName,
-      parent_phone: s.parentPhone,
-      parent_job: s.parentJob,
-      economy_status: s.economyStatus,
-      height: s.height,
-      weight: s.weight,
-      blood_type: s.bloodType,
-      health_notes: s.healthNotes,
-      hobbies: s.hobbies,
-      ambition: s.ambition,
-      achievements: s.achievements,
-      violations: s.violations,
-      behavior_score: s.behaviorScore,
-      photo: s.photo,
-      teacher_notes: s.teacherNotes,
-      present: s.attendance?.present || 0,
-      sick: s.attendance?.sick || 0,
-      permit: s.attendance?.permit || 0,
-      alpha: s.attendance?.alpha || 0
-    }));
-    const { data, error } = await supabase.from('students').insert(dbStudents);
-    if (error) {
-      console.error("Error creating student batch:", error);
-      throw error;
+    const dbStudents = students.map(s => {
+      let cleanBirthDate: string | null = null;
+      if (s.birthDate && String(s.birthDate).trim() !== '' && String(s.birthDate).trim() !== '-') {
+        const bdStr = String(s.birthDate).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(bdStr)) {
+          cleanBirthDate = bdStr;
+        } else {
+          // Attempt to parse if string is e.g. DD/MM/YYYY or similar
+          const parts = bdStr.split(/[\/\.-]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              cleanBirthDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            } else if (parts[2].length === 4) {
+              cleanBirthDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+        }
+      }
+
+      return {
+        class_id: s.classId || '1A',
+        nis: String(s.nis).trim(),
+        nisn: (s.nisn && String(s.nisn).trim() !== '-' && String(s.nisn).trim() !== '') ? String(s.nisn).trim() : null,
+        nik: (s.nik && String(s.nik).trim() !== '-' && String(s.nik).trim() !== '') ? String(s.nik).trim() : null,
+        name: String(s.name).trim().toUpperCase(),
+        gender: (s.gender && String(s.gender).toUpperCase().includes('P')) ? 'P' : 'L',
+        birth_place: (s.birthPlace && String(s.birthPlace).trim() !== '-') ? String(s.birthPlace).trim() : null,
+        birth_date: cleanBirthDate,
+        religion: s.religion || 'Islam',
+        address: (s.address && String(s.address).trim() !== '-') ? String(s.address).trim() : null,
+        father_name: (s.fatherName && String(s.fatherName).trim() !== '-') ? String(s.fatherName).trim().toUpperCase() : null,
+        father_job: (s.fatherJob && String(s.fatherJob).trim() !== '-') ? String(s.fatherJob).trim() : null,
+        father_education: (s.fatherEducation && String(s.fatherEducation).trim() !== '-') ? String(s.fatherEducation).trim() : null,
+        mother_name: (s.motherName && String(s.motherName).trim() !== '-') ? String(s.motherName).trim().toUpperCase() : null,
+        mother_job: (s.motherJob && String(s.motherJob).trim() !== '-') ? String(s.motherJob).trim() : null,
+        mother_education: (s.motherEducation && String(s.motherEducation).trim() !== '-') ? String(s.motherEducation).trim() : null,
+        parent_name: (s.parentName && String(s.parentName).trim() !== '-') ? String(s.parentName).trim().toUpperCase() : null,
+        parent_phone: (s.parentPhone && String(s.parentPhone).trim() !== '-') ? String(s.parentPhone).trim() : null,
+        parent_job: (s.parentJob && String(s.parentJob).trim() !== '-') ? String(s.parentJob).trim() : null,
+        economy_status: s.economyStatus || 'Mampu',
+        height: isNaN(Number(s.height)) ? 0 : Number(s.height),
+        weight: isNaN(Number(s.weight)) ? 0 : Number(s.weight),
+        blood_type: (s.bloodType && String(s.bloodType).trim() !== '-') ? String(s.bloodType).trim() : null,
+        health_notes: (s.healthNotes && String(s.healthNotes).trim() !== '-') ? String(s.healthNotes).trim() : null,
+        hobbies: (s.hobbies && String(s.hobbies).trim() !== '-') ? String(s.hobbies).trim() : null,
+        ambition: (s.ambition && String(s.ambition).trim() !== '-') ? String(s.ambition).trim() : null,
+        achievements: Array.isArray(s.achievements) ? s.achievements : [],
+        violations: Array.isArray(s.violations) ? s.violations : [],
+        behavior_score: isNaN(Number(s.behaviorScore)) ? 100 : Number(s.behaviorScore),
+        photo: s.photo || null,
+        teacher_notes: s.teacherNotes || null,
+        present: s.attendance?.present || 0,
+        sick: s.attendance?.sick || 0,
+        permit: s.attendance?.permit || 0,
+        alpha: s.attendance?.alpha || 0
+      };
+    });
+
+    const chunkSize = 50;
+    const allResults: any[] = [];
+
+    for (let i = 0; i < dbStudents.length; i += chunkSize) {
+      const chunk = dbStudents.slice(i, i + chunkSize);
+      const { data, error } = await supabase.from('students').upsert(chunk, { onConflict: 'nis' }).select();
+      if (error) {
+        console.error("Error creating student batch chunk:", error);
+        throw error;
+      }
+      if (data) allResults.push(...data);
     }
-    return data;
+
+    return { status: 'success', data: allResults };
   },
 
   updateStudent: async (student: Student): Promise<void> => {

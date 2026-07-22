@@ -1056,8 +1056,24 @@ const AppContent: React.FC = () => {
   };
   const handleBatchAddStudents = async (newStudents: Omit<Student, 'id'>[]) => { 
     const batchWithClass = newStudents.map(s => ({ ...s, classId: s.classId || activeClassId || '1A' }));
-    if (isDemoMode) { const demoStudents = batchWithClass.map((s, i) => ({ ...s, id: Date.now().toString() + i })); setStudents([...students, ...demoStudents].sort((a, b) => a.name.localeCompare(b.name))); return; }
-    try { const res = await apiService.createStudentBatch(batchWithClass); if (res.status === 'success') { fetchData(); handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa!`, 'success'); } } catch (e) { handleShowNotification('Gagal upload batch siswa', 'error'); }
+    if (isDemoMode) { 
+      const demoStudents = batchWithClass.map((s, i) => ({ ...s, id: Date.now().toString() + i })); 
+      setStudents(prev => [...prev, ...demoStudents].sort((a, b) => a.name.localeCompare(b.name))); 
+      handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa! (Demo)`, 'success');
+      return; 
+    }
+    try { 
+      const res = await apiService.createStudentBatch(batchWithClass); 
+      if (res && (res.status === 'success' || Array.isArray(res))) { 
+        await fetchData(); 
+        handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa!`, 'success'); 
+      } else {
+        handleShowNotification('Gagal upload batch siswa', 'error');
+      }
+    } catch (e: any) { 
+      console.error("Batch add students error:", e);
+      handleShowNotification(e?.message ? `Gagal upload batch siswa: ${e.message}` : 'Gagal upload batch siswa', 'error'); 
+    }
   };
   const handleUpdateStudent = async (updatedStudent: Student) => {
     const oldStudents = students;

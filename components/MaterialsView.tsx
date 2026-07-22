@@ -340,6 +340,12 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const getGoogleDriveEmbedUrl = (url: string) => {
     if (!url) return null;
     const cleanUrl = url.trim();
+    if (cleanUrl.includes('docs.google.com/forms')) {
+      if (!cleanUrl.includes('embedded=true')) {
+        return cleanUrl.includes('?') ? `${cleanUrl}&embedded=true` : `${cleanUrl}?embedded=true`;
+      }
+      return cleanUrl;
+    }
     if (cleanUrl.includes('drive.google.com') || cleanUrl.includes('docs.google.com')) {
       // Handle /file/d/...
       let match = cleanUrl.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
@@ -375,6 +381,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   };
   const [activeTab, setActiveTab] = useState<'all' | 'materi' | 'tugas'>('all');
   const [previewTaskItem, setPreviewTaskItem] = useState<Material | null>(null);
+  const [isTaskIframeOpen, setIsTaskIframeOpen] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState({
@@ -769,7 +776,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                       {hasTask ? (
                         <button
                           type="button"
-                          onClick={() => setPreviewTaskItem(material)}
+                          onClick={() => {
+                            setPreviewTaskItem(material);
+                            setIsTaskIframeOpen(true);
+                          }}
                           className="flex items-center gap-1.5 px-3 h-8 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                           title="Buka & Kerjakan Tugas"
                         >
@@ -1205,25 +1215,49 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
-                      <LinkIcon size={14} className="text-amber-600" />
-                      Link Tautan Tugas / Form
+                      <ClipboardList size={15} className="text-amber-600" />
+                      Pengerjaan Tugas Online (Dalam Aplikasi)
                     </span>
                     <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">
-                      Online Form / Link
+                      In-App Form
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 truncate font-mono bg-slate-50 p-2 rounded-lg border border-slate-200">
-                    {previewTaskItem.taskLink}
-                  </p>
-                  <a
-                    href={previewTaskItem.taskLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
-                  >
-                    <ExternalLink size={15} />
-                    <span>Buka Link Tugas di Tab Baru</span>
-                  </a>
+
+                  {!isTaskIframeOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setIsTaskIframeOpen(true)}
+                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all cursor-pointer hover:scale-[1.01] active:scale-95"
+                    >
+                      <ClipboardList size={18} />
+                      <span>Buka Tugas</span>
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center bg-amber-100/80 p-2.5 rounded-xl text-amber-900 border border-amber-200">
+                        <span className="text-xs font-extrabold flex items-center gap-1.5">
+                          <CheckSquare size={15} className="text-amber-600" />
+                          Lembar Kerja / Form Tugas
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setIsTaskIframeOpen(false)}
+                          className="text-[11px] font-extrabold text-amber-800 hover:text-amber-950 px-2.5 py-1 bg-amber-200/80 hover:bg-amber-300/80 rounded-lg transition-colors cursor-pointer"
+                        >
+                          Sembunyikan Lembar Tugas
+                        </button>
+                      </div>
+                      <div className="w-full h-[520px] rounded-2xl overflow-hidden border border-amber-300 shadow-md bg-white">
+                        <iframe 
+                          src={getGoogleDriveEmbedUrl(previewTaskItem.taskLink) || previewTaskItem.taskLink}
+                          title="Pengerjaan Tugas"
+                          className="w-full h-full border-0"
+                          allow="autoplay; camera; microphone; clipboard-write; encrypted-media"
+                          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

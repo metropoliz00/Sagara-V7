@@ -783,11 +783,17 @@ export const apiService = {
       let link = m.link || '';
       let videoLink = '';
       let infographic = '';
+      let taskLink = '';
+      let taskFile = '';
+      let taskTitle = '';
       if (link && link.includes('|||')) {
           const parts = link.split('|||');
           link = parts[0] || '';
           videoLink = parts[1] || '';
           infographic = parts[2] || '';
+          taskLink = parts[3] || '';
+          taskFile = parts[4] || '';
+          taskTitle = parts[5] || '';
       }
       return {
         id: m.id,
@@ -798,14 +804,17 @@ export const apiService = {
         link: link,
         videoLink: videoLink,
         infographic: infographic,
+        taskLink: taskLink,
+        taskFile: taskFile,
+        taskTitle: taskTitle,
         isVisible: m.is_visible,
         createdAt: m.created_at
       };
     });
   },
   createMaterial: async (material: Omit<Material, 'id' | 'createdAt'> & { createdAt?: string }): Promise<void> => {
-    const combinedLink = (material.videoLink || material.infographic)
-      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}`
+    const combinedLink = (material.videoLink || material.infographic || material.taskLink || material.taskFile || material.taskTitle)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}|||${material.taskLink || ''}|||${material.taskFile || ''}|||${material.taskTitle || ''}`
       : material.link;
     const { error } = await supabase.from('materials').insert([{
       class_id: material.classId,
@@ -822,8 +831,8 @@ export const apiService = {
     }
   },
   updateMaterial: async (material: Material): Promise<void> => {
-    const combinedLink = (material.videoLink || material.infographic)
-      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}`
+    const combinedLink = (material.videoLink || material.infographic || material.taskLink || material.taskFile || material.taskTitle)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}|||${material.taskLink || ''}|||${material.taskFile || ''}|||${material.taskTitle || ''}`
       : material.link;
     const { error } = await supabase.from('materials').update({
       subject_id: material.subjectId,

@@ -4,7 +4,8 @@ import {
   BookOpen, Plus, Search, ExternalLink, Trash2, Edit2, 
   Filter, Calendar, Link as LinkIcon, FileText, X, Youtube,
   Eye, EyeOff, Sparkles, Award, BookMarked, Video, Layers, Globe, PenTool, Binary,
-  Upload, Download, FileSpreadsheet, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
+  Upload, Download, FileSpreadsheet, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw,
+  ClipboardList, FileCheck, Paperclip, CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CustomModal from './CustomModal';
@@ -49,6 +50,20 @@ const compressImageToBase64 = (file: File): Promise<string> => {
       img.onerror = (err) => reject(err);
     };
     reader.onerror = (err) => reject(err);
+  });
+};
+
+// Helper to read task file (Image or PDF) to Base64
+const readTaskFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (file.type.startsWith('image/')) {
+      compressImageToBase64(file).then(resolve).catch(reject);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    }
   });
 };
 
@@ -358,6 +373,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     }
     return null;
   };
+  const [activeTab, setActiveTab] = useState<'all' | 'materi' | 'tugas'>('all');
+  const [previewTaskItem, setPreviewTaskItem] = useState<Material | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState({
@@ -367,6 +384,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     link: '',
     videoLink: '',
     infographic: '',
+    taskTitle: '',
+    taskLink: '',
+    taskFile: '',
     isVisible: true,
     createdAt: ''
   });
@@ -389,6 +409,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         link: editingMaterial.link,
         videoLink: editingMaterial.videoLink || '',
         infographic: editingMaterial.infographic || '',
+        taskTitle: editingMaterial.taskTitle || '',
+        taskLink: editingMaterial.taskLink || '',
+        taskFile: editingMaterial.taskFile || '',
         isVisible: editingMaterial.isVisible,
         createdAt: getFormattedDate(editingMaterial.createdAt)
       });
@@ -400,6 +423,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         link: '',
         videoLink: '',
         infographic: '',
+        taskTitle: '',
+        taskLink: '',
+        taskFile: '',
         isVisible: true,
         createdAt: getFormattedDate()
       });
@@ -408,11 +434,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
 
   const filteredMaterials = materials.filter(m => {
     const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         (m.description?.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (m.description?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (m.taskTitle?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSubject = selectedSubject === 'all' || m.subjectId === selectedSubject;
     const isVisibleToStudent = isTeacher || m.isVisible;
-    console.log(`Material: ${m.title}, isVisible: ${m.isVisible}, isTeacher: ${isTeacher}, show: ${matchesSearch && matchesSubject && isVisibleToStudent}`);
-    return matchesSearch && matchesSubject && isVisibleToStudent;
+
+    const hasTask = !!(m.taskLink || m.taskFile || m.taskTitle);
+    let matchesTab = true;
+    if (activeTab === 'tugas') {
+      matchesTab = hasTask;
+    } else if (activeTab === 'materi') {
+      matchesTab = !hasTask;
+    }
+
+    return matchesSearch && matchesSubject && isVisibleToStudent && matchesTab;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -434,6 +469,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           link: formData.link,
           videoLink: formData.videoLink,
           infographic: formData.infographic,
+          taskTitle: formData.taskTitle,
+          taskLink: formData.taskLink,
+          taskFile: formData.taskFile,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -447,6 +485,9 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           link: formData.link,
           videoLink: formData.videoLink,
           infographic: formData.infographic,
+          taskTitle: formData.taskTitle,
+          taskLink: formData.taskLink,
+          taskFile: formData.taskFile,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -517,30 +558,71 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-[#CAF4FF] shadow-sm flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari judul atau deskripsi..." 
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5AB2FF] outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Filter size={18} className="text-gray-400" />
-          <select 
-            className="border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#5AB2FF]"
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
+      {/* Filters & Sub-Menu Navigation */}
+      <div className="bg-white p-4 rounded-2xl border border-[#CAF4FF] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+        <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
           >
-            <option value="all">Semua Mata Pelajaran</option>
-            {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            <BookOpen size={14} />
+            <span>Semua ({materials.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('materi')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'materi'
+                ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <FileText size={14} />
+            <span>Materi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tugas')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'tugas'
+                ? 'bg-[#5AB2FF] text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <ClipboardList size={14} />
+            <span>Tugas & Latihan ({materials.filter(m => m.taskLink || m.taskFile || m.taskTitle).length})</span>
+          </button>
+        </div>
+
+        <div className="flex-1 flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Cari judul, deskripsi, atau tugas..." 
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <Filter size={18} className="text-gray-400" />
+            <select 
+              className="border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#5AB2FF] bg-white"
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+            >
+              <option value="all">Semua Mata Pelajaran</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -550,6 +632,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           filteredMaterials.map(material => {
             const subject = subjects.find(s => s.id === material.subjectId);
             const theme = getSubjectTheme(material.subjectId, subject?.name || '');
+            const hasTask = !!(material.taskLink || material.taskFile || material.taskTitle);
             
             // Choose icon based on subject name
             let SubjectIcon = BookOpen;
@@ -585,10 +668,18 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     {/* Header: Subject & Actions */}
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex flex-col gap-1.5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${theme.badge} uppercase tracking-wider shadow-sm transition-colors duration-200 w-max`}>
-                          <SubjectIcon size={12} className={theme.text} />
-                          {subject?.name || 'Mata Pelajaran'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${theme.badge} uppercase tracking-wider shadow-sm transition-colors duration-200 w-max`}>
+                            <SubjectIcon size={12} className={theme.text} />
+                            {subject?.name || 'Mata Pelajaran'}
+                          </span>
+                          {hasTask && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-sm uppercase tracking-wide">
+                              <ClipboardList size={11} />
+                              Ada Tugas
+                            </span>
+                          )}
+                        </div>
                         {!material.isVisible && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide w-max">
                             <EyeOff size={10} />
@@ -636,6 +727,21 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                       ) : (
                         <p className="text-xs text-slate-300 italic font-light">Tidak ada deskripsi tambahan</p>
                       )}
+
+                      {/* Quick Task Highlight box if task attached */}
+                      {hasTask && (
+                        <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-900 font-medium mt-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <ClipboardList size={15} className="text-amber-600 shrink-0" />
+                            <span className="truncate font-extrabold text-[11px] text-amber-800">
+                              {material.taskTitle || "Tugas / Latihan Siswa"}
+                            </span>
+                          </div>
+                          <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-bold shrink-0 ml-2">
+                            {material.taskFile ? (material.taskFile.startsWith('data:application/pdf') ? 'PDF' : 'Foto/Base64') : 'Link'}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -652,13 +758,38 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 </div>
 
                   {/* Footer Stats & Actions */}
-                  <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-3">
-                    <div className="flex items-center text-[11px] text-slate-400 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                      <Calendar size={12} className="mr-1.5 text-slate-400" />
-                      <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-2">
+                    <div className="flex items-center text-[11px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 shrink-0">
+                      <Calendar size={12} className="mr-1 text-slate-400" />
+                      <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                     </div>
                     
                     <div className="flex gap-1.5 flex-wrap justify-end">
+                      {/* Tombol Tugas */}
+                      {hasTask ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewTaskItem(material)}
+                          className="flex items-center gap-1.5 px-3 h-8 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                          title="Buka & Kerjakan Tugas"
+                        >
+                          <ClipboardList size={13} />
+                          <span>Tugas</span>
+                        </button>
+                      ) : (
+                        isTeacher && (
+                          <button
+                            type="button"
+                            onClick={() => { setEditingMaterial(material); setIsModalOpen(true); }}
+                            className="flex items-center gap-1 px-2.5 h-8 bg-slate-50 hover:bg-amber-50 text-slate-500 hover:text-amber-600 border border-slate-200 font-bold text-[11px] rounded-lg transition-all cursor-pointer"
+                            title="Tambah Tugas ke Materi ini"
+                          >
+                            <Plus size={12} />
+                            <span>Tugas</span>
+                          </button>
+                        )
+                      )}
+
                       {material.infographic && (
                         <button 
                           onClick={() => setPreviewItem({
@@ -666,7 +797,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                             url: material.infographic || '',
                             type: 'infographic'
                           })}
-                          className="flex items-center gap-1.5 px-3 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                          className="flex items-center gap-1 px-2.5 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                           title="Lihat Poster / Infografis"
                         >
                           <ImageIcon size={12} className="text-indigo-500" />
@@ -876,6 +1007,115 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     </div>
                   )}
                 </div>
+                {/* Section Tugas & Latihan Siswa */}
+                <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200/80 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="flex items-center gap-1.5 text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+                      <ClipboardList size={15} className="text-amber-600" />
+                      <span>Sematkan Tugas & Latihan Siswa (Opsional)</span>
+                    </label>
+                    {(formData.taskLink || formData.taskFile || formData.taskTitle) && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, taskTitle: '', taskLink: '', taskFile: ''})}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        Hapus Tugas
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      Judul / Petunjuk Soal Tugas
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full border border-amber-200 p-2.5 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-400 outline-none bg-white"
+                      placeholder="Contoh: Kerjakan Soal Latihan Bab 1 Hal 20..."
+                      value={formData.taskTitle}
+                      onChange={e => setFormData({...formData, taskTitle: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      1. Link Tautan Tugas (Google Form, Drive, Quizizz, Website)
+                    </label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={15} />
+                      <input 
+                        type="url" 
+                        className="w-full pl-9 pr-3 py-2 border border-amber-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-400 outline-none bg-white"
+                        placeholder="https://forms.google.com/... atau link latihan online"
+                        value={formData.taskLink}
+                        onChange={e => setFormData({...formData, taskLink: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      2. Unggah File / Berkas Tugas (Foto / PDF - Disimpan Base64)
+                    </label>
+                    
+                    {formData.taskFile ? (
+                      <div className="rounded-xl border border-amber-300 bg-white p-3 flex items-center justify-between gap-3 shadow-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {formData.taskFile.startsWith('data:image/') ? (
+                            <img 
+                              src={formData.taskFile} 
+                              alt="Foto Tugas" 
+                              className="w-12 h-12 object-cover rounded-lg border border-amber-200 shrink-0" 
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-lg border border-red-200 flex items-center justify-center shrink-0 font-extrabold text-xs">
+                              PDF
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-gray-800 truncate">
+                              {formData.taskFile.startsWith('data:image/') ? 'Foto Berkas Tugas Terlampir' : 'Dokumen PDF Tugas Terlampir'}
+                            </p>
+                            <p className="text-[10px] text-amber-600 font-medium truncate">
+                              Tersimpan rapi dalam format string Base64
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, taskFile: ''})}
+                          className="px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors shrink-0 cursor-pointer"
+                        >
+                          Ganti / Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl py-3 px-4 bg-white hover:bg-amber-50/50 transition-all text-xs font-bold text-amber-800 shadow-sm">
+                        <Paperclip size={16} className="text-amber-600" />
+                        <span>Pilih Foto atau Dokumen PDF Tugas</span>
+                        <input 
+                          type="file"
+                          accept="image/*, application/pdf, .pdf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const base64 = await readTaskFileToBase64(file);
+                                setFormData({...formData, taskFile: base64});
+                                onShowNotification('File tugas berhasil diunggah (Base64)!', 'success');
+                              } catch (err) {
+                                onShowNotification('Gagal membaca file tugas. Coba file lain.', 'error');
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
                   <label className="text-sm font-bold text-gray-700">Tampilkan ke Siswa</label>
                   <button
@@ -911,6 +1151,156 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pratinjau Tugas Modal */}
+      {previewTaskItem && (
+        <div className={`fixed inset-0 ${currentUser?.role !== 'siswa' ? 'lg:pl-72' : ''} z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300`}>
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-scale-in border border-amber-200">
+            {/* Modal Header */}
+            <div className="p-5 flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-sm text-white">
+                  <ClipboardList size={22} />
+                </div>
+                <div>
+                  <span className="text-[10px] text-amber-100 font-extrabold uppercase tracking-wider block">
+                    Tugas & Latihan Siswa
+                  </span>
+                  <h3 className="font-extrabold text-base md:text-lg text-white line-clamp-1">
+                    {previewTaskItem.title}
+                  </h3>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPreviewTaskItem(null)} 
+                className="p-1.5 hover:bg-white/20 rounded-full transition-colors text-white cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 bg-amber-50/20">
+              {/* Task Title & Instruction */}
+              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 text-amber-700 font-extrabold text-xs uppercase tracking-wider">
+                  <CheckSquare size={16} />
+                  <span>Petunjuk / Instruksi Tugas</span>
+                </div>
+                <h4 className="text-base font-extrabold text-gray-800">
+                  {previewTaskItem.taskTitle || "Selesaikan tugas berikut sesuai instruksi dari guru."}
+                </h4>
+                {previewTaskItem.description && (
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap pt-1 border-t border-gray-100 mt-2">
+                    {previewTaskItem.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Task Link Attachment */}
+              {previewTaskItem.taskLink && (
+                <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                      <LinkIcon size={14} className="text-amber-600" />
+                      Link Tautan Tugas / Form
+                    </span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">
+                      Online Form / Link
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 truncate font-mono bg-slate-50 p-2 rounded-lg border border-slate-200">
+                    {previewTaskItem.taskLink}
+                  </p>
+                  <a
+                    href={previewTaskItem.taskLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                  >
+                    <ExternalLink size={15} />
+                    <span>Buka Link Tugas di Tab Baru</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Task File Attachment (Base64 Photo or PDF) */}
+              {previewTaskItem.taskFile && (
+                <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                      <Paperclip size={14} className="text-amber-600" />
+                      Berkas Lampiran Tugas (Base64)
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                      {previewTaskItem.taskFile.startsWith('data:application/pdf') ? 'Dokumen PDF' : 'Foto Gambar'}
+                    </span>
+                  </div>
+
+                  {/* Render Image or PDF Preview */}
+                  {previewTaskItem.taskFile.startsWith('data:image/') ? (
+                    <div className="space-y-3">
+                      <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 max-h-80 flex items-center justify-center">
+                        <img 
+                          src={previewTaskItem.taskFile} 
+                          alt="Foto Tugas" 
+                          className="max-h-80 object-contain w-full"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <a 
+                          href={previewTaskItem.taskFile}
+                          download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}.jpg`}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer"
+                        >
+                          <Download size={14} />
+                          <span>Unduh Foto Tugas</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : previewTaskItem.taskFile.startsWith('data:application/pdf') ? (
+                    <div className="space-y-3">
+                      <iframe 
+                        src={previewTaskItem.taskFile}
+                        title="Dokumen PDF Tugas"
+                        className="w-full h-80 rounded-xl border border-slate-200"
+                      />
+                      <a 
+                        href={previewTaskItem.taskFile}
+                        download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}.pdf`}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                      >
+                        <Download size={14} />
+                        <span>Unduh Dokumen PDF Tugas</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <a 
+                      href={previewTaskItem.taskFile}
+                      download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}`}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                    >
+                      <Download size={14} />
+                      <span>Unduh File Tugas</span>
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end shrink-0">
+              <button 
+                type="button"
+                onClick={() => setPreviewTaskItem(null)}
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -424,6 +424,9 @@ export interface Material {
   link: string;
   videoLink?: string;
   infographic?: string;
+  taskLink?: string;
+  taskFile?: string;
+  taskTitle?: string;
   isVisible: boolean;
   createdAt: string;
 }

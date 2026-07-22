@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
 import { MOCK_SUBJECTS, CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIPTIONS_2025_2026, WEEKDAYS } from '../constants';
 import { 
-  User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
+  Search, Filter, User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
   BookOpen, Book, LayoutDashboard, Clock,
   Star, HeartHandshake, ListTodo,
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
@@ -525,6 +525,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [viewingPoster, setViewingPoster] = useState<Material | null>(null);
   const [viewingTask, setViewingTask] = useState<Material | null>(null);
+  const [materialSearchQuery, setMaterialSearchQuery] = useState('');
+  const [materialSelectedSubject, setMaterialSelectedSubject] = useState('ALL');
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
@@ -573,6 +575,29 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     }
     return cleanUrl;
   };
+
+    const filteredMaterials = useMemo(() => {
+    return materials.filter(m => {
+      if (m.classId !== student.classId || !m.isVisible) return false;
+      
+      if (materialSelectedSubject !== 'ALL' && m.subjectId !== materialSelectedSubject) {
+        return false;
+      }
+
+      if (materialSearchQuery.trim()) {
+        const q = materialSearchQuery.toLowerCase().trim();
+        const subject = MOCK_SUBJECTS.find(s => s.id === m.subjectId);
+        const titleMatch = m.title?.toLowerCase().includes(q);
+        const descMatch = m.description?.toLowerCase().includes(q);
+        const subjMatch = subject?.name?.toLowerCase().includes(q) || m.subjectId?.toLowerCase().includes(q);
+        const taskTitleMatch = m.taskTitle?.toLowerCase().includes(q);
+
+        return titleMatch || descMatch || subjMatch || taskTitleMatch;
+      }
+
+      return true;
+    });
+  }, [materials, student.classId, materialSelectedSubject, materialSearchQuery]);
 
   const handleOpenMaterialLink = (url: string) => {
     const embedUrl = getDocumentEmbedUrl(url);
@@ -2323,16 +2348,74 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           </div>
                       ) : (
                           <>
-                              {materials.length === 0 ? (
-                                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                      <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-                                      <p className="text-gray-500 font-medium">Belum ada materi yang dibagikan.</p>
-                                  </div>
-                              ) : (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                      {materials
-                                        .filter(m => m.classId === student.classId && m.isVisible)
-                                        .map((material) => {
+                               {/* Search & Subject Filter Bar */}
+                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80">
+                                   <div className="relative flex-1">
+                                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                       <input
+                                           type="text"
+                                           placeholder="Cari materi, topik, atau kata kunci..."
+                                           value={materialSearchQuery}
+                                           onChange={(e) => setMaterialSearchQuery(e.target.value)}
+                                           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-sm"
+                                       />
+                                       {materialSearchQuery && (
+                                           <button 
+                                               type="button"
+                                               onClick={() => setMaterialSearchQuery('')}
+                                               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-colors"
+                                           >
+                                               <X size={15} />
+                                           </button>
+                                       )}
+                                   </div>
+
+                                   <div className="relative min-w-[200px] sm:w-64">
+                                       <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={17} />
+                                       <select
+                                           value={materialSelectedSubject}
+                                           onChange={(e) => setMaterialSelectedSubject(e.target.value)}
+                                           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 appearance-none cursor-pointer transition-all shadow-sm"
+                                       >
+                                           <option value="ALL">Semua Mata Pelajaran</option>
+                                           {MOCK_SUBJECTS.map((subj) => (
+                                               <option key={subj.id} value={subj.id}>
+                                                   {subj.name}
+                                               </option>
+                                           ))}
+                                       </select>
+                                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                   </div>
+                               </div>
+
+                               {filteredMaterials.length === 0 ? (
+                                   <div className="text-center py-12 px-4 bg-slate-50/60 rounded-2xl border border-dashed border-slate-300">
+                                       <BookOpen size={48} className="mx-auto text-slate-300 mb-3" />
+                                       <p className="text-slate-700 font-bold text-base mb-1">
+                                           {materials.length === 0 ? 'Belum Ada Materi' : 'Materi Tidak Ditemukan'}
+                                       </p>
+                                       <p className="text-slate-500 text-xs max-w-md mx-auto mb-4">
+                                           {materials.length === 0 
+                                               ? 'Belum ada materi pembelajaran yang dibagikan oleh guru untuk kelas Anda.' 
+                                               : 'Coba sesuaikan kata kunci pencarian atau ganti filter mata pelajaran.'}
+                                       </p>
+                                       {(materialSearchQuery || materialSelectedSubject !== 'ALL') && (
+                                           <button
+                                               type="button"
+                                               onClick={() => {
+                                                   setMaterialSearchQuery('');
+                                                   setMaterialSelectedSubject('ALL');
+                                               }}
+                                               className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                                           >
+                                               <RotateCcw size={14} />
+                                               <span>Reset Pencarian & Filter</span>
+                                           </button>
+                                       )}
+                                   </div>
+                               ) : (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                       {filteredMaterials.map((material) => {
                                           const subject = MOCK_SUBJECTS.find(s => s.id === material.subjectId);
                                           const decoration = SUBJECT_DECORATIONS[material.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS['default'];
                                           const IconComponent = decoration.icon;

@@ -101,6 +101,46 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
       }));
   }, [students]);
 
+  // Economy Status Data
+  const economyData = useMemo(() => {
+    const counts: Record<string, number> = { 'Mampu': 0, 'Kurang Mampu': 0 };
+    students.forEach(s => {
+      const status = s.economyStatus || 'Mampu';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [students]);
+
+  // Grade 1 to 6 Data
+  const grade1To6Data = useMemo(() => {
+    const grades: Record<string, { L: number; P: number; total: number }> = {
+      'Kelas 1': { L: 0, P: 0, total: 0 },
+      'Kelas 2': { L: 0, P: 0, total: 0 },
+      'Kelas 3': { L: 0, P: 0, total: 0 },
+      'Kelas 4': { L: 0, P: 0, total: 0 },
+      'Kelas 5': { L: 0, P: 0, total: 0 },
+      'Kelas 6': { L: 0, P: 0, total: 0 },
+    };
+    students.forEach(s => {
+      const cls = (s.classId || '').trim();
+      const match = cls.match(/^([1-6])/);
+      if (match) {
+        const gKey = `Kelas ${match[1]}`;
+        if (grades[gKey]) {
+          if (s.gender === 'L') grades[gKey].L++;
+          else grades[gKey].P++;
+          grades[gKey].total++;
+        }
+      }
+    });
+    return Object.entries(grades).map(([name, data]) => ({
+      name,
+      L: data.L,
+      P: data.P,
+      total: data.total
+    }));
+  }, [students]);
+
   // 3. Attendance Stats
   const attendanceStats = useMemo(() => {
     if (!attendanceRecords || attendanceRecords.length === 0) {
@@ -330,6 +370,34 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
         </div>
 
+        {/* STUDENT STATS CARDS */}
+        <h3 className="text-lg font-bold text-gray-800 mt-6 flex items-center">
+            <GraduationCap className="mr-2 text-indigo-600" size={20} /> Statistik Kesiswaan
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-5 rounded-2xl shadow-lg flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-bold uppercase mb-1 opacity-80">Total Siswa Seluruhnya</p>
+                    <h3 className="text-3xl font-black">{students.length}</h3>
+                </div>
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm"><GraduationCap size={28}/></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">Jumlah Siswa Laki-laki</p>
+                    <h3 className="text-3xl font-black text-blue-600">{genderCounts.l}</h3>
+                </div>
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Users size={24}/></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">Jumlah Siswa Perempuan</p>
+                    <h3 className="text-3xl font-black text-pink-600">{genderCounts.p}</h3>
+                </div>
+                <div className="p-3 bg-pink-50 text-pink-600 rounded-xl"><Users size={24}/></div>
+            </div>
+        </div>
+
         {/* TOP CARDS: GTK FOCUS */}
         <h3 className="text-lg font-bold text-gray-800 mt-6 flex items-center">
             <Users className="mr-2 text-indigo-600" size={20} /> Pengelolaan GTK
@@ -456,6 +524,41 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                             </div>
                         )
                     })}
+                </div>
+            </div>
+        </div>
+
+        {/* ECONOMIC CONDITION & GRADE 1-6 CHARTS */}
+        <div className="grid grid-cols-1 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><Wallet size={18} className="mr-2 text-emerald-500"/> Grafik Kondisi Ekonomi Murid</h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={economyData} margin={{top:5, right:5, left:-20, bottom:0}}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                            <XAxis dataKey="name" tick={{fontSize: 10}}/>
+                            <YAxis allowDecimals={false} tick={{fontSize: 10}}/>
+                            <Tooltip contentStyle={{borderRadius: '8px'}}/>
+                            <Bar dataKey="value" fill="#10b981" name="Jumlah Siswa" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><GraduationCap size={18} className="mr-2 text-indigo-500"/> Grafik Data dari Kelas 1 sampai dengan 6</h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={grade1To6Data} margin={{top:5, right:5, left:-20, bottom:0}}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                            <XAxis dataKey="name" tick={{fontSize: 10}}/>
+                            <YAxis allowDecimals={false} tick={{fontSize: 10}}/>
+                            <Tooltip contentStyle={{borderRadius: '8px'}}/>
+                            <Legend wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}/>
+                            <Bar dataKey="L" stackId="a" fill="#5AB2FF" name="Laki-laki" />
+                            <Bar dataKey="P" stackId="a" fill="#F472B6" name="Perempuan" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
                 </div>
             </div>
         </div>

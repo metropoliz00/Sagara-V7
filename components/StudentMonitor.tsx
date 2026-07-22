@@ -10,9 +10,21 @@ import {
   UserCheck, BookOpen, Calendar, Send, 
   PieChart as PieIcon, List, FileText, ChevronDown, CheckCircle, XCircle, Clock,
   MapPin, TrendingUp, ListTodo, Award, Star, AlertTriangle, HeartHandshake, LayoutDashboard, Medal,
-  Activity, Trophy, User as UserIcon, Save, Loader2, GraduationCap, Heart, Sparkles, AlertCircle, Calculator
+  Activity, Trophy, User as UserIcon, Save, Loader2, GraduationCap, Heart, Sparkles, AlertCircle, Calculator, MessageCircle, ExternalLink
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
+
+
+const formatWaUrl = (phone?: string) => {
+  if (!phone) return '#';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.slice(1);
+  } else if (cleaned.startsWith('8')) {
+    cleaned = '62' + cleaned;
+  }
+  return `https://wa.me/${cleaned}`;
+};
 
 interface StudentMonitorProps {
   students: Student[];
@@ -247,7 +259,24 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
                                 <p className="flex justify-between border-b border-dashed pb-1"><span>Jenis Kelamin:</span> <span className="font-semibold text-gray-800">{selectedStudent.gender === 'L' ? 'Laki-laki' : 'Perempuan'}</span></p>
                                 <p className="flex justify-between border-b border-dashed pb-1"><span>Tgl Lahir:</span> <span className="font-semibold text-gray-800">{selectedStudent.birthDate ? formatDateID(selectedStudent.birthDate) : '-'}</span></p>
                                 <p className="flex justify-between border-b border-dashed pb-1"><span>Wali:</span> <span className="font-semibold text-gray-800 uppercase">{selectedStudent.parentName?.toUpperCase()}</span></p>
-                                <p className="flex justify-between border-b border-dashed pb-1"><span>No. HP:</span> <span className="font-semibold text-gray-800">{selectedStudent.parentPhone}</span></p>
+                                <p className="flex justify-between items-center border-b border-dashed pb-1">
+                                    <span>No. WA Ortu:</span>
+                                    {selectedStudent.parentPhone && selectedStudent.parentPhone !== '-' ? (
+                                        <a
+                                            href={formatWaUrl(selectedStudent.parentPhone)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded-lg border border-emerald-200 transition-all text-xs cursor-pointer shadow-xs hover:scale-102"
+                                            title="Klik untuk chat WhatsApp Orang Tua"
+                                        >
+                                            <MessageCircle size={13} className="text-emerald-600 fill-emerald-100" />
+                                            <span>{selectedStudent.parentPhone}</span>
+                                            <ExternalLink size={10} className="text-emerald-500" />
+                                        </a>
+                                    ) : (
+                                        <span className="font-semibold text-gray-400 italic">-</span>
+                                    )}
+                                </p>
                                 <div className="pt-1">
                                     <span className="block mb-1">Alamat:</span>
                                     <span className="font-semibold text-gray-800 block leading-tight">{selectedStudent.address}</span>

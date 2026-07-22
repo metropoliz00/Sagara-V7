@@ -27,6 +27,18 @@ import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+
+const formatWaUrl = (phone?: string) => {
+  if (!phone) return '#';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.slice(1);
+  } else if (cleaned.startsWith('8')) {
+    cleaned = '62' + cleaned;
+  }
+  return `https://wa.me/${cleaned}`;
+};
+
 function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -2666,7 +2678,24 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               }`}>{student.name.toUpperCase()}</span></div>
                               <div><strong className="block text-xs text-gray-500">NIS / NISN</strong> <span className="font-semibold text-gray-800">{student.nis} / {student.nisn || '-'}</span></div>
                               <div><strong className="block text-xs text-gray-500">Alamat</strong> <span className="font-semibold text-gray-800">{student.address}</span></div>
-                              <div><strong className="block text-xs text-gray-500">No. HP Wali</strong> <span className="font-semibold text-gray-800">{student.parentPhone}</span></div>
+                              <div>
+                                  <strong className="block text-xs text-gray-500 mb-0.5">No. WA Wali</strong>
+                                  {student.parentPhone && student.parentPhone !== '-' ? (
+                                      <a
+                                          href={formatWaUrl(student.parentPhone)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-xs transition-all cursor-pointer hover:scale-102 shadow-xs"
+                                          title="Klik untuk chat WhatsApp Orang Tua"
+                                      >
+                                          <MessageCircle size={14} className="text-emerald-600 fill-emerald-100" />
+                                          <span>{student.parentPhone}</span>
+                                          <ExternalLink size={11} className="text-emerald-500 ml-0.5" />
+                                      </a>
+                                  ) : (
+                                      <span className="font-semibold text-gray-800">-</span>
+                                  )}
+                              </div>
                           </div>
                       </div>
                   </div>

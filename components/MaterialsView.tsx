@@ -728,20 +728,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                         <p className="text-xs text-slate-300 italic font-light">Tidak ada deskripsi tambahan</p>
                       )}
 
-                      {/* Quick Task Highlight box if task attached */}
-                      {hasTask && (
-                        <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200/80 flex items-center justify-between text-xs text-amber-900 font-medium mt-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <ClipboardList size={15} className="text-amber-600 shrink-0" />
-                            <span className="truncate font-extrabold text-[11px] text-amber-800">
-                              {material.taskTitle || "Tugas / Latihan Siswa"}
-                            </span>
-                          </div>
-                          <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded-md font-bold shrink-0 ml-2">
-                            {material.taskFile ? (material.taskFile.startsWith('data:application/pdf') ? 'PDF' : 'Foto/Base64') : 'Link'}
-                          </span>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                   

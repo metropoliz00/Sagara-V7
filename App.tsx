@@ -1293,6 +1293,22 @@ const AppContent: React.FC = () => {
       handleShowNotification('Gagal memperbarui ekskul.', 'error');
     }
   };
+  const handleDeleteExtracurricular = async (id: string) => {
+    const oldExtras = extracurriculars;
+    const newExtras = oldExtras.filter(ex => ex.id !== id);
+    setExtracurriculars(newExtras);
+    cacheService.set('extracurriculars', newExtras);
+
+    if (isDemoMode) return;
+
+    try {
+      await apiService.deleteExtracurricular(id);
+    } catch (error) {
+      setExtracurriculars(oldExtras);
+      cacheService.set('extracurriculars', oldExtras);
+      handleShowNotification('Gagal menghapus ekskul.', 'error');
+    }
+  };
   
   // General & Logs
   const handleSaveGrade = async (studentId: string, subjectId: string, gradeData: any, classId: string) => {
@@ -2835,6 +2851,7 @@ const AppContent: React.FC = () => {
                         onDeleteAgenda={handleDeleteAgenda}
                         onUpdateExtracurricular={handleUpdateExtracurricular}
                         onAddExtracurricular={handleAddExtracurricular}
+                        onDeleteExtracurricular={handleDeleteExtracurricular}
                         onShowNotification={handleShowNotification}
                         classId={activeClassId}
                     />

@@ -20,6 +20,7 @@ interface ActivitiesViewProps {
   onDeleteAgenda: (id: string) => void;
   onUpdateExtracurricular?: (item: Extracurricular) => void;
   onAddExtracurricular?: (item: Extracurricular) => void;
+  onDeleteExtracurricular?: (id: string) => void;
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
   classId: string;
 }
@@ -43,13 +44,23 @@ const CATEGORY_OPTIONS = ['Wajib', 'Seni', 'Keagamaan', 'Olahraga', 'Teknologi']
 
 const ActivitiesView: React.FC<ActivitiesViewProps> = ({ 
   students, agendas, extracurriculars = [], 
-  onAddAgenda, onUpdateAgenda, onToggleAgenda, onDeleteAgenda, onUpdateExtracurricular, onAddExtracurricular,
+  onAddAgenda, onUpdateAgenda, onToggleAgenda, onDeleteAgenda, onUpdateExtracurricular, onAddExtracurricular, onDeleteExtracurricular,
   onShowNotification, classId
 }) => {
   const [activeTab, setActiveTab] = useState<ActivityType>('ekskul');
   const [editingActivity, setEditingActivity] = useState<Extracurricular | null>(null);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Hidden/Deleted default activities
+  const [hiddenDefaults, setHiddenDefaults] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`hidden_ekskul_${classId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   // Modal State for confirmations
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, action: () => void, message: string}>({
@@ -59,35 +70,36 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   // --- MERGE LOGIC: Combine DB Data with Defaults ---
   const displayActivities = useMemo(() => {
       // 1. Map Defaults: Check if they exist in DB (match by name)
-      const mappedDefaults = DEFAULT_ACTIVITIES.map((def, index) => {
-          // Normalize check
-          const existing = extracurriculars.find(e => e.name.trim().toUpperCase() === def.name.toUpperCase());
-          
-          if (existing) {
-              return { ...existing, isVirtual: false }; // It exists in DB
-          }
+      const mappedDefaults = DEFAULT_ACTIVITIES
+          .filter(def => !hiddenDefaults.includes(def.name.trim().toUpperCase()))
+          .map((def, index) => {
+              const existing = extracurriculars.find(e => e.name.trim().toUpperCase() === def.name.toUpperCase());
+              
+              if (existing) {
+                  return { ...existing, isVirtual: false }; // It exists in DB
+              }
 
-          // Return a "Virtual" item (Placeholder)
-          return {
-              id: `virtual-${index}`, // Temp ID
-              classId,
-              name: def.name,
-              category: def.category,
-              schedule: '-',
-              coach: '-',
-              members: [],
-              color: '', 
-              isVirtual: true // Flag to indicate it's not saved yet
-          } as Extracurricular & { isVirtual: boolean };
-      });
+              return {
+                  id: `virtual-${index}`, // Temp ID
+                  classId,
+                  name: def.name,
+                  category: def.category,
+                  schedule: '-',
+                  coach: '-',
+                  members: [],
+                  color: '', 
+                  isVirtual: true // Flag to indicate it's not saved yet
+              } as Extracurricular & { isVirtual: boolean };
+          });
 
-      // 2. Find Custom Items (In DB but not in Defaults)
+      // 2. Find Custom Items (In DB but not in Defaults and not hidden)
       const customItems = extracurriculars.filter(e => 
+          !hiddenDefaults.includes(e.name.trim().toUpperCase()) &&
           !DEFAULT_ACTIVITIES.some(def => def.name.trim().toUpperCase() === e.name.trim().toUpperCase())
       ).map(e => ({ ...e, isVirtual: false }));
 
       return [...mappedDefaults, ...customItems];
-  }, [extracurriculars, classId]);
+  }, [extracurriculars, classId, hiddenDefaults]);
 
   const getCategoryIcon = (category: string) => {
       switch (category) {
@@ -133,6 +145,16 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     e.preventDefault();
     if (!editingActivity) return;
 
+    // Remove from hiddenDefaults if previously deleted
+    const normName = editingActivity.name.trim().toUpperCase();
+    if (hiddenDefaults.includes(normName)) {
+        const updated = hiddenDefaults.filter(n => n !== normName);
+        setHiddenDefaults(updated);
+        try {
+            localStorage.setItem(`hidden_ekskul_${classId}`, JSON.stringify(updated));
+        } catch (e) {}
+    }
+
     // Check if it's a new item OR a virtual item being saved for the first time
     const isNew = !editingActivity.id || String(editingActivity.id).startsWith('virtual-');
     
@@ -161,6 +183,28 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
     setEditingActivity(null);
     setMemberSearchTerm('');
+  };
+
+  const handleDeleteEkskul = (ekskul: Extracurricular & { isVirtual?: boolean }) => {
+    setConfirmModal({
+      isOpen: true,
+      message: `Apakah Anda yakin ingin menghapus ekstrakurikuler "${ekskul.name}"?`,
+      action: () => {
+        if (!ekskul.isVirtual && onDeleteExtracurricular) {
+          onDeleteExtracurricular(ekskul.id);
+        }
+        const normName = ekskul.name.trim().toUpperCase();
+        setHiddenDefaults(prev => {
+          const updated = Array.from(new Set([...prev, normName]));
+          try {
+            localStorage.setItem(`hidden_ekskul_${classId}`, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+        onShowNotification(`Ekskul "${ekskul.name}" berhasil dihapus.`, 'success');
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const toggleMemberInEdit = (studentId: string) => {
@@ -357,6 +401,19 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
               <FileSpreadsheet size={16} />
               <span>Export Excel</span>
             </button>
+            {hiddenDefaults.length > 0 && (
+              <button 
+                onClick={() => {
+                  setHiddenDefaults([]);
+                  try { localStorage.removeItem(`hidden_ekskul_${classId}`); } catch(e) {}
+                  onShowNotification("Semua template default ekskul berhasil dipulihkan.", 'success');
+                }}
+                className="flex items-center space-x-1 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-semibold"
+                title="Pulihkan Semua Template Default"
+              >
+                <span>Reset Template ({hiddenDefaults.length})</span>
+              </button>
+            )}
             <button 
                 onClick={handleAddNewActivity} 
                 className="p-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] shadow-md flex items-center gap-2 text-sm font-bold"
@@ -391,12 +448,22 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
                             <span className={`text-xs font-semibold opacity-90 px-2 py-0.5 rounded mt-1 inline-block ${isVirtual ? 'bg-gray-200' : 'bg-black/10'}`}>{ekskul.category}</span>
                         </div>
                     </div>
-                    <button 
-                        onClick={() => setEditingActivity(ekskul)} 
-                        className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs no-print flex items-center gap-1 transition-colors font-bold`}
-                    >
-                        {isVirtual ? <><Plus size={12}/> Aktifkan</> : <><PenTool size={12}/> Edit</>}
-                    </button>
+                    <div className="flex items-center gap-1.5 no-print">
+                        <button 
+                            onClick={() => setEditingActivity(ekskul)} 
+                            className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-colors font-bold`}
+                            title={isVirtual ? "Aktifkan Ekskul" : "Edit Ekskul"}
+                        >
+                            {isVirtual ? <><Plus size={12}/> Aktifkan</> : <><PenTool size={12}/> Edit</>}
+                        </button>
+                        <button
+                            onClick={() => handleDeleteEkskul(ekskul)}
+                            className={`${isVirtual ? 'bg-red-100 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-red-500/80 hover:bg-red-600 text-white'} p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors shadow-sm`}
+                            title="Hapus Ekstrakurikuler"
+                        >
+                            <Trash2 size={14} />
+                        </button>
+                    </div>
                 </div>
                 
                 <div className="p-5 space-y-4 flex-1">

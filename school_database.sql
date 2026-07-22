@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS students (
   class_id TEXT NOT NULL,
   nis TEXT UNIQUE NOT NULL,
   nisn TEXT,
+  nik TEXT,
   name TEXT NOT NULL,
   gender TEXT,
   birth_place TEXT,

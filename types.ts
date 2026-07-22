@@ -26,6 +26,7 @@ export interface Student {
   classId: string;
   nis: string;
   nisn?: string;
+  nik?: string;
   name: string;
   gender: 'L' | 'P';
   birthDate: string;

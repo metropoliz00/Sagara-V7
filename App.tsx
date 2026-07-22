@@ -92,6 +92,11 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  useEffect(() => {
+    if (localStorage.getItem('learningDocumentation')) {
+      localStorage.removeItem('learningDocumentation');
+    }
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -264,7 +269,7 @@ const AppContent: React.FC = () => {
   const [karakterAssessments, setKarakterAssessments] = useState<KarakterAssessment[]>(() => cacheService.get<KarakterAssessment[]>('karakterAssessments') || []);
   const [employmentLinks, setEmploymentLinks] = useState<EmploymentLink[]>(() => cacheService.get<EmploymentLink[]>('employmentLinks') || []);
   const [learningReports, setLearningReports] = useState<LearningReport[]>(() => cacheService.get<LearningReport[]>('learningReports') || []);
-  const [learningDocumentation, setLearningDocumentation] = useState<LearningDocumentation[]>(() => cacheService.get<LearningDocumentation[]>('learningDocumentation') || []);
+  const [learningDocumentation, setLearningDocumentation] = useState<LearningDocumentation[]>([]);
   const [liaisonLogs, setLiaisonLogs] = useState<LiaisonLog[]>(() => cacheService.get<LiaisonLog[]>('liaisonLogs') || []);
   const [permissionRequests, setPermissionRequests] = useState<PermissionRequest[]>(() => cacheService.get<PermissionRequest[]>('permissionRequests') || []);
   const [supportDocuments, setSupportDocuments] = useState<SupportDocument[]>(() => cacheService.get<SupportDocument[]>('supportDocuments') || []);
@@ -632,7 +637,7 @@ const AppContent: React.FC = () => {
 
       // Clear all sumatif and profile-related data on logout
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sumatif_') || key.startsWith('teacher_profile_') || key.startsWith('school_profile_')) {
+        if (key.startsWith('sumatif_') || key.startsWith('teacher_profile_') || key.startsWith('school_profile_') || key === 'learningDocumentation') {
           localStorage.removeItem(key);
         }
       });
@@ -879,7 +884,6 @@ const AppContent: React.FC = () => {
       : [newDoc, ...oldDocs];
 
     setLearningDocumentation(newDocs);
-    cacheService.set('learningDocumentation', newDocs);
     handleShowNotification('Dokumentasi berhasil disimpan.', 'success');
 
     if (isDemoMode) return;
@@ -889,7 +893,6 @@ const AppContent: React.FC = () => {
       await fetchData(); // Refresh to get server-side IDs
     } catch (error) {
       setLearningDocumentation(oldDocs);
-      cacheService.set('learningDocumentation', oldDocs);
       handleShowNotification('Gagal menyimpan dokumentasi.', 'error');
     }
   };
@@ -899,14 +902,12 @@ const AppContent: React.FC = () => {
       const oldDocs = learningDocumentation;
       const newDocs = oldDocs.filter(d => d.id !== id);
       setLearningDocumentation(newDocs);
-      cacheService.set('learningDocumentation', newDocs);
       handleShowNotification('Dokumentasi berhasil dihapus.', 'success');
 
       if (isDemoMode) return;
 
       apiService.deleteLearningDocumentation(id, activeClassId).catch(() => {
         setLearningDocumentation(oldDocs);
-        cacheService.set('learningDocumentation', oldDocs);
         handleShowNotification('Gagal menghapus dokumentasi.', 'error');
       });
     });
@@ -2048,7 +2049,6 @@ const AppContent: React.FC = () => {
       if (fKarakter !== null) cacheService.set('karakterAssessments', fKarakter as KarakterAssessment[]);
       if (fLinks !== null) cacheService.set('employmentLinks', fLinks as EmploymentLink[]);
       if (fReports !== null) cacheService.set('learningReports', fReports as LearningReport[]);
-      if (fLearningDocs !== null) cacheService.set('learningDocumentation', fLearningDocs as LearningDocumentation[]);
       if (fLiaison !== null) cacheService.set('liaisonLogs', fLiaison as LiaisonLog[]);
       if (fSupportDocs !== null) cacheService.set('supportDocuments', fSupportDocs as SupportDocument[]);
       if (fInventory !== null) cacheService.set('inventory', fInventory as InventoryItem[]);

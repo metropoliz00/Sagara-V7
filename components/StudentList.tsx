@@ -65,7 +65,7 @@ const StudentList: React.FC<StudentListProps> = ({
   // Helper completeness functions
   const calculateCompleteness = (s: Student) => {
     const fields: (keyof Student)[] = [
-      'nis', 'name', 'gender', 'birthPlace', 'birthDate', 'address', 'photo', 'religion',
+      'nis', 'nik', 'name', 'gender', 'birthPlace', 'birthDate', 'address', 'photo', 'religion',
       'fatherName', 'fatherJob', 'fatherEducation', 'motherName', 'motherJob', 'motherEducation',
       'parentName', 'parentPhone', 'parentJob',
       'height', 'weight', 'bloodType', 'healthNotes',
@@ -163,6 +163,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <th>Nama</th>
           <th>Tempat Lahir</th>
           <th>Tanggal Lahir</th>
+          <th>NIK</th>
           <th>Hobi</th>
           <th>Cita-cita</th>
         </tr>
@@ -175,6 +176,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <td>${s.name.toUpperCase()}</td>
           <td>${s.birthPlace || '-'}</td>
           <td style="text-align: center;">${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+          <td style="text-align: center;">${s.nik || '-'}</td>
           <td>${s.hobbies || '-'}</td>
           <td>${s.ambition || '-'}</td>
         </tr>
@@ -190,6 +192,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <th>L/P</th>
           <th>Tempat Lahir</th>
           <th>Tanggal Lahir</th>
+          <th>NIK</th>
           <th>Agama</th>
           <th>Nama Ayah</th>
           <th>Nama Ibu</th>
@@ -205,6 +208,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <td style="text-align: center;">${s.gender}</td>
           <td>${s.birthPlace || '-'}</td>
           <td>${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+          <td>${s.nik || '-'}</td>
           <td>${s.religion || '-'}</td>
           <td>${(s.fatherName || '-').toUpperCase()}</td>
           <td>${(s.motherName || '-').toUpperCase()}</td>
@@ -576,8 +580,8 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["Class ID", "NIS", "NISN", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
-    const example = ["1A", "2024001", "0012345678", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
+    const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
+    const example = ["1A", "2024001", "0012345678", "1234567890123456", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
     const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Template Input Siswa");
@@ -585,8 +589,8 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleExport = () => {
-    const headers = ["Class ID", "NIS", "NISN", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
-    const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
+    const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
+    const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
@@ -614,11 +618,11 @@ const StudentList: React.FC<StudentListProps> = ({
         const name = row[3] ? String(row[3]).toUpperCase() : '';
         if (nis && name) {
           const newStudent: Omit<Student, 'id'> = {
-            classId: classIdInput, nis: nis, nisn: row[2] ? String(row[2]) : '', name: name, gender: (row[4] && String(row[4]).toUpperCase().includes('P')) ? 'P' : 'L', birthPlace: row[5] ? String(row[5]) : '', birthDate: row[6] ? String(row[6]) : '', religion: row[7] ? String(row[7]) : 'Islam', address: row[8] ? String(row[8]) : '',
-            fatherName: row[9] ? String(row[9]).toUpperCase() : '', fatherJob: row[10] ? String(row[10]) : '', fatherEducation: row[11] ? String(row[11]) : '', motherName: row[12] ? String(row[12]).toUpperCase() : '', motherJob: row[13] ? String(row[13]) : '', motherEducation: row[14] ? String(row[14]) : '',
-            parentName: row[15] ? String(row[15]).toUpperCase() : (row[9] ? String(row[9]).toUpperCase() : (row[12] ? String(row[12]).toUpperCase() : '')), parentPhone: row[16] ? String(row[16]) : '', parentJob: row[17] ? String(row[17]) : '',
-            economyStatus: (row[18] as any) || 'Mampu', height: Number(row[19]) || 0, weight: Number(row[20]) || 0, bloodType: row[21] ? String(row[21]) : '', healthNotes: row[22] ? String(row[22]) : '', hobbies: row[23] ? String(row[23]) : '', ambition: row[24] ? String(row[24]) : '',
-            achievements: row[25] ? String(row[25]).split(',').map(s=>s.trim()) : [], violations: row[26] ? String(row[26]).split(',').map(s=>s.trim()) : [], behaviorScore: 100, attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
+            classId: classIdInput, nis: nis, nisn: row[2] ? String(row[2]) : '', nik: row[3] ? String(row[3]) : '', name: name, gender: (row[5] && String(row[5]).toUpperCase().includes('P')) ? 'P' : 'L', birthPlace: row[6] ? String(row[6]) : '', birthDate: row[7] ? String(row[7]) : '', religion: row[8] ? String(row[8]) : 'Islam', address: row[9] ? String(row[9]) : '',
+            fatherName: row[10] ? String(row[10]).toUpperCase() : '', fatherJob: row[11] ? String(row[11]) : '', fatherEducation: row[12] ? String(row[12]) : '', motherName: row[13] ? String(row[13]).toUpperCase() : '', motherJob: row[14] ? String(row[14]) : '', motherEducation: row[15] ? String(row[15]) : '',
+            parentName: row[16] ? String(row[16]).toUpperCase() : (row[10] ? String(row[10]).toUpperCase() : (row[13] ? String(row[13]).toUpperCase() : '')), parentPhone: row[17] ? String(row[17]) : '', parentJob: row[18] ? String(row[18]) : '',
+            economyStatus: (row[19] as any) || 'Mampu', height: Number(row[20]) || 0, weight: Number(row[21]) || 0, bloodType: row[22] ? String(row[22]) : '', healthNotes: row[23] ? String(row[23]) : '', hobbies: row[24] ? String(row[24]) : '', ambition: row[25] ? String(row[25]) : '',
+            achievements: row[26] ? String(row[26]).split(',').map(s=>s.trim()) : [], violations: row[27] ? String(row[27]).split(',').map(s=>s.trim()) : [], behaviorScore: 100, attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
           };
           if (onBatchAdd) newStudentsBatch.push(newStudent); else onAdd(newStudent);
           importedCount++;
@@ -674,7 +678,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const [tempAchievements, setTempAchievements] = useState('');
   const [tempViolations, setTempViolations] = useState('');
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
-     name: '', nis: '', nisn: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+     name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
      fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
      height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0, sick:0, permit:0, alpha:0}, achievements: [], violations: []
   });
@@ -688,7 +692,7 @@ const StudentList: React.FC<StudentListProps> = ({
        onAdd({ ...newStudent, achievements: achievementsArray, violations: violationsArray } as Omit<Student, 'id'>);
        setIsAddModalOpen(false);
        setNewStudent({ 
-         name: '', nis: '', nisn: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+         name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
          fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
          height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0,sick:0,permit:0,alpha:0},
          achievements: [], violations: []
@@ -1338,6 +1342,7 @@ const StudentList: React.FC<StudentListProps> = ({
                             <th className="px-4 py-3">Nama</th>
                             <th className="px-4 py-3">Tempat Lahir</th>
                             <th className="px-4 py-3">Tanggal Lahir</th>
+                            <th className="px-4 py-3">NIK</th>
                             <th className="px-4 py-3">Hobi</th>
                             <th className="px-4 py-3">Cita-cita</th>
                         </tr>
@@ -1354,6 +1359,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">{student.birthPlace || '-'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">{student.birthDate ? formatDateID(student.birthDate) : '-'}</td>
+                                <td className="px-4 py-3 font-mono text-gray-500 whitespace-nowrap">{student.nik || '-'}</td>
                                 <td className="px-4 py-3">{student.hobbies || '-'}</td>
                                 <td className="px-4 py-3">{student.ambition || '-'}</td>
                             </tr>
@@ -1382,6 +1388,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <th className="px-4 py-3 text-center">L/P</th>
                     <th className="px-4 py-3">Tempat Lahir</th>
                     <th className="px-4 py-3">Tanggal Lahir</th>
+                    <th className="px-4 py-3">NIK</th>
                     <th className="px-4 py-3">Agama</th>
                     <th className="px-4 py-3">Nama Ayah</th>
                     <th className="px-4 py-3">Nama Ibu</th>
@@ -1407,6 +1414,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <td className="px-4 py-3 text-center" onClick={() => setSelectedStudent(student)}>{student.gender}</td>
                     <td className="px-4 py-3 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.birthPlace || '-'}</td>
                     <td className="px-4 py-3 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.birthDate ? formatDateID(student.birthDate) : '-'}</td>
+                    <td className="px-4 py-3 font-mono text-gray-500 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.nik || '-'}</td>
                     <td className="px-4 py-3" onClick={() => setSelectedStudent(student)}>{student.religion || '-'}</td>
                     <td className="px-4 py-3 uppercase" onClick={() => setSelectedStudent(student)}>{student.fatherName?.toUpperCase() || '-'}</td>
                     <td className="px-4 py-3 uppercase" onClick={() => setSelectedStudent(student)}>{student.motherName?.toUpperCase() || '-'}</td>
@@ -1437,8 +1445,12 @@ const StudentList: React.FC<StudentListProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         <input required className="border p-2 rounded uppercase" placeholder="Nama" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value.toUpperCase()})}/>
                         <input required className="border p-2 rounded uppercase" placeholder="NIS" value={newStudent.nis} onChange={e=>setNewStudent({...newStudent, nis:e.target.value})}/>
+                        <input className="border p-2 rounded font-mono" placeholder="NISN" value={newStudent.nisn || ''} onChange={e=>setNewStudent({...newStudent, nisn:e.target.value})}/>
+                        <input className="border p-2 rounded font-mono" placeholder="NIK" value={newStudent.nik || ''} onChange={e=>setNewStudent({...newStudent, nik:e.target.value})}/>
                         <input className="border p-2 rounded" placeholder="Kelas" value={newStudent.classId} onChange={e=>setNewStudent({...newStudent, classId:e.target.value})}/>
                         <select className="border p-2 rounded" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value as any})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
+                        <input className="border p-2 rounded" placeholder="Tempat Lahir" value={newStudent.birthPlace || ''} onChange={e=>setNewStudent({...newStudent, birthPlace:e.target.value})}/>
+                        <input type="date" className="border p-2 rounded" placeholder="Tanggal Lahir" value={newStudent.birthDate || ''} onChange={e=>setNewStudent({...newStudent, birthDate:e.target.value})}/>
                     </div>
                 </div>
             </form>

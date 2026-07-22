@@ -2658,6 +2658,7 @@ export const apiService = {
           if (data && data._local_cache) {
             const cacheData = data._local_cache;
             Object.keys(cacheData).forEach(key => {
+              if (key === 'learningDocumentation') return;
               const item = cacheData[key];
               if (item && typeof item === 'object' && 'value' in item) {
                 localStorage.setItem(key, JSON.stringify(item));

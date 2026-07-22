@@ -1206,23 +1206,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
                       <LinkIcon size={14} className="text-amber-600" />
-                      Link Tautan Tugas / Form
+                      Tautan / Google Form / Quiz Online
                     </span>
-                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md font-bold">
-                      Online Form / Link
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md font-bold uppercase">
+                      Tugas Online
                     </span>
                   </div>
-                  <p className="text-xs text-gray-500 truncate font-mono bg-slate-50 p-2 rounded-lg border border-slate-200">
-                    {previewTaskItem.taskLink}
-                  </p>
                   <a
                     href={previewTaskItem.taskLink}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs rounded-xl shadow-md transition-all cursor-pointer"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
                   >
-                    <ExternalLink size={15} />
-                    <span>Buka Link Tugas di Tab Baru</span>
+                    <ExternalLink size={16} />
+                    <span>Kerjakan Tugas</span>
                   </a>
                 </div>
               )}

@@ -293,6 +293,8 @@ export interface SchoolProfileData {
   desa?: string;
   kecamatan?: string;
   kabupaten?: string;
+  postalCode?: string;
+  email?: string;
   headmaster: string;
   headmasterNip: string;
   year: string;

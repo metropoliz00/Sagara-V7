@@ -201,6 +201,14 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
                     <label className="block text-xs font-medium text-gray-500 mb-1">Kabupaten / Kota</label>
                     <input type="text" disabled={isReadOnly} value={school.kabupaten || ''} onChange={(e) => setSchool({...school, kabupaten: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Nama Kabupaten/Kota..." />
                 </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Kode Pos</label>
+                    <input type="text" disabled={isReadOnly} value={school.postalCode || ''} onChange={(e) => setSchool({...school, postalCode: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Kode Pos..." />
+                </div>
+                <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Email Sekolah</label>
+                    <input type="email" disabled={isReadOnly} value={school.email || ''} onChange={(e) => setSchool({...school, email: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="email@sekolah.sch.id..." />
+                </div>
             </div>
         </div>
 

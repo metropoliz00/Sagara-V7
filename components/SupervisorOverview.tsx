@@ -42,6 +42,7 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const [activeModal, setActiveModal] = useState<'permissions' | 'discipline' | 'incomplete' | null>(null);
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [showAllInventory, setShowAllInventory] = useState(false);
+  const [selectedInventoryClassId, setSelectedInventoryClassId] = useState<string>('all');
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>('all');
 
   // 0. Gender Breakdown
@@ -290,14 +291,23 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     }).slice(0, 5); 
   }, [students]);
 
-  // 5. Inventory Data (Sorted by Condition)
+  // 5. Inventory Data (Sorted by Condition & Filtered)
+  const uniqueInventoryClasses = useMemo(() => {
+      const classes = Array.from(new Set(inventory.map(item => item.classId))).filter(Boolean);
+      return classes.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [inventory]);
+
   const inventoryList = useMemo(() => {
-      return [...inventory].sort((a, b) => {
+      let filtered = [...inventory];
+      if (selectedInventoryClassId !== 'all') {
+          filtered = filtered.filter(item => item.classId === selectedInventoryClassId);
+      }
+      return filtered.sort((a, b) => {
           if (a.condition === 'Rusak' && b.condition !== 'Rusak') return -1;
           if (a.condition !== 'Rusak' && b.condition === 'Rusak') return 1;
           return a.classId.localeCompare(b.classId, undefined, { numeric: true });
       });
-  }, [inventory]);
+  }, [inventory, selectedInventoryClassId]);
 
   // 6. BOS Financial Overview (NEW)
   const bosOverview = useMemo(() => {
@@ -817,9 +827,23 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Package size={18} className="mr-2 text-indigo-600"/> Data Inventaris Per Kelas
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                    <h3 className="font-bold text-gray-800 flex items-center">
+                        <Package size={18} className="mr-2 text-indigo-600"/> Data Inventaris Per Kelas
+                    </h3>
+                    <select
+                        value={selectedInventoryClassId}
+                        onChange={(e) => setSelectedInventoryClassId(e.target.value)}
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[200px]"
+                    >
+                        <option value="all">Semua Kelas / Ruang</option>
+                        {uniqueInventoryClasses.map(cls => (
+                            <option key={cls} value={cls}>
+                                {cls === 'ALL' ? 'Umum / Sekolah' : `Kelas ${cls}`}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div className="overflow-x-auto rounded-lg border border-gray-200">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-gray-700 font-bold uppercase text-xs">

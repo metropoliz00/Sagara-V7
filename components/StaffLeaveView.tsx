@@ -291,7 +291,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       {req.status === 'Disetujui' && (
                         <div className="flex gap-2 mt-2">
                            <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
-                           <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                           {req.kategoriIjin.startsWith('Cuti') && (
+                             <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                           )}
                         </div>
                       )}
                       {canApprove && req.status === 'Menunggu' && (
@@ -437,7 +439,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         {req.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                     <td className="px-6 py-4 text-center">
                        {canApprove && req.status === 'Menunggu' && (
                         <div className="flex items-center justify-center gap-2">
                            <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded" title="Setujui"><CheckCircle size={16}/></button>
@@ -450,7 +452,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       {req.status === 'Disetujui' && (
                         <div className="flex items-center justify-center gap-2">
                           <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
-                          <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                          {req.kategoriIjin.startsWith('Cuti') && (
+                            <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                          )}
                         </div>
                       )}
                       {req.status !== 'Menunggu' && req.status !== 'Disetujui' && <span className="text-gray-300">-</span>}

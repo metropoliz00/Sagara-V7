@@ -210,7 +210,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             onClick={() => setActiveTab('data')}
             className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'data' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-900'}`}
           >
-            Data Ijin
+            Data Izin
           </button>
           {currentUser?.role !== 'superadmin' && (
             <button

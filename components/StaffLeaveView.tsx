@@ -40,7 +40,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
   const renderHeader = () => (
     <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
-      <div className="w-20 h-20 bg-gray-100 flex-shrink-0 flex items-center justify-center">
+      <div className="w-20 h-20 bg-transparent flex-shrink-0 flex items-center justify-center">
          {schoolProfile?.regencyLogo ? <img src={schoolProfile.regencyLogo} alt="Logo Kab" className="w-full h-full object-contain" /> : <div className="text-[8px]">LOGO</div>}
       </div>
       <div className="text-center flex-1">
@@ -678,7 +678,6 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
               {letterType === 'Permohonan' && (
                 <>
-                  {renderHeader()}
                   <div className="text-right mb-4">
                     <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                   </div>
@@ -786,7 +785,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
                       </tbody>
                     </table>
-                    <p className="mt-4">Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
+                    <p className="mt-4">Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
+                    <p className="ml-4">a. Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</p>
+                    <p className="ml-4">b. Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</p>
                     <p className="mt-4">2. Demikian izin sementara melaksanakan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')} ini dibuat untuk dapat digunakan seperlunya.</p>
                     
                     <div className="text-center w-1/2 ml-auto mt-12">

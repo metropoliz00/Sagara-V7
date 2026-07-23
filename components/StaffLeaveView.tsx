@@ -675,131 +675,136 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             </div>
 
             {/* Printable Content */}
-            <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
-              {letterType === 'Permohonan' && (
-                <>
-                  <div className="text-right mb-4">
-                    <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p>Perihal : PERMOHONAN {printRequestedLeave.kategoriIjin.toUpperCase()}</p>
-                    <p>Yth. KEPALA DINAS PENDIDIKAN KABUPATEN TUBAN</p>
-                    <p>di -</p>
-                    <p className="ml-4">Tuban</p>
-                  </div>
-
-                  <div className="text-sm space-y-4 leading-relaxed">
-                    <p>Yang bertanda tangan di bawah ini :</p>
-                    <table className="w-full ml-4">
-                      <tbody>
-                        <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
-                        <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
-                        <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
-                        <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
-                        <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
-                      </tbody>
-                    </table>
-
-                    <p>1. Dengan ini mengajukan permohonan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
-                    
-                    <p>2. Sebelum melaksanakan {printRequestedLeave.kategoriIjin.toLowerCase().replace('cuti - ', '')} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
-                    <p>3. Setelah menjalankan {printRequestedLeave.kategoriIjin.toLowerCase().replace('cuti - ', '')} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
-                    <p>Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
-                  </div>
-                  
-                  <div className="flex justify-between mt-12">
-                    <div className="text-center w-1/2">
-                      <p>Mengetahui,</p>
-                      <p>Kepala {schoolProfile?.name || '...'}</p>
-                      <div className="h-24 relative flex items-center justify-center">
-                         {schoolProfile?.headmasterSignature && (
-                            <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
-                         )}
+            {(() => {
+              const cleanCat = printRequestedLeave.kategoriIjin.replace(/cuti\s*-\s*/gi, '');
+              return (
+                <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
+                  {letterType === 'Permohonan' && (
+                    <>
+                      <div className="text-right mb-4">
+                        <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                       </div>
-                      <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                      <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                      
+                      <div className="mb-6">
+                        <p>Perihal : PERMOHONAN {cleanCat.toUpperCase()}</p>
+                        <p>Yth. KEPALA DINAS PENDIDIKAN KABUPATEN TUBAN</p>
+                        <p>di -</p>
+                        <p className="ml-4">Tuban</p>
+                      </div>
+
+                      <div className="text-sm space-y-4 leading-relaxed">
+                        <p>Yang bertanda tangan di bawah ini :</p>
+                        <table className="w-full ml-4">
+                          <tbody>
+                            <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                            <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                            <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                            <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
+                          </tbody>
+                        </table>
+
+                        <p>1. Dengan ini mengajukan permohonan {cleanCat}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
+                        
+                        <p>2. Sebelum melaksanakan {cleanCat.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
+                        <p>3. Setelah menjalankan {cleanCat.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
+                        <p>Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
+                      </div>
+                      
+                      <div className="flex justify-between mt-12">
+                        <div className="text-center w-1/2">
+                          <p>Mengetahui,</p>
+                          <p>Kepala {schoolProfile?.name || '...'}</p>
+                          <div className="h-24 relative flex items-center justify-center">
+                             {schoolProfile?.headmasterSignature && (
+                                <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                             )}
+                          </div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                        </div>
+                        <div className="text-center w-1/2 flex flex-col items-center">
+                          <p className="invisible">Mengetahui,</p>
+                          <p>Hormat saya,</p>
+                          <div className="h-24"></div>
+                          <p className="font-bold underline">{printRequestedLeave.userName}</p>
+                          <p>NIP. {printRequestedLeave.nip}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {letterType === 'Pengantar' && (
+                    <div className="text-sm">
+                      {renderHeader()}
+                      <div className="text-center mb-6">
+                        <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
+                        <p>Nomor : {manualLetterNumber}</p>
+                      </div>
+                      <table className="w-full border-collapse border border-black mb-8">
+                        <thead>
+                          <tr><th className="border border-black p-2 w-10">NO</th><th className="border border-black p-2 w-2/5">ISI SURAT</th><th className="border border-black p-2 w-20">JUMLAH</th><th className="border border-black p-2">KETERANGAN</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className="border border-black p-2 text-center">1</td>
+                            <td className="border border-black p-2">
+                              Pengajuan {cleanCat} atas :<br/>
+                              Nama : {printRequestedLeave.userName}<br/>
+                              NIPPPK : {printRequestedLeave.nip}<br/>
+                              Jabatan : {printRequestedLeave.jabatan}<br/>
+                              Unit Kerja : {schoolProfile?.name || '_____________________'}
+                            </td>
+                            <td className="border border-black p-2 text-center">1 bendel</td>
+                            <td className="border border-black p-2">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div className="flex justify-between mt-12">
+                         <div className="w-1/2">
+                            <p>Diterima pada tgl : ....................</p>
+                         </div>
+                         <div className="text-center w-1/2 flex flex-col items-center">
+                          <p>Kepala {schoolProfile?.name || '...'}</p>
+                          <div className="h-24"></div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="text-center w-1/2 flex flex-col items-center">
-                      <p className="invisible">Mengetahui,</p>
-                      <p>Hormat saya,</p>
-                      <div className="h-24"></div>
-                      <p className="font-bold underline">{printRequestedLeave.userName}</p>
-                      <p>NIP. {printRequestedLeave.nip}</p>
-                    </div>
-                  </div>
-                </>
-              )}
-              {letterType === 'Pengantar' && (
-                <div className="text-sm">
-                  {renderHeader()}
-                  <div className="text-center mb-6">
-                    <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
-                    <p>Nomor : {manualLetterNumber}</p>
-                  </div>
-                  <table className="w-full border-collapse border border-black mb-8">
-                    <thead>
-                      <tr><th className="border border-black p-2 w-10">NO</th><th className="border border-black p-2 w-2/5">ISI SURAT</th><th className="border border-black p-2 w-20">JUMLAH</th><th className="border border-black p-2">KETERANGAN</th></tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border border-black p-2 text-center">1</td>
-                        <td className="border border-black p-2">
-                          Pengajuan {printRequestedLeave.kategoriIjin} atas :<br/>
-                          Nama : {printRequestedLeave.userName}<br/>
-                          NIPPPK : {printRequestedLeave.nip}<br/>
-                          Jabatan : {printRequestedLeave.jabatan}<br/>
-                          Unit Kerja : {schoolProfile?.name || '_____________________'}
-                        </td>
-                        <td className="border border-black p-2 text-center">1 bendel</td>
-                        <td className="border border-black p-2">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="flex justify-between mt-12">
-                     <div className="w-1/2">
-                        <p>Diterima pada tgl : ....................</p>
+                  )}
+                  {letterType === 'Izin Cuti' && (
+                     <div className="text-sm">
+                        {renderHeader()}
+                        <div className="text-center mb-6">
+                            <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
+                            <p>NOMOR : {manualLetterNumber}</p>
+                        </div>
+                        <p>1. Diberikan izin sementara untuk melaksanakan {cleanCat}, kepada Pegawai Negeri Sipil, dibawah ini :</p>
+                        <table className="w-full ml-4 mt-2">
+                          <tbody>
+                            <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                            <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                            <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                            <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
+                          </tbody>
+                        </table>
+                        <p className="mt-4">Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
+                        <p className="ml-4">a. Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</p>
+                        <p className="ml-4">b. Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</p>
+                        <p className="mt-4">2. Demikian izin sementara melaksanakan {cleanCat} ini dibuat untuk dapat digunakan seperlunya.</p>
+                        
+                        <div className="text-center w-1/2 ml-auto mt-12">
+                          <p>Kepala {schoolProfile?.name || '...'}</p>
+                          <div className="h-24"></div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                        </div>
                      </div>
-                     <div className="text-center w-1/2 flex flex-col items-center">
-                      <p>Kepala {schoolProfile?.name || '...'}</p>
-                      <div className="h-24"></div>
-                      <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                      <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
-              )}
-              {letterType === 'Izin Cuti' && (
-                 <div className="text-sm">
-                    {renderHeader()}
-                    <div className="text-center mb-6">
-                        <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
-                        <p>NOMOR : {manualLetterNumber}</p>
-                    </div>
-                    <p>1. Diberikan izin sementara untuk melaksanakan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')}, kepada Pegawai Negeri Sipil, dibawah ini :</p>
-                    <table className="w-full ml-4 mt-2">
-                      <tbody>
-                        <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
-                        <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
-                        <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
-                        <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
-                        <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
-                      </tbody>
-                    </table>
-                    <p className="mt-4">Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
-                    <p className="ml-4">a. Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</p>
-                    <p className="ml-4">b. Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</p>
-                    <p className="mt-4">2. Demikian izin sementara melaksanakan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')} ini dibuat untuk dapat digunakan seperlunya.</p>
-                    
-                    <div className="text-center w-1/2 ml-auto mt-12">
-                      <p>Kepala {schoolProfile?.name || '...'}</p>
-                      <div className="h-24"></div>
-                      <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                      <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
-                    </div>
-                 </div>
-              )}
-            </div>
+              );
+            })()}
             
             {/* Letter Number Modal */}
             {isLetterNumberModalOpen && (

@@ -31,12 +31,26 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Semua Status');
 
+  const [usersList, setUsersList] = useState<User[]>([]);
   const [schoolProfile, setSchoolProfile] = useState<any>(null);
   const [headmasterUser, setHeadmasterUser] = useState<User | null>(null);
   const [printRequestedLeave, setPrintRequestedLeave] = useState<StaffLeaveRequest | null>(null);
   const [letterType, setLetterType] = useState('Permohonan');
   const [isLetterNumberModalOpen, setIsLetterNumberModalOpen] = useState(false);
   const [manualLetterNumber, setManualLetterNumber] = useState("");
+  
+  const [formCutiData, setFormCutiData] = useState({
+    masaKerjaTahun: '04',
+    masaKerjaBulan: '00',
+    telp: '',
+    alamat: '',
+    pejabatName: 'Abdul Rakhmat, S.T., M.T.',
+    pejabatNip: '197212292002121003',
+    pejabatJabatan: 'Kepala Dinas Pendidikan Kabupaten Tuban',
+    atasanName: '',
+    atasanNip: '',
+    atasanJabatan: 'Kepala Sekolah'
+  });
 
   const renderHeader = () => (
     <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
@@ -71,6 +85,19 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   }, []);
 
   useEffect(() => {
+    if (printRequestedLeave) {
+      const u = usersList.find(usr => usr.id === printRequestedLeave.userId);
+      setFormCutiData(prev => ({
+        ...prev,
+        telp: u?.phone || '',
+        alamat: u?.address || '',
+        atasanName: schoolProfile?.headmaster || '',
+        atasanNip: schoolProfile?.headmasterNip || ''
+      }));
+    }
+  }, [printRequestedLeave, usersList, schoolProfile]);
+
+  useEffect(() => {
     setKategoriIjin(IJIN_OPTIONS[ijinGroup][0]);
     setJenisCutiLainnya('');
   }, [ijinGroup]);
@@ -87,6 +114,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
       if (profiles && profiles.school) setSchoolProfile(profiles.school);
       
       if (users && users.length > 0) {
+        setUsersList(users);
         const principal = users.find(u => u.role === 'Kepala Sekolah');
         if (principal) {
           setHeadmasterUser(principal);
@@ -651,7 +679,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               </div>
               
               <div className="flex gap-2 mb-4">
-                {['Pengantar', 'Permohonan', 'Izin Cuti'].map(type => (
+                {['Pengantar', 'Permohonan', 'Izin Cuti', 'Form Cuti'].map(type => (
                   <button
                     key={type}
                     onClick={() => {
@@ -674,11 +702,331 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               </div>
             </div>
 
+            
+            {letterType === 'Form Cuti' && (
+              <div className="p-4 bg-gray-50 border-b border-gray-200 print:hidden grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <h4 className="font-bold text-sm text-indigo-900 border-b pb-1">1. Data Pegawai & Masa Kerja</h4>
+                  <div className="flex gap-2">
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">Masa Kerja (Tahun)</label>
+                      <input type="text" value={formCutiData.masaKerjaTahun} onChange={e => setFormCutiData({...formCutiData, masaKerjaTahun: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">Masa Kerja (Bulan)</label>
+                      <input type="text" value={formCutiData.masaKerjaBulan} onChange={e => setFormCutiData({...formCutiData, masaKerjaBulan: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">No. Telepon / HP</label>
+                    <input type="text" value={formCutiData.telp} onChange={e => setFormCutiData({...formCutiData, telp: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Alamat Cuti</label>
+                    <textarea value={formCutiData.alamat} onChange={e => setFormCutiData({...formCutiData, alamat: e.target.value})} className="border p-1 text-sm rounded w-full h-14 bg-white" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <h4 className="font-bold text-sm text-indigo-900 border-b pb-1">2. Atasan Langsung & Pejabat Berwenang</h4>
+                  <div>
+                    <label className="text-xs font-medium text-gray-600">Jabatan Atasan Langsung</label>
+                    <input type="text" value={formCutiData.atasanJabatan} onChange={e => setFormCutiData({...formCutiData, atasanJabatan: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" placeholder="misal: Plt. Kabid. PAUD Dan Pendidikan Non Formal" />
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">Nama Atasan Langsung</label>
+                      <input type="text" value={formCutiData.atasanName} onChange={e => setFormCutiData({...formCutiData, atasanName: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">NIP Atasan Langsung</label>
+                      <input type="text" value={formCutiData.atasanNip} onChange={e => setFormCutiData({...formCutiData, atasanNip: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">Nama Pejabat Berwenang</label>
+                      <input type="text" value={formCutiData.pejabatName} onChange={e => setFormCutiData({...formCutiData, pejabatName: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                    <div className="w-1/2">
+                      <label className="text-xs font-medium text-gray-600">NIP Pejabat Berwenang</label>
+                      <input type="text" value={formCutiData.pejabatNip} onChange={e => setFormCutiData({...formCutiData, pejabatNip: e.target.value})} className="border p-1 text-sm rounded w-full bg-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Printable Content */}
             {(() => {
               const cleanCat = printRequestedLeave.kategoriIjin.replace(/cuti\s*-\s*/gi, '');
+              
+              const isCuti = (type: string) => cleanCat.toLowerCase().includes(type.toLowerCase()) ? '√' : '';
+              const lamaHari = Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24));
+              const tglMulai = new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'});
+              const tglSelesai = new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: '2-digit', month: 'long', year: 'numeric'});
+
+              const FormCutiPage = ({ pageNum }: { pageNum?: number }) => (
+                <div className="text-[11px] leading-tight font-sans mb-12 bg-white text-black p-4" style={{ pageBreakAfter: 'always', breakAfter: 'page' }}>
+                  {/* Header Dispendik Tuban */}
+                  <div className="border-b-2 border-black pb-1 mb-3 flex items-center gap-3">
+                    <div className="w-16 h-16 bg-transparent flex-shrink-0 flex items-center justify-center">
+                       {schoolProfile?.regencyLogo ? <img src={schoolProfile.regencyLogo} alt="Logo Kab" className="w-full h-full object-contain" /> : <div className="text-[8px] font-bold">LOGO</div>}
+                    </div>
+                    <div className="text-center flex-1">
+                      <p className="font-bold uppercase text-sm tracking-wide">PEMERINTAH KABUPATEN TUBAN</p>
+                      <p className="font-bold uppercase text-base tracking-wider">DINAS PENDIDIKAN</p>
+                      <p className="text-[10px]">Jalan Dr. Wahidin Sudirohusodo Nomor 875 Tuban 62315 Telepon (0356) 327880</p>
+                      <p className="text-[10px]">Laman : <span className="underline">dispendik.tubankab.go.id</span>  Pos-el : <span className="underline">dispendik@tubankab.go.id</span></p>
+                    </div>
+                  </div>
+
+                  {/* Date & Destination */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="w-1/2">
+                      <p><span className="underline">Yth.</span> {formCutiData.pejabatJabatan}</p>
+                      <p>di -</p>
+                      <p className="ml-4">Tuban</p>
+                    </div>
+                    <div className="text-right">
+                      <p>Tuban, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Title & Number */}
+                  <div className="text-center font-bold mb-3">
+                    <p className="underline tracking-wide">PERMINTAAN DAN PEMBERIAN CUTI</p>
+                    <p>Nomor : {manualLetterNumber || '800.1.11.3/           /414.101/2026'}</p>
+                  </div>
+
+                  {/* Section I */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={4} className="border border-black px-2 py-0.5 font-bold bg-gray-100">I. DATA PEGAWAI</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 w-[15%]">Nama</td>
+                        <td className="border border-black px-2 py-0.5 w-[35%] font-medium">{printRequestedLeave.userName}</td>
+                        <td className="border border-black px-2 py-0.5 w-[15%]">NIP.</td>
+                        <td className="border border-black px-2 py-0.5 w-[35%]">{printRequestedLeave.nip}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5">Jabatan</td>
+                        <td className="border border-black px-2 py-0.5">{printRequestedLeave.jabatan}</td>
+                        <td className="border border-black px-2 py-0.5">Masa Kerja</td>
+                        <td className="border border-black px-2 py-0.5">{formCutiData.masaKerjaTahun} Tahun {formCutiData.masaKerjaBulan} Bulan</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5">Unit Kerja</td>
+                        <td colSpan={3} className="border border-black px-2 py-0.5">{schoolProfile?.name || 'Dinas Pendidikan'} Kabupaten Tuban</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section II */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={6} className="border border-black px-2 py-0.5 font-bold bg-gray-100">II. JENIS CUTI YANG DIAMBIL **</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 w-[4%] text-center">1.</td>
+                        <td className="border border-black px-2 py-0.5 w-[42%]"><span className="underline">Cuti Tahunan</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[4%] text-center font-bold">{isCuti('tahunan')}</td>
+                        <td className="border border-black px-2 py-0.5 w-[4%] text-center">2.</td>
+                        <td className="border border-black px-2 py-0.5 w-[40%]"><span className="underline">Cuti Besar</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[4%] text-center font-bold">{isCuti('besar')}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center">3.</td>
+                        <td className="border border-black px-2 py-0.5"><span className="underline">Cuti Sakit</span></td>
+                        <td className="border border-black px-2 py-0.5 text-center font-bold">{isCuti('sakit')}</td>
+                        <td className="border border-black px-2 py-0.5 text-center">4.</td>
+                        <td className="border border-black px-2 py-0.5"><span className="underline">Cuti Melahirkan</span></td>
+                        <td className="border border-black px-2 py-0.5 text-center font-bold">{isCuti('melahirkan')}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center">5.</td>
+                        <td className="border border-black px-2 py-0.5"><span className="underline">Cuti Karena Alasan</span> Penting</td>
+                        <td className="border border-black px-2 py-0.5 text-center font-bold">{isCuti('penting')}</td>
+                        <td className="border border-black px-2 py-0.5 text-center">6.</td>
+                        <td className="border border-black px-2 py-0.5"><span className="underline">Cuti di Luar Tanggungan</span> Negara</td>
+                        <td className="border border-black px-2 py-0.5 text-center font-bold">{isCuti('tanggungan')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section III */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td className="border border-black px-2 py-0.5 font-bold bg-gray-100">III. ALASAN CUTI</td></tr>
+                      <tr><td className="border border-black px-2 py-1 h-10 align-top">{printRequestedLeave.alasan || 'Istirahat sementara dirumah, masa persiapan bersalin dan pasca melahirkan'}</td></tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section IV */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={6} className="border border-black px-2 py-0.5 font-bold bg-gray-100">IV. LAMANYA CUTI</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 w-[12%]"><span className="underline">Selama</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[20%] font-medium">{lamaHari} <span className="underline">Hari/Bulan/Tahun*</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[15%]"><span className="underline">Mulai Tanggal</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[23%]">{tglMulai}</td>
+                        <td className="border border-black px-2 py-0.5 w-[7%] text-center">s/d</td>
+                        <td className="border border-black px-2 py-0.5 w-[23%]">{tglSelesai}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section V */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={5} className="border border-black px-2 py-0.5 font-bold bg-gray-100">V. CATATAN CUTI ***</td></tr>
+                      <tr>
+                        <td colSpan={3} className="border border-black px-2 py-0.5 w-[50%] font-bold">1. CUTI TAHUNAN</td>
+                        <td className="border border-black px-2 py-0.5 w-[42%] font-bold">2. CUTI BESAR</td>
+                        <td className="border border-black px-2 py-0.5 w-[8%] text-center">--</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 w-[15%] text-center"><span className="underline">Tahun</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[15%] text-center"><span className="underline">Sisa</span></td>
+                        <td className="border border-black px-2 py-0.5 w-[20%] text-center"><span className="underline">Keterangan</span></td>
+                        <td className="border border-black px-2 py-0.5 font-bold">3. CUTI SAKIT</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center">N-2</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 font-bold">4. CUTI MELAHIRKAN</td>
+                        <td className="border border-black px-2 py-0.5 text-center">{isCuti('melahirkan') || '--'}</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center">N-1</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 font-bold">5. CUTI KARENA ALASAN PENTING</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center">N</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                        <td className="border border-black px-2 py-0.5 font-bold">6. CUTI DI LUAR TANGGUNGAN NEGARA</td>
+                        <td className="border border-black px-2 py-0.5 text-center">--</td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section VI */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={3} className="border border-black px-2 py-0.5 font-bold bg-gray-100">VI. ALAMAT SELAMA MENJALANKAN CUTI</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 w-[60%]" colSpan={2}>
+                          <div className="flex justify-between items-center">
+                            <span>Alamat <span className="underline">Lengkap</span></span>
+                            <span><span className="underline">Telpon</span> : {formCutiData.telp || '0821 9447 4970'}</span>
+                          </div>
+                        </td>
+                        <td className="border border-black px-2 py-0.5 w-[40%] text-center" rowSpan={2}>
+                          <p><span className="underline">Hormat</span> Saya,</p>
+                          <br/><br/>
+                          <p className="font-bold underline">{printRequestedLeave.userName}</p>
+                          <p>NIP. {printRequestedLeave.nip}</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2} className="border border-black px-2 py-2 h-14 align-top">
+                          {formCutiData.alamat || 'Jl. Link Dondong RT.003/ RW.008 Kel. Gedongombo Kec. Semanding'}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section VII */}
+                  <table className="w-full border-collapse border border-black mb-2">
+                    <tbody>
+                      <tr><td colSpan={4} className="border border-black px-2 py-0.5 font-bold bg-gray-100">VII. PERTIMBANGAN ATASAN LANGSUNG **</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">DISETUJUI</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">PERUBAHAN ****</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">DITANGGUHKAN ****</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">TIDAK DISETUJUI ****</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2} className="border border-black px-2 py-1 border-r-0 align-bottom"></td>
+                        <td colSpan={2} className="border border-black px-2 py-1 border-l-0 text-center">
+                          <p>{formCutiData.atasanJabatan || 'Plt. Kabid. PAUD Dan Pendidikan Non Formal'}</p>
+                          <p>Dinas Pendidikan <span className="underline">Kabupaten</span> Tuban</p>
+                          <br/><br/>
+                          <p className="font-bold underline">{formCutiData.atasanName || 'Siswo Suwarko, S.Pd, M.Pd.'}</p>
+                          <p>NIP. {formCutiData.atasanNip || '197101171999031005'}</p>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  {/* Section VIII */}
+                  <table className="w-full border-collapse border border-black mb-1">
+                    <tbody>
+                      <tr><td colSpan={4} className="border border-black px-2 py-0.5 font-bold bg-gray-100">VIII. KEPUTUSAN PEJABAT YANG BERWENANG MEMBERIKAN CUTI **</td></tr>
+                      <tr>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">DISETUJUI</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">PERUBAHAN ****</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">DITANGGUHKAN ****</td>
+                        <td className="border border-black px-2 py-0.5 text-center w-[25%]">TIDAK DISETUJUI ****</td>
+                      </tr>
+                      <tr>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                        <td className="border border-black px-2 py-2 text-center"></td>
+                      </tr>
+                      <tr>
+                        <td colSpan={2} className="border border-black p-1 border-r-0 align-bottom">
+                           <table className="border-collapse border border-black text-[9px] w-48">
+                             <tbody>
+                               <tr><td colSpan={2} className="border border-black px-1 py-0.5 font-bold text-center">PARAF HIERARKI</td></tr>
+                               <tr><td className="border border-black px-1 py-0.5 w-[70%]">SEKR. DINAS</td><td className="border border-black w-[30%]"></td></tr>
+                               <tr><td className="border border-black px-1 py-0.5">KASI / KASUBBAG</td><td className="border border-black"></td></tr>
+                               <tr><td className="border border-black px-1 py-0.5">PELAKSANA</td><td className="border border-black"></td></tr>
+                             </tbody>
+                           </table>
+                        </td>
+                        <td colSpan={2} className="border border-black px-2 py-1 border-l-0 text-center">
+                          <p>{formCutiData.pejabatJabatan || 'Kepala Dinas Pendidikan'}</p>
+                          <p><span className="underline">Kabupaten</span> Tuban</p>
+                          <br/><br/>
+                          <p className="font-bold underline">{formCutiData.pejabatName || 'Abdul Rakhmat, S.T., M.T.'}</p>
+                          <p>NIP. {formCutiData.pejabatNip || '197212292002121003'}</p>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="text-[10px] mt-1">
+                    <p className="font-bold underline">Tembusan :</p>
+                    <p>1. Inspektur Daerah Kabupaten Tuban</p>
+                    <p>2. Kepala BKPSDM Kabupaten Tuban</p>
+                  </div>
+                </div>
+              );
+
               return (
                 <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
+
+                  {letterType === 'Form Cuti' && (
+                    <>
+                      <FormCutiPage />
+                      <FormCutiPage />
+                    </>
+                  )}
+
                   {letterType === 'Permohonan' && (
                     <>
                       <div className="text-right mb-4">

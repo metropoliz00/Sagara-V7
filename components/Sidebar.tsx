@@ -81,7 +81,7 @@ const menuGroups = [
     title: 'Administrasi',
     icon: Briefcase,
     items: [
-      { id: 'administrasi/surat', label: 'Surat Menyurat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'administrasi/surat', label: 'Arsip Surat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/izin-pegawai', label: 'Izin Pegawai', icon: FileText, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },

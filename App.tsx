@@ -155,7 +155,7 @@ const AppContent: React.FC = () => {
       'agenda': 'Agenda Kelas',
       'materi': 'Materi Pembelajaran',
       'nilai': 'Nilai & Rapor',
-      'administrasi/surat': 'Surat Menyurat',
+      'administrasi/surat': 'Arsip Surat',
       'administrasi/izin-pegawai': 'Izin Pegawai',
       'administrasi/kelas': 'Administrasi Kelas',
       'konseling': 'Konseling & Pelanggaran',

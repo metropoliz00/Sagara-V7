@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   FileText, CheckCircle, Clock, XCircle, Plus, Search, Filter,
-  Calendar, User as UserIcon, Trash2, Edit, ExternalLink, RefreshCw, Eye, Activity, Printer
+  Calendar, User as UserIcon, Trash2, Edit, ExternalLink, RefreshCw, Eye, Activity, Printer, Download
 } from 'lucide-react';
 import { StaffLeaveRequest, User } from '../types';
 import { apiService } from '../services/apiService';
@@ -289,7 +289,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         {req.status}
                       </span>
                       {req.status === 'Disetujui' && (
-                        <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded mt-2"><Printer size={16}/></button>
+                        <div className="flex gap-2 mt-2">
+                           <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
+                           <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                        </div>
                       )}
                       {canApprove && req.status === 'Menunggu' && (
                         <div className="flex gap-2 mt-2">
@@ -445,7 +448,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                          <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded mx-auto block" title="Hapus"><Trash2 size={16}/></button>
                       )}
                       {req.status === 'Disetujui' && (
-                        <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded mx-auto block" title="Cetak"><Printer size={16}/></button>
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
+                          <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                        </div>
                       )}
                       {req.status !== 'Menunggu' && req.status !== 'Disetujui' && <span className="text-gray-300">-</span>}
                     </td>
@@ -625,7 +631,8 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             {/* Printable Content */}
             <div className="p-8 sm:p-12 text-black bg-white print:p-0">
               <div className="text-center font-bold mb-8">
-                <h2 className="text-lg uppercase underline mb-1">PERSETUJUAN PEMBERIAN {printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
+                <h2 className="text-lg uppercase leading-tight">PERSETUJUAN PEMBERIAN</h2>
+                <h2 className="text-lg uppercase leading-tight">{printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
               </div>
 
               <div className="text-sm space-y-6 leading-relaxed">
@@ -711,6 +718,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
           <style>{`
             @media print {
+              @page {
+                size: A4;
+                margin: 15mm;
+              }
               body * {
                 visibility: hidden;
               }
@@ -720,7 +731,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                 top: 0;
                 margin: 0;
                 padding: 0;
+                width: 100%;
                 min-height: 100vh;
+                background: white;
               }
               .fixed.inset-0.z-\\[100\\] * {
                 visibility: visible;

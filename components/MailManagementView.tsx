@@ -78,6 +78,7 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
   classId = 'ALL',
   currentUser
 }) => {
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
   const [records, setRecords] = useState<MailRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeTab, setActiveTab] = useState<'semua' | 'masuk' | 'keluar'>('semua');
@@ -172,6 +173,10 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
 
   // Open Add Modal
   const handleOpenAddModal = (defaultType: 'masuk' | 'keluar' = 'masuk') => {
+    if (!isAdmin) {
+      onShowNotification('Akun Anda memiliki akses lihat (read-only) pada menu surat menyurat.', 'warning');
+      return;
+    }
     setEditingMail(null);
     setType(defaultType);
     setLetterNumber('');
@@ -190,6 +195,10 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
 
   // Open Edit Modal
   const handleOpenEditModal = (mail: MailRecord) => {
+    if (!isAdmin) {
+      onShowNotification('Akun Anda memiliki akses lihat (read-only) pada menu surat menyurat.', 'warning');
+      return;
+    }
     setEditingMail(mail);
     setType(mail.type);
     setLetterNumber(mail.letterNumber || '');
@@ -208,6 +217,10 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
   // Submit Form (Save / Update)
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      onShowNotification('Akun Anda memiliki akses lihat (read-only) pada menu surat menyurat.', 'warning');
+      return;
+    }
 
     if (!letterNumber.trim()) {
       onShowNotification('Nomor Surat wajib diisi.', 'warning');
@@ -262,6 +275,11 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
 
   // Delete Mail
   const handleDeleteConfirm = async () => {
+    if (!isAdmin) {
+      onShowNotification('Akun Anda memiliki akses lihat (read-only) pada menu surat menyurat.', 'warning');
+      setDeleteModal(null);
+      return;
+    }
     if (!deleteModal) return;
     try {
       await apiService.deleteMailRecord(deleteModal.id);
@@ -330,22 +348,24 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 no-print">
-            <button
-              onClick={() => handleOpenAddModal('masuk')}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-emerald-400/30"
-            >
-              <Inbox size={18} />
-              <span>+ Surat Masuk</span>
-            </button>
-            <button
-              onClick={() => handleOpenAddModal('keluar')}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-amber-400/30"
-            >
-              <Send size={18} />
-              <span>+ Surat Keluar</span>
-            </button>
-          </div>
+          {isAdmin && (
+            <div className="flex flex-wrap items-center gap-3 no-print">
+              <button
+                onClick={() => handleOpenAddModal('masuk')}
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-emerald-400/30"
+              >
+                <Inbox size={18} />
+                <span>+ Surat Masuk</span>
+              </button>
+              <button
+                onClick={() => handleOpenAddModal('keluar')}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-amber-400/30"
+              >
+                <Send size={18} />
+                <span>+ Surat Keluar</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -542,7 +562,9 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
               {searchTerm || selectedCategory !== 'semua'
                 ? 'Tidak ditemukan surat yang sesuai dengan kata kunci pencarian atau filter.'
-                : 'Silakan klik tombol "+ Surat Masuk" atau "+ Surat Keluar" untuk mencatat agenda surat baru.'}
+                : isAdmin
+                  ? 'Silakan klik tombol "+ Surat Masuk" atau "+ Surat Keluar" untuk mencatat agenda surat baru.'
+                  : 'Akun Anda berada dalam mode lihat (read-only) untuk menu surat menyurat.'}
             </p>
             {(searchTerm || selectedCategory !== 'semua') && (
               <button
@@ -666,21 +688,25 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
                             <Eye size={16} />
                           </button>
 
-                          <button
-                            onClick={() => handleOpenEditModal(item)}
-                            className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                            title="Edit Surat"
-                          >
-                            <Edit size={16} />
-                          </button>
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => handleOpenEditModal(item)}
+                                className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                title="Edit Surat"
+                              >
+                                <Edit size={16} />
+                              </button>
 
-                          <button
-                            onClick={() => setDeleteModal(item)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                            title="Hapus Surat"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                              <button
+                                onClick={() => setDeleteModal(item)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                title="Hapus Surat"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
 

@@ -286,7 +286,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                     </div>
                     <div className="flex-1 sm:px-6">
                       <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full mb-2">
-                        {req.kategoriIjin}
+                        {req.kategoriIjin.replace('Cuti - ', '')}
                       </span>
                       <div className="flex items-center text-xs text-gray-600 mb-1">
                         <Calendar size={12} className="mr-1.5" />
@@ -436,7 +436,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       <div className="text-[10px] text-gray-400">{req.nip}</div>
                     </td>
                     <td className="px-6 py-4 font-medium text-gray-700">
-                      {req.kategoriIjin}
+                      {req.kategoriIjin.replace('Cuti - ', '')}
                     </td>
                     <td className="px-6 py-4 max-w-xs truncate text-gray-500" title={req.alasan}>
                       {req.alasan}
@@ -675,10 +675,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   </tbody>
                 </table>
 
-                <p>Dengan ini mengajukan permohonan {printRequestedLeave.kategoriIjin}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
+                <p>1. Dengan ini mengajukan permohonan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
                 
-                <p>Sebelum melaksanakan {printRequestedLeave.kategoriIjin.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
-                <p>Setelah menjalankan {printRequestedLeave.kategoriIjin.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
+                <p>2. Sebelum melaksanakan {printRequestedLeave.kategoriIjin.toLowerCase().replace('cuti - ', '')} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
+                <p>3. Setelah menjalankan {printRequestedLeave.kategoriIjin.toLowerCase().replace('cuti - ', '')} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
                 <p>Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
               </div>
               
@@ -695,7 +695,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
                   <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
                 </div>
-                <div className="text-center w-1/2">
+                <div className="text-center w-1/2 flex flex-col items-center">
                   <p>Hormat saya,</p>
                   <div className="h-24"></div>
                   <p className="font-bold underline">{printRequestedLeave.userName}</p>

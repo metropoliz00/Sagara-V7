@@ -58,6 +58,7 @@ import AgendaView from './components/AgendaView';
 import MaterialsView from './components/MaterialsView';
 import SumatifView from './components/SumatifView';
 import PerformanceAssessmentView from './components/PerformanceAssessmentView';
+import MailManagementView from './components/MailManagementView';
 import ManualBookView from './components/ManualBookView';
 import EmergencyAlert from './components/EmergencyAlert';
 import MitigasiBencanaView from './components/MitigasiBencanaView';
@@ -153,6 +154,7 @@ const AppContent: React.FC = () => {
       'agenda': 'Agenda Kelas',
       'materi': 'Materi Pembelajaran',
       'nilai': 'Nilai & Rapor',
+      'administrasi/surat': 'Surat Menyurat',
       'administrasi/kelas': 'Administrasi Kelas',
       'konseling': 'Konseling & Pelanggaran',
       'kegiatan': 'Ekstrakurikuler',
@@ -2883,6 +2885,15 @@ const AppContent: React.FC = () => {
                         onReply={handleSaveLiaison}
                         onUpdateStatus={handleUpdateLiaisonStatus}
                         classId={activeClassId}
+                    />
+                } />
+                <Route path="/administrasi/surat" element={
+                    isStudentRole ? <Navigate to="/Dashboard-Student" replace /> :
+                    <MailManagementView 
+                        schoolProfile={schoolProfile}
+                        onShowNotification={handleShowNotification}
+                        classId={activeClassId}
+                        currentUser={currentUser}
                     />
                 } />
                 <Route path="/administrasi/kelas" element={

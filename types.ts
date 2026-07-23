@@ -449,6 +449,7 @@ export type ViewState =
   | 'materi'
   | 'nilai' 
   | 'administrasi/kelas' 
+  | 'administrasi/surat'
   | 'konseling' 
   | 'kegiatan' 
   | 'profil' 
@@ -713,4 +714,21 @@ export interface KokurikulerPlan {
   };
   produk: string[];
   createdAt: string;
+}
+
+export interface MailRecord {
+  id: string;
+  type: 'masuk' | 'keluar';
+  letterNumber: string;
+  agendaNumber?: string;
+  senderOrRecipient: string;
+  subject: string;
+  letterDate: string;
+  receivedOrSentDate: string;
+  category: string;
+  description?: string;
+  fileUrl?: string;
+  status?: 'Tersimpan' | 'Proses' | 'Selesai' | 'Arsip';
+  classId?: string;
+  createdAt?: string;
 }

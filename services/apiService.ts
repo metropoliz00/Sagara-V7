@@ -8,7 +8,7 @@ import {
   AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
   LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
   BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Graduate, Material,
-  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment
+  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment, MailRecord
 } from '../types';
 
 const isApiConfigured = () => {
@@ -3465,4 +3465,93 @@ export const apiService = {
       throw error;
     }
   },
+
+  // --- Mail Records (Surat Menyurat) ---
+  getMailRecords: async (classId?: string): Promise<MailRecord[]> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      if (!isApiConfigured()) return cached;
+      const { data, error } = await supabase.from('mail_records').select('*').order('created_at', { ascending: false });
+      if (error || !data) return cached;
+      const mapped: MailRecord[] = data.map((item: any) => ({
+        id: item.id,
+        type: item.type || 'masuk',
+        letterNumber: item.letter_number || '',
+        agendaNumber: item.agenda_number || '',
+        senderOrRecipient: item.sender_or_recipient || '',
+        subject: item.subject || '',
+        letterDate: item.letter_date || '',
+        receivedOrSentDate: item.received_or_sent_date || '',
+        category: item.category || 'Biasa',
+        description: item.description || '',
+        fileUrl: item.file_url || '',
+        status: item.status || 'Tersimpan',
+        classId: item.class_id || '',
+        createdAt: item.created_at || new Date().toISOString()
+      }));
+      cacheService.set('mail_records', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getMailRecords error, returning cached:", e);
+      return cacheService.get<MailRecord[]>('mail_records') || [];
+    }
+  },
+  saveMailRecord: async (mail: MailRecord): Promise<void> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      const index = cached.findIndex(m => m.id === mail.id);
+      if (index !== -1) {
+        cached[index] = mail;
+      } else {
+        cached.unshift(mail);
+      }
+      cacheService.set('mail_records', cached);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return;
+
+    try {
+      const dbItem = {
+        id: mail.id,
+        type: mail.type,
+        letter_number: mail.letterNumber,
+        agenda_number: mail.agendaNumber || '',
+        sender_or_recipient: mail.senderOrRecipient,
+        subject: mail.subject,
+        letter_date: mail.letterDate,
+        received_or_sent_date: mail.receivedOrSentDate,
+        category: mail.category,
+        description: mail.description || '',
+        file_url: mail.fileUrl || '',
+        status: mail.status || 'Tersimpan',
+        class_id: mail.classId || ''
+      };
+
+      const { data: existing } = await supabase.from('mail_records').select('id').eq('id', mail.id).single();
+      if (existing) {
+        await supabase.from('mail_records').update(dbItem).eq('id', mail.id);
+      } else {
+        await supabase.from('mail_records').insert([dbItem]);
+      }
+    } catch (err) {
+      console.warn("saveMailRecord DB error (fallback to local cache):", err);
+    }
+  },
+  deleteMailRecord: async (id: string): Promise<{ status: string; message?: string }> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      const filtered = cached.filter(m => m.id !== id);
+      cacheService.set('mail_records', filtered);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return { status: 'success' };
+
+    try {
+      await supabase.from('mail_records').delete().eq('id', id);
+      return { status: 'success' };
+    } catch (err: any) {
+      console.warn("deleteMailRecord DB error:", err);
+      return { status: 'error', message: err?.message };
+    }
+  }
 };

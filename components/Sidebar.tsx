@@ -6,7 +6,7 @@ import {
   UserCog, HeartHandshake, Tent, BookText, Smile, Link2, FileText, Contact, BookOpen, 
   UserCheck, Database, NotebookPen, Files, Activity, Building, Wallet, Camera, Book,
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
-  AlertTriangle, ClipboardList, Code
+  AlertTriangle, ClipboardList, Code, Mail
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 
@@ -81,6 +81,7 @@ const menuGroups = [
     title: 'Administrasi',
     icon: Briefcase,
     items: [
+      { id: 'administrasi/surat', label: 'Surat Menyurat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/sarana-prasarana', label: 'Sarana Prasarana', icon: Building, roles: ['admin', 'supervisor'] },

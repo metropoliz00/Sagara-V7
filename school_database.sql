@@ -525,6 +525,24 @@ CREATE TABLE IF NOT EXISTS kokurikuler_plans (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 37. Mail Records (Surat Menyurat) table
+CREATE TABLE IF NOT EXISTS mail_records (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'masuk',
+  letter_number TEXT NOT NULL,
+  agenda_number TEXT,
+  sender_or_recipient TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  letter_date DATE,
+  received_or_sent_date DATE,
+  category TEXT DEFAULT 'Kedinasan',
+  description TEXT,
+  file_url TEXT,
+  status TEXT DEFAULT 'Selesai',
+  class_id TEXT DEFAULT 'ALL',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- DISABLE RLS for all tables
 DO $$
 DECLARE

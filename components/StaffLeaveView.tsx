@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import html2pdf from 'html2pdf.js';
 import { 
   FileText, CheckCircle, Clock, XCircle, Plus, Search, Filter,
   Calendar, User as UserIcon, Trash2, Edit, ExternalLink, RefreshCw, Eye, Activity, Printer, Download
@@ -618,10 +619,22 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               <h3 className="font-bold text-gray-800">Pratinjau Surat Izin</h3>
               <div className="flex gap-2">
                 <button
-                  onClick={() => window.print()}
+                  onClick={() => {
+                    const element = document.getElementById('printable-area');
+                    if (element) {
+                      const opt = {
+                        margin: 15,
+                        filename: `${printRequestedLeave!.kategoriIjin}_${printRequestedLeave!.userName}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`,
+                        image: { type: 'jpeg' as const, quality: 0.98 },
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+                      };
+                      html2pdf().set(opt).from(element).save();
+                    }
+                  }}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200"
                 >
-                  <Printer size={16} className="mr-2" /> Cetak
+                  <Download size={16} className="mr-2" /> Download PDF
                 </button>
                 <button
                   onClick={() => setPrintRequestedLeave(null)}
@@ -633,7 +646,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             </div>
 
             {/* Printable Content */}
-            <div className="p-8 sm:p-12 text-black bg-white print:p-0">
+            <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
               <div className="text-center font-bold mb-8">
                 <h2 className="text-lg uppercase leading-tight">PERSETUJUAN PEMBERIAN</h2>
                 <h2 className="text-lg uppercase leading-tight">{printRequestedLeave.kategoriIjin.toUpperCase()}</h2>

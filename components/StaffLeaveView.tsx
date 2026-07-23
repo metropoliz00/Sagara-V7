@@ -13,7 +13,7 @@ interface StaffLeaveViewProps {
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
 
-const KATEGORI_IJIN = ['Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
+const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
 const STATUS_OPTIONS = ['Semua Status', 'Menunggu', 'Disetujui', 'Ditolak'];
 const JENIS_CUTI_OPTIONS = ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'];
 
@@ -699,11 +699,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                 </table>
 
                 <p>
-                  Pada tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
-                  {!printRequestedLeave.kategoriIjin.startsWith('Cuti') ? (
-                    `, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
+                  {['Dispensasi Dinas', 'Dispensasi Pribadi'].includes(printRequestedLeave.kategoriIjin) ? (
+                    `Tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, pukul ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
                   ) : (
-                    ` sampai dengan ${new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
+                    `Tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
                   )}, karena :
                 </p>
                 

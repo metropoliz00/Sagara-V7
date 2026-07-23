@@ -266,6 +266,7 @@ export interface PermissionRequest {
   type: 'sick' | 'permit' | 'dispensation';
   reason: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string;
 }
 
 export interface TeacherProfileData {
@@ -752,6 +753,7 @@ export interface StaffLeaveRequest {
   tanggalSelesai: string;
   alasan: string;
   status: 'Menunggu' | 'Disetujui' | 'Ditolak';
+  rejectionReason?: string;
   fileUrl?: string;
   createdAt?: string;
 }

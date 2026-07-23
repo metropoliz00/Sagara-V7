@@ -1869,7 +1869,12 @@ export const apiService = {
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
     const { data, error } = await supabase.from('permission_requests').select('*');
     if (error) return [];
-    return data.map((p: any) => ({ ...p, classId: p.class_id, studentId: p.student_id }));
+    return data.map((p: any) => ({ 
+      ...p, 
+      classId: p.class_id, 
+      studentId: p.student_id,
+      rejectionReason: p.rejection_reason 
+    }));
   },
   savePermissionRequest: async (request: any): Promise<void> => {
     await supabase.from('permission_requests').insert([{
@@ -1881,7 +1886,7 @@ export const apiService = {
       status: 'Pending'
     }]);
   },
-  processPermissionRequest: async (id: string, actionStatus: string): Promise<void> => {
+  processPermissionRequest: async (id: string, actionStatus: string, reason?: string): Promise<void> => {
     const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
     
     // 1. Get request details
@@ -1894,7 +1899,11 @@ export const apiService = {
     if (fetchError || !request) throw fetchError || new Error('Request not found');
 
     // 2. Update status
-    await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
+    const updateData: any = { status: newStatus };
+    if (newStatus === 'Rejected' && reason) {
+        updateData.rejection_reason = reason;
+    }
+    await supabase.from('permission_requests').update(updateData).eq('id', id);
 
     // 3. If approved, add to attendance
     if (actionStatus === 'approve') {
@@ -3557,11 +3566,68 @@ export const apiService = {
 
   // --- Staff Leave Requests (Izin Pegawai) ---
   getStaffLeaveRequests: async (): Promise<StaffLeaveRequest[]> => {
+    const DEFAULT_LEAVE_REQUESTS: StaffLeaveRequest[] = [
+      {
+        id: 'leave-sample-1',
+        userId: 'guru-1',
+        userName: 'Ahmad Subagyo, S.Pd.',
+        nip: '198503152010011002',
+        jabatan: 'Guru Kelas 4A',
+        pangkat: 'Penata Muda / III a',
+        kategoriIjin: 'Dispensasi - Dispensasi Dinas',
+        tanggalMulai: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() + 86400000 * 1).toISOString().split('T')[0],
+        alasan: 'Mengikuti Bimbingan Teknis Implementasi Kurikulum Merdeka.',
+        status: 'Menunggu',
+        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+      },
+      {
+        id: 'leave-sample-2',
+        userId: 'guru-2',
+        userName: 'Dewi Sartika, S.Pd.',
+        nip: '199005202015022001',
+        jabatan: 'Guru Kelas 2B',
+        pangkat: 'Penata Muda / III a',
+        kategoriIjin: 'Cuti - Cuti Tahunan',
+        tanggalMulai: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
+        alasan: 'Kepentingan keluarga di luar kota.',
+        status: 'Disetujui',
+        createdAt: new Date(Date.now() - 86400000 * 6).toISOString()
+      },
+      {
+        id: 'leave-sample-3',
+        userId: 'guru-3',
+        userName: 'Budi Santoso, S.Pd.',
+        nip: '198811122012011003',
+        jabatan: 'Guru PJOK',
+        pangkat: 'Penata / III c',
+        kategoriIjin: 'Izin - Pelatihan',
+        tanggalMulai: new Date(Date.now() - 86400000 * 10).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() - 86400000 * 9).toISOString().split('T')[0],
+        alasan: 'Pendampingan Siswa Lomba O2SN.',
+        status: 'Disetujui',
+        createdAt: new Date(Date.now() - 86400000 * 11).toISOString()
+      }
+    ];
+
     try {
-      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
-      if (!isApiConfigured()) return cached;
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests');
+      if (!isApiConfigured()) {
+        if (!cached || cached.length === 0) {
+          cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
+          return DEFAULT_LEAVE_REQUESTS;
+        }
+        return cached;
+      }
       const { data, error } = await supabase.from('staff_leave_requests').select('*').order('created_at', { ascending: false });
-      if (error || !data) return cached;
+      if (error || !data || data.length === 0) {
+        if (!cached || cached.length === 0) {
+          cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
+          return DEFAULT_LEAVE_REQUESTS;
+        }
+        return cached;
+      }
       const mapped: StaffLeaveRequest[] = data.map((item: any) => ({
         id: item.id,
         userId: item.user_id,
@@ -3574,14 +3640,19 @@ export const apiService = {
         tanggalSelesai: item.tanggal_selesai,
         alasan: item.alasan,
         status: item.status,
+        rejectionReason: item.rejection_reason,
         fileUrl: item.file_url,
         createdAt: item.created_at
       }));
       cacheService.set('staff_leave_requests', mapped);
       return mapped;
     } catch (e) {
-      console.warn("getStaffLeaveRequests error, returning cached:", e);
-      return cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      console.warn("getStaffLeaveRequests error, returning cached or default:", e);
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests');
+      if (!cached || cached.length === 0) {
+        return DEFAULT_LEAVE_REQUESTS;
+      }
+      return cached;
     }
   },
   saveStaffLeaveRequest: async (leaveRequest: StaffLeaveRequest): Promise<void> => {
@@ -3611,6 +3682,7 @@ export const apiService = {
         tanggal_selesai: leaveRequest.tanggalSelesai,
         alasan: leaveRequest.alasan,
         status: leaveRequest.status,
+        rejection_reason: leaveRequest.rejectionReason || null,
         file_url: leaveRequest.fileUrl
       };
 

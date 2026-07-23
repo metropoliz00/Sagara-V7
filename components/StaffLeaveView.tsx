@@ -37,6 +37,8 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [letterType, setLetterType] = useState('Permohonan');
   const [isLetterNumberModalOpen, setIsLetterNumberModalOpen] = useState(false);
   const [manualLetterNumber, setManualLetterNumber] = useState("");
+  const [rejectModalData, setRejectModalData] = useState<{ isOpen: boolean; request: StaffLeaveRequest | null }>({ isOpen: false, request: null });
+  const [rejectionReason, setRejectionReason] = useState("");
 
   const renderHeader = () => (
     <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
@@ -62,9 +64,15 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [alasan, setAlasan] = useState('');
   
-  // Permissions - Only Kepala Sekolah can approve/manage all leave requests
-  const isPrincipal = currentUser?.role === 'Kepala Sekolah';
-  const canApprove = currentUser?.role === 'Kepala Sekolah';
+  // Permissions - Admin, Superadmin, and Kepala Sekolah can approve/manage all leave requests
+  const isPrincipalOrAdmin = 
+    currentUser?.role === 'Kepala Sekolah' || 
+    currentUser?.role === 'admin' || 
+    currentUser?.role === 'superadmin' ||
+    (currentUser?.position && currentUser.position.toLowerCase().includes('kepala sekolah')) ||
+    (currentUser?.position && currentUser.position.toLowerCase().includes('admin'));
+
+  const canApprove = isPrincipalOrAdmin;
 
   useEffect(() => {
     loadRequests();
@@ -87,7 +95,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
       if (profiles && profiles.school) setSchoolProfile(profiles.school);
       
       if (users && users.length > 0) {
-        const principal = users.find(u => u.role === 'Kepala Sekolah');
+        const principal = users.find(u => u.role === 'Kepala Sekolah' || u.position?.toLowerCase().includes('kepala sekolah'));
         if (principal) {
           setHeadmasterUser(principal);
         }
@@ -102,9 +110,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
   const myRequests = useMemo(() => {
     if (!currentUser) return [];
-    if (isPrincipal) return requests; // Principal sees all requests
+    if (isPrincipalOrAdmin) return requests; // Admin and Principal see all requests
     return requests.filter(r => r.userId === currentUser.id);
-  }, [requests, currentUser, isPrincipal]);
+  }, [requests, currentUser, isPrincipalOrAdmin]);
 
   const filteredRequests = useMemo(() => {
     return myRequests.filter(req => {
@@ -186,13 +194,21 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   };
 
 
-  const handleUpdateStatus = async (req: StaffLeaveRequest, newStatus: 'Disetujui' | 'Ditolak') => {
+  const handleUpdateStatus = async (req: StaffLeaveRequest, newStatus: 'Disetujui' | 'Ditolak', reason?: string) => {
     if (!canApprove) return;
     try {
-      const updated = { ...req, status: newStatus };
+      const updated: StaffLeaveRequest = { ...req, status: newStatus };
+      if (newStatus === 'Ditolak' && reason) {
+          updated.rejectionReason = reason;
+      }
       await apiService.saveStaffLeaveRequest(updated);
       setRequests(requests.map(r => r.id === req.id ? updated : r));
       onShowNotification(`Pengajuan berhasil ${newStatus.toLowerCase()}.`, 'success');
+      
+      if (newStatus === 'Ditolak') {
+         setRejectModalData({ isOpen: false, request: null });
+         setRejectionReason("");
+      }
     } catch (e) {
       console.error(e);
       onShowNotification('Gagal memperbarui status pengajuan.', 'error');
@@ -325,6 +341,11 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       }`}>
                         {req.status}
                       </span>
+                      {req.status === 'Ditolak' && req.rejectionReason && (
+                        <p className="text-xs text-red-500 italic mt-1 text-right max-w-[200px]" title={req.rejectionReason}>
+                           Ditolak: {req.rejectionReason}
+                        </p>
+                      )}
                       <div className="flex items-center gap-2">
                         {req.status === 'Disetujui' && (
                           <>
@@ -337,7 +358,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         {canApprove && req.status === 'Menunggu' && (
                           <>
                              <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-600 hover:text-emerald-800 p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Setujui"><CheckCircle size={16}/></button>
-                             <button onClick={() => handleUpdateStatus(req, 'Ditolak')} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Tolak"><XCircle size={16}/></button>
+                             <button onClick={() => { setRejectModalData({ isOpen: true, request: req }); setRejectionReason(""); }} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Tolak"><XCircle size={16}/></button>
                           </>
                         )}
                         {!canApprove && req.status === 'Menunggu' && (
@@ -482,7 +503,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                        {canApprove && req.status === 'Menunggu' && (
                         <div className="flex items-center justify-center gap-2">
                            <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded" title="Setujui"><CheckCircle size={16}/></button>
-                           <button onClick={() => handleUpdateStatus(req, 'Ditolak')} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Tolak"><XCircle size={16}/></button>
+                           <button onClick={() => { setRejectModalData({ isOpen: true, request: req }); setRejectionReason(""); }} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Tolak"><XCircle size={16}/></button>
                         </div>
                       )}
                       {!canApprove && req.status === 'Menunggu' && (
@@ -637,6 +658,42 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModalData.isOpen && rejectModalData.request && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[150] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Tolak Pengajuan Izin</h3>
+            <p className="text-sm text-gray-600 mb-4">Silakan masukkan alasan penolakan untuk pengajuan dari {rejectModalData.request.userName}.</p>
+            <textarea
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-4 min-h-[100px]"
+              placeholder="Alasan penolakan..."
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => { setRejectModalData({ isOpen: false, request: null }); setRejectionReason(""); }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => {
+                  if (!rejectionReason.trim()) {
+                      onShowNotification('Harap isi alasan penolakan.', 'warning');
+                      return;
+                  }
+                  handleUpdateStatus(rejectModalData.request!, 'Ditolak', rejectionReason);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+              >
+                Tolak Pengajuan
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

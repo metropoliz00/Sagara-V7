@@ -2313,7 +2313,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           </div>
                                           <p className="text-sm text-gray-700 font-medium line-clamp-1">{req.reason}</p>
                                       </div>
-                                      <div className="text-right">
+                                      <div className="text-right flex flex-col items-end gap-1">
                                           <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
                                               req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
                                               req.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-200' :
@@ -2321,6 +2321,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           }`}>
                                               {req.status === 'Approved' ? 'Diterima' : req.status === 'Rejected' ? 'Ditolak' : 'Menunggu'}
                                           </span>
+                                          {req.status === 'Rejected' && req.rejectionReason && (
+                                              <span className="text-[10px] text-red-500 italic max-w-[120px] text-right leading-tight">
+                                                  Alasan: {req.rejectionReason}
+                                              </span>
+                                          )}
                                       </div>
                                   </div>
                               ))

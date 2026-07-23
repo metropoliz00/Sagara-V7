@@ -369,6 +369,8 @@ const AppContent: React.FC = () => {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [processingPermissionId, setProcessingPermissionId] = useState<string | null>(null);
+  const [rejectPermissionModalData, setRejectPermissionModalData] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
+  const [permissionRejectionReason, setPermissionRejectionReason] = useState("");
   const [adminPercentage, setAdminPercentage] = useState<number>(0);
   const [teacherProfile, setTeacherProfile] = useState<TeacherProfileData>(() => {
     try {
@@ -1018,12 +1020,16 @@ const AppContent: React.FC = () => {
       }
   };
 
-  const handleProcessPermission = async (id: string, action: 'approve' | 'reject') => {
+  const handleProcessPermission = async (id: string, action: 'approve' | 'reject', reason?: string) => {
       setProcessingPermissionId(id);
       try {
           const req = permissionRequests.find(p => String(p.id).trim() === String(id).trim());
           if (isDemoMode) {
-              setPermissionRequests(prev => prev.map(p => p.id === id ? { ...p, status: action === 'approve' ? 'Approved' : 'Rejected' } : p));
+              setPermissionRequests(prev => prev.map(p => p.id === id ? { 
+                  ...p, 
+                  status: action === 'approve' ? 'Approved' : 'Rejected',
+                  ...(action === 'reject' && reason ? { rejectionReason: reason } : {})
+              } : p));
               if (action === 'approve' && req) {
                   setAllAttendanceRecords(prev => {
                       const filtered = prev.filter(r => !(String(r.studentId) === String(req.studentId) && String(r.date) === String(req.date)));
@@ -1031,9 +1037,17 @@ const AppContent: React.FC = () => {
                   });
               }
               handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'} (Demo).`, 'success');
+              if (action === 'reject') {
+                  setRejectPermissionModalData({ isOpen: false, id: "" });
+                  setPermissionRejectionReason("");
+              }
           } else {
-              await apiService.processPermissionRequest(id, action);
+              await apiService.processPermissionRequest(id, action, reason);
               handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'}.`, 'success');
+              if (action === 'reject') {
+                  setRejectPermissionModalData({ isOpen: false, id: "" });
+                  setPermissionRejectionReason("");
+              }
               await fetchData();
           }
       } catch (e) { handleShowNotification('Gagal memproses ijin.', 'error'); } finally { setProcessingPermissionId(null); }
@@ -3115,7 +3129,7 @@ const AppContent: React.FC = () => {
                                                   {processingPermissionId === req.id ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle size={16}/>}
                                               </button>
                                               <button 
-                                                  onClick={() => handleProcessPermission(req.id, 'reject')}
+                                                  onClick={() => { setRejectPermissionModalData({ isOpen: true, id: req.id }); setPermissionRejectionReason(""); }}
                                                   disabled={processingPermissionId === req.id}
                                                   className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                                                   title="Tolak"
@@ -3131,6 +3145,41 @@ const AppContent: React.FC = () => {
                   </div>
               </div>
           </div>
+      )}
+
+      {rejectPermissionModalData.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[150] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Tolak Ijin Siswa</h3>
+            <p className="text-sm text-gray-600 mb-4">Silakan masukkan alasan penolakan ijin ini.</p>
+            <textarea
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-4 min-h-[100px]"
+              placeholder="Alasan penolakan..."
+              value={permissionRejectionReason}
+              onChange={(e) => setPermissionRejectionReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => { setRejectPermissionModalData({ isOpen: false, id: "" }); setPermissionRejectionReason(""); }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => {
+                  if (!permissionRejectionReason.trim()) {
+                      handleShowNotification('Harap isi alasan penolakan.', 'warning');
+                      return;
+                  }
+                  handleProcessPermission(rejectPermissionModalData.id, 'reject', permissionRejectionReason);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+              >
+                Tolak Ijin
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Notification notification={notification} onClear={() => setNotification(null)} />

@@ -154,35 +154,7 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [students]);
 
-  // Grade 1 to 6 Data
-  const grade1To6Data = useMemo(() => {
-    const grades: Record<string, { L: number; P: number; total: number }> = {
-      'Kelas 1': { L: 0, P: 0, total: 0 },
-      'Kelas 2': { L: 0, P: 0, total: 0 },
-      'Kelas 3': { L: 0, P: 0, total: 0 },
-      'Kelas 4': { L: 0, P: 0, total: 0 },
-      'Kelas 5': { L: 0, P: 0, total: 0 },
-      'Kelas 6': { L: 0, P: 0, total: 0 },
-    };
-    students.forEach(s => {
-      const cls = (s.classId || '').trim();
-      const match = cls.match(/^([1-6])/);
-      if (match) {
-        const gKey = `Kelas ${match[1]}`;
-        if (grades[gKey]) {
-          if (s.gender === 'L') grades[gKey].L++;
-          else grades[gKey].P++;
-          grades[gKey].total++;
-        }
-      }
-    });
-    return Object.entries(grades).map(([name, data]) => ({
-      name,
-      L: data.L,
-      P: data.P,
-      total: data.total
-    }));
-  }, [students]);
+
 
   // 3. Attendance Stats
   const attendanceStats = useMemo(() => {
@@ -785,22 +757,7 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><GraduationCap size={18} className="mr-2 text-indigo-500"/> Grafik Data dari Kelas 1 sampai dengan 6</h3>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={grade1To6Data} margin={{top:5, right:5, left:-20, bottom:0}}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                            <XAxis dataKey="name" tick={{fontSize: 10}}/>
-                            <YAxis allowDecimals={false} tick={{fontSize: 10}}/>
-                            <Tooltip contentStyle={{borderRadius: '8px'}}/>
-                            <Legend wrapperStyle={{fontSize: '12px', paddingTop: '10px'}}/>
-                            <Bar dataKey="L" stackId="a" fill="#5AB2FF" name="Laki-laki" />
-                            <Bar dataKey="P" stackId="a" fill="#F472B6" name="Perempuan" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+
         </div>
 
         {/* FOURTH ROW: SCHOOL ASSETS & CLASS INVENTORY */}

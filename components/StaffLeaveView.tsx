@@ -698,7 +698,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   </tbody>
                 </table>
 
-                <p>Pada tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam {new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d {new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB, karena :</p>
+                <p>
+                  Pada tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
+                  {!printRequestedLeave.kategoriIjin.startsWith('Cuti') ? (
+                    `, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
+                  ) : (
+                    ` sampai dengan ${new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
+                  )}, karena :
+                </p>
                 
                 <div className="ml-4 flex gap-2">
                   <div className="w-4 h-4 border border-black flex-shrink-0 flex items-center justify-center text-xs mt-0.5">✓</div>

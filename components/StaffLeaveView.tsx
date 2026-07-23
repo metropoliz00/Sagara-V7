@@ -625,8 +625,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               <div className="flex gap-2">
                 <button
                   onClick={() => {
+                    const letterNumber = prompt("Masukkan Nomor Surat secara manual:", "800.1.11.2/043/414.101.319/2026");
+                    if (letterNumber === null) return;
+                    
                     const element = document.getElementById('printable-area');
                     if (element) {
+                      // In a real scenario, we might need a separate component or template for the second format
+                      // For this implementation, we can manipulate the printRequestedLeave object or CSS
+                      
                       const opt = {
                         margin: 15,
                         filename: `${printRequestedLeave!.kategoriIjin}_${printRequestedLeave!.userName}_${new Date().toLocaleDateString('id-ID').replace(/\//g, '-')}.pdf`,
@@ -639,7 +645,22 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   }}
                   className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200"
                 >
-                  <Download size={16} className="mr-2" /> Download PDF
+                  <Download size={16} className="mr-2" /> Download Surat Permohonan
+                </button>
+                <button
+                  onClick={() => {
+                    const letterNumber = prompt("Masukkan Nomor Surat secara manual:", "800.1.11.2/043/414.101.319/2026");
+                    if (letterNumber === null) return;
+                    
+                    const element = document.getElementById('printable-area');
+                    if (element) {
+                      // Logic for second format here, perhaps modifying printRequestedLeave or using a hidden element
+                      alert("Fitur download surat izin sementara dalam pengembangan.");
+                    }
+                  }}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-emerald-200"
+                >
+                  <Download size={16} className="mr-2" /> Download Surat Izin
                 </button>
                 <button
                   onClick={() => setPrintRequestedLeave(null)}

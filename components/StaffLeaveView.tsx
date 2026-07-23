@@ -36,7 +36,23 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [printRequestedLeave, setPrintRequestedLeave] = useState<StaffLeaveRequest | null>(null);
   const [letterType, setLetterType] = useState('Permohonan');
   const [isLetterNumberModalOpen, setIsLetterNumberModalOpen] = useState(false);
-  const [manualLetterNumber, setManualLetterNumber] = useState("800.1.11.2/043/414.101.319/2026");
+  const [manualLetterNumber, setManualLetterNumber] = useState("");
+
+  const renderHeader = () => (
+    <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
+      <div className="w-20 h-20 bg-gray-100 flex-shrink-0 flex items-center justify-center">
+         {schoolProfile?.regencyLogo ? <img src={schoolProfile.regencyLogo} alt="Logo Kab" className="w-full h-full object-contain" /> : <div className="text-[8px]">LOGO</div>}
+      </div>
+      <div className="text-center flex-1">
+        <p className="font-bold uppercase">PEMERINTAH KABUPATEN TUBAN</p>
+        <p className="font-bold uppercase">DINAS PENDIDIKAN</p>
+        <p className="font-bold uppercase text-lg">{schoolProfile?.name || 'UPT SD NEGERI ...'}</p>
+        <p className="font-bold uppercase">KECAMATAN {schoolProfile?.kecamatan?.toUpperCase() || '...'}</p>
+        <p className="text-xs">Jln. {schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
+        <p className="text-xs">Pos-el : {schoolProfile?.email || '...'}</p>
+      </div>
+    </div>
+  );
 
   // Form state
   const [ijinGroup, setIjinGroup] = useState<keyof typeof IJIN_OPTIONS>('Dispensasi');
@@ -662,6 +678,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
               {letterType === 'Permohonan' && (
                 <>
+                  {renderHeader()}
                   <div className="text-right mb-4">
                     <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                   </div>
@@ -695,8 +712,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   <div className="flex justify-between mt-12">
                     <div className="text-center w-1/2">
                       <p>Mengetahui,</p>
-                      <p>Kepala UPT SD Negeri Remen 2</p>
-                      <p>Kecamatan Jenu Kabupaten Tuban</p>
+                      <p>Kepala {schoolProfile?.name || '...'}</p>
                       <div className="h-24 relative flex items-center justify-center">
                          {schoolProfile?.headmasterSignature && (
                             <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
@@ -716,13 +732,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               )}
               {letterType === 'Pengantar' && (
                 <div className="text-sm">
+                  {renderHeader()}
                   <div className="text-center mb-6">
                     <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
                     <p>Nomor : {manualLetterNumber}</p>
                   </div>
                   <table className="w-full border-collapse border border-black mb-8">
                     <thead>
-                      <tr><th className="border border-black p-2">NO</th><th className="border border-black p-2">ISI SURAT</th><th className="border border-black p-2">JUMLAH</th><th className="border border-black p-2">KETERANGAN</th></tr>
+                      <tr><th className="border border-black p-2 w-10">NO</th><th className="border border-black p-2 w-2/5">ISI SURAT</th><th className="border border-black p-2 w-20">JUMLAH</th><th className="border border-black p-2">KETERANGAN</th></tr>
                     </thead>
                     <tbody>
                       <tr>
@@ -742,10 +759,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   <div className="flex justify-between mt-12">
                      <div className="w-1/2">
                         <p>Diterima pada tgl : ....................</p>
-                        <div className="border border-gray-400 w-32 h-32 flex items-center justify-center mt-2">Cap</div>
                      </div>
                      <div className="text-center w-1/2 flex flex-col items-center">
-                      <p>Kepala UPT SD Negeri Remen 2</p>
+                      <p>Kepala {schoolProfile?.name || '...'}</p>
                       <div className="h-24"></div>
                       <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
                       <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
@@ -755,6 +771,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               )}
               {letterType === 'Izin Cuti' && (
                  <div className="text-sm">
+                    {renderHeader()}
                     <div className="text-center mb-6">
                         <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
                         <p>NOMOR : {manualLetterNumber}</p>
@@ -773,7 +790,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                     <p className="mt-4">2. Demikian izin sementara melaksanakan {printRequestedLeave.kategoriIjin.replace('Cuti - ', '')} ini dibuat untuk dapat digunakan seperlunya.</p>
                     
                     <div className="text-center w-1/2 ml-auto mt-12">
-                      <p>Kepala UPT SD Negeri Remen 2</p>
+                      <p>Kepala {schoolProfile?.name || '...'}</p>
                       <div className="h-24"></div>
                       <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
                       <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
@@ -791,6 +808,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                     type="text"
                     value={manualLetterNumber}
                     onChange={(e) => setManualLetterNumber(e.target.value)}
+                    placeholder="800.1.11.2/043/414.101.319/2026"
                     className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
                   />
                   <div className="flex gap-2 justify-end">

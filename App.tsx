@@ -59,6 +59,7 @@ import MaterialsView from './components/MaterialsView';
 import SumatifView from './components/SumatifView';
 import PerformanceAssessmentView from './components/PerformanceAssessmentView';
 import MailManagementView from './components/MailManagementView';
+import StaffLeaveView from './components/StaffLeaveView';
 import ManualBookView from './components/ManualBookView';
 import EmergencyAlert from './components/EmergencyAlert';
 import MitigasiBencanaView from './components/MitigasiBencanaView';
@@ -155,6 +156,7 @@ const AppContent: React.FC = () => {
       'materi': 'Materi Pembelajaran',
       'nilai': 'Nilai & Rapor',
       'administrasi/surat': 'Surat Menyurat',
+      'administrasi/izin-pegawai': 'Izin Pegawai',
       'administrasi/kelas': 'Administrasi Kelas',
       'konseling': 'Konseling & Pelanggaran',
       'kegiatan': 'Ekstrakurikuler',
@@ -2894,6 +2896,13 @@ const AppContent: React.FC = () => {
                         onShowNotification={handleShowNotification}
                         classId={activeClassId}
                         currentUser={currentUser}
+                    />
+                } />
+                <Route path="/administrasi/izin-pegawai" element={
+                    isStudentRole ? <Navigate to="/Dashboard-Student" replace /> :
+                    <StaffLeaveView 
+                        currentUser={currentUser}
+                        onShowNotification={handleShowNotification}
                     />
                 } />
                 <Route path="/administrasi/kelas" element={

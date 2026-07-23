@@ -182,9 +182,32 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
             </div>
         </div>
 
-        <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Alamat Sekolah</label>
-            <textarea disabled={isReadOnly} rows={2} value={school.address} onChange={(e) => setSchool({...school, address: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" />
+        <div className="md:col-span-2 border border-gray-100 p-4 rounded-xl bg-gray-50/50">
+            <h4 className="text-sm font-bold text-gray-800 mb-3">Alamat Lengkap Sekolah</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Jalan / Detail Alamat</label>
+                    <input type="text" disabled={isReadOnly} value={school.jalan || ''} onChange={(e) => setSchool({...school, jalan: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Jl. Pendidikan No. 1" />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Desa / Kelurahan</label>
+                    <input type="text" disabled={isReadOnly} value={school.desa || ''} onChange={(e) => setSchool({...school, desa: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Nama Desa/Kelurahan..." />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Kecamatan</label>
+                    <input type="text" disabled={isReadOnly} value={school.kecamatan || ''} onChange={(e) => setSchool({...school, kecamatan: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Nama Kecamatan..." />
+                </div>
+                <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Kabupaten / Kota</label>
+                    <input type="text" disabled={isReadOnly} value={school.kabupaten || ''} onChange={(e) => setSchool({...school, kabupaten: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Nama Kabupaten/Kota..." />
+                </div>
+            </div>
+            
+            {/* Backward compatibility */}
+            <div className="mt-4">
+                <label className="block text-xs font-medium text-gray-500 mb-1">Alamat Lengkap (Format Lama/Preview)</label>
+                <textarea disabled={isReadOnly} rows={2} value={school.address} onChange={(e) => setSchool({...school, address: e.target.value})} className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500" placeholder="Jika diisi, akan mengesampingkan format terpisah di beberapa bagian." />
+            </div>
         </div>
 
         {/* --- BRANDING COLOR SETTINGS --- */}

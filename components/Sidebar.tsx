@@ -82,6 +82,7 @@ const menuGroups = [
     icon: Briefcase,
     items: [
       { id: 'administrasi/surat', label: 'Surat Menyurat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'administrasi/izin-pegawai', label: 'Izin Pegawai', icon: FileText, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/sarana-prasarana', label: 'Sarana Prasarana', icon: Building, roles: ['admin', 'supervisor'] },
@@ -153,9 +154,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
       }
   };
 
+  const userEffectiveRole = currentUser?.role === 'Kepala Sekolah' ? 'supervisor' : currentUser?.role;
+
   const renderMenuItem = (item: { id: string, label: string, icon: any, roles: string[] }) => {
     const Icon = item.icon;
-    let isVisible = currentUser && item.roles.includes(currentUser.role);
+    let isVisible = currentUser && userEffectiveRole && item.roles.includes(userEffectiveRole);
     
     if (item.id === 'data-lulusan' && currentUser) {
       if (currentUser.role === 'guru') {
@@ -258,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
           </div>
 
           {menuGroups.map((group) => {
-            const visibleItems = group.items.filter(item => currentUser && item.roles.includes(currentUser.role));
+            const visibleItems = group.items.filter(item => currentUser && userEffectiveRole && item.roles.includes(userEffectiveRole));
             if (visibleItems.length === 0) return null;
 
             const isGroupOpen = openGroups[group.title] || false;

@@ -8,7 +8,7 @@ import {
   AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
   LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
   BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Graduate, Material,
-  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment, MailRecord
+  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment, MailRecord, StaffLeaveRequest
 } from '../types';
 
 const isApiConfigured = () => {
@@ -3553,5 +3553,93 @@ export const apiService = {
       console.warn("deleteMailRecord DB error:", err);
       return { status: 'error', message: err?.message };
     }
+  },
+
+  // --- Staff Leave Requests (Izin Pegawai) ---
+  getStaffLeaveRequests: async (): Promise<StaffLeaveRequest[]> => {
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      if (!isApiConfigured()) return cached;
+      const { data, error } = await supabase.from('staff_leave_requests').select('*').order('created_at', { ascending: false });
+      if (error || !data) return cached;
+      const mapped: StaffLeaveRequest[] = data.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        userName: item.user_name,
+        nip: item.nip,
+        jabatan: item.jabatan,
+        pangkat: item.pangkat,
+        kategoriIjin: item.kategori_ijin,
+        tanggalMulai: item.tanggal_mulai,
+        tanggalSelesai: item.tanggal_selesai,
+        alasan: item.alasan,
+        status: item.status,
+        fileUrl: item.file_url,
+        createdAt: item.created_at
+      }));
+      cacheService.set('staff_leave_requests', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getStaffLeaveRequests error, returning cached:", e);
+      return cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+    }
+  },
+  saveStaffLeaveRequest: async (leaveRequest: StaffLeaveRequest): Promise<void> => {
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      const index = cached.findIndex(m => m.id === leaveRequest.id);
+      if (index !== -1) {
+        cached[index] = leaveRequest;
+      } else {
+        cached.unshift(leaveRequest);
+      }
+      cacheService.set('staff_leave_requests', cached);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return;
+
+    try {
+      const dbItem = {
+        id: leaveRequest.id,
+        user_id: leaveRequest.userId,
+        user_name: leaveRequest.userName,
+        nip: leaveRequest.nip,
+        jabatan: leaveRequest.jabatan,
+        pangkat: leaveRequest.pangkat,
+        kategori_ijin: leaveRequest.kategoriIjin,
+        tanggal_mulai: leaveRequest.tanggalMulai,
+        tanggal_selesai: leaveRequest.tanggalSelesai,
+        alasan: leaveRequest.alasan,
+        status: leaveRequest.status,
+        file_url: leaveRequest.fileUrl
+      };
+
+      const { data: existing } = await supabase.from('staff_leave_requests').select('id').eq('id', leaveRequest.id).single();
+      if (existing) {
+        await supabase.from('staff_leave_requests').update(dbItem).eq('id', leaveRequest.id);
+      } else {
+        await supabase.from('staff_leave_requests').insert([dbItem]);
+      }
+    } catch (err) {
+      console.warn("saveStaffLeaveRequest DB error (fallback to local cache):", err);
+    }
+  },
+  deleteStaffLeaveRequest: async (id: string): Promise<{ status: string; message?: string }> => {
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      const filtered = cached.filter(m => m.id !== id);
+      cacheService.set('staff_leave_requests', filtered);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return { status: 'success' };
+
+    try {
+      await supabase.from('staff_leave_requests').delete().eq('id', id);
+      return { status: 'success' };
+    } catch (err: any) {
+      console.warn("deleteStaffLeaveRequest DB error:", err);
+      return { status: 'error', message: err?.message };
+    }
   }
 };
+

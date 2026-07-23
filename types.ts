@@ -289,6 +289,10 @@ export interface SchoolProfileData {
   name: string;
   npsn: string;
   address: string;
+  jalan?: string;
+  desa?: string;
+  kecamatan?: string;
+  kabupaten?: string;
   headmaster: string;
   headmasterNip: string;
   year: string;
@@ -450,6 +454,7 @@ export type ViewState =
   | 'nilai' 
   | 'administrasi/kelas' 
   | 'administrasi/surat'
+  | 'administrasi/izin-pegawai'
   | 'konseling' 
   | 'kegiatan' 
   | 'profil' 
@@ -730,5 +735,21 @@ export interface MailRecord {
   fileUrl?: string;
   status?: 'Tersimpan' | 'Proses' | 'Selesai' | 'Arsip';
   classId?: string;
+  createdAt?: string;
+}
+
+export interface StaffLeaveRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  nip: string;
+  jabatan: string;
+  pangkat: string;
+  kategoriIjin: string;
+  tanggalMulai: string;
+  tanggalSelesai: string;
+  alasan: string;
+  status: 'Menunggu' | 'Disetujui' | 'Ditolak';
+  fileUrl?: string;
   createdAt?: string;
 }

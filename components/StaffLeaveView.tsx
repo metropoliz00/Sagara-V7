@@ -1,0 +1,740 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { 
+  FileText, CheckCircle, Clock, XCircle, Plus, Search, Filter,
+  Calendar, User as UserIcon, Trash2, Edit, ExternalLink, RefreshCw, Eye, Activity, Printer
+} from 'lucide-react';
+import { StaffLeaveRequest, User } from '../types';
+import { apiService } from '../services/apiService';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+
+interface StaffLeaveViewProps {
+  currentUser: User | null;
+  onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
+}
+
+const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Ijin', 'Cuti'];
+const STATUS_OPTIONS = ['Semua Status', 'Menunggu', 'Disetujui', 'Ditolak'];
+const JENIS_CUTI_OPTIONS = ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'];
+
+const PIE_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#6366F1'];
+
+const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNotification }) => {
+  const [requests, setRequests] = useState<StaffLeaveRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'data' | 'form'>('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Semua Status');
+
+  const [schoolProfile, setSchoolProfile] = useState<any>(null);
+  const [headmasterUser, setHeadmasterUser] = useState<User | null>(null);
+  const [printRequestedLeave, setPrintRequestedLeave] = useState<StaffLeaveRequest | null>(null);
+
+  // Form state
+  const [kategoriIjin, setKategoriIjin] = useState<string>('Dispensasi Dinas');
+  const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan');
+  const [jenisCutiLainnya, setJenisCutiLainnya] = useState('');
+  const [tanggalMulai, setTanggalMulai] = useState('');
+  const [tanggalSelesai, setTanggalSelesai] = useState('');
+  const [alasan, setAlasan] = useState('');
+  
+  // Permissions
+  const isPrincipal = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'Kepala Sekolah'; // Assuming admin/supervisor acts as principal here for approval
+  const canApprove = isPrincipal;
+
+  useEffect(() => {
+    loadRequests();
+  }, []);
+
+  const loadRequests = async () => {
+    setLoading(true);
+    try {
+      const [data, profiles, users] = await Promise.all([
+        apiService.getStaffLeaveRequests(),
+        apiService.getProfiles(),
+        currentUser ? apiService.getUsers(currentUser) : Promise.resolve([])
+      ]);
+      setRequests(data);
+      if (profiles && profiles.school) setSchoolProfile(profiles.school);
+      
+      if (users && users.length > 0) {
+        const principal = users.find(u => u.role === 'Kepala Sekolah');
+        if (principal) {
+          setHeadmasterUser(principal);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+      onShowNotification('Gagal memuat data izin pegawai.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const myRequests = useMemo(() => {
+    if (!currentUser) return [];
+    if (isPrincipal) return requests; // Principal sees all requests
+    return requests.filter(r => r.userId === currentUser.id);
+  }, [requests, currentUser, isPrincipal]);
+
+  const filteredRequests = useMemo(() => {
+    return myRequests.filter(req => {
+      const matchSearch = req.userName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          req.alasan.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === 'Semua Status' || req.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [myRequests, searchTerm, statusFilter]);
+
+  const stats = useMemo(() => {
+    const total = myRequests.length;
+    const disetujui = myRequests.filter(r => r.status === 'Disetujui').length;
+    const menunggu = myRequests.filter(r => r.status === 'Menunggu').length;
+    const ditolak = myRequests.filter(r => r.status === 'Ditolak').length;
+    return { total, disetujui, menunggu, ditolak };
+  }, [myRequests]);
+
+  const pieData = useMemo(() => {
+    const counts: Record<string, number> = {};
+    myRequests.forEach(r => {
+      const kat = r.kategoriIjin.startsWith('Cuti') ? 'Cuti' : r.kategoriIjin;
+      counts[kat] = (counts[kat] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [myRequests]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    if (!tanggalMulai || !tanggalSelesai || !alasan) {
+      onShowNotification('Harap lengkapi semua field.', 'warning');
+      return;
+    }
+
+    let finalKategori = kategoriIjin;
+    if (kategoriIjin === 'Cuti') {
+      const detail = jenisCuti === 'Lainnya' ? jenisCutiLainnya : jenisCuti;
+      if (!detail.trim()) {
+        onShowNotification('Harap isi jenis cuti.', 'warning');
+        return;
+      }
+      finalKategori = `Cuti - ${detail}`;
+    }
+
+    const newRequest: StaffLeaveRequest = {
+      id: `leave-${Date.now()}`,
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      nip: currentUser.nip || '-', // Assuming user has nip
+      jabatan: currentUser.position || (currentUser.role === 'guru' ? 'Guru' : 'Staff'),
+      pangkat: currentUser.rank || '-',
+      kategoriIjin: finalKategori,
+      tanggalMulai,
+      tanggalSelesai,
+      alasan,
+      status: 'Menunggu',
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      await apiService.saveStaffLeaveRequest(newRequest);
+      setRequests([newRequest, ...requests]);
+      onShowNotification('Pengajuan izin berhasil dikirim.', 'success');
+      setActiveTab('data');
+      
+      // Reset form
+      setTanggalMulai('');
+      setTanggalSelesai('');
+      setAlasan('');
+      setJenisCuti('Cuti Tahunan');
+      setJenisCutiLainnya('');
+    } catch (e) {
+      console.error(e);
+      onShowNotification('Gagal mengirim pengajuan.', 'error');
+    }
+  };
+
+  const handleUpdateStatus = async (req: StaffLeaveRequest, newStatus: 'Disetujui' | 'Ditolak') => {
+    if (!canApprove) return;
+    try {
+      const updated = { ...req, status: newStatus };
+      await apiService.saveStaffLeaveRequest(updated);
+      setRequests(requests.map(r => r.id === req.id ? updated : r));
+      onShowNotification(`Pengajuan berhasil ${newStatus.toLowerCase()}.`, 'success');
+    } catch (e) {
+      console.error(e);
+      onShowNotification('Gagal memperbarui status pengajuan.', 'error');
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Yakin ingin menghapus pengajuan ini?')) return;
+    try {
+      await apiService.deleteStaffLeaveRequest(id);
+      setRequests(requests.filter(r => r.id !== id));
+      onShowNotification('Pengajuan berhasil dihapus.', 'success');
+    } catch (e) {
+      console.error(e);
+      onShowNotification('Gagal menghapus pengajuan.', 'error');
+    }
+  };
+
+  return (
+    <div className="space-y-6 pb-12">
+      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Izin Pegawai</h1>
+          <p className="text-gray-500 text-sm mt-1">Sistem Pengajuan dan Persetujuan Izin / Dispensasi Pegawai.</p>
+        </div>
+        <div className="flex bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab('data')}
+            className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'data' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+          >
+            Data Ijin
+          </button>
+          {!isPrincipal && (
+            <button
+              onClick={() => setActiveTab('form')}
+              className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'form' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-900'}`}
+            >
+              Form Pengajuan
+            </button>
+          )}
+        </div>
+      </div>
+
+      {activeTab === 'dashboard' && (
+        <div className="space-y-6">
+          {/* Stat Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Total Pengajuan</p>
+                <h3 className="text-3xl font-black text-gray-800 mt-1">{stats.total}</h3>
+              </div>
+              <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center">
+                <FileText size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Disetujui</p>
+                <h3 className="text-3xl font-black text-gray-800 mt-1">{stats.disetujui}</h3>
+              </div>
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center">
+                <CheckCircle size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Menunggu</p>
+                <h3 className="text-3xl font-black text-gray-800 mt-1">{stats.menunggu}</h3>
+              </div>
+              <div className="w-12 h-12 bg-amber-50 text-amber-500 rounded-xl flex items-center justify-center">
+                <Clock size={24} />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-gray-400 uppercase">Ditolak</p>
+                <h3 className="text-3xl font-black text-gray-800 mt-1">{stats.ditolak}</h3>
+              </div>
+              <div className="w-12 h-12 bg-red-50 text-red-500 rounded-xl flex items-center justify-center">
+                <XCircle size={24} />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-sm">
+              <div className="p-5 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="font-bold text-gray-800 flex items-center">
+                  <div className="w-1 h-5 bg-indigo-500 rounded-full mr-2"></div>
+                  Daftar Pengajuan Terbaru
+                </h3>
+              </div>
+              <div className="p-0">
+                {myRequests.slice(0, 5).map(req => (
+                  <div key={req.id} className="p-5 border-b border-gray-50 flex flex-col sm:flex-row justify-between gap-4 hover:bg-gray-50/50">
+                    <div>
+                      <h4 className="font-bold text-gray-800">{req.userName}</h4>
+                      <p className="text-xs text-gray-400 mt-0.5">{req.nip}</p>
+                      <div className="flex gap-2 mt-2">
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold">{req.pangkat}</span>
+                        <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded text-[10px] font-bold">{req.jabatan}</span>
+                      </div>
+                    </div>
+                    <div className="flex-1 sm:px-6">
+                      <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-[10px] font-bold rounded-full mb-2">
+                        {req.kategoriIjin}
+                      </span>
+                      <div className="flex items-center text-xs text-gray-600 mb-1">
+                        <Calendar size={12} className="mr-1.5" />
+                        {new Date(req.tanggalMulai).toLocaleDateString('id-ID')} - {new Date(req.tanggalSelesai).toLocaleDateString('id-ID')}
+                      </div>
+                      <p className="text-xs text-gray-500 italic">"{req.alasan}"</p>
+                    </div>
+                    <div className="flex flex-col items-end justify-between">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                        req.status === 'Disetujui' ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' :
+                        req.status === 'Ditolak' ? 'bg-red-50 text-red-600 border border-red-200' :
+                        'bg-amber-50 text-amber-600 border border-amber-200'
+                      }`}>
+                        {req.status}
+                      </span>
+                      {req.status === 'Disetujui' && (
+                        <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded mt-2"><Printer size={16}/></button>
+                      )}
+                      {canApprove && req.status === 'Menunggu' && (
+                        <div className="flex gap-2 mt-2">
+                           <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded"><CheckCircle size={16}/></button>
+                           <button onClick={() => handleUpdateStatus(req, 'Ditolak')} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded"><XCircle size={16}/></button>
+                        </div>
+                      )}
+                      {!canApprove && req.status === 'Menunggu' && (
+                        <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded mt-2"><Trash2 size={16}/></button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {myRequests.length === 0 && (
+                  <div className="p-8 text-center text-gray-500 text-sm">Belum ada pengajuan izin.</div>
+                )}
+                {myRequests.length > 5 && (
+                  <div className="p-4 text-center">
+                    <button onClick={() => setActiveTab('data')} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">
+                      Lihat Semua ({myRequests.length})
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+                <h3 className="font-bold text-gray-800 flex items-center mb-6">
+                  <div className="w-1 h-5 bg-fuchsia-500 rounded-full mr-2"></div>
+                  Statistik Ijin
+                </h3>
+                <div className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={80}
+                        paddingAngle={5}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
+                <h3 className="font-bold flex items-center mb-2">
+                  <Activity size={18} className="mr-2" /> Status Kinerja
+                </h3>
+                <p className="text-sm text-indigo-100 mb-6">Ringkasan aktivitas bulan ini</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-white/20 rounded-xl p-4">
+                    <h4 className="text-3xl font-black">{stats.disetujui}</h4>
+                    <p className="text-xs uppercase font-bold text-indigo-100 mt-1">Disetujui</p>
+                  </div>
+                  <div className="bg-white/20 rounded-xl p-4">
+                    <h4 className="text-3xl font-black">{stats.total}</h4>
+                    <p className="text-xs uppercase font-bold text-indigo-100 mt-1">Total</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'data' && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-4 border-b border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center bg-gray-50/50">
+            <div className="flex gap-2 w-full md:w-auto">
+               <div className="relative flex-1 md:w-64">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Cari data..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+            <button onClick={loadRequests} className="p-2 text-gray-500 hover:text-indigo-600 bg-white border border-gray-200 rounded-lg shadow-sm">
+              <RefreshCw size={18} />
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-gray-50 text-gray-600 font-bold uppercase text-[10px]">
+                <tr>
+                  <th className="px-6 py-4">Tanggal Diajukan</th>
+                  <th className="px-6 py-4">Nama Pegawai</th>
+                  <th className="px-6 py-4">Jenis Ijin</th>
+                  <th className="px-6 py-4">Alasan</th>
+                  <th className="px-6 py-4">Masa Ijin</th>
+                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="px-6 py-4 text-center">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredRequests.map(req => (
+                  <tr key={req.id} className="hover:bg-gray-50/50">
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                      {new Date(req.createdAt || '').toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-bold text-gray-800">{req.userName}</div>
+                      <div className="text-[10px] text-gray-400">{req.nip}</div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-700">
+                      {req.kategoriIjin}
+                    </td>
+                    <td className="px-6 py-4 max-w-xs truncate text-gray-500" title={req.alasan}>
+                      {req.alasan}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {new Date(req.tanggalMulai).toLocaleDateString('id-ID')} - {new Date(req.tanggalSelesai).toLocaleDateString('id-ID')}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
+                        req.status === 'Disetujui' ? 'bg-emerald-50 text-emerald-600' :
+                        req.status === 'Ditolak' ? 'bg-red-50 text-red-600' :
+                        'bg-amber-50 text-amber-600'
+                      }`}>
+                        {req.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       {canApprove && req.status === 'Menunggu' && (
+                        <div className="flex items-center justify-center gap-2">
+                           <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded" title="Setujui"><CheckCircle size={16}/></button>
+                           <button onClick={() => handleUpdateStatus(req, 'Ditolak')} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Tolak"><XCircle size={16}/></button>
+                        </div>
+                      )}
+                      {!canApprove && req.status === 'Menunggu' && (
+                         <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded mx-auto block" title="Hapus"><Trash2 size={16}/></button>
+                      )}
+                      {req.status === 'Disetujui' && (
+                        <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded mx-auto block" title="Cetak"><Printer size={16}/></button>
+                      )}
+                      {req.status !== 'Menunggu' && req.status !== 'Disetujui' && <span className="text-gray-300">-</span>}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {filteredRequests.length === 0 && (
+              <div className="p-8 text-center text-gray-500">Tidak ada data ditemukan.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'form' && !isPrincipal && (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
+          <div className="mb-8 border-b border-gray-100 pb-4">
+            <h2 className="text-xl font-bold text-gray-800">Form Pengajuan Izin / Dispensasi</h2>
+            <p className="text-gray-500 text-sm mt-1">Lengkapi data di bawah ini dengan benar.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* User Info (Read Only) */}
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Nama Pegawai</label>
+                <div className="font-bold text-gray-800">{currentUser?.fullName}</div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">NIP</label>
+                <div className="font-medium text-gray-700">{currentUser?.nip || '-'}</div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Jabatan</label>
+                <div className="font-medium text-gray-700">{currentUser?.position || (currentUser?.role === 'guru' ? 'Guru' : 'Staff')}</div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pangkat / Golongan</label>
+                <div className="font-medium text-gray-700">{currentUser?.rank || '-'}</div>
+              </div>
+            </div>
+
+            {/* Kategori */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-3">Kategori Ijin</label>
+              <div className="flex flex-wrap gap-3">
+                {KATEGORI_IJIN.map(cat => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setKategoriIjin(cat)}
+                    className={`px-4 py-2.5 rounded-lg text-sm font-semibold border transition-all ${
+                      kategoriIjin === cat 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {kategoriIjin === 'Cuti' && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jenis Cuti</label>
+                    <select
+                      value={jenisCuti}
+                      onChange={(e) => setJenisCuti(e.target.value)}
+                      className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      {JENIS_CUTI_OPTIONS.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  </div>
+                  {jenisCuti === 'Lainnya' && (
+                    <div className="flex-1">
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sebutkan</label>
+                      <input
+                        type="text"
+                        value={jenisCutiLainnya}
+                        onChange={(e) => setJenisCutiLainnya(e.target.value)}
+                        placeholder="Jenis cuti..."
+                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Dates */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <label className="flex items-center text-sm font-bold text-gray-700 mb-3">
+                  <Calendar size={16} className="mr-2 text-indigo-500" /> Tanggal Mulai
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={tanggalMulai}
+                  onChange={(e) => setTanggalMulai(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                <label className="flex items-center text-sm font-bold text-gray-700 mb-3">
+                  <Calendar size={16} className="mr-2 text-indigo-500" /> Tanggal Selesai
+                </label>
+                <input
+                  type="datetime-local"
+                  required
+                  value={tanggalSelesai}
+                  onChange={(e) => setTanggalSelesai(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+
+            {/* Alasan */}
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">Alasan Detail</label>
+              <textarea
+                required
+                rows={4}
+                value={alasan}
+                onChange={(e) => setAlasan(e.target.value)}
+                placeholder="Tuliskan alasan lengkap pengajuan izin/dispensasi..."
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+              ></textarea>
+            </div>
+
+            <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveTab('dashboard')}
+                className="px-6 py-2.5 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                className="px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 flex items-center"
+              >
+                Kirim Pengajuan
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {printRequestedLeave && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 print:p-0 print:bg-white print:block">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:overflow-visible relative">
+            
+            {/* Modal Actions (Hidden in print) */}
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 flex justify-between items-center print:hidden z-10 rounded-t-xl">
+              <h3 className="font-bold text-gray-800">Pratinjau Surat Izin</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200"
+                >
+                  <Printer size={16} className="mr-2" /> Cetak
+                </button>
+                <button
+                  onClick={() => setPrintRequestedLeave(null)}
+                  className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-50"
+                >
+                  Tutup
+                </button>
+              </div>
+            </div>
+
+            {/* Printable Content */}
+            <div className="p-8 sm:p-12 text-black bg-white print:p-0">
+              <div className="text-center font-bold mb-8">
+                <h2 className="text-lg uppercase underline mb-1">PERSETUJUAN PEMBERIAN {printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
+              </div>
+
+              <div className="text-sm space-y-6 leading-relaxed">
+                <p>Yang bertanda tangan dibawah ini:</p>
+                <table className="w-full ml-4">
+                  <tbody>
+                    <tr>
+                      <td className="w-40 py-1 align-top">Nama</td>
+                      <td className="w-4 py-1 align-top">:</td>
+                      <td className="py-1 font-bold">{headmasterUser?.fullName || schoolProfile?.headmaster || '_____________________'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">NIP</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">{headmasterUser?.nip || schoolProfile?.headmasterNip || '_____________________'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">{headmasterUser?.rank || '_____________________'}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">Jabatan</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">Kepala {schoolProfile?.name || 'Sekolah'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <p>Dengan ini memberikan {printRequestedLeave.kategoriIjin} kepada :</p>
+                <table className="w-full ml-4">
+                  <tbody>
+                    <tr>
+                      <td className="w-40 py-1 align-top">Nama</td>
+                      <td className="w-4 py-1 align-top">:</td>
+                      <td className="py-1 font-bold">{printRequestedLeave.userName}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">NIP</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">{printRequestedLeave.nip}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">{printRequestedLeave.pangkat}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-1 align-top">Jabatan</td>
+                      <td className="py-1 align-top">:</td>
+                      <td className="py-1">{printRequestedLeave.jabatan}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <p>Pada tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam {new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d {new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB, karena :</p>
+                
+                <div className="ml-4 flex gap-2">
+                  <div className="w-4 h-4 border border-black flex-shrink-0 flex items-center justify-center text-xs mt-0.5">✓</div>
+                  <p>{printRequestedLeave.alasan}</p>
+                </div>
+
+                <p className="mt-8">Demikian persetujuan ini dibuat dengan sebenarnya, untuk dipergunakan sebagaimana mestinya.</p>
+                
+                <div className="flex justify-end mt-12">
+                  <div className="text-center">
+                    <p>{schoolProfile?.desa || (schoolProfile?.address ? schoolProfile.address.split(',')[0] : 'Tuban')}, {new Date(printRequestedLeave.createdAt || printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                    <p>Atasan Langsung</p>
+                    
+                    <div className="h-24 relative flex items-center justify-center">
+                       {schoolProfile?.headmasterSignature && (
+                          <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                       )}
+                    </div>
+                    
+                    <p className="font-bold underline">{headmasterUser?.fullName || schoolProfile?.headmaster || '_____________________'}</p>
+                    <p>NIP. {headmasterUser?.nip || schoolProfile?.headmasterNip || '_____________________'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <style>{`
+            @media print {
+              body * {
+                visibility: hidden;
+              }
+              .fixed.inset-0.z-\\[100\\] {
+                position: absolute;
+                left: 0;
+                top: 0;
+                margin: 0;
+                padding: 0;
+                min-height: 100vh;
+              }
+              .fixed.inset-0.z-\\[100\\] * {
+                visibility: visible;
+              }
+              .print\\:hidden {
+                display: none !important;
+              }
+            }
+          `}</style>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+export default StaffLeaveView;

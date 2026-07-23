@@ -543,6 +543,23 @@ CREATE TABLE IF NOT EXISTS mail_records (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 38. Staff Leave Requests (Izin Pegawai) table
+CREATE TABLE IF NOT EXISTS staff_leave_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  nip TEXT NOT NULL,
+  jabatan TEXT NOT NULL,
+  pangkat TEXT NOT NULL,
+  kategori_ijin TEXT NOT NULL,
+  tanggal_mulai TIMESTAMP WITH TIME ZONE NOT NULL,
+  tanggal_selesai TIMESTAMP WITH TIME ZONE NOT NULL,
+  alasan TEXT NOT NULL,
+  status TEXT DEFAULT 'Menunggu',
+  file_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- DISABLE RLS for all tables
 DO $$
 DECLARE

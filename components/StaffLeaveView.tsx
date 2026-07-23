@@ -704,11 +704,24 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           </tbody>
                         </table>
 
-                        <p>1. Dengan ini mengajukan permohonan {cleanCat}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
-                        
-                        <p>2. Sebelum melaksanakan {cleanCat.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
-                        <p>3. Setelah menjalankan {cleanCat.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
-                        <p>Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
+                        <div className="space-y-3">
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">1.</span>
+                            <span className="flex-1">Dengan ini mengajukan permohonan {cleanCat}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</span>
+                          </div>
+                          
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">2.</span>
+                            <span className="flex-1">Sebelum melaksanakan {cleanCat.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</span>
+                          </div>
+
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">3.</span>
+                            <span className="flex-1">Setelah menjalankan {cleanCat.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</span>
+                          </div>
+                        </div>
+
+                        <p className="mt-4">Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
                       </div>
                       
                       <div className="flex justify-between mt-12">
@@ -779,20 +792,37 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                             <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
                             <p>NOMOR : {manualLetterNumber}</p>
                         </div>
-                        <p>1. Diberikan izin sementara untuk melaksanakan {cleanCat}, kepada Pegawai Negeri Sipil, dibawah ini :</p>
-                        <table className="w-full ml-4 mt-2">
-                          <tbody>
-                            <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
-                            <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
-                            <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
-                            <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
-                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
-                          </tbody>
-                        </table>
-                        <p className="mt-4">Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
-                        <p className="ml-4">a. Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</p>
-                        <p className="ml-4">b. Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</p>
-                        <p className="mt-4">2. Demikian izin sementara melaksanakan {cleanCat} ini dibuat untuk dapat digunakan seperlunya.</p>
+                        <div className="flex gap-2 items-start">
+                          <span className="w-5 shrink-0">1.</span>
+                          <div className="flex-1 space-y-3">
+                            <p>Diberikan izin sementara untuk melaksanakan {cleanCat}, kepada Pegawai Negeri Sipil, dibawah ini :</p>
+                            <table className="w-full">
+                              <tbody>
+                                <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                                <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                                <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                                <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                                <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
+                              </tbody>
+                            </table>
+                            <p>Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
+                            <div className="space-y-1">
+                              <div className="flex gap-2 items-start">
+                                <span className="w-5 shrink-0">a.</span>
+                                <span className="flex-1">Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</span>
+                              </div>
+                              <div className="flex gap-2 items-start">
+                                <span className="w-5 shrink-0">b.</span>
+                                <span className="flex-1">Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 items-start mt-4">
+                          <span className="w-5 shrink-0">2.</span>
+                          <span className="flex-1">Demikian izin sementara melaksanakan {cleanCat} ini dibuat untuk dapat digunakan seperlunya.</span>
+                        </div>
                         
                         <div className="text-center w-1/2 ml-auto mt-12">
                           <p>Kepala {schoolProfile?.name || '...'}</p>

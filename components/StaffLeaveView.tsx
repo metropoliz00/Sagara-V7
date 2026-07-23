@@ -13,7 +13,7 @@ interface StaffLeaveViewProps {
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
 
-const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
+const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Cuti', 'Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
 const STATUS_OPTIONS = ['Semua Status', 'Menunggu', 'Disetujui', 'Ditolak'];
 const JENIS_CUTI_OPTIONS = ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'];
 

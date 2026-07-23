@@ -199,7 +199,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
           >
             Data Ijin
           </button>
-          {!isPrincipal && (
+          {currentUser?.role !== 'superadmin' && (
             <button
               onClick={() => setActiveTab('form')}
               className={`px-4 py-2 rounded-md text-sm font-semibold transition-colors ${activeTab === 'form' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600 hover:text-gray-900'}`}
@@ -471,7 +471,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         </div>
       )}
 
-      {activeTab === 'form' && !isPrincipal && (
+      {activeTab === 'form' && currentUser?.role !== 'superadmin' && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-8 max-w-4xl mx-auto">
           <div className="mb-8 border-b border-gray-100 pb-4">
             <h2 className="text-xl font-bold text-gray-800">Form Pengajuan Izin / Dispensasi</h2>

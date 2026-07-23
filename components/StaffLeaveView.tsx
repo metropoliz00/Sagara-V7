@@ -652,93 +652,54 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
             {/* Printable Content */}
             <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
-              <div className="text-center font-bold mb-8">
-                <h2 className="text-lg uppercase leading-tight">PERSETUJUAN PEMBERIAN</h2>
-                <h2 className="text-lg uppercase leading-tight">{printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
+              <div className="text-right mb-4">
+                <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+              </div>
+              
+              <div className="mb-6">
+                <p>Perihal : PERMOHONAN {printRequestedLeave.kategoriIjin.toUpperCase()}</p>
+                <p>Yth. KEPALA DINAS PENDIDIKAN KABUPATEN TUBAN</p>
+                <p>di -</p>
+                <p className="ml-4">Tuban</p>
               </div>
 
-              <div className="text-sm space-y-6 leading-relaxed">
-                <p>Yang bertanda tangan dibawah ini:</p>
+              <div className="text-sm space-y-4 leading-relaxed">
+                <p>Yang bertanda tangan di bawah ini :</p>
                 <table className="w-full ml-4">
                   <tbody>
-                    <tr>
-                      <td className="w-40 py-1 align-top">Nama</td>
-                      <td className="w-4 py-1 align-top">:</td>
-                      <td className="py-1 font-bold">{headmasterUser?.fullName || schoolProfile?.headmaster || '_____________________'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">NIP</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">{headmasterUser?.nip || schoolProfile?.headmasterNip || '_____________________'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">{headmasterUser?.rank || '_____________________'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">Jabatan</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">Kepala {schoolProfile?.name || 'Sekolah'}</td>
-                    </tr>
+                    <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                    <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                    <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                    <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                    <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
                   </tbody>
                 </table>
 
-                <p>Dengan ini memberikan {printRequestedLeave.kategoriIjin} kepada :</p>
-                <table className="w-full ml-4">
-                  <tbody>
-                    <tr>
-                      <td className="w-40 py-1 align-top">Nama</td>
-                      <td className="w-4 py-1 align-top">:</td>
-                      <td className="py-1 font-bold">{printRequestedLeave.userName}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">NIP</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">{printRequestedLeave.nip}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">{printRequestedLeave.pangkat}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-1 align-top">Jabatan</td>
-                      <td className="py-1 align-top">:</td>
-                      <td className="py-1">{printRequestedLeave.jabatan}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <p>
-                  {['Dispensasi Dinas', 'Dispensasi Pribadi'].includes(printRequestedLeave.kategoriIjin) ? (
-                    `Pada tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, pukul ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
-                  ) : (
-                    `Tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
-                  )}, karena :
-                </p>
+                <p>Dengan ini mengajukan permohonan {printRequestedLeave.kategoriIjin}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}.</p>
                 
-                <div className="ml-4 flex gap-2">
-                  <div className="w-4 h-4 border border-black flex-shrink-0 flex items-center justify-center text-xs mt-0.5">✓</div>
-                  <p>{printRequestedLeave.alasan}</p>
-                </div>
-
-                <p className="mt-8">Demikian persetujuan ini dibuat dengan sebenarnya, untuk dipergunakan sebagaimana mestinya.</p>
-                
-                <div className="flex justify-end mt-12">
-                  <div className="text-center">
-                    <p>{schoolProfile?.desa || (schoolProfile?.address ? schoolProfile.address.split(',')[0] : 'Tuban')}, {new Date(printRequestedLeave.createdAt || printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-                    <p>Atasan Langsung</p>
-                    
-                    <div className="h-24 relative flex items-center justify-center">
-                       {schoolProfile?.headmasterSignature && (
-                          <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
-                       )}
-                    </div>
-                    
-                    <p className="font-bold underline">{headmasterUser?.fullName || schoolProfile?.headmaster || '_____________________'}</p>
-                    <p>NIP. {headmasterUser?.nip || schoolProfile?.headmasterNip || '_____________________'}</p>
+                <p>Sebelum melaksanakan {printRequestedLeave.kategoriIjin.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</p>
+                <p>Setelah menjalankan {printRequestedLeave.kategoriIjin.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</p>
+                <p>Demikian surat permintaan ini saya buat untuk mendapatkan penyelesaian lebih lanjut.</p>
+              </div>
+              
+              <div className="flex justify-between mt-12">
+                <div className="text-center w-1/2">
+                  <p>Mengetahui,</p>
+                  <p>Kepala UPT SD Negeri Remen 2</p>
+                  <p>Kecamatan Jenu Kabupaten Tuban</p>
+                  <div className="h-24 relative flex items-center justify-center">
+                     {schoolProfile?.headmasterSignature && (
+                        <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                     )}
                   </div>
+                  <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
+                  <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                </div>
+                <div className="text-center w-1/2">
+                  <p>Hormat saya,</p>
+                  <div className="h-24"></div>
+                  <p className="font-bold underline">{printRequestedLeave.userName}</p>
+                  <p>NIP. {printRequestedLeave.nip}</p>
                 </div>
               </div>
             </div>

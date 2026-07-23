@@ -13,7 +13,12 @@ interface StaffLeaveViewProps {
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
 
-const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Cuti', 'Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
+const IJIN_OPTIONS = {
+  'Dispensasi': ['Dispensasi Dinas', 'Dispensasi Pribadi'],
+  'Cuti': ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'],
+  'Izin': ['Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'Lainnya']
+};
+
 const STATUS_OPTIONS = ['Semua Status', 'Menunggu', 'Disetujui', 'Ditolak'];
 const JENIS_CUTI_OPTIONS = ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'];
 
@@ -31,8 +36,8 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [printRequestedLeave, setPrintRequestedLeave] = useState<StaffLeaveRequest | null>(null);
 
   // Form state
-  const [kategoriIjin, setKategoriIjin] = useState<string>('Dispensasi Dinas');
-  const [jenisCuti, setJenisCuti] = useState('Cuti Tahunan');
+  const [ijinGroup, setIjinGroup] = useState<keyof typeof IJIN_OPTIONS>('Dispensasi');
+  const [kategoriIjin, setKategoriIjin] = useState<string>(IJIN_OPTIONS['Dispensasi'][0]);
   const [jenisCutiLainnya, setJenisCutiLainnya] = useState('');
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
@@ -45,6 +50,11 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   useEffect(() => {
     loadRequests();
   }, []);
+
+  useEffect(() => {
+    setKategoriIjin(IJIN_OPTIONS[ijinGroup][0]);
+    setJenisCutiLainnya('');
+  }, [ijinGroup]);
 
   const loadRequests = async () => {
     setLoading(true);
@@ -97,8 +107,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const pieData = useMemo(() => {
     const counts: Record<string, number> = {};
     myRequests.forEach(r => {
-      const kat = r.kategoriIjin.startsWith('Cuti') ? 'Cuti' : r.kategoriIjin;
-      counts[kat] = (counts[kat] || 0) + 1;
+      // Improved categorization for pie chart
+      const group = Object.keys(IJIN_OPTIONS).find(g => IJIN_OPTIONS[g as keyof typeof IJIN_OPTIONS].some(opt => r.kategoriIjin.includes(opt))) || 'Lainnya';
+      counts[group] = (counts[group] || 0) + 1;
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [myRequests]);
@@ -112,13 +123,13 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
     }
 
     let finalKategori = kategoriIjin;
-    if (kategoriIjin === 'Cuti') {
-      const detail = jenisCuti === 'Lainnya' ? jenisCutiLainnya : jenisCuti;
-      if (!detail.trim()) {
-        onShowNotification('Harap isi jenis cuti.', 'warning');
-        return;
-      }
-      finalKategori = `Cuti - ${detail}`;
+    if (ijinGroup === 'Cuti') {
+        const detail = kategoriIjin === 'Lainnya' ? jenisCutiLainnya : kategoriIjin;
+        if (!detail.trim()) {
+            onShowNotification('Harap isi jenis cuti.', 'warning');
+            return;
+        }
+        finalKategori = `Cuti - ${detail}`;
     }
 
     const newRequest: StaffLeaveRequest = {
@@ -146,13 +157,15 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
       setTanggalMulai('');
       setTanggalSelesai('');
       setAlasan('');
-      setJenisCuti('Cuti Tahunan');
+      setIjinGroup('Dispensasi');
+      setKategoriIjin(IJIN_OPTIONS['Dispensasi'][0]);
       setJenisCutiLainnya('');
     } catch (e) {
       console.error(e);
       onShowNotification('Gagal mengirim pengajuan.', 'error');
     }
   };
+
 
   const handleUpdateStatus = async (req: StaffLeaveRequest, newStatus: 'Disetujui' | 'Ditolak') => {
     if (!canApprove) return;
@@ -500,45 +513,44 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             </div>
 
             {/* Kategori */}
-            <div>
-              <label className="block text-sm font-bold text-gray-700 mb-2">Kategori Ijin</label>
-              <select
-                value={kategoriIjin}
-                onChange={(e) => setKategoriIjin(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              >
-                {KATEGORI_IJIN.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Jenis Pengajuan</label>
+                <select
+                  value={ijinGroup}
+                  onChange={(e) => setIjinGroup(e.target.value as keyof typeof IJIN_OPTIONS)}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {Object.keys(IJIN_OPTIONS).map(group => (
+                    <option key={group} value={group}>{group}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Detail {ijinGroup}</label>
+                <select
+                  value={kategoriIjin}
+                  onChange={(e) => setKategoriIjin(e.target.value)}
+                  className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  {IJIN_OPTIONS[ijinGroup].map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
 
-              {kategoriIjin === 'Cuti' && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col sm:flex-row gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Jenis Cuti</label>
-                    <select
-                      value={jenisCuti}
-                      onChange={(e) => setJenisCuti(e.target.value)}
-                      className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    >
-                      {JENIS_CUTI_OPTIONS.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {jenisCuti === 'Lainnya' && (
-                    <div className="flex-1">
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Sebutkan</label>
-                      <input
-                        type="text"
-                        value={jenisCutiLainnya}
-                        onChange={(e) => setJenisCutiLainnya(e.target.value)}
-                        placeholder="Jenis cuti..."
-                        className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                        required
-                      />
-                    </div>
-                  )}
+              {ijinGroup === 'Cuti' && kategoriIjin === 'Lainnya' && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Sebutkan Jenis Cuti</label>
+                  <input
+                    type="text"
+                    value={jenisCutiLainnya}
+                    onChange={(e) => setJenisCutiLainnya(e.target.value)}
+                    placeholder="Sebutkan jenis cuti..."
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
                 </div>
               )}
             </div>

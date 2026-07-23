@@ -700,7 +700,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
                 <p>
                   {['Dispensasi Dinas', 'Dispensasi Pribadi'].includes(printRequestedLeave.kategoriIjin) ? (
-                    `Tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, pukul ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
+                    `Pada tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, pukul ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
                   ) : (
                     `Tanggal ${new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, jam ${new Date(printRequestedLeave.tanggalMulai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} s/d ${new Date(printRequestedLeave.tanggalSelesai).toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'})} WIB`
                   )}, karena :

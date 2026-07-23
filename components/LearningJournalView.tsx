@@ -1223,12 +1223,20 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                         <select 
                             value={selectedRecapClass} 
                             onChange={(e) => setSelectedRecapClass(e.target.value)}
-                            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
-                            <option value="all">Semua Kelas</option>
-                            {dbClasses.map(cls => (
-                                <option key={cls} value={cls}>Kelas {cls}</option>
-                            ))}
+                            <option value="all">🌐 Semua Kelas</option>
+                            {dbClasses.map(cls => {
+                                const clsStr = String(cls).trim().toUpperCase();
+                                let label = '🏫 Kelas ' + cls;
+                                if (clsStr.startsWith('1')) label = '🎒 Kelas ' + cls;
+                                else if (clsStr.startsWith('2')) label = '📚 Kelas ' + cls;
+                                else if (clsStr.startsWith('3')) label = '📖 Kelas ' + cls;
+                                else if (clsStr.startsWith('4')) label = '🎨 Kelas ' + cls;
+                                else if (clsStr.startsWith('5')) label = '🌟 Kelas ' + cls;
+                                else if (clsStr.startsWith('6')) label = '🎓 Kelas ' + cls;
+                                return <option key={cls} value={cls}>{label}</option>;
+                            })}
                         </select>
                     </div>
 

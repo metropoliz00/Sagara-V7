@@ -72,7 +72,21 @@ import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog,
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
 import { apiService } from './services/apiService';
 import { cacheService } from './src/services/cacheService';
-import { Menu, Loader2, RefreshCw, AlertCircle, CheckCircle, WifiOff, ChevronDown, UserCog, LogOut, Filter, Bell, X, XCircle, Send, Info, LayoutDashboard, CalendarCheck, ClipboardList, FileText, Database, Lock, Eye, EyeOff } from 'lucide-react';
+import { Menu, Loader2, RefreshCw, AlertCircle, CheckCircle, WifiOff, ChevronDown, UserCog, LogOut, Filter, Bell, X, XCircle, Send, Info, LayoutDashboard, CalendarCheck, ClipboardList, FileText, Database, Lock, Eye, EyeOff, GraduationCap, School } from 'lucide-react';
+
+const getClassLabelWithIcon = (cls: string) => {
+  const clsStr = String(cls).trim().toUpperCase();
+  if (clsStr === 'ALL' || clsStr === 'SEMUA') return '🌐 Semua Kelas';
+  
+  if (clsStr.startsWith('1')) return '🎒 Kelas ' + cls;
+  if (clsStr.startsWith('2')) return '📚 Kelas ' + cls;
+  if (clsStr.startsWith('3')) return '📖 Kelas ' + cls;
+  if (clsStr.startsWith('4')) return '🎨 Kelas ' + cls;
+  if (clsStr.startsWith('5')) return '🌟 Kelas ' + cls;
+  if (clsStr.startsWith('6')) return '🎓 Kelas ' + cls;
+  
+  return '🏫 Kelas ' + cls;
+};
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -2286,16 +2300,18 @@ const AppContent: React.FC = () => {
             </div>
 
             {canSelectClass && (
-                <div className="hidden lg:flex items-center bg-[#CAF4FF]/30 border border-[#A0DEFF]/50 rounded-lg px-3 py-1.5 shadow-sm">
-                    <Filter size={14} className="text-[#5AB2FF] mr-2" />
-                    <span className="text-xs font-bold text-gray-50 uppercase mr-2">Pilih Kelas:</span>
+                <div className="hidden lg:flex items-center bg-[#CAF4FF]/40 border border-[#A0DEFF] hover:border-[#5AB2FF] rounded-xl px-3.5 py-1.5 shadow-xs transition-all">
+                    <GraduationCap size={18} className="text-[#0066CC] mr-2 shrink-0 animate-pulse" />
+                    <span className="text-xs font-extrabold text-gray-600 uppercase tracking-wider mr-2">Pilih Kelas:</span>
                     <select 
                         value={selectedClassId} 
                         onChange={(e) => setSelectedClassId(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-[#5AB2FF] outline-none cursor-pointer"
+                        className="bg-transparent text-sm font-extrabold text-[#0055B3] outline-none cursor-pointer py-0.5"
                     >
                         {availableClasses.map(cls => (
-                            <option key={cls} value={cls}>Kelas {cls}</option>
+                            <option key={cls} value={cls} className="text-gray-800 font-bold py-1.5 bg-white">
+                                {getClassLabelWithIcon(cls)}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -2435,15 +2451,18 @@ const AppContent: React.FC = () => {
         </header>
 
         {canSelectClass && (
-            <div className="lg:hidden bg-white border-b px-4 py-2 flex items-center justify-center shadow-sm relative z-20">
-                <span className="text-xs font-bold text-gray-500 uppercase mr-2">Kelas Aktif:</span>
+            <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2 flex items-center justify-center shadow-xs relative z-20">
+                <GraduationCap size={18} className="text-[#0066CC] mr-1.5 shrink-0" />
+                <span className="text-xs font-extrabold text-gray-600 uppercase mr-2 tracking-wider">Kelas Aktif:</span>
                 <select 
                     value={selectedClassId} 
                     onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="bg-[#CAF4FF]/50 border border-[#A0DEFF] rounded px-2 py-1 text-sm font-bold text-[#5AB2FF] outline-none"
+                    className="bg-[#CAF4FF]/50 border border-[#A0DEFF] rounded-lg px-3 py-1 text-sm font-extrabold text-[#0055B3] outline-none cursor-pointer"
                 >
                     {availableClasses.map(cls => (
-                        <option key={cls} value={cls}>Kelas {cls}</option>
+                        <option key={cls} value={cls} className="text-gray-800 font-bold py-1.5 bg-white">
+                            {getClassLabelWithIcon(cls)}
+                        </option>
                     ))}
                 </select>
             </div>

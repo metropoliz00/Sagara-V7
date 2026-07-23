@@ -13,7 +13,7 @@ interface StaffLeaveViewProps {
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
 
-const KATEGORI_IJIN = ['Dispensasi Dinas', 'Dispensasi Pribadi', 'Ijin', 'Cuti'];
+const KATEGORI_IJIN = ['Dinas Luar', 'Pelatihan', 'Workshop', 'Kepentingan Keluarga', 'lainnya'];
 const STATUS_OPTIONS = ['Semua Status', 'Menunggu', 'Disetujui', 'Ditolak'];
 const JENIS_CUTI_OPTIONS = ['Cuti Tahunan', 'Cuti Besar', 'Cuti Sakit', 'Cuti Melahirkan', 'Cuti Alasan Penting', 'Lainnya'];
 
@@ -291,7 +291,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       </span>
                       {req.status === 'Disetujui' && (
                         <div className="flex gap-2 mt-2">
-                           <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
+                           <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak PDF"><FileText size={16}/></button>
                            {req.kategoriIjin.startsWith('Cuti') && (
                              <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
                            )}
@@ -452,7 +452,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       )}
                       {req.status === 'Disetujui' && (
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak"><Printer size={16}/></button>
+                          <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak PDF"><FileText size={16}/></button>
                           {req.kategoriIjin.startsWith('Cuti') && (
                             <a href="https://drive.google.com/file/d/1tHxCfcRvXv-YRc2H1j6kB9651668BchF/view?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
                           )}
@@ -501,23 +501,16 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
             {/* Kategori */}
             <div>
-              <label className="block text-sm font-bold text-gray-700 mb-3">Kategori Ijin</label>
-              <div className="flex flex-wrap gap-3">
+              <label className="block text-sm font-bold text-gray-700 mb-2">Kategori Ijin</label>
+              <select
+                value={kategoriIjin}
+                onChange={(e) => setKategoriIjin(e.target.value)}
+                className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
                 {KATEGORI_IJIN.map(cat => (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setKategoriIjin(cat)}
-                    className={`px-4 py-2.5 rounded-lg text-sm font-semibold border transition-all ${
-                      kategoriIjin === cat 
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    {cat}
-                  </button>
+                  <option key={cat} value={cat}>{cat}</option>
                 ))}
-              </div>
+              </select>
 
               {kategoriIjin === 'Cuti' && (
                 <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col sm:flex-row gap-4">

@@ -721,6 +721,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
                     </div>
                     <div className="text-center w-1/2 flex flex-col items-center">
+                      <p className="invisible">Mengetahui,</p>
                       <p>Hormat saya,</p>
                       <div className="h-24"></div>
                       <p className="font-bold underline">{printRequestedLeave.userName}</p>

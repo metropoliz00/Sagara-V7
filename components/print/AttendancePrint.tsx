@@ -13,6 +13,7 @@ interface AttendancePrintProps {
   schoolProfile?: SchoolProfileData;
   teacherProfile?: TeacherProfileData;
   currentClassId: string;
+  type?: 'month' | 'semester';
 }
 
 export const AttendancePrint: React.FC<AttendancePrintProps> = ({
@@ -22,7 +23,8 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
   holidays,
   schoolProfile,
   teacherProfile,
-  currentClassId
+  currentClassId,
+  type = 'month'
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -30,6 +32,7 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedClass, setSelectedClass] = useState(currentClassId);
+  const [selectedSemester, setSelectedSemester] = useState<'ganjil' | 'genap'>('ganjil');
   
   // Handle ALL class selection by finding unique classes
   const availableClasses = useMemo(() => {
@@ -176,6 +179,53 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
+  // SEMESTER LOGIC
+  const semesterMonths = useMemo(() => {
+    return selectedSemester === 'ganjil' 
+        ? [{num: 7, name: 'Juli'}, {num: 8, name: 'Agustus'}, {num: 9, name: 'September'}, {num: 10, name: 'Oktober'}, {num: 11, name: 'November'}, {num: 12, name: 'Desember'}]
+        : [{num: 1, name: 'Januari'}, {num: 2, name: 'Februari'}, {num: 3, name: 'Maret'}, {num: 4, name: 'April'}, {num: 5, name: 'Mei'}, {num: 6, name: 'Juni'}];
+  }, [selectedSemester]);
+
+  const semesterRecapData = useMemo(() => {
+    const data: Record<string, Record<number, { S: number; I: number; A: number }>> = {};
+    filteredStudents.forEach(s => {
+      data[s.id] = {};
+      semesterMonths.forEach(m => {
+        data[s.id][m.num] = { S: 0, I: 0, A: 0 };
+      });
+    });
+
+    if (allAttendanceRecords && Array.isArray(allAttendanceRecords)) {
+      allAttendanceRecords.forEach((record: any) => {
+        const sId = String(record.studentId).trim();
+        if (!data[sId]) return;
+
+        let dateStr = String(record.date).trim();
+        if (dateStr.includes('T')) dateStr = dateStr.split('T')[0];
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+           const recYear = parseInt(parts[0], 10);
+           const recMonth = parseInt(parts[1], 10);
+           
+           let isMatch = false;
+           if (selectedSemester === 'ganjil') {
+             if (recYear === selectedYear && recMonth >= 7 && recMonth <= 12) isMatch = true;
+           } else {
+             if (recYear === selectedYear && recMonth >= 1 && recMonth <= 6) isMatch = true;
+           }
+           
+           if (isMatch && data[sId][recMonth]) {
+             const status = String(record.status).toLowerCase();
+             if (status === 'sick') data[sId][recMonth].S++;
+             if (status === 'permit') data[sId][recMonth].I++;
+             if (status === 'alpha') data[sId][recMonth].A++;
+           }
+        }
+      });
+    }
+    return data;
+  }, [filteredStudents, allAttendanceRecords, selectedSemester, selectedYear, semesterMonths]);
+
   const handlePrintClick = () => {
     print('Laporan Absensi', 'landscape', 'attendance-special-print-area');
     setIsOpen(false);
@@ -235,7 +285,9 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
               <button onClick={() => setIsOpen(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
                  <X size={24} />
               </button>
-              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">Cetak Laporan Absensi</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
+                {type === 'semester' ? 'Cetak Laporan Semester' : 'Cetak Laporan Absensi'}
+              </h3>
               <div className="space-y-4">
                  <div>
                    <label className="block text-sm font-medium text-gray-700 mb-1">Kelas</label>
@@ -249,6 +301,27 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                       ))}
                    </select>
                  </div>
+                 
+                 {type === 'semester' ? (
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                      <select className="w-full border rounded-lg px-3 py-2" value={selectedSemester} onChange={(e) => setSelectedSemester(e.target.value as 'ganjil' | 'genap')}>
+                        <option value="ganjil">Ganjil (Juli - Des)</option>
+                        <option value="genap">Genap (Jan - Jun)</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tahun</label>
+                      <input 
+                        type="number" 
+                        className="w-full border rounded-lg px-3 py-2"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(Number(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                 ) : (
                  <div className="flex gap-4">
                     <div className="flex-1">
                       <label className="block text-sm font-medium text-gray-700 mb-1">Bulan</label>
@@ -272,12 +345,7 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                       />
                     </div>
                  </div>
-                 <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-800 flex gap-2">
-                    <Filter size={16} className="mt-0.5 shrink-0" />
-                    <p>
-                      Laporan akan dicetak dengan orientasi <b>Landscape</b>. Pastikan margin diset pada <b>Default</b> atau <b>Minimum</b> di pengaturan print browser.
-                    </p>
-                 </div>
+                 )}
                  <div className="pt-4 flex justify-end gap-2">
                     <button onClick={() => setIsOpen(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-50 font-bold">Batal</button>
                     <button onClick={handlePrintClick} className="px-4 py-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] flex items-center gap-2 font-bold shadow-md">
@@ -294,7 +362,7 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
         <div id="attendance-special-print-area" className="sagara-print-content print-landscape">
           <div className="attendance-print-table-wrapper">
              <div className="header-info">
-                <h2>LAPORAN ABSENSI</h2>
+                <h2>{type === 'semester' ? 'REKAP ABSENSI SATU SEMESTER' : 'LAPORAN ABSENSI'}</h2>
                 <table style={{ width: 'auto', border: 'none' }}>
                    <tbody>
                       <tr>
@@ -302,11 +370,19 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                         <td style={{ width: '10px', padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
                         <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{selectedClass}</td>
                       </tr>
-                      <tr>
-                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>BULAN</td>
-                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
-                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{monthNames[selectedMonth - 1].toUpperCase()}</td>
-                      </tr>
+                      {type === 'semester' ? (
+                        <tr>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>SEMESTER</td>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{selectedSemester === 'ganjil' ? 'GANJIL' : 'GENAP'}</td>
+                        </tr>
+                      ) : (
+                        <tr>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>BULAN</td>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
+                          <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{monthNames[selectedMonth - 1].toUpperCase()}</td>
+                        </tr>
+                      )}
                       <tr>
                         <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>TAHUN AJARAN</td>
                         <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
@@ -316,6 +392,57 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                 </table>
              </div>
 
+             {type === 'semester' ? (
+              <table className="attendance-print-table">
+                <thead>
+                    <tr>
+                        <th rowSpan={2} className="col-no">NO</th>
+                        <th rowSpan={2} className="col-name">NAMA SISWA</th>
+                        {semesterMonths.map(m => (
+                            <th key={m.num} colSpan={3}>{m.name.toUpperCase()}</th>
+                        ))}
+                        <th colSpan={3}>TOTAL</th>
+                    </tr>
+                    <tr>
+                        {semesterMonths.map(m => (
+                            <React.Fragment key={m.num}>
+                                <th style={{width: '20px'}}>S</th>
+                                <th style={{width: '20px'}}>I</th>
+                                <th style={{width: '20px'}}>A</th>
+                            </React.Fragment>
+                        ))}
+                        <th style={{width: '30px'}}>S</th>
+                        <th style={{width: '30px'}}>I</th>
+                        <th style={{width: '30px'}}>A</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {filteredStudents.map((s, idx) => {
+                        let totalS = 0; let totalI = 0; let totalA = 0;
+                        return (
+                            <tr key={s.id}>
+                                <td>{idx + 1}</td>
+                                <td className="col-name">{s.name.toUpperCase()}</td>
+                                {semesterMonths.map(m => {
+                                    const monthData = semesterRecapData[s.id]?.[m.num] || { S: 0, I: 0, A: 0 };
+                                    totalS += monthData.S; totalI += monthData.I; totalA += monthData.A;
+                                    return (
+                                        <React.Fragment key={m.num}>
+                                            <td className={monthData.S > 0 ? "status-s font-bold" : ""}>{monthData.S || '-'}</td>
+                                            <td className={monthData.I > 0 ? "status-i font-bold" : ""}>{monthData.I || '-'}</td>
+                                            <td className={monthData.A > 0 ? "status-a font-bold" : ""}>{monthData.A || '-'}</td>
+                                        </React.Fragment>
+                                    );
+                                })}
+                                <td style={{fontWeight: 'bold'}}>{totalS || '-'}</td>
+                                <td style={{fontWeight: 'bold'}}>{totalI || '-'}</td>
+                                <td style={{fontWeight: 'bold'}}>{totalA || '-'}</td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+              </table>
+             ) : (
              <table className="attendance-print-table">
                 <thead>
                    <tr>
@@ -336,7 +463,9 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                    {generateAttendanceRows()}
                 </tbody>
              </table>
+             )}
 
+             {type !== 'semester' && (
              <div className="attendance-print-summary">
                 <h3>RINGKASAN ABSENSI</h3>
                 <table>
@@ -360,6 +489,7 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
                    </tbody>
                 </table>
              </div>
+             )}
 
              <div className="attendance-print-signatures">
                 <div className="sig-box">

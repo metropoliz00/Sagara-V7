@@ -1543,6 +1543,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                           schoolProfile={schoolProfile} 
                           teacherProfile={teacherProfile} 
                           currentClassId={classId} 
+                          type="semester"
                          />
                       </div>
                   </div>

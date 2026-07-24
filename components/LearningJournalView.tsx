@@ -812,15 +812,15 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                     </td>
                 </tr>
                 <tr style="page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid; background-color: #f1f5f9 !important; font-weight: bold; -webkit-print-color-adjust: exact;">
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">No</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Jam</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Mapel</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Materi</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kegiatan Pembelajaran</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Evaluasi</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Refleksi</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Tindak Lanjut</td>
-                    <td style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kehadiran</td>
+                    <td style="width: 4%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">No</td>
+                    <td style="width: 8%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Jam</td>
+                    <td style="width: 12%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Mapel</td>
+                    <td style="width: 14%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Materi</td>
+                    <td style="width: 24%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kegiatan Pembelajaran</td>
+                    <td style="width: 12%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Evaluasi</td>
+                    <td style="width: 12%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Refleksi</td>
+                    <td style="width: 8%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Tindak Lanjut</td>
+                    <td style="width: 6%; font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kehadiran</td>
                 </tr>
             `;
 
@@ -848,17 +848,6 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                 <p style="margin-top: 4px; font-weight: normal;">PERIODE: ${currentMonday.toLocaleDateString('id-ID', {day:'numeric', month:'long'})} - ${currentSaturday.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
             </div>
             <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 25px;">
-                <colgroup>
-                    <col style="width: 3%;" />
-                    <col style="width: 7%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 12%;" />
-                    <col style="width: 36%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 5%;" />
-                    <col style="width: 4%;" />
-                </colgroup>
                 <tbody>
                     ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666; border: 1px solid black;">Tidak ada data jurnal minggu ini</td></tr>`}
                 </tbody>

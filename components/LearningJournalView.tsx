@@ -940,56 +940,42 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
       </div>
     `;
 
-    if (onShowNotification) onShowNotification('Sedang menyiapkan dokumen PDF...', 'warning');
-    
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    
-    const opt = {
-      margin: 10,
-      filename: `Jurnal_Pembelajaran_${classId}_${new Date().getTime()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          windowWidth: 1122
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['table', 'tr', '.print-header', '.print-footer', '.signature-box'] }
-    };
+      // 1. Populate standalone container for clean window.print() output
+      let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+      if (!standaloneContainer) {
+        standaloneContainer = document.createElement('div');
+        standaloneContainer.id = 'sagara-standalone-print-container';
+        document.body.appendChild(standaloneContainer);
+      }
+      standaloneContainer.innerHTML = htmlContent;
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        if (onShowNotification) onShowNotification('PDF berhasil diunduh', 'success');
-    }).catch((err: any) => {
-        console.error('PDF generation error:', err);
-        if (onShowNotification) onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
-        
-        const newWindow = window.open("", "", "width=1200,height=800");
-        if (!newWindow) {
-            window.print();
-            return;
+      // 2. Add dynamic print orientation style
+      let styleTag = document.getElementById('sagara-dynamic-print-style');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'sagara-dynamic-print-style';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.innerHTML = `@media print { @page { size: A4 landscape; margin: 10mm; } }`;
+
+      // 3. Update document title for the print job
+      const originalTitle = document.title;
+      document.title = `Jurnal_Pembelajaran_${classId}_${viewMode}`;
+
+      // 4. Trigger print command directly
+      window.print();
+
+      // 5. Cleanup after print dialog finishes
+      const cleanup = () => {
+        document.title = originalTitle;
+        if (standaloneContainer) {
+          standaloneContainer.innerHTML = '';
         }
-        if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>Jurnal Pembelajaran - Kelas ${classId}</title>
-                </head>
-                <body>
-                  ${htmlContent}
-                </body>
-              </html>
-            `);
-            newWindow.document.close();
-            setTimeout(() => {
-                newWindow.focus();
-                newWindow.print();
-                newWindow.close();
-            }, 500);
-        }
-    });
+        window.removeEventListener('afterprint', cleanup);
+      };
+
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(cleanup, 2000);
   };
 
   // Navigation Handlers

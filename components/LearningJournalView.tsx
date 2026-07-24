@@ -967,6 +967,10 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         if (onShowNotification) onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
         
         const newWindow = window.open("", "", "width=1200,height=800");
+        if (!newWindow) {
+            window.print();
+            return;
+        }
         if (newWindow) {
             newWindow.document.write(`
               <html>

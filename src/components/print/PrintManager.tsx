@@ -121,7 +121,8 @@ export const PrintManager: React.FC<PrintManagerProps> = ({
 
       {/* Main Document Content Container */}
       <div
-        className={`sagara-print-content ${
+        id="print-area"
+        className={`sagara-print-content print-page ${
           orientation === 'landscape' ? 'print-landscape' : 'print-portrait'
         }`}
       >

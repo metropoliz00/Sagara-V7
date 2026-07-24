@@ -1,6 +1,6 @@
 /* ==================================================
    SAGARA GLOBAL PRINT STYLESHEET
-   Standard A4 Printing System
+   Standard A4 Printing System (Desktop & Mobile Safe)
    ================================================== */
 
 @media print {
@@ -9,21 +9,33 @@
     margin: 10mm;
   }
 
+  /* Reset all potential mobile & app wrapper clipping constraints */
+  html,
+  body,
+  #root,
+  main,
+  .app-container,
+  div {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    position: static !important;
+    float: none !important;
+  }
+
   html,
   body {
-    width: 100%;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     color: #000000 !important;
-  }
-
-  body {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Automatically hide non-printable elements */
+  /* Automatically hide non-printable UI elements */
   .no-print,
   .screen-only,
   button,
@@ -36,7 +48,8 @@
   .menu,
   .print-button,
   .sagara-print-toolbar,
-  .sagara-print-controls {
+  .sagara-print-controls,
+  [role="navigation"] {
     display: none !important;
   }
 
@@ -44,18 +57,45 @@
     display: block !important;
   }
 
+  /* Global Mobile-Safe Visibility Switch */
+  body * {
+    visibility: hidden;
+  }
+
+  .sagara-print-wrapper,
+  .sagara-print-wrapper *,
+  .sagara-print-content,
+  .sagara-print-content *,
+  #print-area,
+  #print-area *,
+  .print-page,
+  .print-page * {
+    visibility: visible !important;
+  }
+
+  /* Ensure print content container expands properly on mobile print engines */
+  .sagara-print-wrapper,
+  .sagara-print-content,
+  #print-area,
   .print-page {
-    width: 100%;
-    min-height: 277mm;
-    margin: 0;
-    padding: 0;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     background: white !important;
-    box-sizing: border-box;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+
+  .print-page {
+    min-height: 277mm;
   }
 
   table {
-    width: 100%;
-    border-collapse: collapse;
+    width: 100% !important;
+    border-collapse: collapse !important;
   }
 
   thead {

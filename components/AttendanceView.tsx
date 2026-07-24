@@ -936,26 +936,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
         console.error('PDF generation error:', err);
         onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
         
-        const printWindow = window.open('', '', 'width=1000,height=800');
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Cetak Rekap Absensi</title>
-              </head>
-              <body>
-                ${htmlContent}
-                <script>
-                  setTimeout(() => {
-                    window.print();
-                    window.close();
-                  }, 1000);
-                </script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-        }
+        window.print();
     });
   };
 

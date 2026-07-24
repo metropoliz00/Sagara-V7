@@ -992,7 +992,8 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
 
       // 3. Update document title for the print job
       const originalTitle = document.title;
-      document.title = `Jurnal_Pembelajaran_${classId}_${viewMode}`;
+      const mappedMode = viewMode === 'weekly' ? 'Mingguan' : (viewMode === 'daily' ? 'Harian' : 'Rekapitulasi');
+      document.title = `Jurnal_Pembelajaran_Kelas ${classId}_${mappedMode}`;
 
       // 4. Trigger print command directly
       window.print();

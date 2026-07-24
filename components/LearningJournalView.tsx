@@ -754,7 +754,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                         <th style="width: 18%">Materi / Topik</th>
                         <th style="width: 25%">Kegiatan Pembelajaran</th>
                         <th style="width: 15%">Refleksi</th>
-                        <th style="width: 10%">Ket.</th>
+                        <th style="width: 15%">Tindak Lanjut</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -766,7 +766,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                             <td>${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
                             <td>${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
                             <td>${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
-                            <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp ? 'TL: '+row.followUp : '-')}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
                         </tr>
                     `).join('')}
                 </tbody>

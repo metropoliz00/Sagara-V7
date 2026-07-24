@@ -795,7 +795,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
             ${signatureBlock}
         `;
     } else if (viewMode === 'weekly') {
-        let rowsHtml = '';
+        let tablesHtml = '';
         let hasData = false;
 
         weekDates.forEach(dateStr => {
@@ -804,30 +804,43 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
 
             hasData = true;
 
-            // Day Header Row spanning all columns
-            rowsHtml += `
-                <tr class="day-header-row" style="page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid;">
-                    <td colspan="9" style="background-color: #f1f5f9 !important; font-weight: bold; text-align: left; padding: 6px 10px; border: 1px solid black; font-size: 8.5pt; text-transform: uppercase; -webkit-print-color-adjust: exact;">
-                        ${getDayName(dateStr).toUpperCase()}, ${new Date(dateStr).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}
-                    </td>
-                </tr>
+            tablesHtml += `
+                <div style="page-break-inside: avoid; break-inside: avoid; margin-bottom: 20px;">
+                    <div style="font-weight: bold; padding: 6px 10px; border: 1px solid black; border-bottom: none; background-color: #f1f5f9 !important; font-size: 9pt; text-transform: uppercase; -webkit-print-color-adjust: exact;">
+                        HARI/TANGGAL: ${getDayName(dateStr).toUpperCase()}, ${new Date(dateStr).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 0;">
+                        <thead>
+                            <tr>
+                                <th style="width: 4%">No</th>
+                                <th style="width: 8%">Jam</th>
+                                <th style="width: 12%">Mapel</th>
+                                <th style="width: 14%">Materi</th>
+                                <th style="width: 24%">Kegiatan Pembelajaran</th>
+                                <th style="width: 12%">Evaluasi</th>
+                                <th style="width: 12%">Refleksi</th>
+                                <th style="width: 8%">Tindak Lanjut</th>
+                                <th style="width: 6%">Kehadiran</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map((row, idx) => `
+                                <tr>
+                                    <td style="text-align: center; vertical-align: middle;">${idx + 1}</td>
+                                    <td style="vertical-align: middle; text-align: center;">${row.timeSlot || ''}</td>
+                                    <td style="font-weight: bold; vertical-align: middle;">${row.subject || ''}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.evaluation || '-')}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
+                                    <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
+                                    <td style="text-align: center; vertical-align: middle;">${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
             `;
-
-            rows.forEach((row, idx) => {
-                rowsHtml += `
-                    <tr style="page-break-inside: avoid; break-inside: avoid;">
-                        <td style="text-align: center; vertical-align: middle;">${idx + 1}</td>
-                        <td style="vertical-align: middle; text-align: center;">${row.timeSlot || ''}</td>
-                        <td style="font-weight: bold; vertical-align: middle;">${row.subject || ''}</td>
-                        <td>${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
-                        <td>${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
-                        <td>${isSpecialSubject(row.subject) ? '-' : (row.evaluation || '-')}</td>
-                        <td>${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
-                        <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
-                        <td style="text-align: center; vertical-align: middle;">${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
-                    </tr>
-                `;
-            });
         });
 
         content = `
@@ -836,24 +849,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                 <p>KELAS ${classId}</p>
                 <p style="margin-top: 4px; font-weight: normal;">PERIODE: ${currentMonday.toLocaleDateString('id-ID', {day:'numeric', month:'long'})} - ${currentSaturday.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
             </div>
-            <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 25px;">
-                <thead>
-                    <tr>
-                        <th style="width: 4%">No</th>
-                        <th style="width: 8%">Jam</th>
-                        <th style="width: 12%">Mapel</th>
-                        <th style="width: 14%">Materi</th>
-                        <th style="width: 24%">Kegiatan Pembelajaran</th>
-                        <th style="width: 12%">Evaluasi</th>
-                        <th style="width: 12%">Refleksi</th>
-                        <th style="width: 8%">Tindak Lanjut</th>
-                        <th style="width: 6%">Kehadiran</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666;">Tidak ada data jurnal minggu ini</td></tr>`}
-                </tbody>
-            </table>
+            ${hasData ? tablesHtml : `<div style="text-align: center; padding: 20px; font-style: italic; color: #666; border: 1px solid black; background: #fafafa;">Tidak ada data jurnal minggu ini</div>`}
             ${signatureBlock}
         `;
     } else {

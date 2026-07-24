@@ -356,15 +356,13 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
 
              <div className="attendance-print-signatures">
                 <div className="sig-box">
-                   <div className="date-line">&nbsp;</div>
                    <div>Mengetahui,</div>
                    <div>Kepala Sekolah</div>
                    <div className="name-line">{hmMame}</div>
                    <div className="nip-line">NIP. {hmNip}</div>
                 </div>
                 <div className="sig-box">
-                   <div className="date-line">{city}, {printDate}</div>
-                   <div>&nbsp;</div>
+                   <div>{city}, {printDate}</div>
                    <div>Guru Kelas</div>
                    <div className="name-line">{tcName}</div>
                    <div className="nip-line">NIP. {tcNip}</div>

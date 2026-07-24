@@ -1,0 +1,193 @@
+/* ==================================================
+   SAGARA GLOBAL PRINT STYLESHEET
+   Standard A4 Printing System (Mobile & Desktop Safe)
+   ================================================== */
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 10mm;
+  }
+
+  /* Reset body and html layout */
+  html,
+  body {
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #000000 !important;
+    overflow: visible !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide main React App root on print when standalone print container exists */
+  #root {
+    display: none !important;
+  }
+
+  /* Automatically hide non-printable UI elements */
+  .no-print,
+  .screen-only,
+  button,
+  nav,
+  header,
+  footer,
+  aside,
+  .navbar,
+  .sidebar,
+  .menu,
+  .print-button,
+  .sagara-print-toolbar,
+  .sagara-print-controls,
+  [role="navigation"] {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* Direct Body Child Printable Container (Guarantees Mobile Print Engine Compatibility) */
+  #sagara-standalone-print-container,
+  body > #sagara-standalone-print-container,
+  body > .sagara-print-wrapper,
+  body > #print-area {
+    display: block !important;
+    position: static !important;
+    left: auto !important;
+    top: auto !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #000000 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    float: none !important;
+    box-sizing: border-box !important;
+  }
+
+  #sagara-standalone-print-container *,
+  body > #sagara-standalone-print-container * {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Print Page Layout & Breaking */
+  .print-page {
+    width: 100% !important;
+    min-height: 277mm;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    box-sizing: border-box !important;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr,
+  img,
+  table,
+  .avoid-break,
+  .print-section {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Landscape Mode Print Rule */
+@media print {
+  body.print-orientation-landscape {
+    page: landscape-page;
+  }
+
+  @page landscape-page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  .print-landscape {
+    width: 100% !important;
+    min-height: 190mm;
+  }
+}
+
+/* Screen Mode Preview & Interactive Classes */
+@media screen {
+  .sagara-print-wrapper {
+    width: 100%;
+  }
+
+  #sagara-standalone-print-container {
+    display: none !important;
+  }
+
+  .sagara-print-toolbar {
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    padding: 12px 20px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+
+  .sagara-a4-preview-container {
+    background-color: #f8fafc;
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    overflow-x: auto;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .sagara-a4-sheet {
+    background: white;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    box-sizing: border-box;
+    padding: 10mm;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .sagara-a4-sheet.portrait {
+    width: 210mm;
+    min-height: 297mm;
+  }
+
+  .sagara-a4-sheet.landscape {
+    width: 297mm;
+    min-height: 210mm;
+  }
+}

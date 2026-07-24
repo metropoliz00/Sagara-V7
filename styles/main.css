@@ -185,24 +185,30 @@
           overflow: visible !important;
         }
 
-        /* --- NEW PRINT AREA LOGIC --- */
+        /* --- SAGARA GLOBAL PRINT AREA LOGIC (Mobile & Desktop) --- */
         body * {
           visibility: hidden;
         }
 
         #print-area,
-        #print-area * {
-          visibility: visible;
+        #print-area *,
+        .sagara-print-content,
+        .sagara-print-content *,
+        .sagara-print-wrapper,
+        .sagara-print-wrapper * {
+          visibility: visible !important;
         }
 
-        #print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          padding: 20px;
-          /* Optional: Set a specific font for printed documents if desired */
-          /* font-family: "Times New Roman", serif; */
+        #print-area,
+        .sagara-print-content,
+        .sagara-print-wrapper {
+          position: static !important;
+          left: auto !important;
+          top: auto !important;
+          width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
         }
       }
 

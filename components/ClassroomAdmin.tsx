@@ -423,6 +423,10 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     });
 
     const newWindow = window.open("", "", "width=800,height=600");
+    if (!newWindow) {
+      window.print();
+      return;
+    }
     
     // Copy styles from current document to ensure Tailwind/layout works
     const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))

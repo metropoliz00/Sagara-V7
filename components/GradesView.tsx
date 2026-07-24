@@ -677,7 +677,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                 <h2>REKAP NILAI SUMATIF</h2>
                 <p>KELAS ${classId}</p>
                 <p>TAHUN AJARAN ${schoolProfile?.year || new Date().getFullYear()}</p>
-                <p>MATA PELAJARAN: ${subjectName.toUpperCase()}</p>
+                <p>MATA PELAJARAN: ${subjectName.toUpperCase()} (KKTP: ${currentKktp})</p>
             </div>
             <table>
                 <thead>
@@ -690,6 +690,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                         <th style="width: 8%">SUM 2</th>
                         <th style="width: 8%">SUM 3</th>
                         <th style="width: 8%">SUM 4</th>
+                        ${customColumns.map(col => `<th style="width: 8%">${col.replace('sum', 'SUM ')}</th>`).join('')}
                         <th style="width: 8%">SAS</th>
                         <th style="width: 10%">NILAI AKHIR</th>
                     </tr>
@@ -708,6 +709,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                             <td style="text-align: center">${g.sum2 || '-'}</td>
                             <td style="text-align: center">${g.sum3 || '-'}</td>
                             <td style="text-align: center">${g.sum4 || '-'}</td>
+                            ${customColumns.map(col => `<td style="text-align: center">${(g as any)[col] || '-'}</td>`).join('')}
                             <td style="text-align: center">${g.sas || '-'}</td>
                             <td style="text-align: center; font-weight: bold;">${avg || '-'}</td>
                         </tr>
@@ -762,77 +764,70 @@ const GradesView: React.FC<GradesViewProps> = ({
       const htmlContent = `
         <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
           <style>
-            table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; page-break-inside: avoid; break-inside: avoid; }
-            th, td { border: 1px solid black; padding: 4px; text-align: left; vertical-align: middle; word-wrap: break-word; }
-            th { text-align: center; font-weight: bold; background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+            @page { size: A4 landscape; margin: 10mm; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }
+            th, td { border: 1px solid #000; padding: 5px; text-align: left; vertical-align: middle; word-wrap: break-word; font-size: 10pt; }
+            th { text-align: center; font-weight: bold; background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             tr { page-break-inside: avoid; break-inside: avoid; }
-            .print-header { text-align: center; margin-bottom: 20px; line-height: 1.2; font-weight: bold; page-break-inside: avoid; break-inside: avoid; }
-            .print-header h2, .print-header p { margin: 0; padding: 0; text-transform: uppercase; }
-            .print-footer { margin-top: 30px; width: 100%; font-size: 11pt; page-break-inside: avoid; break-inside: avoid; }
-            .signature-box { width: 45%; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+            .print-header { text-align: center; margin-bottom: 20px; line-height: 1.3; font-weight: bold; page-break-inside: avoid; break-inside: avoid; }
+            .print-header h2 { margin: 0 0 4px 0; padding: 0; font-size: 13pt; text-transform: uppercase; }
+            .print-header p { margin: 2px 0; padding: 0; font-size: 10pt; text-transform: uppercase; }
+            .print-footer { margin-top: 35px; width: 100%; font-size: 10.5pt; page-break-inside: avoid; break-inside: avoid; }
+            .signature-box { width: 45%; text-align: center; display: inline-block; vertical-align: top; page-break-inside: avoid; break-inside: avoid; }
             .signature-box p { margin: 0; line-height: 1.4; }
             .signature-left { float: left; }
             .signature-right { float: right; }
             .signature-space { height: 60px; }
             .underline { text-decoration: underline; font-weight: bold; }
             .clearfix::after { content: ""; clear: both; display: table; }
-            @page { size: A4 landscape; margin: 1.5cm; }
             @media print {
               body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
               table, tr, td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
             }
           </style>
           ${content}
-          ${signatureBlock}
         </div>
       `;
 
-      onShowNotification('Sedang menyiapkan dokumen PDF...', 'warning');
-      
-      const element = document.createElement('div');
-      element.innerHTML = htmlContent;
-      
-      const opt = {
-        margin: 10,
-        filename: `Rekap_Nilai_${classId}_${new Date().getTime()}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { 
-            scale: 2, 
-            useCORS: true,
-            logging: false,
-            letterRendering: true,
-            windowWidth: 1122
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['table', 'tr', '.print-header', '.print-footer', '.signature-box'] }
+      // 1. Populate standalone container for clean window.print() output
+      let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+      if (!standaloneContainer) {
+        standaloneContainer = document.createElement('div');
+        standaloneContainer.id = 'sagara-standalone-print-container';
+        document.body.appendChild(standaloneContainer);
+      }
+      standaloneContainer.innerHTML = htmlContent;
+
+      // 2. Add dynamic print orientation style
+      let styleTag = document.getElementById('sagara-dynamic-print-style');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'sagara-dynamic-print-style';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.innerHTML = `@media print { @page { size: A4 landscape; margin: 10mm; } }`;
+
+      // 3. Update document title for the print job
+      const originalTitle = document.title;
+      const subjectName = activeSubject?.name || selectedSubject || 'Input_Nilai';
+      document.title = viewMode === 'input'
+        ? `Rekap_Nilai_Sumatif_${classId}_${subjectName.replace(/\s+/g, '_')}`
+        : `Rekap_Nilai_Rapor_Kelas_${classId}`;
+
+      // 4. Trigger print command directly
+      window.print();
+
+      // 5. Cleanup after print dialog finishes
+      const cleanup = () => {
+        document.title = originalTitle;
+        if (standaloneContainer) {
+          standaloneContainer.innerHTML = '';
+        }
+        window.removeEventListener('afterprint', cleanup);
       };
 
-      html2pdf().set(opt).from(element).save().then(() => {
-          onShowNotification('PDF berhasil diunduh', 'success');
-      }).catch((err: any) => {
-          console.error('PDF generation error:', err);
-          onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
-          
-          const newWindow = window.open("", "", "width=1200,height=800");
-          if (newWindow) {
-              newWindow.document.write(`
-                <html>
-                  <head>
-                    <title>Rekap Nilai - Kelas ${classId}</title>
-                  </head>
-                  <body>
-                    ${htmlContent}
-                  </body>
-                </html>
-              `);
-              newWindow.document.close();
-              setTimeout(() => {
-                  newWindow.focus();
-                  newWindow.print();
-                  newWindow.close();
-              }, 500);
-          }
-      });
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(cleanup, 2000);
   };
 
   const handleDownloadTemplate = () => { 
@@ -1333,7 +1328,7 @@ const GradesView: React.FC<GradesViewProps> = ({
           </div>
        </div>
 
-       {viewMode === 'recap' && !isReadOnly && (
+       {((viewMode === 'recap' || viewMode === 'input') && !isReadOnly) && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F0F9FF] border border-blue-100 p-4 rounded-2xl no-print mb-4 animate-fade-in w-full">
               <div className="flex flex-wrap items-center gap-4">
                   <div className="flex flex-col">
@@ -1366,10 +1361,12 @@ const GradesView: React.FC<GradesViewProps> = ({
                       </button>
                   </div>
               </div>
-              <button onClick={handleArchiveSemester} disabled={isArchiving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all font-bold">
-                  {isArchiving ? <Loader2 size={18} className="animate-spin" /> : <History size={18} />}
-                  <span>Simpan Rekap Semester ini ke Riwayat</span>
-              </button>
+              {viewMode === 'recap' && (
+                  <button onClick={handleArchiveSemester} disabled={isArchiving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all font-bold">
+                      {isArchiving ? <Loader2 size={18} className="animate-spin" /> : <History size={18} />}
+                      <span>Simpan Rekap Semester ini ke Riwayat</span>
+                  </button>
+              )}
           </div>
        )}
 

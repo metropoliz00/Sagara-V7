@@ -22,6 +22,10 @@ const IntroductionView: React.FC = () => {
     const areaPrint = document.getElementById('areaPrint');
     if (areaPrint) {
         let printWindow = window.open('', '', 'width=800,height=600');
+        if (!printWindow) {
+            window.print();
+            return;
+        }
         if (printWindow) {
             printWindow.document.write(`
                 <html>

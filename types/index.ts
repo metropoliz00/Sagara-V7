@@ -257,6 +257,14 @@ export interface SchoolProfileData {
   name: string;
   npsn: string;
   address: string;
+  desa?: string;
+  jalan?: string;
+  kecamatan?: string;
+  kabupaten?: string;
+  kodepos?: string;
+  email?: string;
+  website?: string;
+  telepon?: string;
   headmaster: string;
   headmasterNip: string;
   year: string;

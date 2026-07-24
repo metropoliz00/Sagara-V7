@@ -31,7 +31,7 @@
 .attendance-print-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 7.5pt;
+  font-size: 6.5pt;
   table-layout: fixed;
 }
 
@@ -55,11 +55,11 @@
 }
 
 .attendance-print-table .col-no {
-  width: 22px;
+  width: 20px;
 }
 
 .attendance-print-table .col-name {
-  width: 150px;
+  width: 250px;
   text-align: left;
   padding-left: 4px;
   white-space: nowrap;
@@ -68,11 +68,11 @@
 }
 
 .attendance-print-table .col-date {
-  width: 20px;
+  width: 18px;
 }
 
 .attendance-print-table .col-rekap {
-  width: 25px;
+  width: 20px;
   font-weight: bold;
 }
 

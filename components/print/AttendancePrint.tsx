@@ -288,22 +288,22 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
           <div className="attendance-print-table-wrapper">
              <div className="header-info">
                 <h2>LAPORAN ABSENSI</h2>
-                <table>
+                <table style={{ width: 'auto', border: 'none' }}>
                    <tbody>
                       <tr>
-                        <td>KELAS</td>
-                        <td>:</td>
-                        <td>{selectedClass}</td>
+                        <td style={{ width: '120px', padding: '2px 0', border: 'none', textAlign: 'left' }}>KELAS</td>
+                        <td style={{ width: '10px', padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{selectedClass}</td>
                       </tr>
                       <tr>
-                        <td>BULAN</td>
-                        <td>:</td>
-                        <td>{monthNames[selectedMonth - 1].toUpperCase()}</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>BULAN</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{monthNames[selectedMonth - 1].toUpperCase()}</td>
                       </tr>
                       <tr>
-                        <td>TAHUN AJARAN</td>
-                        <td>:</td>
-                        <td>{currentAcademicYear}</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>TAHUN AJARAN</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left' }}>:</td>
+                        <td style={{ padding: '2px 0', border: 'none', textAlign: 'left', fontWeight: 'bold' }}>{currentAcademicYear}</td>
                       </tr>
                    </tbody>
                 </table>

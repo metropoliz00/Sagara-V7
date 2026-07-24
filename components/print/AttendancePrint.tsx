@@ -207,7 +207,14 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
   
   const tcName = teacherProfile?.name || '[Nama Guru Kelas]';
   const tcNip = teacherProfile?.nip || '[NIP Guru Kelas]';
-  const city = extractLocation(schoolProfile?.address || '');
+  
+  // Get city/village name directly from desa, or extract from address
+  const getCityOrVillage = () => {
+    if (schoolProfile?.desa) return schoolProfile.desa;
+    if (schoolProfile?.kabupaten) return schoolProfile.kabupaten;
+    return extractLocation(schoolProfile?.address || '');
+  };
+  const city = getCityOrVillage();
 
   // Determine Academic Year based on month (simple heuristic)
   const currentAcademicYear = selectedMonth >= 7 ? `${selectedYear}/${selectedYear + 1}` : `${selectedYear - 1}/${selectedYear}`;

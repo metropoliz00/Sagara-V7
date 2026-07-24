@@ -223,10 +223,10 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
     <>
       <button 
         onClick={() => setIsOpen(true)}
-        className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors shadow-sm"
+        className="flex items-center gap-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg hover:bg-[#A0DEFF] transition-colors shadow-md font-semibold"
       >
         <Printer size={18} />
-        <span>Print Laporan Absensi</span>
+        <span>Cetak Laporan</span>
       </button>
 
       {isOpen && (

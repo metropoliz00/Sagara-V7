@@ -520,6 +520,23 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         }
     });
 
+    if (rows.length === 0) {
+        rows.push({
+            id: `default-${targetDate}`,
+            classId,
+            date: targetDate,
+            day: dayName,
+            timeSlot: '07:30 - 09:00',
+            subject: 'Tematik / Pembelajaran Umum',
+            topic: '-',
+            activities: generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
+            evaluation: 'Kuis singkat',
+            reflection: '',
+            followUp: '',
+            isTeacherPresent: true
+        });
+    }
+
     return rows.sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''));
   };
 

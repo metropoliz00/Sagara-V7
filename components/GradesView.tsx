@@ -677,7 +677,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                 <h2>REKAP NILAI SUMATIF</h2>
                 <p>KELAS ${classId}</p>
                 <p>TAHUN AJARAN ${schoolProfile?.year || new Date().getFullYear()}</p>
-                <p>MATA PELAJARAN: ${subjectName.toUpperCase()}</p>
+                <p>MATA PELAJARAN: ${subjectName.toUpperCase()} (KKTP: ${currentKktp})</p>
             </div>
             <table>
                 <thead>
@@ -690,6 +690,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                         <th style="width: 8%">SUM 2</th>
                         <th style="width: 8%">SUM 3</th>
                         <th style="width: 8%">SUM 4</th>
+                        ${customColumns.map(col => `<th style="width: 8%">${col.replace('sum', 'SUM ')}</th>`).join('')}
                         <th style="width: 8%">SAS</th>
                         <th style="width: 10%">NILAI AKHIR</th>
                     </tr>
@@ -708,6 +709,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                             <td style="text-align: center">${g.sum2 || '-'}</td>
                             <td style="text-align: center">${g.sum3 || '-'}</td>
                             <td style="text-align: center">${g.sum4 || '-'}</td>
+                            ${customColumns.map(col => `<td style="text-align: center">${(g as any)[col] || '-'}</td>`).join('')}
                             <td style="text-align: center">${g.sas || '-'}</td>
                             <td style="text-align: center; font-weight: bold;">${avg || '-'}</td>
                         </tr>
@@ -1337,7 +1339,7 @@ const GradesView: React.FC<GradesViewProps> = ({
           </div>
        </div>
 
-       {viewMode === 'recap' && !isReadOnly && (
+       {((viewMode === 'recap' || viewMode === 'input') && !isReadOnly) && (
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-[#F0F9FF] border border-blue-100 p-4 rounded-2xl no-print mb-4 animate-fade-in w-full">
               <div className="flex flex-wrap items-center gap-4">
                   <div className="flex flex-col">
@@ -1370,10 +1372,12 @@ const GradesView: React.FC<GradesViewProps> = ({
                       </button>
                   </div>
               </div>
-              <button onClick={handleArchiveSemester} disabled={isArchiving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all font-bold">
-                  {isArchiving ? <Loader2 size={18} className="animate-spin" /> : <History size={18} />}
-                  <span>Simpan Rekap Semester ini ke Riwayat</span>
-              </button>
+              {viewMode === 'recap' && (
+                  <button onClick={handleArchiveSemester} disabled={isArchiving} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl hover:bg-indigo-700 shadow-md transition-all font-bold">
+                      {isArchiving ? <Loader2 size={18} className="animate-spin" /> : <History size={18} />}
+                      <span>Simpan Rekap Semester ini ke Riwayat</span>
+                  </button>
+              )}
           </div>
        )}
 

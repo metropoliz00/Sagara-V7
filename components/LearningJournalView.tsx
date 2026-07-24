@@ -849,15 +849,15 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
             </div>
             <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 25px;">
                 <colgroup>
-                    <col style="width: 4%;" />
-                    <col style="width: 7%;" />
-                    <col style="width: 12%;" />
-                    <col style="width: 13%;" />
-                    <col style="width: 38%;" />
-                    <col style="width: 9%;" />
-                    <col style="width: 9%;" />
-                    <col style="width: 5%;" />
                     <col style="width: 3%;" />
+                    <col style="width: 7%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 12%;" />
+                    <col style="width: 36%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 5%;" />
+                    <col style="width: 4%;" />
                 </colgroup>
                 <tbody>
                     ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666; border: 1px solid black;">Tidak ada data jurnal minggu ini</td></tr>`}

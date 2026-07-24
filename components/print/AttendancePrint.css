@@ -5,25 +5,25 @@
 }
 
 .attendance-print-table-wrapper .header-info {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .attendance-print-table-wrapper .header-info h2 {
   text-align: center;
-  font-size: 16pt;
+  font-size: 14pt;
   font-weight: bold;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
   text-decoration: underline;
 }
 
 .attendance-print-table-wrapper .header-info table {
   width: auto;
   border: none;
-  font-size: 11pt;
+  font-size: 10pt;
 }
 
 .attendance-print-table-wrapper .header-info table td {
-  padding: 2px 8px 2px 0;
+  padding: 1px 4px 1px 0;
   border: none;
   text-align: left;
 }
@@ -31,7 +31,7 @@
 .attendance-print-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 9pt;
+  font-size: 7.5pt;
   table-layout: fixed;
 }
 
@@ -39,7 +39,7 @@
 .attendance-print-table td {
   border: 1px solid #333;
   text-align: center;
-  padding: 4px 2px;
+  padding: 3px 1px;
   vertical-align: middle;
   word-wrap: break-word;
 }
@@ -55,13 +55,13 @@
 }
 
 .attendance-print-table .col-no {
-  width: 25px;
+  width: 22px;
 }
 
 .attendance-print-table .col-name {
-  width: 180px;
+  width: 150px;
   text-align: left;
-  padding-left: 6px;
+  padding-left: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

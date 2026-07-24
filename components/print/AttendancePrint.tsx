@@ -184,12 +184,30 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
   const summary = calculateAttendanceSummary();
   const printDate = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
   
+  const extractLocation = (addr: string) => {
+    if (!addr) return '[Desa/Kota]';
+    // Look for Desa/Kelurahan/Kota/Kabupaten/Kab.
+    const match = addr.match(/(?:Desa|Kelurahan|Kota|Kabupaten|Kab\.)\s+([a-zA-Z0-9\s]+)(?:,|$)/i);
+    if (match) {
+       // if it matched "Desa X", we return "Desa X", otherwise just "X" or the match
+       const fullMatch = addr.match(/(Desa|Kelurahan|Kota|Kabupaten|Kab\.)\s+([a-zA-Z0-9\s]+)(?:,|$)/i);
+       if (fullMatch && fullMatch[1].toLowerCase() === 'desa') {
+           return `Desa ${fullMatch[2].trim()}`;
+       }
+       return match[1].trim();
+    }
+    
+    // Fallback: take the last part of comma-separated string
+    const parts = addr.split(',').map(s => s.trim());
+    return parts.length > 1 ? parts[parts.length - 1] : addr;
+  };
+
   const hmMame = schoolProfile?.headmaster || '[Nama Kepala Sekolah]';
   const hmNip = schoolProfile?.headmasterNip || '[NIP Kepala Sekolah]';
   
   const tcName = teacherProfile?.name || '[Nama Guru Kelas]';
   const tcNip = teacherProfile?.nip || '[NIP Guru Kelas]';
-  const city = schoolProfile?.address || '[Kota]';
+  const city = extractLocation(schoolProfile?.address || '');
 
   // Determine Academic Year based on month (simple heuristic)
   const currentAcademicYear = selectedMonth >= 7 ? `${selectedYear}/${selectedYear + 1}` : `${selectedYear - 1}/${selectedYear}`;

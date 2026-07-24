@@ -56,24 +56,49 @@ export const PrintManager: React.FC<PrintManagerProps> = ({
     }
     styleTag.innerHTML = `@media print { @page { size: A4 ${orientation}; margin: 10mm; } }`;
 
+    // Mobile-Safe Print Engine Isolation:
+    // Clone printable element directly under document.body to bypass mobile React wrapper clipping & zero-height flex bugs
+    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+    if (!standaloneContainer) {
+      standaloneContainer = document.createElement('div');
+      standaloneContainer.id = 'sagara-standalone-print-container';
+      document.body.appendChild(standaloneContainer);
+    }
+
+    // Locate target content inside containerRef or #print-area
+    const printArea = containerRef.current?.querySelector('#print-area') || containerRef.current;
+    if (printArea && standaloneContainer) {
+      standaloneContainer.innerHTML = '';
+      const clonedContent = printArea.cloneNode(true) as HTMLElement;
+      clonedContent.id = 'sagara-cloned-print-content';
+      clonedContent.className = `sagara-print-content print-page ${
+        orientation === 'landscape' ? 'print-landscape' : 'print-portrait'
+      }`;
+      standaloneContainer.appendChild(clonedContent);
+    }
+
     if (onPrint) {
       onPrint();
     }
 
-    // Trigger browser print
+    // Trigger browser print dialog
     window.print();
 
-    // Cleanup title and class after print dialog handles
+    // Cleanup title, classes, and standalone container after print dialog handles
     const cleanup = () => {
       if (title) {
         document.title = originalTitle;
       }
       document.body.classList.remove('print-orientation-landscape');
+      const containerToRemove = document.getElementById('sagara-standalone-print-container');
+      if (containerToRemove) {
+        containerToRemove.innerHTML = '';
+      }
       window.removeEventListener('afterprint', cleanup);
     };
 
     window.addEventListener('afterprint', cleanup);
-    setTimeout(cleanup, 2000);
+    setTimeout(cleanup, 2500);
   }, [title, orientation, onPrint]);
 
   useEffect(() => {

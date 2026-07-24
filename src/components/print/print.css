@@ -1,6 +1,6 @@
 /* ==================================================
    SAGARA GLOBAL PRINT STYLESHEET
-   Standard A4 Printing System (Desktop & Mobile Safe)
+   Standard A4 Printing System (Mobile & Desktop Safe)
    ================================================== */
 
 @media print {
@@ -9,30 +9,25 @@
     margin: 10mm;
   }
 
-  /* Reset all potential mobile & app wrapper clipping constraints */
-  html,
-  body,
-  #root,
-  main,
-  .app-container,
-  div {
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
-    min-height: 0 !important;
-    position: static !important;
-    float: none !important;
-  }
-
+  /* Reset body and html layout */
   html,
   body {
     width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     color: #000000 !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  /* Hide main React App root on print when standalone print container exists */
+  #root {
+    display: none !important;
   }
 
   /* Automatically hide non-printable UI elements */
@@ -57,40 +52,42 @@
     display: block !important;
   }
 
-  /* Global Mobile-Safe Visibility Switch */
-  body * {
-    visibility: hidden;
-  }
-
-  .sagara-print-wrapper,
-  .sagara-print-wrapper *,
-  .sagara-print-content,
-  .sagara-print-content *,
-  #print-area,
-  #print-area *,
-  .print-page,
-  .print-page * {
-    visibility: visible !important;
-  }
-
-  /* Ensure print content container expands properly on mobile print engines */
-  .sagara-print-wrapper,
-  .sagara-print-content,
-  #print-area,
-  .print-page {
+  /* Direct Body Child Printable Container (Guarantees Mobile Print Engine Compatibility) */
+  #sagara-standalone-print-container,
+  body > #sagara-standalone-print-container,
+  body > .sagara-print-wrapper,
+  body > #print-area {
+    display: block !important;
     position: static !important;
     left: auto !important;
     top: auto !important;
     width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #000000 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    overflow: visible !important;
+    float: none !important;
+    box-sizing: border-box !important;
+  }
+
+  #sagara-standalone-print-container *,
+  body > #sagara-standalone-print-container * {
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  /* Print Page Layout & Breaking */
+  .print-page {
+    width: 100% !important;
+    min-height: 277mm;
     margin: 0 !important;
     padding: 0 !important;
     background: white !important;
     box-sizing: border-box !important;
-    display: block !important;
-  }
-
-  .print-page {
-    min-height: 277mm;
   }
 
   table {
@@ -138,7 +135,7 @@
   }
 
   .print-landscape {
-    width: 100%;
+    width: 100% !important;
     min-height: 190mm;
   }
 }
@@ -147,6 +144,10 @@
 @media screen {
   .sagara-print-wrapper {
     width: 100%;
+  }
+
+  #sagara-standalone-print-container {
+    display: none !important;
   }
 
   .sagara-print-toolbar {

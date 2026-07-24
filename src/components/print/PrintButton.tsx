@@ -29,7 +29,31 @@ export const PrintButton: React.FC<PrintButtonProps> = ({
     if (onClick) {
       onClick();
     } else {
+      const printTarget = document.getElementById('print-area') || document.querySelector('.sagara-print-content');
+      if (printTarget) {
+        let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+        if (!standaloneContainer) {
+          standaloneContainer = document.createElement('div');
+          standaloneContainer.id = 'sagara-standalone-print-container';
+          document.body.appendChild(standaloneContainer);
+        }
+        standaloneContainer.innerHTML = '';
+        const clonedContent = printTarget.cloneNode(true) as HTMLElement;
+        clonedContent.id = 'sagara-cloned-print-content';
+        clonedContent.className = 'sagara-print-content print-page print-portrait';
+        standaloneContainer.appendChild(clonedContent);
+      }
       window.print();
+
+      const cleanup = () => {
+        const containerToRemove = document.getElementById('sagara-standalone-print-container');
+        if (containerToRemove) {
+          containerToRemove.innerHTML = '';
+        }
+        window.removeEventListener('afterprint', cleanup);
+      };
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(cleanup, 2500);
     }
   };
 

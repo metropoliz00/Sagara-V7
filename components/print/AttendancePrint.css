@@ -1,0 +1,153 @@
+.attendance-print-table-wrapper {
+  font-family: 'Inter', sans-serif;
+  color: #000;
+  width: 100%;
+}
+
+.attendance-print-table-wrapper .header-info {
+  margin-bottom: 20px;
+}
+
+.attendance-print-table-wrapper .header-info h2 {
+  text-align: center;
+  font-size: 16pt;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-decoration: underline;
+}
+
+.attendance-print-table-wrapper .header-info table {
+  width: auto;
+  border: none;
+  font-size: 11pt;
+}
+
+.attendance-print-table-wrapper .header-info table td {
+  padding: 2px 8px 2px 0;
+  border: none;
+  text-align: left;
+}
+
+.attendance-print-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+  table-layout: fixed;
+}
+
+.attendance-print-table th,
+.attendance-print-table td {
+  border: 1px solid #333;
+  text-align: center;
+  padding: 4px 2px;
+  vertical-align: middle;
+  word-wrap: break-word;
+}
+
+.attendance-print-table thead {
+  display: table-header-group;
+}
+
+.attendance-print-table thead th {
+  background-color: #f1f5f9; /* soft professional color */
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.attendance-print-table .col-no {
+  width: 25px;
+}
+
+.attendance-print-table .col-name {
+  width: 180px;
+  text-align: left;
+  padding-left: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attendance-print-table .col-date {
+  width: 20px;
+}
+
+.attendance-print-table .col-rekap {
+  width: 25px;
+  font-weight: bold;
+}
+
+.attendance-print-table .bg-sunday {
+  background-color: #fee2e2; /* soft red for holiday/sunday */
+}
+
+/* Status colors */
+.attendance-print-table .status-h {
+  background-color: #dcfce7; /* soft green */
+  color: #166534;
+}
+.attendance-print-table .status-s {
+  background-color: #ffedd5; /* soft orange */
+  color: #9a3412;
+}
+.attendance-print-table .status-i {
+  background-color: #dbeafe; /* soft blue */
+  color: #1e40af;
+}
+.attendance-print-table .status-a {
+  background-color: #fce7f3; /* soft pink */
+  color: #9d174d;
+}
+
+.attendance-print-summary {
+  margin-top: 20px;
+  font-size: 10pt;
+  width: 40%;
+}
+
+.attendance-print-summary h3 {
+  font-size: 11pt;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.attendance-print-summary table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.attendance-print-summary table td {
+  border: 1px solid #333;
+  padding: 4px 8px;
+}
+
+.attendance-print-summary table .summary-label {
+  width: 60%;
+  background-color: #f1f5f9;
+}
+
+.attendance-print-signatures {
+  margin-top: 40px;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11pt;
+}
+
+.attendance-print-signatures .sig-box {
+  width: 40%;
+  text-align: center;
+}
+
+.attendance-print-signatures .sig-box .date-line {
+  margin-bottom: 20px;
+}
+
+.attendance-print-signatures .sig-box .name-line {
+  margin-top: 60px;
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.attendance-print-signatures .sig-box .nip-line {
+  margin-top: 4px;
+}

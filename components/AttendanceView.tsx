@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
+import { AttendancePrint } from './print/AttendancePrint';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -1224,7 +1225,16 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                 </button>
                             </>
                         )}
-                        <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF]"><Printer size={16} /> <span>Cetak</span></button>
+                        <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF]"><Printer size={16} /> <span>Cetak (PDF)</span></button>
+                        <AttendancePrint 
+                          students={students} 
+                          allStudents={allStudents} 
+                          allAttendanceRecords={allAttendanceRecords} 
+                          holidays={holidays} 
+                          schoolProfile={schoolProfile} 
+                          teacherProfile={teacherProfile} 
+                          currentClassId={classId} 
+                        />
                      </div>
                  </div>
              </div>
@@ -1526,7 +1536,16 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                              <Download size={16} />
                              <span>Export Excel</span>
                          </button>
-                         <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF] font-semibold"><Printer size={16} /> <span>Cetak</span></button>
+                         <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF] font-semibold"><Printer size={16} /> <span>Cetak (PDF)</span></button>
+                         <AttendancePrint 
+                          students={students} 
+                          allStudents={allStudents} 
+                          allAttendanceRecords={allAttendanceRecords} 
+                          holidays={holidays} 
+                          schoolProfile={schoolProfile} 
+                          teacherProfile={teacherProfile} 
+                          currentClassId={classId} 
+                         />
                       </div>
                   </div>
               </div>

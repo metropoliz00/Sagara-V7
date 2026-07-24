@@ -4,6 +4,7 @@ import { PrintOrientation } from '../types/print';
 interface UsePrintOptions {
   title?: string;
   orientation?: PrintOrientation;
+  targetId?: string;
 }
 
 /**
@@ -12,9 +13,10 @@ interface UsePrintOptions {
  */
 export const usePrint = (options?: UsePrintOptions) => {
   const print = useCallback(
-    (customTitle?: string, customOrientation?: PrintOrientation) => {
+    (customTitle?: string, customOrientation?: PrintOrientation, customTargetId?: string) => {
       const activeTitle = customTitle || options?.title;
       const activeOrientation = customOrientation || options?.orientation || 'portrait';
+      const activeTargetId = customTargetId || options?.targetId || 'print-area';
 
       const originalTitle = document.title;
       if (activeTitle) {
@@ -38,8 +40,8 @@ export const usePrint = (options?: UsePrintOptions) => {
 
       styleTag.innerHTML = `@media print { @page { size: A4 ${activeOrientation}; margin: 10mm; } }`;
 
-      // Mobile-Safe Print Engine Isolation: clone #print-area directly to document.body
-      const printTarget = document.getElementById('print-area') || document.querySelector('.sagara-print-content');
+      // Mobile-Safe Print Engine Isolation: clone target directly to document.body
+      const printTarget = document.getElementById(activeTargetId) || document.querySelector('.sagara-print-content');
       if (printTarget) {
         let standaloneContainer = document.getElementById('sagara-standalone-print-container');
         if (!standaloneContainer) {

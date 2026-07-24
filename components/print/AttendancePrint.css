@@ -32,7 +32,6 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 6.5pt;
-  table-layout: fixed;
 }
 
 .attendance-print-table th,

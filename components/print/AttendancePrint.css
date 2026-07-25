@@ -6,6 +6,10 @@
 
 .attendance-print-table-wrapper .header-info {
   margin-bottom: 12px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+  page-break-after: avoid;
+  break-after: avoid;
 }
 
 .attendance-print-table-wrapper .header-info h2 {
@@ -32,6 +36,8 @@
   width: 100%;
   border-collapse: collapse;
   font-size: 6.5pt;
+  page-break-inside: auto;
+  break-inside: auto;
 }
 
 .attendance-print-table th,
@@ -44,13 +50,31 @@
 }
 
 .attendance-print-table thead {
-  display: table-header-group;
+  display: table-header-group !important;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.attendance-print-table thead tr {
+  page-break-inside: avoid;
+  break-inside: avoid;
+  page-break-after: avoid;
+  break-after: avoid;
 }
 
 .attendance-print-table thead th {
   background-color: #f1f5f9; /* soft professional color */
   font-weight: 600;
   color: #1e293b;
+}
+
+.attendance-print-table tbody {
+  display: table-row-group;
+}
+
+.attendance-print-table tbody tr {
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
 }
 
 .attendance-print-table .col-no {
@@ -101,8 +125,8 @@
   justify-content: space-between;
   align-items: flex-start;
   width: 100%;
-  page-break-inside: avoid;
-  break-inside: avoid;
+  page-break-inside: avoid !important;
+  break-inside: avoid !important;
 }
 
 .attendance-print-summary {
@@ -170,3 +194,42 @@
 .attendance-print-signatures .sig-box .nip-line {
   margin-top: 4px;
 }
+
+@media print {
+  .attendance-print-table-wrapper .header-info {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .attendance-print-table {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .attendance-print-table thead {
+    display: table-header-group !important;
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .attendance-print-table thead tr,
+  .attendance-print-table thead th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .attendance-print-table tbody tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .attendance-print-footer {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+

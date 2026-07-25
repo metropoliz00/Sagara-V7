@@ -147,7 +147,7 @@
 .attendance-print-signatures {
   margin-top: 0;
   display: flex;
-  gap: 32px;
+  gap: 140px;
   justify-content: flex-end;
   font-size: 10pt;
 }

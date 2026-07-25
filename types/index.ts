@@ -6,6 +6,7 @@ export interface User {
   role: 'admin' | 'guru' | 'siswa' | 'supervisor';
   fullName: string;
   nip?: string;
+  statusPegawai?: string;
   nuptk?: string;
   birthPlace?: string;
   birthDate?: string;

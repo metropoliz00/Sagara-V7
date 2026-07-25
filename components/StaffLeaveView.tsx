@@ -33,12 +33,53 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
   const [schoolProfile, setSchoolProfile] = useState<any>(null);
   const [headmasterUser, setHeadmasterUser] = useState<User | null>(null);
+  const [gtkRecords, setGtkRecords] = useState<any[]>([]);
   const [printRequestedLeave, setPrintRequestedLeave] = useState<StaffLeaveRequest | null>(null);
-  const [letterType, setLetterType] = useState('Permohonan');
+  const [letterType, setLetterType] = useState('Surat Dispensasi');
   const [isLetterNumberModalOpen, setIsLetterNumberModalOpen] = useState(false);
   const [manualLetterNumber, setManualLetterNumber] = useState("");
   const [rejectModalData, setRejectModalData] = useState<{ isOpen: boolean; request: StaffLeaveRequest | null }>({ isOpen: false, request: null });
   const [rejectionReason, setRejectionReason] = useState("");
+
+  const getNipLabel = (statusPegawai?: string, userNip?: string, userId?: string, userName?: string) => {
+    if (statusPegawai) {
+      const s = statusPegawai.toUpperCase();
+      if (s.includes('PPPK')) return 'NIPPPK';
+      if (s.includes('PNS')) return 'NIP';
+    }
+    if (gtkRecords && gtkRecords.length > 0) {
+      const match = gtkRecords.find(g => 
+        (userId && g.userId === userId) ||
+        (userNip && g.nip && g.nip.trim() === userNip.trim()) ||
+        (userName && g.nama && g.nama.trim().toLowerCase() === userName.trim().toLowerCase())
+      );
+      if (match && match.statusPegawai) {
+        const s = match.statusPegawai.toUpperCase();
+        if (s.includes('PPPK')) return 'NIPPPK';
+        if (s.includes('PNS')) return 'NIP';
+      }
+    }
+    if (currentUser && (currentUser.id === userId || currentUser.nip === userNip)) {
+      if (currentUser.statusPegawai) {
+        const s = currentUser.statusPegawai.toUpperCase();
+        if (s.includes('PPPK')) return 'NIPPPK';
+        if (s.includes('PNS')) return 'NIP';
+      }
+    }
+    return 'NIP';
+  };
+
+  const handleOpenPrintModal = (req: StaffLeaveRequest) => {
+    setPrintRequestedLeave(req);
+    const cat = req.kategoriIjin.toLowerCase();
+    if (cat.includes('cuti')) {
+      setLetterType('Permohonan Cuti');
+    } else if (cat.includes('dispensasi')) {
+      setLetterType('Surat Dispensasi');
+    } else {
+      setLetterType('Surat Izin');
+    }
+  };
 
   const renderHeader = () => (
     <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
@@ -86,16 +127,18 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const [data, profiles, users] = await Promise.all([
+      const [data, profiles, users, gtkData] = await Promise.all([
         apiService.getStaffLeaveRequests(),
         apiService.getProfiles(),
-        currentUser ? apiService.getUsers(currentUser) : Promise.resolve([])
+        currentUser ? apiService.getUsers(currentUser) : Promise.resolve([]),
+        apiService.getGtkRecords()
       ]);
       setRequests(data);
+      if (gtkData) setGtkRecords(gtkData);
       if (profiles && profiles.school) setSchoolProfile(profiles.school);
       
       if (users && users.length > 0) {
-        const principal = users.find(u => u.role === 'Kepala Sekolah' || u.position?.toLowerCase().includes('kepala sekolah'));
+        const principal = users.find((u: User) => u.role === 'Kepala Sekolah' || u.position?.toLowerCase().includes('kepala sekolah'));
         if (principal) {
           setHeadmasterUser(principal);
         }
@@ -159,11 +202,15 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         finalKategori = `Cuti - ${detail}`;
     }
 
+    const userGtk = gtkRecords.find(g => g.userId === currentUser.id || (g.nip && currentUser.nip && g.nip.trim() === currentUser.nip.trim()));
+    const userStatusPegawai = (currentUser as any)?.statusPegawai || userGtk?.statusPegawai || 'PNS';
+
     const newRequest: StaffLeaveRequest = {
       id: `leave-${Date.now()}`,
       userId: currentUser.id,
       userName: currentUser.fullName,
       nip: currentUser.nip || '-', // Assuming user has nip
+      statusPegawai: userStatusPegawai,
       jabatan: currentUser.position || (currentUser.role === 'guru' ? 'Guru' : 'Staff'),
       pangkat: currentUser.rank || '-',
       kategoriIjin: finalKategori,
@@ -349,9 +396,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       <div className="flex items-center gap-2">
                         {req.status === 'Disetujui' && (
                           <>
-                             <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Cetak PDF"><FileText size={16}/></button>
+                             <button onClick={() => handleOpenPrintModal(req)} className="text-blue-600 hover:text-blue-800 p-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors" title="Cetak Surat"><Printer size={16}/></button>
                              {req.kategoriIjin.startsWith('Cuti') && (
-                               <a href="https://drive.google.com/drive/folders/1DDrblEQh1TWraiKi1tkNgCOmlyOxGWVS?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors" title="Download Format"><Download size={16}/></a>
+                               <a href="https://drive.google.com/drive/folders/1DDrblEQh1TWraiKi1tkNgCOmlyOxGWVS?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-600 hover:text-indigo-800 p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors" title="Format Cuti"><FileText size={16}/></a>
                              )}
                           </>
                         )}
@@ -511,9 +558,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       )}
                       {req.status === 'Disetujui' && (
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setPrintRequestedLeave(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak PDF"><FileText size={16}/></button>
+                          <button onClick={() => handleOpenPrintModal(req)} className="text-blue-500 hover:text-blue-700 p-1 bg-blue-50 rounded" title="Cetak Surat"><Printer size={16}/></button>
                           {req.kategoriIjin.startsWith('Cuti') && (
-                            <a href="https://drive.google.com/drive/folders/1DDrblEQh1TWraiKi1tkNgCOmlyOxGWVS?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Download Format"><Download size={16}/></a>
+                            <a href="https://drive.google.com/drive/folders/1DDrblEQh1TWraiKi1tkNgCOmlyOxGWVS?usp=sharing" target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700 p-1 bg-indigo-50 rounded" title="Format Cuti"><FileText size={16}/></a>
                           )}
                         </div>
                       )}
@@ -545,7 +592,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                 <div className="font-bold text-gray-800">{currentUser?.fullName}</div>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">NIP</label>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">
+                  {getNipLabel(currentUser?.statusPegawai, currentUser?.nip, currentUser?.id, currentUser?.fullName)}
+                </label>
                 <div className="font-medium text-gray-700">{currentUser?.nip || '-'}</div>
               </div>
               <div>
@@ -702,9 +751,9 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:overflow-visible relative">
             
             {/* Modal Actions (Hidden in print) */}
-            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 z-10 rounded-t-xl">
+            <div className="sticky top-0 bg-white border-b border-gray-100 p-4 z-10 rounded-t-xl print:hidden">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-gray-800">Pratinjau & Download</h3>
+                <h3 className="font-bold text-gray-800">Pratinjau & Cetak Surat</h3>
                 <button
                   onClick={() => setPrintRequestedLeave(null)}
                   className="px-4 py-2 bg-white border border-gray-200 text-gray-600 rounded-lg text-sm font-bold hover:bg-gray-50"
@@ -713,39 +762,259 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                 </button>
               </div>
               
-              <div className="flex gap-2 mb-4">
-                {['Pengantar', 'Permohonan', 'Izin Cuti'].map(type => (
-                  <button
-                    key={type}
-                    onClick={() => {
-                        setLetterType(type);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-bold ${letterType === type ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
+              {(() => {
+                const isCuti = printRequestedLeave.kategoriIjin.toLowerCase().includes('cuti');
+                const isDispensasi = printRequestedLeave.kategoriIjin.toLowerCase().includes('dispensasi');
+                const availableLetterTypes = isDispensasi
+                  ? ['Surat Dispensasi']
+                  : isCuti
+                  ? ['Permohonan Cuti', 'Izin Cuti', 'Pengantar']
+                  : ['Surat Izin', 'Permohonan Izin', 'Pengantar'];
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsLetterNumberModalOpen(true)}
-                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200"
-                >
-                  <Download size={16} className="mr-2" /> Download {letterType}
-                </button>
-              </div>
+                const activeType = isDispensasi ? 'Surat Dispensasi' : letterType;
+
+                return (
+                  <>
+                    {!isDispensasi && (
+                      <div className="flex gap-2 mb-4 overflow-x-auto">
+                        {availableLetterTypes.map(type => (
+                          <button
+                            key={type}
+                            onClick={() => setLetterType(type)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap ${activeType === type ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mb-2">
+                      <button
+                        onClick={() => setIsLetterNumberModalOpen(true)}
+                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+                      >
+                        <Printer size={16} className="mr-2" /> Cetak {activeType}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Printable Content */}
             {(() => {
-              const cleanCat = printRequestedLeave.kategoriIjin.replace(/cuti\s*-\s*/gi, '');
+              const nipLabel = getNipLabel(printRequestedLeave.statusPegawai, printRequestedLeave.nip, printRequestedLeave.userId, printRequestedLeave.userName);
+              const cleanCat = printRequestedLeave.kategoriIjin
+                .replace(/cuti\s*-\s*/gi, '')
+                .replace(/dispensasi\s*-\s*/gi, '')
+                .replace(/ijin\s*-\s*/gi, '')
+                .replace(/izin\s*-\s*/gi, '');
+
+              const isCuti = printRequestedLeave.kategoriIjin.toLowerCase().includes('cuti');
+              const isDispensasi = printRequestedLeave.kategoriIjin.toLowerCase().includes('dispensasi');
+              const currentLetterType = isDispensasi ? 'Surat Dispensasi' : letterType;
+
+              const getJamAwal = (dateStr: string) => {
+                if (!dateStr) return '07.00';
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return '07.00';
+                const h = d.getHours();
+                const m = d.getMinutes();
+                if (h === 0 && m === 0) return '07.00';
+                return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}`;
+              };
+
+              const getJamAkhir = (dateStr: string) => {
+                if (!dateStr) return 'Selesai';
+                const d = new Date(dateStr);
+                if (isNaN(d.getTime())) return 'Selesai';
+                const h = d.getHours();
+                const m = d.getMinutes();
+                if (h === 0 && m === 0) return 'Selesai';
+                return `${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}`;
+              };
+
+              const startD = new Date(printRequestedLeave.tanggalMulai);
+              const endD = new Date(printRequestedLeave.tanggalSelesai);
+              const isSameDay = !isNaN(startD.getTime()) && !isNaN(endD.getTime()) && startD.toDateString() === endD.toDateString();
+
+              const tglDisplay = isSameDay
+                ? startD.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})
+                : `${startD.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} s/d ${endD.toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}`;
+
+              const jamAwal = getJamAwal(printRequestedLeave.tanggalMulai);
+              const jamAkhir = getJamAkhir(printRequestedLeave.tanggalSelesai);
+
               return (
                 <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
-                  {letterType === 'Permohonan' && (
+                  {/* SURAT DISPENSASI */}
+                  {currentLetterType === 'Surat Dispensasi' && (
+                    <div className="text-sm font-sans">
+                      <div className="text-center mb-8">
+                        <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">PERSETUJUAN PEMBERIAN</h2>
+                        <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">{printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
+                      </div>
+
+                      <div className="space-y-4 leading-relaxed">
+                        <p>Yang bertanda tangan dibawah ini:</p>
+                        
+                        <table className="w-full ml-2 my-2 border-collapse">
+                          <tbody>
+                            <tr>
+                              <td className="w-44 py-1 align-top">Nama</td>
+                              <td className="w-4 py-1 align-top">:</td>
+                              <td className="py-1 font-semibold">{schoolProfile?.headmaster || '.....................'}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">NIP</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">{schoolProfile?.headmasterNip || '.....................'}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">{schoolProfile?.headmasterRank || headmasterUser?.rank || '-'}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">Jabatan</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">Kepala {schoolProfile?.name || 'Sekolah'}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <p className="mt-4">Dengan ini memberikan <strong>{printRequestedLeave.kategoriIjin}</strong> kepada :</p>
+                        
+                        <table className="w-full ml-2 my-2 border-collapse">
+                          <tbody>
+                            <tr>
+                              <td className="w-44 py-1 align-top">Nama</td>
+                              <td className="w-4 py-1 align-top">:</td>
+                              <td className="py-1 font-semibold">{printRequestedLeave.userName}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">{nipLabel}</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">{printRequestedLeave.nip}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">Pangkat/Gol.Ruang</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">{printRequestedLeave.pangkat}</td>
+                            </tr>
+                            <tr>
+                              <td className="py-1 align-top">Jabatan</td>
+                              <td className="py-1 align-top">:</td>
+                              <td className="py-1">{printRequestedLeave.jabatan}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+
+                        <div className="mt-6 space-y-2">
+                          <p>
+                            Pada tanggal : {tglDisplay}, jam {jamAwal} s/d {jamAkhir} WIB, karena :
+                          </p>
+
+                          <div className="flex items-start gap-2 mt-3 ml-2">
+                            <span className="text-base leading-none">☑</span>
+                            <span className="font-medium">{printRequestedLeave.alasan}</span>
+                          </div>
+                        </div>
+
+                        <p className="mt-6">Demikian persetujuan ini dibuat dengan sebenarnya, untuk dipergunakan sebagaimana mestinya.</p>
+                      </div>
+
+                      <div className="flex justify-end mt-12">
+                        <div className="text-center w-64">
+                          <p>{schoolProfile?.desa || schoolProfile?.kabupaten || 'Tuban'}, {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                          <p className="font-medium mb-2">Atasan Langsung</p>
+                          <div className="h-24 relative flex items-center justify-center my-2">
+                            {schoolProfile?.headmasterSignature && (
+                              <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                            )}
+                          </div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PERMOHONAN DISPENSASI / PERMOHONAN IZIN */}
+                  {(currentLetterType === 'Permohonan Dispensasi' || currentLetterType === 'Permohonan Izin') && (
                     <>
                       <div className="text-right mb-4">
-                        <p>{schoolProfile?.desa || 'Jenu'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                        <p>{schoolProfile?.desa || 'Tuban'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                      </div>
+                      
+                      <div className="mb-6">
+                        <p>Perihal : PERMOHONAN {letterType.toUpperCase()} ({cleanCat.toUpperCase()})</p>
+                        <p>Yth. KEPALA DINAS PENDIDIKAN KABUPATEN TUBAN</p>
+                        <p>di -</p>
+                        <p className="ml-4">Tuban</p>
+                      </div>
+
+                      <div className="text-sm space-y-4 leading-relaxed">
+                        <p>Yang bertanda tangan di bawah ini :</p>
+                        <table className="w-full ml-4">
+                          <tbody>
+                            <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                            <tr><td className="py-1">{nipLabel}</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                            <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                            <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '.....................'}</td></tr>
+                          </tbody>
+                        </table>
+
+                        <div className="space-y-3">
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">1.</span>
+                            <span className="flex-1">Dengan ini mengajukan permohonan {isDispensasi ? 'dispensasi' : 'izin'} ({cleanCat}), terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} dikarenakan: {printRequestedLeave.alasan}.</span>
+                          </div>
+                          
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">2.</span>
+                            <span className="flex-1">Selama melaksanakan {isDispensasi ? 'dispensasi' : 'izin'}, tugas dan tanggung jawab pekerjaan telah saya koordinasikan dengan atasan langsung / guru piket / rekan sejawat.</span>
+                          </div>
+
+                          <div className="flex gap-2 items-start">
+                            <span className="w-5 shrink-0">3.</span>
+                            <span className="flex-1">Setelah selesai, saya wajib melaporkan diri kepada atasan langsung dan bekerja kembali sebagaimana biasa.</span>
+                          </div>
+                        </div>
+
+                        <p className="mt-4">Demikian surat permohonan ini saya buat untuk dapat dipergunakan dan diproses sebagaimana mestinya.</p>
+                      </div>
+                      
+                      <div className="flex justify-between mt-12">
+                        <div className="text-center w-1/2">
+                          <p>Mengetahui,</p>
+                          <p>Kepala {schoolProfile?.name || '...'}</p>
+                          <div className="h-24 relative flex items-center justify-center">
+                             {schoolProfile?.headmasterSignature && (
+                                <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                             )}
+                          </div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
+                        </div>
+                        <div className="text-center w-1/2 flex flex-col items-center">
+                          <p className="invisible">Mengetahui,</p>
+                          <p>Hormat saya,</p>
+                          <div className="h-24"></div>
+                          <p className="font-bold underline">{printRequestedLeave.userName}</p>
+                          <p>{nipLabel}. {printRequestedLeave.nip}</p>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* PERMOHONAN CUTI / PERMOHONAN */}
+                  {(letterType === 'Permohonan Cuti' || letterType === 'Permohonan') && (
+                    <>
+                      <div className="text-right mb-4">
+                        <p>{schoolProfile?.desa || 'Tuban'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                       </div>
                       
                       <div className="mb-6">
@@ -760,10 +1029,10 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <table className="w-full ml-4">
                           <tbody>
                             <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
-                            <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                            <tr><td className="py-1">{nipLabel}</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
                             <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
                             <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
-                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
+                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '.....................'}</td></tr>
                           </tbody>
                         </table>
 
@@ -775,12 +1044,12 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           
                           <div className="flex gap-2 items-start">
                             <span className="w-5 shrink-0">2.</span>
-                            <span className="flex-1">Sebelum melaksanakan {cleanCat.toLowerCase()} saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</span>
+                            <span className="flex-1">Sebelum melaksanakan cuti saya telah menyerahkan pekerjaan kepada atasan langsung atau pejabat yang ditunjuk.</span>
                           </div>
 
                           <div className="flex gap-2 items-start">
                             <span className="w-5 shrink-0">3.</span>
-                            <span className="flex-1">Setelah menjalankan {cleanCat.toLowerCase()} wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</span>
+                            <span className="flex-1">Setelah menjalankan cuti wajib melapor kepada atasan langsung dan bekerja kembali seperti biasa.</span>
                           </div>
                         </div>
 
@@ -796,25 +1065,122 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                                 <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
                              )}
                           </div>
-                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
                         </div>
                         <div className="text-center w-1/2 flex flex-col items-center">
                           <p className="invisible">Mengetahui,</p>
                           <p>Hormat saya,</p>
                           <div className="h-24"></div>
                           <p className="font-bold underline">{printRequestedLeave.userName}</p>
-                          <p>NIP. {printRequestedLeave.nip}</p>
+                          <p>{nipLabel}. {printRequestedLeave.nip}</p>
                         </div>
                       </div>
                     </>
                   )}
+
+                  {/* SURAT IZIN */}
+                  {letterType === 'Surat Izin' && (
+                    <div className="text-sm">
+                      {renderHeader()}
+                      <div className="text-center mb-6">
+                        <h2 className="font-bold text-lg underline">SURAT IZIN</h2>
+                        <p>NOMOR : {manualLetterNumber || '.....................'}</p>
+                      </div>
+                      <div className="space-y-4 leading-relaxed">
+                        <p>Yang bertanda tangan di bawah ini, Kepala {schoolProfile?.name || 'Sekolah'}, memberikan izin kepada :</p>
+                        <table className="w-full ml-4">
+                          <tbody>
+                            <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                            <tr><td className="py-1">{nipLabel}</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                            <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                            <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                            <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '.....................'}</td></tr>
+                          </tbody>
+                        </table>
+
+                        <div className="space-y-2 mt-4">
+                          <p>Untuk : <strong>{cleanCat}</strong> ({printRequestedLeave.alasan})</p>
+                          <p>Terhitung mulai tanggal <strong>{new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</strong> sampai dengan tanggal <strong>{new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</strong>.</p>
+                        </div>
+
+                        <p className="mt-4">Demikian Surat Izin ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+                      </div>
+
+                      <div className="text-center w-1/2 ml-auto mt-12">
+                        <p>{schoolProfile?.desa || 'Tuban'}, {new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                        <p>Kepala {schoolProfile?.name || '...'}</p>
+                        <div className="h-24 relative flex items-center justify-center">
+                          {schoolProfile?.headmasterSignature && (
+                            <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                          )}
+                        </div>
+                        <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                        <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* IZIN CUTI */}
+                  {letterType === 'Izin Cuti' && (
+                    <div className="text-sm">
+                      {renderHeader()}
+                      <div className="text-center mb-6">
+                        <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
+                        <p>NOMOR : {manualLetterNumber || '.....................'}</p>
+                      </div>
+                      <div className="flex gap-2 items-start">
+                        <span className="w-5 shrink-0">1.</span>
+                        <div className="flex-1 space-y-3">
+                          <p>Diberikan izin sementara untuk melaksanakan {cleanCat}, kepada Pegawai di bawah ini :</p>
+                          <table className="w-full">
+                            <tbody>
+                              <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
+                              <tr><td className="py-1">{nipLabel}</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
+                              <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
+                              <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
+                              <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '.....................'}</td></tr>
+                            </tbody>
+                          </table>
+                          <p>Selama {Math.max(1, Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24)))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
+                          <div className="space-y-1">
+                            <div className="flex gap-2 items-start">
+                              <span className="w-5 shrink-0">a.</span>
+                              <span className="flex-1">Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</span>
+                            </div>
+                            <div className="flex gap-2 items-start">
+                              <span className="w-5 shrink-0">b.</span>
+                              <span className="flex-1">Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 items-start mt-4">
+                        <span className="w-5 shrink-0">2.</span>
+                        <span className="flex-1">Demikian izin sementara melaksanakan {cleanCat} ini dibuat untuk dapat digunakan seperlunya.</span>
+                      </div>
+                      
+                      <div className="text-center w-1/2 ml-auto mt-12">
+                        <p>Kepala {schoolProfile?.name || '...'}</p>
+                        <div className="h-24 relative flex items-center justify-center">
+                          {schoolProfile?.headmasterSignature && (
+                            <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                          )}
+                        </div>
+                        <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                        <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* PENGANTAR */}
                   {letterType === 'Pengantar' && (
                     <div className="text-sm">
                       {renderHeader()}
                       <div className="text-center mb-6">
                         <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
-                        <p>Nomor : {manualLetterNumber}</p>
+                        <p>Nomor : {manualLetterNumber || '.....................'}</p>
                       </div>
                       <table className="w-full border-collapse border border-black mb-8">
                         <thead>
@@ -824,11 +1190,11 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           <tr>
                             <td className="border border-black p-2 text-center">1</td>
                             <td className="border border-black p-2">
-                              Pengajuan {cleanCat} atas :<br/>
+                              Pengajuan {isCuti ? 'Cuti' : isDispensasi ? 'Dispensasi' : 'Izin'} ({cleanCat}) atas :<br/>
                               Nama : {printRequestedLeave.userName}<br/>
-                              NIPPPK : {printRequestedLeave.nip}<br/>
+                              {nipLabel} : {printRequestedLeave.nip}<br/>
                               Jabatan : {printRequestedLeave.jabatan}<br/>
-                              Unit Kerja : {schoolProfile?.name || '_____________________'}
+                              Unit Kerja : {schoolProfile?.name || '.....................'}
                             </td>
                             <td className="border border-black p-2 text-center">1 bendel</td>
                             <td className="border border-black p-2">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>
@@ -836,64 +1202,21 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         </tbody>
                       </table>
                       <div className="flex justify-between mt-12">
-                         <div className="w-1/2">
-                            <p>Diterima pada tgl : ....................</p>
-                         </div>
-                         <div className="text-center w-1/2 flex flex-col items-center">
+                        <div className="w-1/2">
+                          <p>Diterima pada tgl : ....................</p>
+                        </div>
+                        <div className="text-center w-1/2 flex flex-col items-center">
                           <p>Kepala {schoolProfile?.name || '...'}</p>
-                          <div className="h-24"></div>
-                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
+                          <div className="h-24 relative flex items-center justify-center">
+                            {schoolProfile?.headmasterSignature && (
+                              <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan" className="h-20 object-contain absolute" />
+                            )}
+                          </div>
+                          <p className="font-bold underline">{schoolProfile?.headmaster || '.....................'}</p>
+                          <p>NIP. {schoolProfile?.headmasterNip || '.....................'}</p>
                         </div>
                       </div>
                     </div>
-                  )}
-                  {letterType === 'Izin Cuti' && (
-                     <div className="text-sm">
-                        {renderHeader()}
-                        <div className="text-center mb-6">
-                            <h2 className="font-bold text-lg underline">IZIN SEMENTARA PELAKSANAAN CUTI</h2>
-                            <p>NOMOR : {manualLetterNumber}</p>
-                        </div>
-                        <div className="flex gap-2 items-start">
-                          <span className="w-5 shrink-0">1.</span>
-                          <div className="flex-1 space-y-3">
-                            <p>Diberikan izin sementara untuk melaksanakan {cleanCat}, kepada Pegawai Negeri Sipil, dibawah ini :</p>
-                            <table className="w-full">
-                              <tbody>
-                                <tr><td className="w-40 py-1">Nama</td><td className="w-4">:</td><td className="font-bold">{printRequestedLeave.userName}</td></tr>
-                                <tr><td className="py-1">NIPPPK</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.nip}</td></tr>
-                                <tr><td className="py-1">Pangkat / Gol. Ruang</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.pangkat}</td></tr>
-                                <tr><td className="py-1">Jabatan</td><td className="py-1">:</td><td className="py-1">{printRequestedLeave.jabatan}</td></tr>
-                                <tr><td className="py-1">Unit Kerja</td><td className="py-1">:</td><td className="py-1">{schoolProfile?.name || '_____________________'}</td></tr>
-                              </tbody>
-                            </table>
-                            <p>Selama {Math.ceil((new Date(printRequestedLeave.tanggalSelesai).getTime() - new Date(printRequestedLeave.tanggalMulai).getTime()) / (1000 * 60 * 60 * 24))} hari, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}, dengan ketentuan sebagai berikut :</p>
-                            <div className="space-y-1">
-                              <div className="flex gap-2 items-start">
-                                <span className="w-5 shrink-0">a.</span>
-                                <span className="flex-1">Sebelum melaksanakan Cuti, wajib menyerahkan pekerjaan kepada atasan langsungnya atau pejabat lain yang ditunjuk.</span>
-                              </div>
-                              <div className="flex gap-2 items-start">
-                                <span className="w-5 shrink-0">b.</span>
-                                <span className="flex-1">Setelah selesai menjalankan Cuti, wajib melaporkan diri kepada atasan langsungnya dan bekerja kembali sebagaimana biasa.</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 items-start mt-4">
-                          <span className="w-5 shrink-0">2.</span>
-                          <span className="flex-1">Demikian izin sementara melaksanakan {cleanCat} ini dibuat untuk dapat digunakan seperlunya.</span>
-                        </div>
-                        
-                        <div className="text-center w-1/2 ml-auto mt-12">
-                          <p>Kepala {schoolProfile?.name || '...'}</p>
-                          <div className="h-24"></div>
-                          <p className="font-bold underline">{schoolProfile?.headmaster || '_____________________'}</p>
-                          <p>NIP. {schoolProfile?.headmasterNip || '_____________________'}</p>
-                        </div>
-                     </div>
                   )}
                 </div>
               );
@@ -901,36 +1224,29 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             
             {/* Letter Number Modal */}
             {isLetterNumberModalOpen && (
-              <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4">
-                <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-                  <h3 className="font-bold text-gray-800 mb-4">Input Nomor Surat</h3>
+              <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 p-4 print:hidden">
+                <div className="bg-white rounded-xl p-6 w-full max-w-sm shadow-xl border border-gray-100">
+                  <h3 className="font-bold text-gray-800 mb-2">Input Nomor Surat</h3>
+                  <p className="text-xs text-gray-500 mb-4">Nomor surat akan dicetak pada dokumen. Kosongkan jika belum ada nomor.</p>
                   <input
                     type="text"
                     value={manualLetterNumber}
                     onChange={(e) => setManualLetterNumber(e.target.value)}
                     placeholder="800.1.11.2/043/414.101.319/2026"
-                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4"
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4 text-gray-800"
                   />
                   <div className="flex gap-2 justify-end">
-                    <button onClick={() => setIsLetterNumberModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold">Batal</button>
+                    <button onClick={() => setIsLetterNumberModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200">Batal</button>
                     <button
                       onClick={() => {
-                          setIsLetterNumberModalOpen(false);
-                          const element = document.getElementById('printable-area');
-                          if (element) {
-                            const opt = {
-                              margin: 15,
-                              filename: `${letterType}_${printRequestedLeave!.userName}.pdf`,
-                              image: { type: 'jpeg' as const, quality: 0.98 },
-                              html2canvas: { scale: 2 },
-                              jsPDF: { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
-                            };
-                            html2pdf().set(opt).from(element).save();
-                          }
+                        setIsLetterNumberModalOpen(false);
+                        setTimeout(() => {
+                          window.print();
+                        }, 150);
                       }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold"
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 flex items-center gap-2"
                     >
-                      Download
+                      <Printer size={16} /> Cetak
                     </button>
                   </div>
                 </div>

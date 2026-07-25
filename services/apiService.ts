@@ -3712,6 +3712,47 @@ export const apiService = {
       console.warn("deleteStaffLeaveRequest DB error:", err);
       return { status: 'error', message: err?.message };
     }
+  },
+
+  // --- GTK Data ---
+  getGtkRecords: async (): Promise<GtkRecord[]> => {
+    try {
+      const cached = cacheService.get<GtkRecord[]>('gtk_data');
+      if (!isApiConfigured()) {
+        return cached || [];
+      }
+      const { data, error } = await supabase.from('gtk_data').select('*');
+      if (error || !data) {
+        return cached || [];
+      }
+      const mapped: GtkRecord[] = data.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        nama: item.nama,
+        nip: item.nip,
+        nuptk: item.nuptk,
+        jenisKelamin: item.jenis_kelamin || item.jenisKelamin || '',
+        tempatLahir: item.tempat_lahir || item.tempatLahir || '',
+        tanggalLahir: item.tanggal_lahir || item.tanggalLahir || '',
+        ijazahTertinggi: item.ijazah_tertinggi || item.ijazahTertinggi || '',
+        jabatan: item.jabatan || '',
+        statusPegawai: item.status_pegawai || item.statusPegawai || '',
+        tmtPengangkatan: item.tmt_pengangkatan || item.tmtPengangkatan || '',
+        mulaiBekerjaDiSini: item.mulai_bekerja_di_sini || item.mulaiBekerjaDiSini || '',
+        pangkatGolongan: item.pangkat_golongan || item.pangkatGolongan || '',
+        masaKerjaTahun: item.masa_kerja_tahun || item.masaKerjaTahun || 0,
+        masaKerjaBulan: item.masa_kerja_bulan || item.masaKerjaBulan || 0,
+        skTerakhir: item.sk_terakhir || item.skTerakhir || '',
+        emailPribadi: item.email_pribadi || item.emailPribadi || '',
+        emailBelajar: item.email_belajar || item.emailBelajar || '',
+        foto: item.foto || ''
+      }));
+      cacheService.set('gtk_data', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getGtkRecords error, returning cached:", e);
+      return cacheService.get<GtkRecord[]>('gtk_data') || [];
+    }
   }
 };
 

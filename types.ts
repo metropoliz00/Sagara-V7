@@ -6,6 +6,7 @@ export interface User {
   role: 'admin' | 'guru' | 'siswa' | 'Kepala Sekolah' | 'superadmin';
   fullName: string;
   nip?: string;
+  statusPegawai?: string;
   nuptk?: string;
   birthPlace?: string;
   birthDate?: string;
@@ -746,6 +747,7 @@ export interface StaffLeaveRequest {
   userId: string;
   userName: string;
   nip: string;
+  statusPegawai?: string;
   jabatan: string;
   pangkat: string;
   kategoriIjin: string;

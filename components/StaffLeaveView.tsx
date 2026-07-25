@@ -805,11 +805,23 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
             {/* Printable Content */}
             {(() => {
               const nipLabel = getNipLabel(printRequestedLeave.statusPegawai, printRequestedLeave.nip, printRequestedLeave.userId, printRequestedLeave.userName);
-              const cleanCat = printRequestedLeave.kategoriIjin
-                .replace(/cuti\s*-\s*/gi, '')
-                .replace(/dispensasi\s*-\s*/gi, '')
-                .replace(/ijin\s*-\s*/gi, '')
-                .replace(/izin\s*-\s*/gi, '');
+              
+              const getCleanCategory = (rawCat: string) => {
+                if (!rawCat) return '';
+                let str = rawCat.trim();
+                const match = str.match(/\(([^)]+)\)/);
+                if (match) {
+                  str = match[1].trim();
+                }
+                str = str
+                  .replace(/^cuti\s*-\s*/i, '')
+                  .replace(/^dispensasi\s*-\s*/i, '')
+                  .replace(/^ijin\s*-\s*/i, '')
+                  .replace(/^izin\s*-\s*/i, '');
+                return str;
+              };
+
+              const cleanCat = getCleanCategory(printRequestedLeave.kategoriIjin);
 
               const isCuti = printRequestedLeave.kategoriIjin.toLowerCase().includes('cuti');
               const isDispensasi = printRequestedLeave.kategoriIjin.toLowerCase().includes('dispensasi');
@@ -847,13 +859,13 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               const jamAkhir = getJamAkhir(printRequestedLeave.tanggalSelesai);
 
               return (
-                <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0">
+                <div id="printable-area" className="p-8 sm:p-12 text-black bg-white print:p-0 sagara-print-content printable-area">
                   {/* SURAT DISPENSASI */}
                   {currentLetterType === 'Surat Dispensasi' && (
                     <div className="text-sm font-sans">
                       <div className="text-center mb-8">
                         <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">PERSETUJUAN PEMBERIAN</h2>
-                        <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">{printRequestedLeave.kategoriIjin.toUpperCase()}</h2>
+                        <h2 className="font-bold text-base sm:text-lg uppercase tracking-wide">{cleanCat.toUpperCase()}</h2>
                       </div>
 
                       <div className="space-y-4 leading-relaxed">
@@ -884,7 +896,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           </tbody>
                         </table>
 
-                        <p className="mt-4">Dengan ini memberikan <strong>{printRequestedLeave.kategoriIjin}</strong> kepada :</p>
+                        <p className="mt-4">Dengan ini memberikan <strong>{cleanCat}</strong> kepada :</p>
                         
                         <table className="w-full ml-2 my-2 border-collapse">
                           <tbody>
@@ -949,7 +961,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       </div>
                       
                       <div className="mb-6">
-                        <p>Perihal : PERMOHONAN {letterType.toUpperCase()} ({cleanCat.toUpperCase()})</p>
+                        <p>Perihal : PERMOHONAN {cleanCat.toUpperCase()}</p>
                         <p>Yth. KEPALA DINAS PENDIDIKAN KABUPATEN TUBAN</p>
                         <p>di -</p>
                         <p className="ml-4">Tuban</p>
@@ -970,7 +982,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <div className="space-y-3">
                           <div className="flex gap-2 items-start">
                             <span className="w-5 shrink-0">1.</span>
-                            <span className="flex-1">Dengan ini mengajukan permohonan {isDispensasi ? 'dispensasi' : 'izin'} ({cleanCat}), terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} dikarenakan: {printRequestedLeave.alasan}.</span>
+                            <span className="flex-1">Dengan ini mengajukan permohonan {cleanCat.toLowerCase()}, terhitung mulai tanggal {new Date(printRequestedLeave.tanggalMulai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} sampai dengan tanggal {new Date(printRequestedLeave.tanggalSelesai).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})} dikarenakan: {printRequestedLeave.alasan}.</span>
                           </div>
                           
                           <div className="flex gap-2 items-start">
@@ -1182,22 +1194,27 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
                         <p>Nomor : {manualLetterNumber || '.....................'}</p>
                       </div>
-                      <table className="w-full border-collapse border border-black mb-8">
+                      <table className="w-full border-collapse border border-black mb-8 table-fixed">
                         <thead>
-                          <tr><th className="border border-black p-2 w-10">NO</th><th className="border border-black p-2 w-2/5">ISI SURAT</th><th className="border border-black p-2 w-20">JUMLAH</th><th className="border border-black p-2">KETERANGAN</th></tr>
+                          <tr>
+                            <th className="border border-black p-2 w-12 text-center">NO</th>
+                            <th className="border border-black p-2 w-[55%] text-left">ISI SURAT</th>
+                            <th className="border border-black p-2 w-28 text-center">JUMLAH</th>
+                            <th className="border border-black p-2 text-left">KETERANGAN</th>
+                          </tr>
                         </thead>
                         <tbody>
                           <tr>
-                            <td className="border border-black p-2 text-center">1</td>
-                            <td className="border border-black p-2">
-                              Pengajuan {isCuti ? 'Cuti' : isDispensasi ? 'Dispensasi' : 'Izin'} ({cleanCat}) atas :<br/>
+                            <td className="border border-black p-2 text-center align-top">1</td>
+                            <td className="border border-black p-2 align-top break-words">
+                              Pengajuan {cleanCat} atas :<br/>
                               Nama : {printRequestedLeave.userName}<br/>
                               {nipLabel} : {printRequestedLeave.nip}<br/>
                               Jabatan : {printRequestedLeave.jabatan}<br/>
                               Unit Kerja : {schoolProfile?.name || '.....................'}
                             </td>
-                            <td className="border border-black p-2 text-center">1 bendel</td>
-                            <td className="border border-black p-2">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>
+                            <td className="border border-black p-2 text-center align-top whitespace-nowrap">1 bendel</td>
+                            <td className="border border-black p-2 align-top break-words">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>
                           </tr>
                         </tbody>
                       </table>

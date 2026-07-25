@@ -187,6 +187,10 @@
 
         #print-area,
         #print-area *,
+        #printable-area,
+        #printable-area *,
+        .printable-area,
+        .printable-area *,
         #sagara-standalone-print-container,
         #sagara-standalone-print-container *,
         #sagara-cloned-print-content,
@@ -199,6 +203,8 @@
         }
 
         #print-area,
+        #printable-area,
+        .printable-area,
         #sagara-standalone-print-container,
         #sagara-cloned-print-content,
         .sagara-print-content,

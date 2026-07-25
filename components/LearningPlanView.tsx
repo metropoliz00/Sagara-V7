@@ -3,7 +3,7 @@ import html2pdf from 'html2pdf.js';
 import { 
   Plus, Edit2, Trash2, Printer, CheckSquare, Square, 
   BookText, History, Settings, FilePlus, ChevronRight, Save, Undo, Eye, BookOpen, AlertCircle, Sparkles,
-  Clock, RefreshCw
+  Clock, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { User, SchoolProfileData, LearningPlan, Attachment } from '../types';
 import { apiService } from '../services/apiService';
@@ -1862,382 +1862,382 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     setPrintPlan(plan);
     setTimeout(() => {
       window.print();
-      // Reset print plan after dialog opens
-      setTimeout(() => setPrintPlan(null), 2000);
-    }, 500);
+    }, 400);
   };
 
   const printDur = printPlan ? getPrintPlanDurations(printPlan) : { awal: 10, inti: 50, penutup: 10 };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6 select-none font-sans print:p-0">
-      {/* Printable Area Wrapper */}
+      {/* Printable Area & Preview Wrapper */}
       {printPlan && (
-        <div className="bg-white p-12 rounded-[3rem] shadow-xl border border-gray-100 print:shadow-none print:border-none print:p-0 w-full overflow-hidden" id="print-area">
-          <style>{`
-            @media print {
-              @page {
-                size: A4 portrait;
-                margin: 15mm;
-              }
-              html, body {
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-              }
-              /* Reset ancestor styling to prevent pushing down or cropping */
-              body *:has(#print-area) {
-                margin: 0 !important;
-                padding: 0 !important;
-                position: static !important;
-                display: block !important;
-                height: auto !important;
-                width: auto !important;
-                box-shadow: none !important;
-                border: none !important;
-                background: transparent !important;
-              }
-              /* Hide all elements during print */
-              body * {
-                visibility: hidden;
-              }
-              /* Show only the print area and its contents */
-              #print-area, #print-area * {
-                visibility: visible !important;
-              }
-              #print-area {
-                position: absolute !important;
-                left: 0 !important;
-                top: 0 !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-                background: white !important;
-                color: #0f172a !important;
-                display: block !important;
-              }
-              .no-print, .print\:hidden {
-                display: none !important;
-              }
-              #print-kop-surat {
-                margin-top: 0 !important;
-                padding-top: 0 !important;
-              }
-              /* Background colors for print */
-              .print-bg-emerald {
-                background-color: #ecfdf5 !important;
-                color: #047857 !important;
-              }
-              
-              /* Table specific print fixes */
-              table {
-                width: 100% !important;
-                border-collapse: collapse !important;
-                page-break-inside: auto !important;
-              }
-              tr {
-                page-break-inside: avoid !important;
-                page-break-after: auto !important;
-              }
-              th, td {
-                border: 1px solid #000 !important;
-                padding: 8px !important;
-                word-wrap: break-word !important;
-              }
-              /* Avoid empty pages at the end */
-              body, html {
-                height: auto !important;
-              }
-            }
-          `}</style>
-          
-          <div className="space-y-4">
-            {/* Main Header */}
-            <div className="text-center space-y-0.5 pb-2 border-b-2 border-slate-900 mt-0">
-              <h2 className="text-lg font-bold tracking-wider uppercase text-slate-900 leading-none m-0 p-0">RENCANA PEMBELAJARAN MENDALAM</h2>
-              <div className="text-xs font-medium text-slate-600 m-0 p-0">{printPlan.model || 'Problem Based Learning (PBL)'}</div>
+        <div className="max-w-4xl mx-auto space-y-4">
+          {/* Action Toolbar on Screen */}
+          <div className="no-print flex flex-wrap items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 shadow-sm gap-3">
+            <button 
+              onClick={() => setPrintPlan(null)}
+              className="flex items-center gap-2 text-slate-700 hover:text-slate-900 font-semibold text-sm px-3.5 py-2 rounded-xl hover:bg-slate-100 transition"
+            >
+              <ArrowLeft size={18} /> Tutup Pratinjau
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
+                A4 Portrait
+              </span>
+              <button 
+                onClick={() => window.print()}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition text-sm"
+              >
+                <Printer size={18} /> Cetak / Unduh PDF RPM
+              </button>
             </div>
+          </div>
 
-            {/* School Profile Grid */}
-            <div className="grid grid-cols-2 gap-4 text-xs font-medium py-2">
-              <div className="space-y-1">
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Nama Sekolah</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.schoolName}</span>
+          <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 w-full overflow-hidden" id="print-area">
+            <style>{`
+              @media print {
+                @page {
+                  size: A4 portrait;
+                  margin: 10mm 12mm 10mm 12mm;
+                }
+                html, body {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  background: white !important;
+                  -webkit-print-color-adjust: exact !important;
+                  print-color-adjust: exact !important;
+                }
+                body *:has(#print-area) {
+                  margin: 0 !important;
+                  padding: 0 !important;
+                  position: static !important;
+                  display: block !important;
+                  height: auto !important;
+                  width: auto !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  background: transparent !important;
+                }
+                body * {
+                  visibility: hidden;
+                }
+                #print-area, #print-area * {
+                  visibility: visible !important;
+                }
+                #print-area {
+                  position: absolute !important;
+                  left: 0 !important;
+                  top: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  box-shadow: none !important;
+                  border: none !important;
+                  padding: 0 !important;
+                  margin: 0 !important;
+                  background: white !important;
+                  color: #0f172a !important;
+                  display: block !important;
+                }
+                .no-print, .print\:hidden {
+                  display: none !important;
+                }
+                table {
+                  width: 100% !important;
+                  border-collapse: collapse !important;
+                  page-break-inside: auto !important;
+                }
+                thead {
+                  display: table-header-group !important;
+                }
+                tbody {
+                  display: table-row-group !important;
+                }
+                tr {
+                  page-break-inside: avoid !important;
+                  page-break-after: auto !important;
+                }
+                th, td {
+                  word-wrap: break-word !important;
+                }
+              }
+            `}</style>
+            
+            <div className="space-y-4">
+              {/* Main Header */}
+              <div className="text-center space-y-0.5 pb-2 border-b-2 border-slate-900 mt-0">
+                <h2 className="text-lg font-bold tracking-wider uppercase text-slate-900 leading-none m-0 p-0">RENCANA PEMBELAJARAN MENDALAM</h2>
+                <div className="text-xs font-medium text-slate-600 m-0 p-0">{printPlan.model || 'Problem Based Learning (PBL)'}</div>
+              </div>
+
+              {/* School Profile Grid */}
+              <div className="grid grid-cols-2 gap-4 text-xs font-medium py-2">
+                <div className="space-y-1">
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Nama Sekolah</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.schoolName}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Nama Penyusun</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.compiler}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">NIP</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-mono text-slate-800 flex-1 min-w-0 break-words">{printPlan.nip || '-'}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Mata Pelajaran</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-indigo-900 flex-1 min-w-0 break-words">{printPlan.subject}</span>
+                  </div>
                 </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Nama Penyusun</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.compiler}</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">NIP</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-mono text-slate-800 flex-1 min-w-0 break-words">{printPlan.nip || '-'}</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Mata Pelajaran</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-indigo-900 flex-1 min-w-0 break-words">{printPlan.subject}</span>
+                
+                <div className="space-y-1">
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.topic}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Kelas/Semester</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.classSemester}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Tahun Ajaran</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.academicYear}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Alokasi Waktu</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.timeAllocation}</span>
+                  </div>
                 </div>
               </div>
-              
-              <div className="space-y-1">
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.topic}</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Kelas/Semester</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.classSemester}</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Tahun Ajaran</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.academicYear}</span>
-                </div>
-                <div className="flex items-start">
-                  <span className="w-28 text-slate-500 shrink-0">Alokasi Waktu</span>
-                  <span className="mr-2 shrink-0">:</span>
-                  <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.timeAllocation}</span>
-                </div>
-              </div>
-            </div>
 
-            {/* Main Plan Matrix exactly matching the required PDF format */}
-            <table className="w-full border-collapse border border-slate-900 mb-6">
-              <tbody>
-                {/* Row Identifikasi */}
-                <tr className="border-b border-slate-900">
-                  <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900" style={{ fontSize: '12px' }}>
-                    Identifikasi
-                  </td>
-                  <td className="w-3/4 p-3 space-y-4 text-[11px]">
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Murid:</span>
-                      <p className="text-slate-800 leading-relaxed bg-slate-50 p-2 rounded border border-slate-150">{printPlan.studentCharacteristics}</p>
-                    </div>
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Dimensi Profil Lulusan:</span>
-                      <div className="grid grid-cols-4 gap-3 mt-1">
-                        {DIMENSIONS.map((dim) => {
-                          const isSelected = printPlan.profileDimensions?.includes(dim);
-                          return (
-                            <div key={dim} className="flex items-start space-x-1.5 text-slate-800 text-[9.5px] leading-tight">
-                              <span className="shrink-0">{isSelected ? '☑' : '☐'}</span>
-                              <span className="break-words">{dim}</span>
-                            </div>
-                          );
-                        })}
+              {/* Main Plan Matrix with Repeating Header Engine */}
+              <table className="w-full border-collapse border border-slate-900 mb-6">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[11px] border-b border-slate-900">
+                    <th className="p-2.5 w-1/4 border-r border-slate-900 text-center uppercase">Komponen RPM</th>
+                    <th className="p-2.5 w-3/4 text-center uppercase">Deskripsi & Rincian Rencana Pembelajaran Mendalam</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Row Identifikasi */}
+                  <tr className="border-b border-slate-900">
+                    <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900 p-3" style={{ fontSize: '12px' }}>
+                      Identifikasi
+                    </td>
+                    <td className="w-3/4 p-3 space-y-4 text-[11px]">
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1">Murid:</span>
+                        <p className="text-slate-800 leading-relaxed bg-slate-50 p-2 rounded border border-slate-150">{printPlan.studentCharacteristics}</p>
                       </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Row Design Pembelajaran */}
-            <table className="w-full border-collapse border border-slate-900 mb-6">
-              <tbody>
-                <tr className="border-b border-slate-900">
-                  <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900" style={{ fontSize: '12px' }}>
-                    Design Pembelajaran
-                  </td>
-                  <td className="w-3/4 p-3 space-y-4 text-[11px]">
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Capaian Pembelajaran:</span>
-                      <p className="text-slate-800 leading-relaxed text-justify">{printPlan.capaianPembelajaran}</p>
-                    </div>
-
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Tujuan Pembelajaran:</span>
-                      <ol className="list-decimal pl-4 space-y-1 text-slate-800">
-                        {printPlan.learningGoals?.map((goal, idx) => (
-                          <li key={idx} className="leading-relaxed">{goal}</li>
-                        ))}
-                      </ol>
-                    </div>
-
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1.5">Praktik Pedagogis:</span>
-                      <div className="grid grid-cols-2 gap-4 text-[11px] py-1 border-0">
-                        <div className="space-y-2">
-                          <div>
-                            <strong className="text-slate-900 block mb-0.5">Pendekatan Pembelajaran:</strong>
-                            <span className="text-slate-800">{printPlan.pendekatan}</span>
-                          </div>
-                          <div>
-                            <strong className="text-slate-900 block mb-0.5">Model Pembelajaran:</strong>
-                            <span className="text-slate-800">{printPlan.model}</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2 pl-4">
-                          <div>
-                            <strong className="text-slate-900 block mb-0.5">Strategi Pembelajaran:</strong>
-                            <span className="text-slate-800">{printPlan.strategi}</span>
-                          </div>
-                          <div>
-                            <strong className="text-slate-900 block mb-0.5">Metode Pembelajaran:</strong>
-                            <span className="text-slate-800">{Array.isArray(printPlan.metode) ? printPlan.metode.join(', ') : printPlan.metode}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <span className="font-bold text-slate-700 block mb-1">Lintas Disiplin, Mitra, Digital & Lingkungan:</span>
-                      <div className="grid grid-cols-2 gap-3 mt-1 text-[10px] text-slate-800 leading-tight">
-                        <div className="bg-slate-50 p-2 rounded">
-                          <strong className="text-indigo-900">Lintas Disiplin:</strong> {printPlan.lintasDisiplin}
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded">
-                          <strong className="text-indigo-900">Mitra:</strong> {printPlan.mitra}
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded col-span-2">
-                          <strong className="text-indigo-900">Digital:</strong> {printPlan.digital}
-                        </div>
-                        <div className="bg-slate-50 p-2 rounded col-span-2">
-                          <strong className="text-indigo-900">Lingkungan:</strong> {printPlan.lingkungan}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Row Pengalaman Pembelajaran */}
-            <table className="w-full border-collapse border border-slate-900 mb-6">
-              <tbody>
-                <tr className="border-b border-slate-900">
-                  <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900" style={{ fontSize: '12px' }}>
-                    Pengalaman Pembelajaran
-                  </td>
-                  <td className="w-3/4 p-3 space-y-4 text-[11px]">
-                    <div>
-                      <strong className="text-slate-900 block mb-1 text-xs font-sans font-bold">{printPlan.kegiatanAwalTitle || 'Kegiatan Awal (Kesan, Bermakna)'} ({printDur.awal} Menit):</strong>
-                      <ol className="list-decimal pl-4 space-y-1 block text-slate-800">
-                        {printPlan.kegiatanAwal?.map((item, idx) => {
-                          const formatted = formatAktivitasAwalItemText(item, printPlan.learningGoals || []);
-                          return (
-                            <li key={idx} className="leading-relaxed mb-1">
-                              {formatted.includes('§') ? (
-                                <div className="flex flex-col">
-                                  <div className="whitespace-pre-line">{formatted.split('§')[0]}</div>
-                                  <ol className="list-decimal pl-6">
-                                    {formatted.split('§').slice(1).map((goal, i) => <li key={i}>{goal}</li>)}
-                                  </ol>
-                                </div>
-                              ) : (
-                                <div className="whitespace-pre-line">{formatted}</div>
-                              )}
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-
-                    <div>
-                      <strong className="text-slate-900 block mb-1.5 text-xs font-sans font-bold">{printPlan.kegiatanIntiTitle || `Kegiatan Inti (${printPlan.model})`} ({printDur.inti} Menit):</strong>
-                      <div className="space-y-3 pl-1">
-                        {printPlan.kegiatanInti?.map((inti, idx) => (
-                          <div key={idx} className="border-l-2 border-indigo-200 pl-3">
-                            <div className="flex justify-between items-center mb-0.5">
-                              <span className="font-bold text-slate-800 text-[11px]">{idx + 1}. Fase {idx + 1}: {inti.phase.replace(/^[A-Z]\.\s+/, '')}</span>
-                              {extractLabel(inti.description).label && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-700 uppercase">{extractLabel(inti.description).label}</span>
-                              )}
-                            </div>
-                            <ol className="list-decimal list-outside ml-4 text-slate-700 text-xs leading-relaxed text-justify space-y-0.5">
-                              {extractLabel(inti.description).description.split('\n').filter(line => line.trim()).map((line, lIdx) => (
-                                <li key={lIdx} className="pl-1">
-                                  {line.replace(/^\d+[\s.)-]+\s*/, '').trim()}
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div>
-                      <strong className="text-[#0f172a] block mb-1 text-xs font-sans font-bold">{printPlan.kegiatanPenutupTitle || 'Kegiatan Penutup (Berkesadaran)'} ({printDur.penutup} Menit):</strong>
-                      <ol className="list-decimal pl-4 space-y-1 text-slate-800">
-                        {printPlan.kegiatanPenutup?.map((item, idx) => (
-                          <li key={idx} className="leading-relaxed">{item}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* Row Asesmen Pembelajaran */}
-            <table className="w-full border-collapse border border-slate-900 mb-6 font-sans">
-              <tbody>
-                <tr>
-                  <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900" style={{ fontSize: '12px' }}>
-                    Asesmen Pembelajaran
-                  </td>
-                  <td className="w-3/4 p-3 text-[11px] space-y-4">
-                    {[
-                      { label: 'Asesmen Awal', value: printPlan.asesmenAwal },
-                      { label: 'Asesmen Proses', value: printPlan.asesmenProses },
-                      { label: 'Asesmen Akhir', value: printPlan.asesmenAkhir }
-                    ].map((item, idx) => (
-                      <div key={idx} className="group">
-                        <span className="font-bold text-slate-700 block mb-1 border-b border-slate-200 pb-0.5">{item.label}:</span>
-                        <div className="text-slate-800 leading-relaxed bg-slate-50/50 p-2.5 rounded-sm border border-slate-150 min-h-[40px]">
-                          {groupBlocks(parseRichText(item.value || '-')).map((node) => {
-                            const style = node.align ? { textAlign: node.align as any } : undefined;
-                            if (node.type === 'list_group') {
-                              const Tag = node.listType === 'bullet' ? 'ul' : 'ol';
-                              const listClass = node.listType === 'bullet' ? 'list-disc' : (node.listStyle === 'lower-alpha' ? 'list-[lower-alpha]' : 'list-decimal');
-                              const marginClass = node.listStyle === 'lower-alpha' ? 'ml-12' : 'ml-6';
-                              return (
-                                <Tag 
-                                  key={node.key} 
-                                  className={`${listClass} ${marginClass} mb-2 space-y-1 block`} 
-                                  style={style}
-                                  {...(node.listType === 'numbered' && node.startIndex && node.startIndex > 1 ? { start: node.startIndex } : {})}
-                                >
-                                  {node.items!.map((li: any) => (
-                                    <li key={li.key} className="pl-1" dangerouslySetInnerHTML={{ __html: li.content || '' }} />
-                                  ))}
-                                </Tag>
-                              );
-                            }
-                            const blk = node.block!;
-                            if (blk.type === 'image') {
-                              return (
-                                <div key={node.key} className="flex justify-center my-3">
-                                  <img 
-                                    src={blk.content || ''} 
-                                    alt="Media" 
-                                    className="max-h-60 max-w-full object-contain rounded border border-slate-200 shadow-sm"
-                                  />
-                                </div>
-                              );
-                            }
-                            if (blk.content === '' || blk.content === '-') return <span key={node.key} className="text-slate-400 italic">-</span>;
-                            return <div key={node.key} style={style} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: blk.content || '' }} />;
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1">Dimensi Profil Lulusan:</span>
+                        <div className="grid grid-cols-4 gap-3 mt-1">
+                          {DIMENSIONS.map((dim) => {
+                            const isSelected = printPlan.profileDimensions?.includes(dim);
+                            return (
+                              <div key={dim} className="flex items-start space-x-1.5 text-slate-800 text-[9.5px] leading-tight">
+                                <span className="shrink-0">{isSelected ? '☑' : '☐'}</span>
+                                <span className="break-words">{dim}</span>
+                              </div>
+                            );
                           })}
                         </div>
                       </div>
-                    ))}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                    </td>
+                  </tr>
+
+                  {/* Row Design Pembelajaran */}
+                  <tr className="border-b border-slate-900">
+                    <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900 p-3" style={{ fontSize: '12px' }}>
+                      Design Pembelajaran
+                    </td>
+                    <td className="w-3/4 p-3 space-y-4 text-[11px]">
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1">Capaian Pembelajaran:</span>
+                        <p className="text-slate-800 leading-relaxed text-justify">{printPlan.capaianPembelajaran}</p>
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1">Tujuan Pembelajaran:</span>
+                        <ol className="list-decimal pl-4 space-y-1 text-slate-800">
+                          {printPlan.learningGoals?.map((goal, idx) => (
+                            <li key={idx} className="leading-relaxed">{goal}</li>
+                          ))}
+                        </ol>
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1.5">Praktik Pedagogis:</span>
+                        <div className="grid grid-cols-2 gap-4 text-[11px] py-1 border-0">
+                          <div className="space-y-2">
+                            <div>
+                              <strong className="text-slate-900 block mb-0.5">Pendekatan Pembelajaran:</strong>
+                              <span className="text-slate-800">{printPlan.pendekatan}</span>
+                            </div>
+                            <div>
+                              <strong className="text-slate-900 block mb-0.5">Model Pembelajaran:</strong>
+                              <span className="text-slate-800">{printPlan.model}</span>
+                            </div>
+                          </div>
+                          <div className="space-y-2 pl-4">
+                            <div>
+                              <strong className="text-slate-900 block mb-0.5">Strategi Pembelajaran:</strong>
+                              <span className="text-slate-800">{printPlan.strategi}</span>
+                            </div>
+                            <div>
+                              <strong className="text-slate-900 block mb-0.5">Metode Pembelajaran:</strong>
+                              <span className="text-slate-800">{Array.isArray(printPlan.metode) ? printPlan.metode.join(', ') : printPlan.metode}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <span className="font-bold text-slate-700 block mb-1">Lintas Disiplin, Mitra, Digital & Lingkungan:</span>
+                        <div className="grid grid-cols-2 gap-3 mt-1 text-[10px] text-slate-800 leading-tight">
+                          <div className="bg-slate-50 p-2 rounded">
+                            <strong className="text-indigo-900">Lintas Disiplin:</strong> {printPlan.lintasDisiplin}
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded">
+                            <strong className="text-indigo-900">Mitra:</strong> {printPlan.mitra}
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded col-span-2">
+                            <strong className="text-indigo-900">Digital:</strong> {printPlan.digital}
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded col-span-2">
+                            <strong className="text-indigo-900">Lingkungan:</strong> {printPlan.lingkungan}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Row Pengalaman Pembelajaran */}
+                  <tr className="border-b border-slate-900">
+                    <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900 p-3" style={{ fontSize: '12px' }}>
+                      Pengalaman Pembelajaran
+                    </td>
+                    <td className="w-3/4 p-3 space-y-4 text-[11px]">
+                      <div>
+                        <strong className="text-slate-900 block mb-1 text-xs font-sans font-bold">{printPlan.kegiatanAwalTitle || 'Kegiatan Awal (Kesan, Bermakna)'} ({printDur.awal} Menit):</strong>
+                        <ol className="list-decimal pl-4 space-y-1 block text-slate-800">
+                          {printPlan.kegiatanAwal?.map((item, idx) => {
+                            const formatted = formatAktivitasAwalItemText(item, printPlan.learningGoals || []);
+                            return (
+                              <li key={idx} className="leading-relaxed mb-1">
+                                {formatted.includes('§') ? (
+                                  <div className="flex flex-col">
+                                    <div className="whitespace-pre-line">{formatted.split('§')[0]}</div>
+                                    <ol className="list-decimal pl-6">
+                                      {formatted.split('§').slice(1).map((goal, i) => <li key={i}>{goal}</li>)}
+                                    </ol>
+                                  </div>
+                                ) : (
+                                  <div className="whitespace-pre-line">{formatted}</div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      </div>
+
+                      <div>
+                        <strong className="text-slate-900 block mb-1.5 text-xs font-sans font-bold">{printPlan.kegiatanIntiTitle || `Kegiatan Inti (${printPlan.model})`} ({printDur.inti} Menit):</strong>
+                        <div className="space-y-3 pl-1">
+                          {printPlan.kegiatanInti?.map((inti, idx) => (
+                            <div key={idx} className="border-l-2 border-indigo-200 pl-3">
+                              <div className="flex justify-between items-center mb-0.5">
+                                <span className="font-bold text-slate-800 text-[11px]">{idx + 1}. Fase {idx + 1}: {inti.phase.replace(/^[A-Z]\.\s+/, '')}</span>
+                                {extractLabel(inti.description).label && (
+                                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-sky-100 text-sky-700 uppercase">{extractLabel(inti.description).label}</span>
+                                )}
+                              </div>
+                              <ol className="list-decimal list-outside ml-4 text-slate-700 text-xs leading-relaxed text-justify space-y-0.5">
+                                {extractLabel(inti.description).description.split('\n').filter(line => line.trim()).map((line, lIdx) => (
+                                  <li key={lIdx} className="pl-1">
+                                    {line.replace(/^\d+[\s.)-]+\s*/, '').trim()}
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <strong className="text-[#0f172a] block mb-1 text-xs font-sans font-bold">{printPlan.kegiatanPenutupTitle || 'Kegiatan Penutup (Berkesadaran)'} ({printDur.penutup} Menit):</strong>
+                        <ol className="list-decimal pl-4 space-y-1 text-slate-800">
+                          {printPlan.kegiatanPenutup?.map((item, idx) => (
+                            <li key={idx} className="leading-relaxed">{item}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Row Asesmen Pembelajaran */}
+                  <tr className="border-b border-slate-900">
+                    <td className="w-1/4 bg-slate-100 font-bold uppercase text-center align-middle text-slate-800 border-r border-slate-900 p-3" style={{ fontSize: '12px' }}>
+                      Asesmen Pembelajaran
+                    </td>
+                    <td className="w-3/4 p-3 text-[11px] space-y-4">
+                      {[
+                        { label: 'Asesmen Awal', value: printPlan.asesmenAwal },
+                        { label: 'Asesmen Proses', value: printPlan.asesmenProses },
+                        { label: 'Asesmen Akhir', value: printPlan.asesmenAkhir }
+                      ].map((item, idx) => (
+                        <div key={idx} className="group">
+                          <span className="font-bold text-slate-700 block mb-1 border-b border-slate-200 pb-0.5">{item.label}:</span>
+                          <div className="text-slate-800 leading-relaxed bg-slate-50/50 p-2.5 rounded-sm border border-slate-150 min-h-[40px]">
+                            {groupBlocks(parseRichText(item.value || '-')).map((node) => {
+                              const style = node.align ? { textAlign: node.align as any } : undefined;
+                              if (node.type === 'list_group') {
+                                const Tag = node.listType === 'bullet' ? 'ul' : 'ol';
+                                const listClass = node.listType === 'bullet' ? 'list-disc' : (node.listStyle === 'lower-alpha' ? 'list-[lower-alpha]' : 'list-decimal');
+                                const marginClass = node.listStyle === 'lower-alpha' ? 'ml-12' : 'ml-6';
+                                return (
+                                  <Tag 
+                                    key={node.key} 
+                                    className={`${listClass} ${marginClass} mb-2 space-y-1 block`} 
+                                    style={style}
+                                    {...(node.listType === 'numbered' && node.startIndex && node.startIndex > 1 ? { start: node.startIndex } : {})}
+                                  >
+                                    {node.items!.map((li: any) => (
+                                      <li key={li.key} className="pl-1" dangerouslySetInnerHTML={{ __html: li.content || '' }} />
+                                    ))}
+                                  </Tag>
+                                );
+                              }
+                              const blk = node.block!;
+                              if (blk.type === 'image') {
+                                return (
+                                  <div key={node.key} className="flex justify-center my-3">
+                                    <img 
+                                      src={blk.content || ''} 
+                                      alt="Media" 
+                                      className="max-h-60 max-w-full object-contain rounded border border-slate-200 shadow-sm"
+                                    />
+                                  </div>
+                                );
+                              }
+                              if (blk.content === '' || blk.content === '-') return <span key={node.key} className="text-slate-400 italic">-</span>;
+                              return <div key={node.key} style={style} className="mb-2 last:mb-0" dangerouslySetInnerHTML={{ __html: blk.content || '' }} />;
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
 
             {/* Signature Section */}
             <div className="flex justify-between items-center pt-8 mt-12 text-xs font-semibold" style={{ pageBreakInside: 'avoid' }}>
@@ -2353,6 +2353,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             ))}
           </div>
         </div>
+      </div>
       )}
 
       {/* Screen view content */}
@@ -2449,6 +2450,13 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                         </td>
                         <td className="p-4">
                           <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setPrintPlan(plan)}
+                              title="Pratinjau / Lihat RPM"
+                              className="bg-sky-50 text-sky-700 hover:bg-sky-100 p-2 rounded-xl transition-all border border-sky-200"
+                            >
+                              <Eye size={16} />
+                            </button>
                             <button
                               onClick={() => handlePrint(plan)}
                               title="Cetak RPM"

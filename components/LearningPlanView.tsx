@@ -490,7 +490,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
 
   // Form Fields
   const [schoolName, setSchoolName] = useState('UPT SD Negeri Remen 2');
-  const [tempatPengesahan, setTempatPengesahan] = useState('');
+  const [tempatPengesahan, setTempatPengesahan] = useState(schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen');
   const [compiler, setCompiler] = useState('Dedy Meyga Saputra, S.Pd, M.Pd');
   const [nip, setNip] = useState('198905202020121006');
   const [subject, setSubject] = useState('IPAS');
@@ -1048,6 +1048,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       if (schoolProfile.year) {
         setAcademicYear(schoolProfile.year);
       }
+      setTempatPengesahan(schoolProfile.desa || schoolProfile.address?.split(',')[0]?.trim() || 'Remen');
     }
     if (teacherProfile) {
       setCompiler(teacherProfile.name || '');
@@ -1178,6 +1179,9 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       if (schoolProfile.year) {
         setAcademicYear(schoolProfile.year);
       }
+      setTempatPengesahan(schoolProfile.desa || schoolProfile.address?.split(',')[0]?.trim() || 'Remen');
+    } else {
+      setTempatPengesahan('Remen');
     }
     if (teacherProfile) {
       setCompiler(teacherProfile.name || '');
@@ -1233,7 +1237,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const handleEdit = (plan: LearningPlan) => {
     setEditingId(plan.id);
     setSchoolName(plan.schoolName);
-    setTempatPengesahan(plan.tempatPengesahan || '');
+    setTempatPengesahan(plan.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen');
     setCompiler(plan.compiler);
     setNip(plan.nip);
     setSubject(plan.subject);
@@ -2277,7 +2281,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               
               <div className="text-center w-60 space-y-14">
                 <div>
-                  <p>Remen, {new Date(printPlan.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                  <p>{printPlan.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {new Date(printPlan.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                   <p>Guru Kelas V</p>
                 </div>
                 <div className="space-y-0.5">
@@ -2672,7 +2676,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                         type="text"
                         value={tempatPengesahan}
                         onChange={(e) => setTempatPengesahan(e.target.value)}
-                        placeholder="Contoh: Tuban..."
+                        placeholder={`Contoh: ${schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}`}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                       />
                     </div>

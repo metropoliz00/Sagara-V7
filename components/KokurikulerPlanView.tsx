@@ -115,8 +115,9 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
     let semester = activeSemester.toLowerCase().includes('genap') || activeSemester === '2' ? '2 (Genap)' : '1 (Ganjil)';
 
     const tahunAjaran = schoolProfile?.year || '2025/2026';
+    const tempatPengesahan = schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen';
 
-    return { satuanPendidikan, jenjangKelas, semester, tahunAjaran, alokasiWaktu };
+    return { satuanPendidikan, jenjangKelas, semester, tahunAjaran, alokasiWaktu, tempatPengesahan };
   };
 
   const autoInfo = getAutoIdentitas();
@@ -387,7 +388,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                     alokasiWaktu: auto.alokasiWaktu,
                     tipeAlokasi: 'mingguan',
                     lokasiKegiatan: 'di lingkungan satuan pendidikan dan rumah',
-                    tempatPengesahan: schoolProfile?.address?.split(',')[0] || 'Remen',
+                    tempatPengesahan: schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen',
                     tanggalPengesahan: new Date().toISOString().split('T')[0],
                     penanggungJawab: teacherProfile?.fullName || currentUser?.fullName || 'Guru Kelas'
                   },
@@ -409,6 +410,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                   identitas: {
                     ...basePlan.identitas,
                     jenjangKelas: auto.jenjangKelas,
+                    tempatPengesahan: basePlan.identitas?.tempatPengesahan || auto.tempatPengesahan,
                     penanggungJawab: basePlan.identitas?.penanggungJawab || teacherProfile?.fullName || currentUser?.fullName || 'Guru Kelas'
                   }
                 });
@@ -748,10 +750,10 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Tempat Pengesahan</label>
                   <input 
                     type="text" 
-                    value={formData.identitas.tempatPengesahan || ''}
+                    value={formData.identitas.tempatPengesahan || (schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen')}
                     onChange={e => setFormData({...formData, identitas: {...formData.identitas, tempatPengesahan: e.target.value}})}
                     className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm" 
-                    placeholder="Contoh: Remen"
+                    placeholder={`Contoh: ${schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}`}
                   />
                 </div>
                 <div>
@@ -1191,16 +1193,16 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
             className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 w-full"
           >
             <div className="space-y-6 text-gray-900">
-              <div className="text-center border-b-2 border-slate-900 pb-5 space-y-2">
-                <h2 className="text-2xl font-bold uppercase tracking-wide text-slate-900">Rencana Pembelajaran Kokurikuler (RPK)</h2>
-                <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-                  <span className="px-3 py-1 bg-blue-50 text-blue-900 text-xs font-bold rounded-full uppercase tracking-wider border border-blue-200">
-                    {selectedPlan.identitas.bentukKokurikuler || 'Gerakan 7 Kebiasaan Anak Indonesia Hebat (7KAIH)'}
-                  </span>
-                  <span className="px-3 py-1 bg-emerald-50 text-emerald-900 text-xs font-bold rounded-full uppercase tracking-wider border border-emerald-200">
-                    Tema: {selectedPlan.identitas.temaKokurikuler || '-'}
-                  </span>
-                </div>
+              <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
+                <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-wide text-slate-900">
+                  RENCANA PEMBELAJARAN KOKURIKULER
+                </h2>
+                <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-800">
+                  {selectedPlan.identitas.bentukKokurikuler ? selectedPlan.identitas.bentukKokurikuler.toUpperCase() : 'LINTAS DISIPLIN ILMU'}
+                </h3>
+                <p className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900 pt-1">
+                  TEMA: {selectedPlan.identitas.temaKokurikuler ? selectedPlan.identitas.temaKokurikuler.toUpperCase() : 'HEMAT ENERGI MASA DEPAN'}
+                </p>
               </div>
 
               {/* Identitas Table */}
@@ -1462,7 +1464,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                 </div>
                 <div className="text-center px-4">
                   <p className="font-medium">
-                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.address?.split(',')[0] || 'Remen'}, {
+                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {
                       selectedPlan.identitas.tanggalPengesahan 
                         ? new Date(selectedPlan.identitas.tanggalPengesahan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                         : new Date(selectedPlan.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })

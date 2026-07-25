@@ -1194,24 +1194,44 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <h2 className="font-bold text-lg underline">SURAT PENGANTAR</h2>
                         <p>Nomor : {manualLetterNumber || '.....................'}</p>
                       </div>
-                      <table className="w-full border-collapse border border-black mb-8 table-fixed">
+                      <table className="w-full border-collapse border border-black mb-8">
                         <thead>
                           <tr>
-                            <th className="border border-black p-2 w-12 text-center">NO</th>
-                            <th className="border border-black p-2 w-[55%] text-left">ISI SURAT</th>
-                            <th className="border border-black p-2 w-28 text-center">JUMLAH</th>
-                            <th className="border border-black p-2 text-left">KETERANGAN</th>
+                            <th className="border border-black p-2 text-center w-12">NO</th>
+                            <th className="border border-black p-2 text-center whitespace-nowrap">ISI SURAT</th>
+                            <th className="border border-black p-2 text-center whitespace-nowrap">JUMLAH</th>
+                            <th className="border border-black p-2 text-center">KETERANGAN</th>
                           </tr>
                         </thead>
                         <tbody>
                           <tr>
                             <td className="border border-black p-2 text-center align-top">1</td>
-                            <td className="border border-black p-2 align-top break-words">
-                              Pengajuan {cleanCat} atas :<br/>
-                              Nama : {printRequestedLeave.userName}<br/>
-                              {nipLabel} : {printRequestedLeave.nip}<br/>
-                              Jabatan : {printRequestedLeave.jabatan}<br/>
-                              Unit Kerja : {schoolProfile?.name || '.....................'}
+                            <td className="border border-black p-2 align-top whitespace-nowrap">
+                              <div className="mb-1">Pengajuan {cleanCat} atas :</div>
+                              <table className="border-none text-sm">
+                                <tbody>
+                                  <tr>
+                                    <td className="pr-2 py-0.5 border-none">Nama</td>
+                                    <td className="px-1 py-0.5 border-none">:</td>
+                                    <td className="py-0.5 border-none font-medium">{printRequestedLeave.userName}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="pr-2 py-0.5 border-none">{nipLabel}</td>
+                                    <td className="px-1 py-0.5 border-none">:</td>
+                                    <td className="py-0.5 border-none">{printRequestedLeave.nip}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="pr-2 py-0.5 border-none">Jabatan</td>
+                                    <td className="px-1 py-0.5 border-none">:</td>
+                                    <td className="py-0.5 border-none">{printRequestedLeave.jabatan}</td>
+                                  </tr>
+                                  <tr>
+                                    <td className="pr-2 py-0.5 border-none">Unit Kerja</td>
+                                    <td className="px-1 py-0.5 border-none">:</td>
+                                    <td className="py-0.5 border-none">{schoolProfile?.name || '.....................'}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
                             </td>
                             <td className="border border-black p-2 text-center align-top whitespace-nowrap">1 bendel</td>
                             <td className="border border-black p-2 align-top break-words">Demikian untuk menjadikan periksa dan atas penyelesaiannya disampaikan terima kasih.</td>

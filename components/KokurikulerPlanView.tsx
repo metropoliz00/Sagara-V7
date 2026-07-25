@@ -1359,30 +1359,30 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                     <p className="font-semibold text-xs sm:text-sm uppercase text-slate-900 mb-1">1. Asesmen Formatif:</p>
                     <p className="text-xs sm:text-sm text-gray-800 bg-slate-50 p-3 rounded-lg border border-gray-300 mb-3">{selectedPlan.asesmen.formatif}</p>
                     
-                    <table className="w-full border-collapse border border-gray-400 text-xs mt-3">
+                    <table className="w-full table-fixed border-collapse border border-slate-400 text-xs mt-3">
                       <thead>
-                        <tr className="bg-sky-100 text-slate-900 font-bold text-center border-b border-gray-400">
-                          <th className="border border-gray-400 p-2.5 w-1/4" rowSpan={2}>Nama Murid</th>
-                          <th className="border border-gray-400 p-2.5" colSpan={2}>Perkembangan {selectedPlan.identitas.temaKokurikuler}</th>
-                          <th className="border border-gray-400 p-2.5 w-1/3" rowSpan={2}>Catatan Guru / Observasi</th>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '25%' }} rowSpan={2}>Nama Murid</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '40%' }} colSpan={2}>Perkembangan {selectedPlan.identitas.temaKokurikuler}</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '35%' }} rowSpan={2}>Catatan Guru / Observasi</th>
                         </tr>
-                        <tr className="bg-sky-100 text-slate-900 font-bold text-center border-b border-gray-400">
-                          <th className="border border-gray-400 p-2.5">Belum Terbiasa / Berkembang</th>
-                          <th className="border border-gray-400 p-2.5">Sudah Terbiasa / Membudaya</th>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '20%' }}>Belum Terbiasa / Berkembang</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '20%' }}>Sudah Terbiasa / Membudaya</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr>
-                          <td className="border border-gray-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 1</td>
-                          <td className="border border-gray-400 p-3 text-center"></td>
-                          <td className="border border-gray-400 p-3 text-center font-bold text-emerald-700">✓</td>
-                          <td className="border border-gray-400 p-3">Menunjukkan keaktifan dan antusias tinggi</td>
+                          <td className="border border-slate-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 1</td>
+                          <td className="border border-slate-400 p-3 text-center"></td>
+                          <td className="border border-slate-400 p-3 text-center font-bold text-emerald-700">✓</td>
+                          <td className="border border-slate-400 p-3">Menunjukkan keaktifan dan antusias tinggi</td>
                         </tr>
                         <tr>
-                          <td className="border border-gray-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 2</td>
-                          <td className="border border-gray-400 p-3 text-center font-bold text-amber-700">✓</td>
-                          <td className="border border-gray-400 p-3 text-center"></td>
-                          <td className="border border-gray-400 p-3">Perlu pendampingan dan motivasi tambahan</td>
+                          <td className="border border-slate-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 2</td>
+                          <td className="border border-slate-400 p-3 text-center font-bold text-amber-700">✓</td>
+                          <td className="border border-slate-400 p-3 text-center"></td>
+                          <td className="border border-slate-400 p-3">Perlu pendampingan dan motivasi tambahan</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1392,15 +1392,15 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                     <p className="font-semibold text-xs sm:text-sm uppercase text-slate-900 mb-1">2. Asesmen Sumatif & Rubrik Kinerja:</p>
                     <p className="text-xs sm:text-sm text-gray-800 bg-slate-50 p-3 rounded-lg border border-gray-300 mb-3">{selectedPlan.asesmen.sumatif}</p>
                     
-                    <table className="w-full border-collapse border border-gray-400 text-xs mt-3">
+                    <table className="w-full table-fixed border-collapse border border-slate-400 text-xs mt-3">
                       <thead>
-                        <tr className="bg-sky-100 text-slate-900 font-bold text-center border-b border-gray-400">
-                          <th className="border border-gray-400 p-2.5">Dimensi Profil Lulusan</th>
-                          <th className="border border-gray-400 p-2.5">Aspek yang Dinilai ({selectedPlan.identitas.temaKokurikuler})</th>
-                          <th className="border border-gray-400 p-2.5">Sangat Baik</th>
-                          <th className="border border-gray-400 p-2.5">Baik</th>
-                          <th className="border border-gray-400 p-2.5">Cukup</th>
-                          <th className="border border-gray-400 p-2.5">Kurang</th>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '15%' }}>Dimensi Profil Lulusan</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '21%' }}>Aspek yang Dinilai ({selectedPlan.identitas.temaKokurikuler})</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Sangat Baik</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Baik</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Cukup</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Kurang</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1409,23 +1409,23 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                             const fokusAspek = dim.fokus || selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler;
                             return (
                               <tr key={dIdx}>
-                                <td className="border border-gray-400 p-2.5 font-medium">{dim.dimensi}</td>
-                                <td className="border border-gray-400 p-2.5">{fokusAspek}</td>
-                                <td className="border border-gray-400 p-2.5">Sangat konsisten dan mahir dalam {fokusAspek.toLowerCase()}</td>
-                                <td className="border border-gray-400 p-2.5">Konsisten dan baik dalam {fokusAspek.toLowerCase()}</td>
-                                <td className="border border-gray-400 p-2.5">Cukup menunjukkan pemahaman dalam {fokusAspek.toLowerCase()}</td>
-                                <td className="border border-gray-400 p-2.5">Perlu bimbingan intensif dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 font-bold align-middle text-slate-900">{dim.dimensi}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">{fokusAspek}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Sangat konsisten dan mahir dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Konsisten dan baik dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Cukup menunjukkan pemahaman dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Perlu bimbingan intensif dalam {fokusAspek.toLowerCase()}</td>
                               </tr>
                             );
                           })
                         ) : (
                           <tr>
-                            <td className="border border-gray-400 p-2.5 font-medium">Penguatan Profil</td>
-                            <td className="border border-gray-400 p-2.5">{selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler}</td>
-                            <td className="border border-gray-400 p-2.5">Sangat baik</td>
-                            <td className="border border-gray-400 p-2.5">Baik</td>
-                            <td className="border border-gray-400 p-2.5">Cukup</td>
-                            <td className="border border-gray-400 p-2.5">Kurang</td>
+                            <td className="border border-slate-400 p-2.5 font-bold align-middle text-slate-900">Penguatan Profil</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">{selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler}</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Sangat baik</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Baik</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Cukup</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Kurang</td>
                           </tr>
                         )}
                       </tbody>

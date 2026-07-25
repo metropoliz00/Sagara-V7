@@ -41,6 +41,53 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [rejectModalData, setRejectModalData] = useState<{ isOpen: boolean; request: StaffLeaveRequest | null }>({ isOpen: false, request: null });
   const [rejectionReason, setRejectionReason] = useState("");
 
+  const handleExecutePrint = () => {
+    setIsLetterNumberModalOpen(false);
+
+    setTimeout(() => {
+      const printElement = document.getElementById('printable-area');
+      if (!printElement) {
+        window.print();
+        return;
+      }
+
+      let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+      if (!standaloneContainer) {
+        standaloneContainer = document.createElement('div');
+        standaloneContainer.id = 'sagara-standalone-print-container';
+        document.body.appendChild(standaloneContainer);
+      }
+
+      standaloneContainer.innerHTML = printElement.outerHTML;
+
+      let styleTag = document.getElementById('sagara-dynamic-print-style');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'sagara-dynamic-print-style';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.innerHTML = `@media print { @page { size: A4 portrait; margin: 10mm 12mm; } }`;
+
+      const originalTitle = document.title;
+      const isDispensasi = printRequestedLeave?.kategoriIjin.toLowerCase().includes('dispensasi');
+      const docName = isDispensasi ? 'Surat_Dispensasi' : letterType.replace(/\s+/g, '_');
+      document.title = `${docName}_${printRequestedLeave?.userName || 'Pegawai'}`;
+
+      window.print();
+
+      const cleanup = () => {
+        document.title = originalTitle;
+        if (standaloneContainer) {
+          standaloneContainer.innerHTML = '';
+        }
+        window.removeEventListener('afterprint', cleanup);
+      };
+
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(cleanup, 2500);
+    }, 150);
+  };
+
   const getNipLabel = (statusPegawai?: string, userNip?: string, userId?: string, userName?: string) => {
     if (statusPegawai) {
       const s = statusPegawai.toUpperCase();
@@ -1275,12 +1322,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setIsLetterNumberModalOpen(false)} className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200">Batal</button>
                     <button
-                      onClick={() => {
-                        setIsLetterNumberModalOpen(false);
-                        setTimeout(() => {
-                          window.print();
-                        }, 150);
-                      }}
+                      onClick={handleExecutePrint}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 flex items-center gap-2"
                     >
                       <Printer size={16} /> Cetak
@@ -1290,34 +1332,6 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
               </div>
             )}
           </div>
-
-          <style>{`
-            @media print {
-              @page {
-                size: A4;
-                margin: 15mm;
-              }
-              body * {
-                visibility: hidden;
-              }
-              .fixed.inset-0.z-\\[100\\] {
-                position: absolute;
-                left: 0;
-                top: 0;
-                margin: 0;
-                padding: 0;
-                width: 100%;
-                min-height: 100vh;
-                background: white;
-              }
-              .fixed.inset-0.z-\\[100\\] * {
-                visibility: visible;
-              }
-              .print\\:hidden {
-                display: none !important;
-              }
-            }
-          `}</style>
         </div>
       )}
 

@@ -65,6 +65,29 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
   
   const teacherList = rawTeacherList.length > 0 ? rawTeacherList : users.filter(u => u.role === 'guru');
 
+  const triggerPrintAction = () => {
+    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+    if (!standaloneContainer) {
+      standaloneContainer = document.createElement('div');
+      standaloneContainer.id = 'sagara-standalone-print-container';
+      document.body.appendChild(standaloneContainer);
+    }
+    const printArea = document.getElementById('print-area');
+    if (printArea && standaloneContainer) {
+      standaloneContainer.innerHTML = '';
+      const clonedContent = printArea.cloneNode(true) as HTMLElement;
+      clonedContent.id = 'sagara-cloned-print-content';
+      standaloneContainer.appendChild(clonedContent);
+    }
+    window.print();
+    
+    setTimeout(() => {
+      if (standaloneContainer) {
+        standaloneContainer.innerHTML = '';
+      }
+    }, 3000);
+  };
+
   const getAutoIdentitas = () => {
     const satuanPendidikan = schoolProfile?.name || 'UPT SD Negeri Remen 2';
     
@@ -1154,10 +1177,10 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                 A4 Portrait
               </span>
               <button 
-                onClick={() => window.print()}
+                onClick={triggerPrintAction}
                 className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition text-sm"
               >
-                <Printer size={18} /> Cetak / Unduh PDF RPK
+                <Printer size={18} /> Cetak
               </button>
             </div>
           </div>

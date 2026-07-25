@@ -1858,10 +1858,33 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     });
   };
 
+  const triggerPrintAction = () => {
+    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+    if (!standaloneContainer) {
+      standaloneContainer = document.createElement('div');
+      standaloneContainer.id = 'sagara-standalone-print-container';
+      document.body.appendChild(standaloneContainer);
+    }
+    const printArea = document.getElementById('print-area');
+    if (printArea && standaloneContainer) {
+      standaloneContainer.innerHTML = '';
+      const clonedContent = printArea.cloneNode(true) as HTMLElement;
+      clonedContent.id = 'sagara-cloned-print-content';
+      standaloneContainer.appendChild(clonedContent);
+    }
+    window.print();
+    
+    setTimeout(() => {
+      if (standaloneContainer) {
+        standaloneContainer.innerHTML = '';
+      }
+    }, 3000);
+  };
+
   const handlePrint = (plan: LearningPlan) => {
     setPrintPlan(plan);
     setTimeout(() => {
-      window.print();
+      triggerPrintAction();
     }, 400);
   };
 
@@ -1885,10 +1908,10 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                 A4 Portrait
               </span>
               <button 
-                onClick={() => window.print()}
+                onClick={triggerPrintAction}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition text-sm"
               >
-                <Printer size={18} /> Cetak / Unduh PDF RPM
+                <Printer size={18} /> Cetak
               </button>
             </div>
           </div>

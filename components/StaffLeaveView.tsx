@@ -129,7 +129,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   };
 
   const renderHeader = () => (
-    <div className="border-b-2 border-black pb-4 mb-6 flex items-center gap-4">
+    <div className="border-b-2 border-black pb-4 mb-6 flex items-center justify-between gap-4">
       <div className="w-20 h-20 bg-transparent flex-shrink-0 flex items-center justify-center">
          {schoolProfile?.regencyLogo ? <img src={schoolProfile.regencyLogo} alt="Logo Kab" className="w-full h-full object-contain" /> : <div className="text-[8px]">LOGO</div>}
       </div>
@@ -141,6 +141,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         <p className="text-xs">Jln. {schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
         <p className="text-xs">Pos-el : {schoolProfile?.email || '...'}</p>
       </div>
+      <div className="w-20 h-20 flex-shrink-0 opacity-0 pointer-events-none"></div>
     </div>
   );
 

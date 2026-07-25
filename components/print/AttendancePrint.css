@@ -95,43 +95,65 @@
   color: #9d174d;
 }
 
-.attendance-print-summary {
+.attendance-print-footer {
   margin-top: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  width: 100%;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.attendance-print-summary {
+  width: auto;
   font-size: 10pt;
-  width: 40%;
 }
 
 .attendance-print-summary h3 {
-  font-size: 11pt;
+  font-size: 10pt;
   font-weight: bold;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  text-transform: uppercase;
 }
 
 .attendance-print-summary table {
-  width: 100%;
-  border-collapse: collapse;
+  width: auto !important;
+  border-collapse: collapse !important;
+  table-layout: auto !important;
 }
 
 .attendance-print-summary table td {
-  border: 1px solid #333;
-  padding: 4px 8px;
+  border: 1px solid #333 !important;
+  padding: 4px 10px !important;
+  white-space: nowrap !important;
+  width: auto !important;
+  font-size: 9.5pt;
 }
 
 .attendance-print-summary table .summary-label {
-  width: 60%;
-  background-color: #f1f5f9;
+  background-color: #f1f5f9 !important;
+  font-weight: 500;
+  text-align: left;
+  width: auto !important;
+}
+
+.attendance-print-summary table .summary-value {
+  text-align: right;
+  width: auto !important;
+  font-weight: 600;
 }
 
 .attendance-print-signatures {
-  margin-top: 40px;
-  width: 100%;
+  margin-top: 0;
   display: flex;
-  justify-content: space-between;
-  font-size: 11pt;
+  gap: 32px;
+  justify-content: flex-end;
+  font-size: 10pt;
 }
 
 .attendance-print-signatures .sig-box {
-  width: 40%;
+  min-width: 170px;
   text-align: center;
 }
 
@@ -140,7 +162,7 @@
 }
 
 .attendance-print-signatures .sig-box .name-line {
-  margin-top: 60px;
+  margin-top: 50px;
   font-weight: bold;
   text-decoration: underline;
 }

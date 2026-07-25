@@ -465,45 +465,49 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
              </table>
              )}
 
-             {type !== 'semester' && (
-             <div className="attendance-print-summary">
-                <h3>RINGKASAN ABSENSI</h3>
-                <table>
-                   <tbody>
-                      <tr>
-                        <td className="summary-label">HARI EFEKTIF</td>
-                        <td>{summary.effectiveDays} Hari</td>
-                      </tr>
-                      <tr>
-                        <td className="summary-label">Izin</td>
-                        <td>{summary.izin}%</td>
-                      </tr>
-                      <tr>
-                        <td className="summary-label">Sakit</td>
-                        <td>{summary.sakit}%</td>
-                      </tr>
-                      <tr>
-                        <td className="summary-label">Alpha</td>
-                        <td>{summary.alpha}%</td>
-                      </tr>
-                   </tbody>
-                </table>
-             </div>
-             )}
+             <div className="attendance-print-footer">
+               {type !== 'semester' ? (
+               <div className="attendance-print-summary">
+                  <h3>RINGKASAN ABSENSI</h3>
+                  <table>
+                     <tbody>
+                        <tr>
+                          <td className="summary-label">HARI EFEKTIF</td>
+                          <td className="summary-value">{summary.effectiveDays} Hari</td>
+                        </tr>
+                        <tr>
+                          <td className="summary-label">Izin</td>
+                          <td className="summary-value">{summary.izin}%</td>
+                        </tr>
+                        <tr>
+                          <td className="summary-label">Sakit</td>
+                          <td className="summary-value">{summary.sakit}%</td>
+                        </tr>
+                        <tr>
+                          <td className="summary-label">Alpha</td>
+                          <td className="summary-value">{summary.alpha}%</td>
+                        </tr>
+                     </tbody>
+                  </table>
+               </div>
+               ) : (
+                 <div className="attendance-print-summary-spacer" />
+               )}
 
-             <div className="attendance-print-signatures">
-                <div className="sig-box">
-                   <div>Mengetahui,</div>
-                   <div>Kepala Sekolah</div>
-                   <div className="name-line">{hmMame}</div>
-                   <div className="nip-line">NIP. {hmNip}</div>
-                </div>
-                <div className="sig-box">
-                   <div>{city}, {printDate}</div>
-                   <div>Guru Kelas</div>
-                   <div className="name-line">{tcName}</div>
-                   <div className="nip-line">NIP. {tcNip}</div>
-                </div>
+               <div className="attendance-print-signatures">
+                  <div className="sig-box">
+                     <div>Mengetahui,</div>
+                     <div>Kepala Sekolah</div>
+                     <div className="name-line">{hmMame}</div>
+                     <div className="nip-line">NIP. {hmNip}</div>
+                  </div>
+                  <div className="sig-box">
+                     <div>{city}, {printDate}</div>
+                     <div>Guru Kelas</div>
+                     <div className="name-line">{tcName}</div>
+                     <div className="nip-line">NIP. {tcNip}</div>
+                  </div>
+               </div>
              </div>
           </div>
         </div>

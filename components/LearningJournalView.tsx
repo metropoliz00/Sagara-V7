@@ -895,10 +895,10 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                     <th style="width: 12%">Hari/Tanggal</th>
                                     <th style="width: 8%">Jam</th>
                                     <th style="width: 14%">Materi / Topik</th>
-                                    <th style="width: 22%">Kegiatan Pembelajaran</th>
+                                    <th style="width: 20%">Kegiatan Pembelajaran</th>
                                     <th style="width: 11%">Evaluasi</th>
-                                    <th style="width: 11%">Refleksi</th>
-                                    <th style="width: 8%">Tindak Lanjut</th>
+                                    <th style="width: 12%">Refleksi</th>
+                                    <th style="width: 12%">Tindak Lanjut</th>
                                     <th style="width: 4%">Kehadiran</th>
                                 </tr>
                             </thead>

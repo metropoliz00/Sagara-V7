@@ -57,6 +57,10 @@ const BiodataTab: React.FC<BiodataTabProps> = ({ student, onChange }) => {
                 <label className="block text-sm font-medium mb-1">Tanggal Lahir</label>
                 <input type="date" value={student.birthDate} onChange={(e) => onChange('birthDate', e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
             </div>
+            <div>
+                <label className="block text-sm font-medium mb-1">NIK</label>
+                <input type="text" value={student.nik || ''} onChange={(e) => onChange('nik', e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
+            </div>
             <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">Alamat Domisili</label>
                 <textarea value={student.address} onChange={(e) => onChange('address', e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" rows={3} />

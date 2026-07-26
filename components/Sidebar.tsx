@@ -6,7 +6,7 @@ import {
   UserCog, HeartHandshake, Tent, BookText, Smile, Link2, FileText, Contact, BookOpen, 
   UserCheck, Database, NotebookPen, Files, Activity, Building, Wallet, Camera, Book,
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
-  AlertTriangle, ClipboardList, Code
+  AlertTriangle, ClipboardList, Code, Mail
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 
@@ -81,6 +81,8 @@ const menuGroups = [
     title: 'Administrasi',
     icon: Briefcase,
     items: [
+      { id: 'administrasi/surat', label: 'Arsip Surat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'administrasi/izin-pegawai', label: 'Izin Pegawai', icon: FileText, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/sarana-prasarana', label: 'Sarana Prasarana', icon: Building, roles: ['admin', 'supervisor'] },
@@ -152,9 +154,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
       }
   };
 
+  const userEffectiveRole = currentUser?.role === 'Kepala Sekolah' ? 'supervisor' : currentUser?.role;
+
   const renderMenuItem = (item: { id: string, label: string, icon: any, roles: string[] }) => {
     const Icon = item.icon;
-    let isVisible = currentUser && item.roles.includes(currentUser.role);
+    let isVisible = currentUser && userEffectiveRole && item.roles.includes(userEffectiveRole);
     
     if (item.id === 'data-lulusan' && currentUser) {
       if (currentUser.role === 'guru') {
@@ -201,12 +205,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
     <>
       {/* Mobile Overlay */}
       <div 
-        className={`fixed inset-0 z-20 bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[120] bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
       {/* Sidebar Container */}
-      <div className={`fixed inset-y-0 left-0 z-30 ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-[130] ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Header Logo */}
         <div className={`p-8 pb-4 relative ${isCollapsed ? 'px-4' : ''}`}>
@@ -257,7 +261,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
           </div>
 
           {menuGroups.map((group) => {
-            const visibleItems = group.items.filter(item => currentUser && item.roles.includes(currentUser.role));
+            const visibleItems = group.items.filter(item => currentUser && userEffectiveRole && item.roles.includes(userEffectiveRole));
             if (visibleItems.length === 0) return null;
 
             const isGroupOpen = openGroups[group.title] || false;

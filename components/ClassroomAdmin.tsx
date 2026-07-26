@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Calendar, ClipboardList, Map, CheckCircle, BookOpen, Users,
-  Printer, FileSpreadsheet, Upload, Download, Loader2, CalendarDays, RefreshCw
+  Printer, FileSpreadsheet, Upload, Download, Loader2, CalendarDays, RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { getLocalISODate } from '../utils/dateUtils';
@@ -43,6 +44,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   schoolProfile
 }) => {
   const [activeTab, setActiveTab] = useState<'schedule' | 'piket' | 'seating' | 'inventory' | 'guestbook' | 'calendar' | 'organization'>('schedule');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -421,6 +423,10 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     });
 
     const newWindow = window.open("", "", "width=800,height=600");
+    if (!newWindow) {
+      window.print();
+      return;
+    }
     
     // Copy styles from current document to ensure Tailwind/layout works
     const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
@@ -553,6 +559,19 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     newWindow?.document.close();
   };
 
+  const tabsList = [
+    { id: 'schedule', label: 'Jadwal', icon: Calendar },
+    { id: 'piket', label: 'Piket', icon: ClipboardList },
+    { id: 'seating', label: 'Denah', icon: Map },
+    { id: 'organization', label: 'Struktur', icon: Users },
+    { id: 'calendar', label: 'Kalender', icon: CalendarDays },
+    { id: 'inventory', label: 'Inventaris', icon: CheckCircle },
+    { id: 'guestbook', label: 'Buku Tamu', icon: BookOpen },
+  ];
+
+  const activeTabItem = tabsList.find(t => t.id === activeTab) || tabsList[0];
+  const ActiveTabIcon = activeTabItem.icon;
+
   return (
     <div className="space-y-6 animate-fade-in page-landscape">
       
@@ -565,17 +584,10 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
            </h2>
            <p className="text-gray-500">Buku administrasi dengan sistem digital terintegrasi</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-           <div className="flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm mr-2">
-              {[
-                { id: 'schedule', label: 'Jadwal', icon: Calendar },
-                { id: 'piket', label: 'Piket', icon: ClipboardList },
-                { id: 'seating', label: 'Denah', icon: Map },
-                { id: 'organization', label: 'Struktur', icon: Users },
-                { id: 'calendar', label: 'Kalender', icon: CalendarDays },
-                { id: 'inventory', label: 'Inventaris', icon: CheckCircle },
-                { id: 'guestbook', label: 'Buku Tamu', icon: BookOpen },
-              ].map((tab) => (
+        <div className="flex flex-col md:flex-row md:items-center gap-3 w-full xl:w-auto">
+           {/* Desktop Tabs */}
+           <div className="hidden md:flex bg-white p-1 rounded-xl border border-gray-200 shadow-sm mr-2">
+              {tabsList.map((tab) => (
                 <button 
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
@@ -590,17 +602,78 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                 </button>
               ))}
            </div>
+
+           {/* Mobile Dropdown */}
+           <div className="md:hidden w-full relative z-[150]">
+             <button 
+               type="button"
+               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+               className="flex items-center justify-between w-full bg-white border border-[#CAF4FF] rounded-xl px-4 py-3 shadow-sm hover:bg-slate-50 transition-colors focus:outline-none"
+             >
+               <div className="flex items-center space-x-3">
+                 <ActiveTabIcon className="text-indigo-600 shrink-0" size={20} />
+                 <span className="text-base font-semibold text-gray-700">{activeTabItem.label}</span>
+               </div>
+               <ChevronDown className={`text-indigo-600 shrink-0 transition-transform duration-200 ${isDropdownOpen ? 'transform rotate-180' : ''}`} size={20} />
+             </button>
+             
+             {isDropdownOpen && (
+               <>
+                 <div 
+                   className="fixed inset-0 z-10" 
+                   onClick={() => setIsDropdownOpen(false)}
+                 />
+                 <div className="absolute left-0 right-0 mt-2 bg-white border border-[#CAF4FF] rounded-xl shadow-xl z-20 overflow-hidden divide-y divide-gray-100 max-h-80 overflow-y-auto">
+                   {tabsList.map((tab) => {
+                     const TabIcon = tab.icon;
+                     const isSelected = activeTab === tab.id;
+                     return (
+                       <button
+                         key={tab.id}
+                         type="button"
+                         onClick={() => {
+                           setActiveTab(tab.id as any);
+                           setIsDropdownOpen(false);
+                         }}
+                         className={`flex items-center justify-between w-full px-4 py-4 text-left text-base font-semibold transition-colors ${
+                           isSelected 
+                           ? 'bg-indigo-50/70 text-indigo-700' 
+                           : 'text-gray-700 hover:bg-gray-50'
+                         }`}
+                       >
+                         <div className="flex items-center space-x-3.5">
+                           <TabIcon className={isSelected ? 'text-indigo-600' : 'text-gray-500'} size={20} />
+                           <span>{tab.label}</span>
+                         </div>
+                         
+                         {/* Radio Button Indicator */}
+                         <div className="shrink-0 ml-3">
+                           {isSelected ? (
+                             <div className="w-5.5 h-5.5 rounded-full border-2 border-indigo-600 flex items-center justify-center bg-indigo-50">
+                               <div className="w-2.5 h-2.5 rounded-full bg-indigo-600"></div>
+                             </div>
+                           ) : (
+                             <div className="w-5.5 h-5.5 rounded-full border-2 border-gray-300"></div>
+                           )}
+                         </div>
+                       </button>
+                     );
+                   })}
+                 </div>
+               </>
+             )}
+           </div>
            
            {/* Action Buttons */}
-           <div className="flex space-x-1">
-             <button onClick={fetchClassroomData} title="Refresh Data" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-indigo-600">
+           <div className="flex space-x-2 justify-end w-full md:w-auto">
+             <button onClick={fetchClassroomData} title="Refresh Data" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-indigo-600 shadow-sm">
                 <RefreshCw size={18} className={isLoading ? "animate-spin" : ""} />
              </button>
              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
-             <button onClick={handleDownloadTemplate} title="Download Template" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><FileSpreadsheet size={18} /></button>
-             <button onClick={handleImportClick} title="Import" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Upload size={18} /></button>
-             <button onClick={handleExport} title="Export Excel" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Download size={18} /></button>
-             <button onClick={handlePrint} title="Cetak" className="p-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600"><Printer size={18} /></button>
+             <button onClick={handleDownloadTemplate} title="Download Template" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><FileSpreadsheet size={18} /></button>
+             <button onClick={handleImportClick} title="Import" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Upload size={18} /></button>
+             <button onClick={handleExport} title="Export Excel" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Download size={18} /></button>
+             <button onClick={handlePrint} title="Cetak" className="p-2.5 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm"><Printer size={18} /></button>
            </div>
         </div>
       </div>

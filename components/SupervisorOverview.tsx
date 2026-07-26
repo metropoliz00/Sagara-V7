@@ -42,6 +42,8 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const [activeModal, setActiveModal] = useState<'permissions' | 'discipline' | 'incomplete' | null>(null);
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [showAllInventory, setShowAllInventory] = useState(false);
+  const [selectedInventoryClassId, setSelectedInventoryClassId] = useState<string>('all');
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string>('all');
 
   // 0. Gender Breakdown
   const genderCounts = useMemo(() => {
@@ -54,30 +56,72 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   const gtkStats = useMemo(() => {
     const lower = (str: string | undefined) => (str || '').toLowerCase();
 
-    // Kepala Sekolah
+    // Helper to check if record/user is system admin or Admin Sagara (not GTK/Tendik)
+    const isSystemAdmin = (pos?: string, name?: string, username?: string, role?: string) => {
+      const p = lower(pos);
+      const n = lower(name);
+      const u = lower(username);
+      const r = lower(role);
+      
+      return (
+        n.includes('admin sagara') ||
+        n.includes('admin sistem') ||
+        u === 'admin' ||
+        u.includes('admin') ||
+        p.includes('admin') ||
+        p.includes('operator sistem') ||
+        r === 'superadmin' ||
+        (r === 'admin' && (n.includes('admin') || p.includes('admin') || !p))
+      );
+    };
+
+    if (gtkData && gtkData.length > 0) {
+      let headmaster = 0;
+      let teachers = 0;
+      let staff = 0;
+
+      gtkData.forEach(g => {
+        const pos = lower(g.jabatan);
+        const name = lower(g.nama);
+        if (isSystemAdmin(pos, name, '', '')) {
+          return; // Exclude system admin / Admin Sagara from GTK count
+        }
+        if (pos.includes('kepala sekolah')) {
+          headmaster++;
+        } else if (pos.includes('guru') || pos.includes('pendidik')) {
+          teachers++;
+        } else {
+          staff++;
+        }
+      });
+
+      const totalGTK = headmaster + teachers + staff;
+      return { headmaster, teachers, staff, totalGTK };
+    }
+
+    // Fallback to users if gtkData is empty
     const headmaster = users.filter(u => {
-        const pos = lower(u.position);
-        return pos.includes('kepala sekolah');
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('kepala sekolah') || lower(u.role).includes('kepala sekolah');
     }).length;
 
-    // Guru
     const teachers = users.filter(u => {
-        const pos = lower(u.position);
-        if (pos.includes('kepala sekolah')) return false;
-        return pos.includes('guru');
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('guru') || u.role === 'guru';
     }).length;
 
-    // Tenaga Kependidikan
     const staff = users.filter(u => {
-        const pos = lower(u.position);
-        if (pos.includes('kepala sekolah')) return false;
-        return pos.includes('staff') || pos.includes('tata usaha') || pos.includes('operator') || pos.includes('penjaga') || pos.includes('administrasi');
+      if (isSystemAdmin(u.position, u.fullName, u.username, u.role)) return false;
+      const pos = lower(u.position);
+      return pos.includes('staff') || pos.includes('tata usaha') || pos.includes('operator') || pos.includes('penjaga') || pos.includes('administrasi') || pos.includes('tendik');
     }).length;
 
     const totalGTK = headmaster + teachers + staff;
 
     return { headmaster, teachers, staff, totalGTK };
-  }, [users]);
+  }, [users, gtkData]);
 
   // 2. Student Distribution per Class (Split L/P)
   const classDistribution = useMemo(() => {
@@ -100,6 +144,18 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
           total: counts.L + counts.P
       }));
   }, [students]);
+
+  // Economy Status Data
+  const economyData = useMemo(() => {
+    const counts: Record<string, number> = { 'Mampu': 0, 'Kurang Mampu': 0 };
+    students.forEach(s => {
+      const status = s.economyStatus || 'Mampu';
+      counts[status] = (counts[status] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [students]);
+
+
 
   // 3. Attendance Stats
   const attendanceStats = useMemo(() => {
@@ -138,6 +194,93 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     return { todayPercentage: overallPercentage, donutData, trendData };
   }, [attendanceRecords]);
 
+  // 3.1 Extract 7 recent dates from attendance records
+  const recent7Dates = useMemo(() => {
+    if (!attendanceRecords || attendanceRecords.length === 0) return [];
+    const dateSet = new Set<string>();
+    attendanceRecords.forEach(r => {
+      if (r.date) {
+        const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+        dateSet.add(dateKey);
+      }
+    });
+    return Array.from(dateSet).sort().slice(-7);
+  }, [attendanceRecords]);
+
+  // 3.2 Attendance breakdown per class (Hadir, Izin, Sakit, Alpha)
+  const classAttendanceStats = useMemo(() => {
+    const studentClassMap = new Map<string, string>();
+    students.forEach(s => {
+      if (s.id) {
+        studentClassMap.set(s.id, s.classId || 'Lainnya');
+      }
+    });
+
+    const classSet = new Set<string>();
+    students.forEach(s => {
+      if (s.classId) classSet.add(s.classId);
+    });
+
+    const countsPerClass: Record<string, { hadir: number; sakit: number; izin: number; alpha: number }> = {};
+    
+    classSet.forEach(c => {
+      countsPerClass[c] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+    });
+
+    const filteredRecords = (attendanceRecords || []).filter(r => {
+      if (!r.date) return false;
+      const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+      if (recent7Dates.length > 0 && !recent7Dates.includes(dateKey)) return false;
+      if (selectedAttendanceDate !== 'all' && dateKey !== selectedAttendanceDate) return false;
+      return true;
+    });
+
+    if (filteredRecords.length > 0) {
+      filteredRecords.forEach(r => {
+        const cls = r.classId || studentClassMap.get(r.studentId) || 'Lainnya';
+        if (!countsPerClass[cls]) {
+          countsPerClass[cls] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+        }
+        const st = (r.status || '').toLowerCase();
+        if (st === 'present' || st === 'hadir' || st === 'dispensation' || st === 'dispen') {
+          countsPerClass[cls].hadir += 1;
+        } else if (st === 'sick' || st === 'sakit') {
+          countsPerClass[cls].sakit += 1;
+        } else if (st === 'permit' || st === 'izin') {
+          countsPerClass[cls].izin += 1;
+        } else if (st === 'alpha' || st === 'alfa') {
+          countsPerClass[cls].alpha += 1;
+        }
+      });
+    } else {
+      students.forEach(s => {
+        const cls = s.classId || 'Lainnya';
+        if (!countsPerClass[cls]) {
+          countsPerClass[cls] = { hadir: 0, sakit: 0, izin: 0, alpha: 0 };
+        }
+        if (s.attendance) {
+          countsPerClass[cls].hadir += (s.attendance.present || 0);
+          countsPerClass[cls].sakit += (s.attendance.sick || 0);
+          countsPerClass[cls].izin += (s.attendance.permit || 0);
+          countsPerClass[cls].alpha += (s.attendance.alpha || 0);
+        }
+      });
+    }
+
+    return Object.entries(countsPerClass)
+      .sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }))
+      .map(([className, data]) => {
+        const total = data.hadir + data.sakit + data.izin + data.alpha;
+        const percentage = total > 0 ? Math.round((data.hadir / total) * 100) : 0;
+        return {
+          className,
+          ...data,
+          total,
+          percentage
+        };
+      });
+  }, [attendanceRecords, students, recent7Dates, selectedAttendanceDate]);
+
   // 4. Low Attendance Students (<75%)
   const atRiskStudents = useMemo(() => {
     return students.filter(s => {
@@ -148,14 +291,23 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
     }).slice(0, 5); 
   }, [students]);
 
-  // 5. Inventory Data (Sorted by Condition)
+  // 5. Inventory Data (Sorted by Condition & Filtered)
+  const uniqueInventoryClasses = useMemo(() => {
+      const classes = Array.from(new Set(inventory.map(item => item.classId))).filter(Boolean);
+      return classes.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [inventory]);
+
   const inventoryList = useMemo(() => {
-      return [...inventory].sort((a, b) => {
+      let filtered = [...inventory];
+      if (selectedInventoryClassId !== 'all') {
+          filtered = filtered.filter(item => item.classId === selectedInventoryClassId);
+      }
+      return filtered.sort((a, b) => {
           if (a.condition === 'Rusak' && b.condition !== 'Rusak') return -1;
           if (a.condition !== 'Rusak' && b.condition === 'Rusak') return 1;
           return a.classId.localeCompare(b.classId, undefined, { numeric: true });
       });
-  }, [inventory]);
+  }, [inventory, selectedInventoryClassId]);
 
   // 6. BOS Financial Overview (NEW)
   const bosOverview = useMemo(() => {
@@ -207,10 +359,13 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
   };
 
   // 7. Notifications
+  const isNisnIncomplete = (nisn?: string) => !nisn || nisn.trim() === '' || nisn === '-';
+  const isPhoneIncomplete = (phone?: string) => !phone || phone.trim() === '' || phone === '-' || phone === '0';
+
   const notifications = useMemo(() => {
       const pendingPermits = permissionRequests.filter(p => p.status === 'Pending');
       const negativeLogs = counselingLogs.filter(l => l.type === 'negative');
-      const incompleteData = students.filter(s => !s.nisn || !s.parentPhone);
+      const incompleteData = students.filter(s => isNisnIncomplete(s.nisn) || isPhoneIncomplete(s.parentPhone));
       const pendingLiaison = liaisonLogs.filter(l => l.status === 'Pending').length;
 
       return [
@@ -327,6 +482,34 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
         </div>
 
+        {/* STUDENT STATS CARDS */}
+        <h3 className="text-lg font-bold text-gray-800 mt-6 flex items-center">
+            <GraduationCap className="mr-2 text-indigo-600" size={20} /> Statistik Kesiswaan
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white p-5 rounded-2xl shadow-lg flex items-center justify-between">
+                <div>
+                    <p className="text-xs font-bold uppercase mb-1 opacity-80">Total Siswa Seluruhnya</p>
+                    <h3 className="text-3xl font-black">{students.length}</h3>
+                </div>
+                <div className="p-3 bg-white/20 rounded-xl backdrop-blur-sm"><GraduationCap size={28}/></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">Jumlah Siswa Laki-laki</p>
+                    <h3 className="text-3xl font-black text-blue-600">{genderCounts.l}</h3>
+                </div>
+                <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><Users size={24}/></div>
+            </div>
+            <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p className="text-xs text-gray-500 font-bold uppercase mb-1">Jumlah Siswa Perempuan</p>
+                    <h3 className="text-3xl font-black text-pink-600">{genderCounts.p}</h3>
+                </div>
+                <div className="p-3 bg-pink-50 text-pink-600 rounded-xl"><Users size={24}/></div>
+            </div>
+        </div>
+
         {/* TOP CARDS: GTK FOCUS */}
         <h3 className="text-lg font-bold text-gray-800 mt-6 flex items-center">
             <Users className="mr-2 text-indigo-600" size={20} /> Pengelolaan GTK
@@ -362,51 +545,161 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
         </div>
 
-        {/* SECOND ROW: ATTENDANCE & RISK */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-             {/* Attendance Trend Chart */}
-             <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><Activity size={18} className="mr-2 text-emerald-500"/> Tren Kehadiran (7 Hari Terakhir)</h3>
-                <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={attendanceStats.trendData} margin={{top:5, right:5, left:-20, bottom:0}}>
-                            <defs>
-                                <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false}/>
-                            <XAxis dataKey="name" tick={{fontSize: 10}}/>
-                            <YAxis domain={[0, 100]} tick={{fontSize: 10}}/>
-                            <Tooltip contentStyle={{borderRadius: '8px'}}/>
-                            <Area type="monotone" dataKey="hadir" stroke="#10b981" fillOpacity={1} fill="url(#colorHadir)" strokeWidth={3}/>
-                        </AreaChart>
-                    </ResponsiveContainer>
+        {/* SECOND ROW: ATTENDANCE TREND & DETAIL PER CLASS */}
+        <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                <div>
+                    <h3 className="font-bold text-gray-800 flex items-center text-base">
+                        <Activity size={20} className="mr-2 text-emerald-500"/> Tren & Detail Kehadiran Siswa (7 Hari Terakhir)
+                    </h3>
+                    <p className="text-xs text-gray-400 mt-0.5">Grafik tren rerata kehadiran serta rincian Hadir, Izin, Sakit, dan Alpha per kelas.</p>
+                </div>
+                {recent7Dates.length > 0 && (
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-gray-500 shrink-0">Filter Tanggal:</span>
+                        <select 
+                            value={selectedAttendanceDate} 
+                            onChange={(e) => setSelectedAttendanceDate(e.target.value)}
+                            className="text-xs font-bold text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                        >
+                            <option value="all">Akumulasi 7 Hari Terakhir</option>
+                            {recent7Dates.map(d => {
+                                const dateObj = new Date(d);
+                                const formatted = isNaN(dateObj.getTime()) ? d : `${dateObj.getDate()}/${dateObj.getMonth() + 1}/${dateObj.getFullYear()}`;
+                                return (
+                                    <option key={d} value={d}>Tgl {formatted}</option>
+                                );
+                            })}
+                        </select>
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                {/* Attendance Trend Chart */}
+                <div className="lg:col-span-2 bg-slate-50/50 p-4 rounded-xl border border-gray-100">
+                    <p className="text-xs font-bold text-gray-500 uppercase mb-3">Grafik Rerata Kehadiran</p>
+                    <div className="h-44">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={attendanceStats.trendData} margin={{top:5, right:5, left:-20, bottom:0}}>
+                                <defs>
+                                    <linearGradient id="colorHadir" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25}/>
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                                <XAxis dataKey="name" tick={{fontSize: 10}}/>
+                                <YAxis domain={[0, 100]} tick={{fontSize: 10}}/>
+                                <Tooltip contentStyle={{borderRadius: '8px', fontSize: '12px'}}/>
+                                <Area type="monotone" dataKey="hadir" stroke="#10b981" fillOpacity={1} fill="url(#colorHadir)" strokeWidth={3}/>
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Summary Cards */}
+                <div className="lg:col-span-1 bg-emerald-50/40 p-5 rounded-xl border border-emerald-100/80 flex flex-col justify-center">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Kehadiran Total</p>
+                        <CheckCircle size={20} className="text-emerald-500"/>
+                    </div>
+                    <h3 className={`text-3xl font-black ${attendanceStats.todayPercentage >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {attendanceStats.todayPercentage}%
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2">Rata-rata kehadiran seluruh siswa.</p>
+                </div>
+
+                <div className="lg:col-span-1 bg-rose-50/40 p-5 rounded-xl border border-rose-100/80 flex flex-col justify-center">
+                    <div className="flex items-center justify-between mb-2">
+                        <p className="text-xs font-bold text-rose-700 uppercase tracking-wider">Siswa Berisiko</p>
+                        <AlertTriangle size={20} className="text-rose-500"/>
+                    </div>
+                    <h3 className="text-3xl font-black text-rose-600">
+                        {atRiskStudents.length}
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-2">Kehadiran di bawah 75%.</p>
                 </div>
             </div>
 
-            {/* Attendance & Risk Summary Cards */}
-            <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-bold text-gray-500 uppercase">Kehadiran Total</p>
-                    <CheckCircle size={20} className="text-emerald-500"/>
+            {/* DETAIL PER KELAS TABLE */}
+            <div className="pt-2">
+                <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-gray-600 flex items-center gap-1.5">
+                        <Users size={14} className="text-emerald-600"/> 
+                        Rincian Kehadiran Per Kelas ({selectedAttendanceDate === 'all' ? 'Total 7 Hari Terakhir' : `Tgl ${selectedAttendanceDate}`})
+                    </h4>
+                    <span className="text-xs text-gray-400 font-medium">{classAttendanceStats.length} Kelas Terdaftar</span>
                 </div>
-                <h3 className={`text-4xl font-black ${attendanceStats.todayPercentage >= 90 ? 'text-emerald-600' : 'text-amber-600'}`}>
-                    {attendanceStats.todayPercentage}%
-                </h3>
-                <p className="text-xs text-gray-400 mt-2">Rata-rata kehadiran seluruh siswa.</p>
-            </div>
 
-            <div className="lg:col-span-1 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col justify-center">
-                <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-bold text-gray-500 uppercase">Siswa Berisiko</p>
-                    <AlertTriangle size={20} className="text-red-500"/>
+                <div className="overflow-x-auto rounded-xl border border-gray-200/80 shadow-2xs">
+                    <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-100 text-slate-700 font-bold uppercase border-b border-gray-200">
+                            <tr>
+                                <th className="py-2.5 px-3.5">Kelas</th>
+                                <th className="py-2.5 px-3 text-center">Hadir (H)</th>
+                                <th className="py-2.5 px-3 text-center">Izin (I)</th>
+                                <th className="py-2.5 px-3 text-center">Sakit (S)</th>
+                                <th className="py-2.5 px-3 text-center">Alpha (A)</th>
+                                <th className="py-2.5 px-3 text-center">Total Input</th>
+                                <th className="py-2.5 px-3.5 text-right">% Kehadiran</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                            {classAttendanceStats.length === 0 ? (
+                                <tr>
+                                    <td colSpan={7} className="py-4 text-center text-gray-400 italic">
+                                        Belum ada data kehadiran kelas.
+                                    </td>
+                                </tr>
+                            ) : (
+                                classAttendanceStats.map((item) => (
+                                    <tr key={item.className} className="hover:bg-slate-50 transition-colors">
+                                        <td className="py-2.5 px-3.5 font-bold text-gray-800">
+                                            Kelas {item.className}
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
+                                                {item.hadir}
+                                            </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.izin > 0 ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
+                                                {item.izin}
+                                            </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.sakit > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
+                                                {item.sakit}
+                                            </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center">
+                                            <span className={`inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md font-bold border ${item.alpha > 0 ? 'bg-rose-50 text-rose-700 border-rose-200 font-black' : 'bg-gray-50 text-gray-400 border-gray-200/50'}`}>
+                                                {item.alpha}
+                                            </span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-center font-semibold text-gray-600">
+                                            {item.total}
+                                        </td>
+                                        <td className="py-2.5 px-3.5 text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <div className="w-16 bg-gray-100 rounded-full h-1.5 overflow-hidden hidden sm:block">
+                                                    <div 
+                                                        className={`h-full rounded-full ${item.percentage >= 90 ? 'bg-emerald-500' : item.percentage >= 75 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                                        style={{ width: `${Math.min(100, item.percentage)}%` }}
+                                                    />
+                                                </div>
+                                                <span className={`font-bold ${item.percentage >= 90 ? 'text-emerald-600' : item.percentage >= 75 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                                    {item.percentage}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
                 </div>
-                <h3 className="text-4xl font-black text-red-600">
-                    {atRiskStudents.length}
-                </h3>
-                <p className="text-xs text-gray-400 mt-2">Kehadiran di bawah 75%.</p>
             </div>
         </div>
 
@@ -455,6 +748,26 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                     })}
                 </div>
             </div>
+        </div>
+
+        {/* ECONOMIC CONDITION & GRADE 1-6 CHARTS */}
+        <div className="grid grid-cols-1 gap-6">
+            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center"><Wallet size={18} className="mr-2 text-emerald-500"/> Grafik Kondisi Ekonomi Murid</h3>
+                <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={economyData} margin={{top:5, right:5, left:-20, bottom:0}}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false}/>
+                            <XAxis dataKey="name" tick={{fontSize: 10}}/>
+                            <YAxis allowDecimals={false} tick={{fontSize: 10}}/>
+                            <Tooltip contentStyle={{borderRadius: '8px'}}/>
+                            <Bar dataKey="value" fill="#10b981" name="Jumlah Siswa" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+
+
         </div>
 
         {/* FOURTH ROW: SCHOOL ASSETS & CLASS INVENTORY */}
@@ -514,9 +827,23 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
             </div>
 
             <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                <h3 className="font-bold text-gray-800 mb-4 flex items-center">
-                    <Package size={18} className="mr-2 text-indigo-600"/> Data Inventaris Per Kelas
-                </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
+                    <h3 className="font-bold text-gray-800 flex items-center">
+                        <Package size={18} className="mr-2 text-indigo-600"/> Data Inventaris Per Kelas
+                    </h3>
+                    <select
+                        value={selectedInventoryClassId}
+                        onChange={(e) => setSelectedInventoryClassId(e.target.value)}
+                        className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-[200px]"
+                    >
+                        <option value="all">Semua Kelas / Ruang</option>
+                        {uniqueInventoryClasses.map(cls => (
+                            <option key={cls} value={cls}>
+                                {cls === 'ALL' ? 'Umum / Sekolah' : `Kelas ${cls}`}
+                            </option>
+                        ))}
+                    </select>
+                </div>
                 <div className="overflow-x-auto rounded-lg border border-gray-200">
                     <table className="w-full text-sm text-left">
                         <thead className="bg-gray-50 text-gray-700 font-bold uppercase text-xs">
@@ -647,14 +974,14 @@ const SupervisorOverview: React.FC<SupervisorOverviewProps> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {students.filter(s => !s.nisn || !s.parentPhone).map(s => (
+                                    {students.filter(s => isNisnIncomplete(s.nisn) || isPhoneIncomplete(s.parentPhone)).map(s => (
                                         <tr key={s.id}>
                                             <td className="p-4 font-semibold uppercase">{s.name.toUpperCase()}</td>
                                             <td className="p-4">{s.classId}</td>
                                             <td className="p-4 font-mono">{s.nis}</td>
                                             <td className="p-4 text-red-500 text-xs font-bold">
-                                                {!s.nisn && <span className="block">• NISN Kosong</span>}
-                                                {!s.parentPhone && <span className="block">• No HP Ortu Kosong</span>}
+                                                {isNisnIncomplete(s.nisn) && <span className="block">• NISN Kosong / Tidak Valid</span>}
+                                                {isPhoneIncomplete(s.parentPhone) && <span className="block">• No HP Ortu Kosong / Tidak Valid</span>}
                                             </td>
                                         </tr>
                                     ))}

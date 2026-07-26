@@ -4,10 +4,68 @@ import {
   BookOpen, Plus, Search, ExternalLink, Trash2, Edit2, 
   Filter, Calendar, Link as LinkIcon, FileText, X, Youtube,
   Eye, EyeOff, Sparkles, Award, BookMarked, Video, Layers, Globe, PenTool, Binary,
-  Upload, Download, FileSpreadsheet
+  Upload, Download, FileSpreadsheet, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw,
+  ClipboardList, FileCheck, Paperclip, CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CustomModal from './CustomModal';
+
+// Helper to compress image and convert to Base64 (lightweight but sharp)
+const compressImageToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        
+        // Max dimension of 2400px for outstanding visual detail and pristine text readability
+        const MAX_DIM = 2400;
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          // 0.90 JPEG compression preserves crisp vectors and legible fine print at highly optimized file sizes
+          const compressedBase64 = canvas.toDataURL('image/jpeg', 0.90);
+          resolve(compressedBase64);
+        } else {
+          resolve(event.target?.result as string);
+        }
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
+};
+
+// Helper to read task file (Image or PDF) to Base64
+const readTaskFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    if (file.type.startsWith('image/')) {
+      compressImageToBase64(file).then(resolve).catch(reject);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve((e.target?.result as string) || '');
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+    }
+  });
+};
 
 interface MaterialsViewProps {
   materials: Material[];
@@ -124,8 +182,38 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const [previewItem, setPreviewItem] = useState<{
     title: string;
     url: string;
-    type: 'video' | 'material';
+    type: 'video' | 'material' | 'infographic';
   } | null>(null);
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setZoomScale(1);
+    setPan({ x: 0, y: 0 });
+  }, [previewItem]);
+
+  useEffect(() => {
+    if (zoomScale === 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [zoomScale]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -238,7 +326,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
-    XLSX.writeFile(wb, `Materi_Pembelajaran_${classId}.xlsx`);
+    XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
     onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
   };
 
@@ -285,6 +373,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     }
     return null;
   };
+  const [activeTab, setActiveTab] = useState<'all' | 'materi' | 'tugas'>('all');
+  const [previewTaskItem, setPreviewTaskItem] = useState<Material | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState({
@@ -293,6 +383,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     description: '',
     link: '',
     videoLink: '',
+    infographic: '',
+    taskTitle: '',
+    taskLink: '',
+    taskFile: '',
     isVisible: true,
     createdAt: ''
   });
@@ -314,6 +408,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         description: editingMaterial.description || '',
         link: editingMaterial.link,
         videoLink: editingMaterial.videoLink || '',
+        infographic: editingMaterial.infographic || '',
+        taskTitle: editingMaterial.taskTitle || '',
+        taskLink: editingMaterial.taskLink || '',
+        taskFile: editingMaterial.taskFile || '',
         isVisible: editingMaterial.isVisible,
         createdAt: getFormattedDate(editingMaterial.createdAt)
       });
@@ -324,6 +422,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         description: '',
         link: '',
         videoLink: '',
+        infographic: '',
+        taskTitle: '',
+        taskLink: '',
+        taskFile: '',
         isVisible: true,
         createdAt: getFormattedDate()
       });
@@ -332,11 +434,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
 
   const filteredMaterials = materials.filter(m => {
     const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                         (m.description?.toLowerCase().includes(searchTerm.toLowerCase()));
+                         (m.description?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                         (m.taskTitle?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesSubject = selectedSubject === 'all' || m.subjectId === selectedSubject;
     const isVisibleToStudent = isTeacher || m.isVisible;
-    console.log(`Material: ${m.title}, isVisible: ${m.isVisible}, isTeacher: ${isTeacher}, show: ${matchesSearch && matchesSubject && isVisibleToStudent}`);
-    return matchesSearch && matchesSubject && isVisibleToStudent;
+
+    const hasTask = !!(m.taskLink || m.taskFile || m.taskTitle);
+    let matchesTab = true;
+    if (activeTab === 'tugas') {
+      matchesTab = hasTask;
+    } else if (activeTab === 'materi') {
+      matchesTab = !hasTask;
+    }
+
+    return matchesSearch && matchesSubject && isVisibleToStudent && matchesTab;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -357,6 +468,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           description: formData.description,
           link: formData.link,
           videoLink: formData.videoLink,
+          infographic: formData.infographic,
+          taskTitle: formData.taskTitle,
+          taskLink: formData.taskLink,
+          taskFile: formData.taskFile,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -369,6 +484,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           description: formData.description,
           link: formData.link,
           videoLink: formData.videoLink,
+          infographic: formData.infographic,
+          taskTitle: formData.taskTitle,
+          taskLink: formData.taskLink,
+          taskFile: formData.taskFile,
           isVisible: formData.isVisible,
           createdAt: materialDate
         });
@@ -439,30 +558,71 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-[#CAF4FF] shadow-sm flex flex-col md:flex-row gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Cari judul atau deskripsi..." 
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#5AB2FF] outline-none"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Filter size={18} className="text-gray-400" />
-          <select 
-            className="border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#5AB2FF]"
-            value={selectedSubject}
-            onChange={(e) => setSelectedSubject(e.target.value)}
+      {/* Filters & Sub-Menu Navigation */}
+      <div className="bg-white p-4 rounded-2xl border border-[#CAF4FF] shadow-sm flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center">
+        <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shrink-0">
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'all'
+                ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
           >
-            <option value="all">Semua Mata Pelajaran</option>
-            {subjects.map(s => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            <BookOpen size={14} />
+            <span>Semua ({materials.length})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('materi')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'materi'
+                ? 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <FileText size={14} />
+            <span>Materi</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tugas')}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 cursor-pointer ${
+              activeTab === 'tugas'
+                ? 'bg-[#5AB2FF] text-white shadow-sm'
+                : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            <ClipboardList size={14} />
+            <span>Tugas & Latihan ({materials.filter(m => m.taskLink || m.taskFile || m.taskTitle).length})</span>
+          </button>
+        </div>
+
+        <div className="flex-1 flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input 
+              type="text" 
+              placeholder="Cari judul, deskripsi, atau tugas..." 
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <Filter size={18} className="text-gray-400" />
+            <select 
+              className="border border-gray-200 rounded-xl px-3 py-2 text-xs sm:text-sm outline-none focus:ring-2 focus:ring-[#5AB2FF] bg-white"
+              value={selectedSubject}
+              onChange={(e) => setSelectedSubject(e.target.value)}
+            >
+              <option value="all">Semua Mata Pelajaran</option>
+              {subjects.map(s => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
@@ -472,6 +632,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           filteredMaterials.map(material => {
             const subject = subjects.find(s => s.id === material.subjectId);
             const theme = getSubjectTheme(material.subjectId, subject?.name || '');
+            const hasTask = !!(material.taskLink || material.taskFile || material.taskTitle);
             
             // Choose icon based on subject name
             let SubjectIcon = BookOpen;
@@ -502,14 +663,23 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 
                 {/* Card Content */}
                 <div className="p-6 flex-1 flex flex-col justify-between">
-                  <div className="space-y-4">
+                  <div className="flex gap-4">
+                  <div className="flex-1 space-y-4">
                     {/* Header: Subject & Actions */}
                     <div className="flex justify-between items-start gap-3">
                       <div className="flex flex-col gap-1.5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${theme.badge} uppercase tracking-wider shadow-sm transition-colors duration-200 w-max`}>
-                          <SubjectIcon size={12} className={theme.text} />
-                          {subject?.name || 'Mata Pelajaran'}
-                        </span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-extrabold border ${theme.badge} uppercase tracking-wider shadow-sm transition-colors duration-200 w-max`}>
+                            <SubjectIcon size={12} className={theme.text} />
+                            {subject?.name || 'Mata Pelajaran'}
+                          </span>
+                          {hasTask && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500 text-white shadow-sm uppercase tracking-wide">
+                              <ClipboardList size={11} />
+                              Ada Tugas
+                            </span>
+                          )}
+                        </div>
                         {!material.isVisible && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500 border border-slate-200 uppercase tracking-wide w-max">
                             <EyeOff size={10} />
@@ -557,17 +727,70 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                       ) : (
                         <p className="text-xs text-slate-300 italic font-light">Tidak ada deskripsi tambahan</p>
                       )}
+
+
                     </div>
                   </div>
+                  
+                  {/* Thumbnail */}
+                  {material.infographic && (
+                    <div className="w-32 shrink-0 self-start mt-1">
+                      <img 
+                        src={material.infographic} 
+                        alt="Poster" 
+                        className="w-full h-auto rounded-lg object-cover shadow-sm border border-slate-100" 
+                      />
+                    </div>
+                  )}
+                </div>
 
                   {/* Footer Stats & Actions */}
-                  <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-3">
-                    <div className="flex items-center text-[11px] text-slate-400 font-bold bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
-                      <Calendar size={12} className="mr-1.5 text-slate-400" />
-                      <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <div className="pt-4 mt-5 border-t border-slate-100/80 flex items-center justify-between gap-2">
+                    <div className="flex items-center text-[11px] text-slate-400 font-bold bg-slate-50 px-2 py-1 rounded-lg border border-slate-100 shrink-0">
+                      <Calendar size={12} className="mr-1 text-slate-400" />
+                      <span>{new Date(material.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}</span>
                     </div>
                     
-                    <div className="flex gap-1.5">
+                    <div className="flex gap-1.5 flex-wrap justify-end">
+                      {/* Tombol Tugas */}
+                      {hasTask ? (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewTaskItem(material)}
+                          className="flex items-center gap-1.5 px-3 h-8 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                          title="Buka & Kerjakan Tugas"
+                        >
+                          <ClipboardList size={13} />
+                          <span>Tugas</span>
+                        </button>
+                      ) : (
+                        isTeacher && (
+                          <button
+                            type="button"
+                            onClick={() => { setEditingMaterial(material); setIsModalOpen(true); }}
+                            className="flex items-center gap-1 px-2.5 h-8 bg-slate-50 hover:bg-amber-50 text-slate-500 hover:text-amber-600 border border-slate-200 font-bold text-[11px] rounded-lg transition-all cursor-pointer"
+                            title="Tambah Tugas ke Materi ini"
+                          >
+                            <Plus size={12} />
+                            <span>Tugas</span>
+                          </button>
+                        )
+                      )}
+
+                      {material.infographic && (
+                        <button 
+                          onClick={() => setPreviewItem({
+                            title: material.title,
+                            url: material.infographic || '',
+                            type: 'infographic'
+                          })}
+                          className="flex items-center gap-1 px-2.5 h-8 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 border border-indigo-100 font-extrabold text-[11px] rounded-lg shadow-sm hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                          title="Lihat Poster / Infografis"
+                        >
+                          <ImageIcon size={12} className="text-indigo-500" />
+                          <span>Poster</span>
+                        </button>
+                      )}
                       {material.videoLink && (
                         <button 
                           onClick={() => setPreviewItem({
@@ -695,6 +918,191 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     />
                   </div>
                 </div>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="block text-xs font-extrabold text-gray-700 uppercase tracking-wide">
+                      Poster / Infografis Materi (Opsional)
+                    </label>
+                    {formData.infographic && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, infographic: ''})}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        Hapus Poster
+                      </button>
+                    )}
+                  </div>
+
+                  {formData.infographic ? (
+                    <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-white p-2 flex items-center gap-3">
+                      {formData.infographic.startsWith('data:image/') ? (
+                        <img 
+                          src={formData.infographic} 
+                          alt="Pratinjau Poster" 
+                          className="w-16 h-16 object-cover rounded border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 flex items-center justify-center rounded border border-indigo-100 shrink-0">
+                          <ImageIcon size={24} />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-extrabold text-slate-800 truncate">Poster Terpasang</p>
+                        <p className="text-[10px] text-slate-400 truncate leading-tight">
+                          {formData.infographic.startsWith('data:image/') 
+                            ? 'Format gambar (Sangat ringan & tajam)' 
+                            : formData.infographic}
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* URL Option */}
+                      <div className="relative flex items-center">
+                        <ImageIcon className="absolute left-3 text-gray-400" size={16} />
+                        <input 
+                          type="url" 
+                          className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-xl text-xs focus:ring-2 focus:ring-[#5AB2FF] outline-none"
+                          placeholder="Link Gambar Poster (URL)..."
+                          value={formData.infographic}
+                          onChange={e => setFormData({...formData, infographic: e.target.value})}
+                        />
+                      </div>
+                      
+                      {/* File Upload Option */}
+                      <label className="flex items-center justify-center gap-2 cursor-pointer border border-dashed border-gray-300 hover:border-[#5AB2FF] rounded-xl py-2 px-3 bg-white hover:bg-slate-50 transition-colors text-xs font-bold text-slate-600">
+                        <Upload size={14} className="text-slate-400" />
+                        <span>Unggah Foto Poster</span>
+                        <input 
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const base64 = await compressImageToBase64(file);
+                                setFormData({...formData, infographic: base64});
+                              } catch (err) {
+                                onShowNotification('Gagal memproses gambar. Coba format lain.', 'error');
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+                {/* Section Tugas & Latihan Siswa */}
+                <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200/80 space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="flex items-center gap-1.5 text-xs font-extrabold text-amber-900 uppercase tracking-wide">
+                      <ClipboardList size={15} className="text-amber-600" />
+                      <span>Sematkan Tugas & Latihan Siswa (Opsional)</span>
+                    </label>
+                    {(formData.taskLink || formData.taskFile || formData.taskTitle) && (
+                      <button
+                        type="button"
+                        onClick={() => setFormData({...formData, taskTitle: '', taskLink: '', taskFile: ''})}
+                        className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        Hapus Tugas
+                      </button>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      Judul / Petunjuk Soal Tugas
+                    </label>
+                    <input 
+                      type="text" 
+                      className="w-full border border-amber-200 p-2.5 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-400 outline-none bg-white"
+                      placeholder="Contoh: Kerjakan Soal Latihan Bab 1 Hal 20..."
+                      value={formData.taskTitle}
+                      onChange={e => setFormData({...formData, taskTitle: e.target.value})}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      1. Link Tautan Tugas (Google Form, Drive, Quizizz, Website)
+                    </label>
+                    <div className="relative">
+                      <LinkIcon className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" size={15} />
+                      <input 
+                        type="url" 
+                        className="w-full pl-9 pr-3 py-2 border border-amber-200 rounded-xl text-xs sm:text-sm focus:ring-2 focus:ring-amber-400 outline-none bg-white"
+                        placeholder="https://forms.google.com/... atau link latihan online"
+                        value={formData.taskLink}
+                        onChange={e => setFormData({...formData, taskLink: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-extrabold text-amber-800 uppercase mb-1">
+                      2. Unggah File / Berkas Tugas (Foto / PDF - Disimpan Base64)
+                    </label>
+                    
+                    {formData.taskFile ? (
+                      <div className="rounded-xl border border-amber-300 bg-white p-3 flex items-center justify-between gap-3 shadow-sm">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {formData.taskFile.startsWith('data:image/') ? (
+                            <img 
+                              src={formData.taskFile} 
+                              alt="Foto Tugas" 
+                              className="w-12 h-12 object-cover rounded-lg border border-amber-200 shrink-0" 
+                            />
+                          ) : (
+                            <div className="w-12 h-12 bg-red-50 text-red-600 rounded-lg border border-red-200 flex items-center justify-center shrink-0 font-extrabold text-xs">
+                              PDF
+                            </div>
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-xs font-extrabold text-gray-800 truncate">
+                              {formData.taskFile.startsWith('data:image/') ? 'Foto Berkas Tugas Terlampir' : 'Dokumen PDF Tugas Terlampir'}
+                            </p>
+                            <p className="text-[10px] text-amber-600 font-medium truncate">
+                              Tersimpan rapi dalam format string Base64
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData({...formData, taskFile: ''})}
+                          className="px-2.5 py-1 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-lg border border-rose-200 transition-colors shrink-0 cursor-pointer"
+                        >
+                          Ganti / Hapus
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="flex items-center justify-center gap-2 cursor-pointer border-2 border-dashed border-amber-300 hover:border-amber-500 rounded-xl py-3 px-4 bg-white hover:bg-amber-50/50 transition-all text-xs font-bold text-amber-800 shadow-sm">
+                        <Paperclip size={16} className="text-amber-600" />
+                        <span>Pilih Foto atau Dokumen PDF Tugas</span>
+                        <input 
+                          type="file"
+                          accept="image/*, application/pdf, .pdf"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              try {
+                                const base64 = await readTaskFileToBase64(file);
+                                setFormData({...formData, taskFile: base64});
+                                onShowNotification('File tugas berhasil diunggah (Base64)!', 'success');
+                              } catch (err) {
+                                onShowNotification('Gagal membaca file tugas. Coba file lain.', 'error');
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200">
                   <label className="text-sm font-bold text-gray-700">Tampilkan ke Siswa</label>
                   <button
@@ -734,6 +1142,153 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         </div>
       )}
 
+      {/* Pratinjau Tugas Modal */}
+      {previewTaskItem && (
+        <div className={`fixed inset-0 ${currentUser?.role !== 'siswa' ? 'lg:pl-72' : ''} z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300`}>
+          <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-scale-in border border-amber-200">
+            {/* Modal Header */}
+            <div className="p-5 flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-sm text-white">
+                  <ClipboardList size={22} />
+                </div>
+                <div>
+                  <span className="text-[10px] text-amber-100 font-extrabold uppercase tracking-wider block">
+                    Tugas & Latihan Siswa
+                  </span>
+                  <h3 className="font-extrabold text-base md:text-lg text-white line-clamp-1">
+                    {previewTaskItem.title}
+                  </h3>
+                </div>
+              </div>
+              <button 
+                onClick={() => setPreviewTaskItem(null)} 
+                className="p-1.5 hover:bg-white/20 rounded-full transition-colors text-white cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6 space-y-5 overflow-y-auto flex-1 bg-amber-50/20">
+              {/* Task Title & Instruction */}
+              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-2">
+                <div className="flex items-center gap-2 text-amber-700 font-extrabold text-xs uppercase tracking-wider">
+                  <CheckSquare size={16} />
+                  <span>Petunjuk / Instruksi Tugas</span>
+                </div>
+                <h4 className="text-base font-extrabold text-gray-800">
+                  {previewTaskItem.taskTitle || "Selesaikan tugas berikut sesuai instruksi dari guru."}
+                </h4>
+                {previewTaskItem.description && (
+                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap pt-1 border-t border-gray-100 mt-2">
+                    {previewTaskItem.description}
+                  </p>
+                )}
+              </div>
+
+              {/* Task Link Attachment */}
+              {previewTaskItem.taskLink && (
+                <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                      <LinkIcon size={14} className="text-amber-600" />
+                      Tautan / Google Form / Quiz Online
+                    </span>
+                    <span className="text-[10px] bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md font-bold uppercase">
+                      Tugas Online
+                    </span>
+                  </div>
+                  <a
+                    href={previewTaskItem.taskLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                  >
+                    <ExternalLink size={16} />
+                    <span>Kerjakan Tugas</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Task File Attachment (Base64 Photo or PDF) */}
+              {previewTaskItem.taskFile && (
+                <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                      <Paperclip size={14} className="text-amber-600" />
+                      Berkas Lampiran Tugas (Base64)
+                    </span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                      {previewTaskItem.taskFile.startsWith('data:application/pdf') ? 'Dokumen PDF' : 'Foto Gambar'}
+                    </span>
+                  </div>
+
+                  {/* Render Image or PDF Preview */}
+                  {previewTaskItem.taskFile.startsWith('data:image/') ? (
+                    <div className="space-y-3">
+                      <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 max-h-80 flex items-center justify-center">
+                        <img 
+                          src={previewTaskItem.taskFile} 
+                          alt="Foto Tugas" 
+                          className="max-h-80 object-contain w-full"
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <a 
+                          href={previewTaskItem.taskFile}
+                          download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}.jpg`}
+                          className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer"
+                        >
+                          <Download size={14} />
+                          <span>Unduh Foto Tugas</span>
+                        </a>
+                      </div>
+                    </div>
+                  ) : previewTaskItem.taskFile.startsWith('data:application/pdf') ? (
+                    <div className="space-y-3">
+                      <iframe 
+                        src={previewTaskItem.taskFile}
+                        title="Dokumen PDF Tugas"
+                        className="w-full h-80 rounded-xl border border-slate-200"
+                      />
+                      <a 
+                        href={previewTaskItem.taskFile}
+                        download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}.pdf`}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                      >
+                        <Download size={14} />
+                        <span>Unduh Dokumen PDF Tugas</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <a 
+                      href={previewTaskItem.taskFile}
+                      download={`Tugas_${previewTaskItem.title.replace(/\s+/g, '_')}`}
+                      className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                    >
+                      <Download size={14} />
+                      <span>Unduh File Tugas</span>
+                    </a>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end shrink-0">
+              <button 
+                type="button"
+                onClick={() => setPreviewTaskItem(null)}
+                className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Preview Modal */}
       {previewItem && (
         <div className={`fixed inset-0 ${currentUser?.role !== 'siswa' ? 'lg:pl-72' : ''} z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300`}>
@@ -741,12 +1296,18 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
             {/* Modal Header */}
             <div className="p-4 md:p-5 flex justify-between items-center bg-slate-950/80 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${previewItem.type === 'video' ? 'bg-red-500/10 text-red-500' : 'bg-sky-500/10 text-sky-400'}`}>
-                  {previewItem.type === 'video' ? <Youtube size={20} /> : <FileText size={20} />}
+                <div className={`p-2 rounded-xl ${
+                  previewItem.type === 'video' 
+                    ? 'bg-red-500/10 text-red-500' 
+                    : previewItem.type === 'infographic'
+                    ? 'bg-indigo-500/10 text-indigo-400'
+                    : 'bg-sky-500/10 text-sky-400'
+                }`}>
+                  {previewItem.type === 'video' ? <Youtube size={20} /> : previewItem.type === 'infographic' ? <ImageIcon size={20} /> : <FileText size={20} />}
                 </div>
                 <div className="text-left">
                   <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
-                    Pratinjau {previewItem.type === 'video' ? 'Video' : 'Materi'}
+                    Pratinjau {previewItem.type === 'video' ? 'Video' : previewItem.type === 'infographic' ? 'Poster' : 'Materi'}
                   </span>
                   <h3 className="font-extrabold text-sm md:text-base text-slate-200 line-clamp-1 max-w-[200px] sm:max-w-[400px] md:max-w-[600px]">
                     {previewItem.title}
@@ -754,15 +1315,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <a 
-                  href={previewItem.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs md:text-sm font-bold text-slate-300 hover:text-white rounded-xl border border-slate-700 transition-all active:scale-95 duration-200 shrink-0"
-                >
-                  <ExternalLink size={14} />
-                  <span className="hidden sm:inline">Buka di Tab Baru</span>
-                </a>
+                {previewItem.type === 'infographic' && (
+                  <a 
+                    href={previewItem.url}
+                    download={`Poster_${previewItem.title.replace(/\s+/g, '_')}.jpg`}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-bold text-white rounded-xl transition-all active:scale-95 duration-200 shrink-0 cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span className="hidden sm:inline">Unduh Poster</span>
+                  </a>
+                )}
                 <button 
                   onClick={() => setPreviewItem(null)} 
                   className="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white cursor-pointer shrink-0"
@@ -773,7 +1335,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
             </div>
 
             {/* Modal Content / Preview Area */}
-            <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4">
+            <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4 overflow-auto">
               {previewItem.type === 'video' ? (
                 (() => {
                   const embedUrl = getYoutubeEmbedUrl(previewItem.url);
@@ -806,6 +1368,76 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     );
                   }
                 })()
+              ) : previewItem.type === 'infographic' ? (
+                <div 
+                  className="w-full h-full flex flex-col relative select-none bg-slate-950/40"
+                  onMouseDown={handleMouseDown}
+                  onMouseMove={handleMouseMove}
+                  onMouseUp={handleMouseUpOrLeave}
+                  onMouseLeave={handleMouseUpOrLeave}
+                >
+                  {/* Floating Zoom & Reset Control Bar */}
+                  <div className="bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-5 py-3 flex items-center justify-center gap-4 w-full shadow-md z-20">
+                    <button 
+                      type="button"
+                      onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                      disabled={zoomScale <= 0.5}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Zoom Out"
+                    >
+                      <ZoomOut size={16} />
+                    </button>
+                    <span className="text-xs font-mono font-extrabold text-slate-300 select-none min-w-[40px] text-center tracking-tight">
+                      {Math.round(zoomScale * 100)}%
+                    </span>
+                    <button 
+                      type="button"
+                      onClick={() => setZoomScale(prev => Math.min(4, prev + 0.25))}
+                      disabled={zoomScale >= 4}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Zoom In"
+                    >
+                      <ZoomIn size={16} />
+                    </button>
+                    <div className="w-px h-5 bg-slate-800" />
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        setZoomScale(1);
+                        setPan({ x: 0, y: 0 });
+                      }}
+                      disabled={zoomScale === 1 && pan.x === 0 && pan.y === 0}
+                      className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                      title="Reset Tampilan"
+                    >
+                      <RotateCcw size={14} />
+                    </button>
+                  </div>
+
+                  {/* Interactive Panning Canvas */}
+                  <div 
+                    className={`w-full h-full flex items-center justify-center ${
+                      zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''
+                    }`}
+                  >
+                    <div
+                      style={{
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})`,
+                        transformOrigin: 'center center',
+                        transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                      }}
+                      className="max-w-full max-h-[70vh] flex items-center justify-center"
+                    >
+                      <img 
+                        src={previewItem.url} 
+                        alt={previewItem.title} 
+                        className="max-w-full max-h-[68vh] object-contain rounded-xl shadow-2xl border border-slate-800/80 bg-slate-900"
+                        referrerPolicy="no-referrer"
+                        draggable={false}
+                      />
+                    </div>
+                  </div>
+                </div>
               ) : (
                 (() => {
                   const driveEmbedUrl = getGoogleDriveEmbedUrl(previewItem.url);

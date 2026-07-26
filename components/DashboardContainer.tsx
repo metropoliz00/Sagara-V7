@@ -35,6 +35,7 @@ interface DashboardContainerProps {
   filteredAgendas: AgendaItem[];
   filteredAttendance: any[];
   filteredCounseling: BehaviorLog[];
+  counselingLogs?: BehaviorLog[];
   holidays: Holiday[];
   teacherProfile: TeacherProfileData;
   activeClassId: string;
@@ -80,6 +81,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
   filteredAgendas,
   filteredAttendance,
   filteredCounseling,
+  counselingLogs,
   holidays,
   teacherProfile,
   activeClassId,
@@ -162,8 +164,7 @@ const DashboardContainer: React.FC<DashboardContainerProps> = ({
         grades={grades}
         liaisonLogs={liaisonLogs}
         permissionRequests={permissionRequests}
-        // FIX: Pass 'filteredCounseling' to the 'counselingLogs' prop. The 'counselingLogs' variable was not defined in this scope.
-        counselingLogs={filteredCounseling}
+        counselingLogs={counselingLogs || filteredCounseling}
         extracurriculars={extracurriculars}
         inventory={inventory}
         schoolAssets={schoolAssets}

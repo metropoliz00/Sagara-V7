@@ -363,7 +363,10 @@ const GraduatesView: React.FC<GraduatesViewProps> = ({ onShowNotification, isRea
 
   const handlePrint = () => {
     const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
+    if (!printWindow) {
+      window.print();
+      return;
+    }
 
     const html = `
       <html>

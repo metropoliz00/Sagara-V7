@@ -65,7 +65,7 @@ const StudentList: React.FC<StudentListProps> = ({
   // Helper completeness functions
   const calculateCompleteness = (s: Student) => {
     const fields: (keyof Student)[] = [
-      'nis', 'name', 'gender', 'birthPlace', 'birthDate', 'address', 'photo', 'religion',
+      'nis', 'nik', 'name', 'gender', 'birthPlace', 'birthDate', 'address', 'photo', 'religion',
       'fatherName', 'fatherJob', 'fatherEducation', 'motherName', 'motherJob', 'motherEducation',
       'parentName', 'parentPhone', 'parentJob',
       'height', 'weight', 'bloodType', 'healthNotes',
@@ -163,6 +163,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <th>Nama</th>
           <th>Tempat Lahir</th>
           <th>Tanggal Lahir</th>
+          <th>NIK</th>
           <th>Hobi</th>
           <th>Cita-cita</th>
         </tr>
@@ -175,6 +176,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <td>${s.name.toUpperCase()}</td>
           <td>${s.birthPlace || '-'}</td>
           <td style="text-align: center;">${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+          <td style="text-align: center;">${s.nik || '-'}</td>
           <td>${s.hobbies || '-'}</td>
           <td>${s.ambition || '-'}</td>
         </tr>
@@ -190,6 +192,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <th>L/P</th>
           <th>Tempat Lahir</th>
           <th>Tanggal Lahir</th>
+          <th>NIK</th>
           <th>Agama</th>
           <th>Nama Ayah</th>
           <th>Nama Ibu</th>
@@ -205,6 +208,7 @@ const StudentList: React.FC<StudentListProps> = ({
           <td style="text-align: center;">${s.gender}</td>
           <td>${s.birthPlace || '-'}</td>
           <td>${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+          <td>${s.nik || '-'}</td>
           <td>${s.religion || '-'}</td>
           <td>${(s.fatherName || '-').toUpperCase()}</td>
           <td>${(s.motherName || '-').toUpperCase()}</td>
@@ -289,6 +293,10 @@ const StudentList: React.FC<StudentListProps> = ({
         onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
         
         const newWindow = window.open("", "", "width=1200,height=800");
+        if (!newWindow) {
+            window.print();
+            return;
+        }
         if (newWindow) {
             newWindow.document.write(`
               <html>
@@ -576,56 +584,201 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const headers = ["Class ID", "NIS", "NISN", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
-    const example = ["1A", "2024001", "0012345678", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Input Siswa");
-    XLSX.writeFile(workbook, "template_input_siswa.xlsx");
+    try {
+      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
+      const example = ["1A", "2024001", "0012345678", "1234567890123456", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Input Siswa");
+      XLSX.writeFile(workbook, "template_input_siswa.xlsx");
+      onShowNotification("Template Excel berhasil diunduh!", "success");
+    } catch (err: any) {
+      console.error("Gagal mengunduh template:", err);
+      onShowNotification("Gagal mengunduh template Excel.", "error");
+    }
   };
 
   const handleExport = () => {
-    const headers = ["Class ID", "NIS", "NISN", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
-    const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
-    XLSX.writeFile(workbook, "data_siswa_lengkap.xlsx");
+    try {
+      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
+      const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
+      XLSX.writeFile(workbook, "data_siswa_lengkap.xlsx");
+      onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
+    } catch (err: any) {
+      console.error("Gagal melakukan ekspor:", err);
+      onShowNotification("Gagal mengekspor data ke Excel.", "error");
+    }
   };
 
-  const handleImportClick = () => fileInputRef.current?.click();
+  const handleImportClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+      fileInputRef.current.click();
+    }
+  };
+
+  const parseExcelDate = (val: any): string => {
+    if (!val) return '';
+    if (typeof val === 'number') {
+      const date = new Date(Math.round((val - 25569) * 86400 * 1000));
+      if (!isNaN(date.getTime())) {
+        return date.toISOString().split('T')[0];
+      }
+      return '';
+    }
+    const str = String(val).trim();
+    if (!str || str === '-') return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+    const parts = str.split(/[\/\.-]/);
+    if (parts.length === 3) {
+      if (parts[0].length === 4) {
+        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+      } else if (parts[2].length === 4) {
+        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+      }
+    }
+    return str;
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = (evt) => {
-      const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-      const wb = XLSX.read(data, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
-      const rows = jsonData.slice(1) as any[];
-      let importedCount = 0;
-      const newStudentsBatch: Omit<Student, 'id'>[] = [];
-      rows.forEach((row) => {
-        if (row.length === 0) return;
-        const classIdInput = row[0] ? String(row[0]) : classId;
-        const nis = row[1] ? String(row[1]) : '';
-        const name = row[3] ? String(row[3]).toUpperCase() : '';
-        if (nis && name) {
-          const newStudent: Omit<Student, 'id'> = {
-            classId: classIdInput, nis: nis, nisn: row[2] ? String(row[2]) : '', name: name, gender: (row[4] && String(row[4]).toUpperCase().includes('P')) ? 'P' : 'L', birthPlace: row[5] ? String(row[5]) : '', birthDate: row[6] ? String(row[6]) : '', religion: row[7] ? String(row[7]) : 'Islam', address: row[8] ? String(row[8]) : '',
-            fatherName: row[9] ? String(row[9]).toUpperCase() : '', fatherJob: row[10] ? String(row[10]) : '', fatherEducation: row[11] ? String(row[11]) : '', motherName: row[12] ? String(row[12]).toUpperCase() : '', motherJob: row[13] ? String(row[13]) : '', motherEducation: row[14] ? String(row[14]) : '',
-            parentName: row[15] ? String(row[15]).toUpperCase() : (row[9] ? String(row[9]).toUpperCase() : (row[12] ? String(row[12]).toUpperCase() : '')), parentPhone: row[16] ? String(row[16]) : '', parentJob: row[17] ? String(row[17]) : '',
-            economyStatus: (row[18] as any) || 'Mampu', height: Number(row[19]) || 0, weight: Number(row[20]) || 0, bloodType: row[21] ? String(row[21]) : '', healthNotes: row[22] ? String(row[22]) : '', hobbies: row[23] ? String(row[23]) : '', ambition: row[24] ? String(row[24]) : '',
-            achievements: row[25] ? String(row[25]).split(',').map(s=>s.trim()) : [], violations: row[26] ? String(row[26]).split(',').map(s=>s.trim()) : [], behaviorScore: 100, attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
-          };
-          if (onBatchAdd) newStudentsBatch.push(newStudent); else onAdd(newStudent);
-          importedCount++;
+      try {
+        const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: 'array' });
+        const wsName = wb.SheetNames[0];
+        const ws = wb.Sheets[wsName];
+        
+        const jsonObjects = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
+        const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+
+        const newStudentsBatch: Omit<Student, 'id'>[] = [];
+
+        if (jsonObjects.length > 0 && typeof jsonObjects[0] === 'object' && !Array.isArray(jsonObjects[0])) {
+          jsonObjects.forEach((row) => {
+            const classIdInput = String(row['Class ID'] || row['Kelas'] || row['classId'] || classId || '').trim();
+            const nis = String(row['NIS'] || row['nis'] || '').trim();
+            const nisn = String(row['NISN'] || row['nisn'] || '').trim();
+            const nik = String(row['NIK'] || row['nik'] || '').trim();
+            const name = String(row['Nama Lengkap'] || row['Nama'] || row['name'] || '').trim().toUpperCase();
+
+            if (nis && name) {
+              const genderRaw = String(row['Gender (L/P)'] || row['Gender'] || row['Jenis Kelamin'] || 'L').trim().toUpperCase();
+              const gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN') || genderRaw.includes('WANITA')) ? 'P' : 'L';
+
+              const rawBirthDate = row['Tanggal Lahir (YYYY-MM-DD)'] || row['Tanggal Lahir'] || row['Tanggal Lahir (YYYY-MM-DD)*'];
+
+              const newStudent: Omit<Student, 'id'> = {
+                classId: classIdInput || classId,
+                nis,
+                nisn,
+                nik,
+                name,
+                gender,
+                birthPlace: String(row['Tempat Lahir'] || '').trim(),
+                birthDate: parseExcelDate(rawBirthDate),
+                religion: String(row['Agama'] || 'Islam').trim(),
+                address: String(row['Alamat'] || '').trim(),
+                fatherName: String(row['Nama Ayah'] || '').trim().toUpperCase(),
+                fatherJob: String(row['Pekerjaan Ayah'] || '').trim(),
+                fatherEducation: String(row['Pendidikan Ayah'] || '').trim(),
+                motherName: String(row['Nama Ibu'] || '').trim().toUpperCase(),
+                motherJob: String(row['Pekerjaan Ibu'] || '').trim(),
+                motherEducation: String(row['Pendidikan Ibu'] || '').trim(),
+                parentName: String(row['Nama Wali'] || row['Nama Ayah'] || row['Nama Ibu'] || '').trim().toUpperCase(),
+                parentPhone: String(row['No HP Wali'] || row['No HP'] || '').trim(),
+                parentJob: String(row['Pekerjaan Wali'] || '').trim(),
+                economyStatus: (row['Status Ekonomi'] as any) || 'Mampu',
+                height: Number(row['Tinggi (cm)'] || row['Tinggi']) || 0,
+                weight: Number(row['Berat (kg)'] || row['Berat']) || 0,
+                bloodType: String(row['Gol Darah'] || '').trim(),
+                healthNotes: String(row['Riwayat Penyakit'] || '').trim(),
+                hobbies: String(row['Hobi'] || '').trim(),
+                ambition: String(row['Cita-cita'] || '').trim(),
+                achievements: row['Prestasi'] ? String(row['Prestasi']).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                violations: row['Pelanggaran'] ? String(row['Pelanggaran']).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                behaviorScore: 100,
+                attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
+              };
+              newStudentsBatch.push(newStudent);
+            }
+          });
         }
-      });
-      if (onBatchAdd && newStudentsBatch.length > 0) { onBatchAdd(newStudentsBatch); onShowNotification(`Memproses impor ${importedCount} data siswa...`, 'warning'); } else if (!onBatchAdd) { onShowNotification(`Berhasil mengirim ${importedCount} request data siswa.`, 'success'); }
-      if (fileInputRef.current) fileInputRef.current.value = '';
+
+        if (newStudentsBatch.length === 0 && rawRows.length > 1) {
+          const rows = rawRows.slice(1);
+          rows.forEach((row) => {
+            if (!row || row.length === 0) return;
+            const classIdInput = row[0] ? String(row[0]).trim() : classId;
+            const nis = row[1] ? String(row[1]).trim() : '';
+            const nisn = row[2] ? String(row[2]).trim() : '';
+            const nik = row[3] ? String(row[3]).trim() : '';
+            const name = row[4] ? String(row[4]).trim().toUpperCase() : (row[3] && isNaN(Number(row[3])) ? String(row[3]).trim().toUpperCase() : '');
+
+            if (nis && name) {
+              const genderRaw = row[5] ? String(row[5]).toUpperCase() : 'L';
+              const gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN')) ? 'P' : 'L';
+
+              const newStudent: Omit<Student, 'id'> = {
+                classId: classIdInput || classId,
+                nis,
+                nisn,
+                nik,
+                name,
+                gender,
+                birthPlace: row[6] ? String(row[6]).trim() : '',
+                birthDate: parseExcelDate(row[7]),
+                religion: row[8] ? String(row[8]).trim() : 'Islam',
+                address: row[9] ? String(row[9]).trim() : '',
+                fatherName: row[10] ? String(row[10]).trim().toUpperCase() : '',
+                fatherJob: row[11] ? String(row[11]).trim() : '',
+                fatherEducation: row[12] ? String(row[12]).trim() : '',
+                motherName: row[13] ? String(row[13]).trim().toUpperCase() : '',
+                motherJob: row[14] ? String(row[14]).trim() : '',
+                motherEducation: row[15] ? String(row[15]).trim() : '',
+                parentName: row[16] ? String(row[16]).trim().toUpperCase() : (row[10] ? String(row[10]).trim().toUpperCase() : (row[13] ? String(row[13]).trim().toUpperCase() : '')),
+                parentPhone: row[17] ? String(row[17]).trim() : '',
+                parentJob: row[18] ? String(row[18]).trim() : '',
+                economyStatus: (row[19] as any) || 'Mampu',
+                height: Number(row[20]) || 0,
+                weight: Number(row[21]) || 0,
+                bloodType: row[22] ? String(row[22]).trim() : '',
+                healthNotes: row[23] ? String(row[23]).trim() : '',
+                hobbies: row[24] ? String(row[24]).trim() : '',
+                ambition: row[25] ? String(row[25]).trim() : '',
+                achievements: row[26] ? String(row[26]).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                violations: row[27] ? String(row[27]).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                behaviorScore: 100,
+                attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
+              };
+              newStudentsBatch.push(newStudent);
+            }
+          });
+        }
+
+        if (newStudentsBatch.length > 0) {
+          if (onBatchAdd) {
+            onBatchAdd(newStudentsBatch);
+            onShowNotification(`Berhasil mengimpor ${newStudentsBatch.length} data siswa.`, 'success');
+          } else {
+            newStudentsBatch.forEach(s => onAdd(s));
+            onShowNotification(`Berhasil mengimpor ${newStudentsBatch.length} data siswa.`, 'success');
+          }
+        } else {
+          onShowNotification("Tidak ada data siswa yang valid ditemukan dalam berkas Excel.", 'warning');
+        }
+      } catch (err) {
+        console.error("Gagal membaca file Excel:", err);
+        onShowNotification("Gagal membaca berkas Excel. Pastikan format sesuai template.", 'error');
+      } finally {
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
     };
     reader.readAsArrayBuffer(file);
   };
@@ -674,7 +827,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const [tempAchievements, setTempAchievements] = useState('');
   const [tempViolations, setTempViolations] = useState('');
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
-     name: '', nis: '', nisn: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+     name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
      fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
      height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0, sick:0, permit:0, alpha:0}, achievements: [], violations: []
   });
@@ -688,7 +841,7 @@ const StudentList: React.FC<StudentListProps> = ({
        onAdd({ ...newStudent, achievements: achievementsArray, violations: violationsArray } as Omit<Student, 'id'>);
        setIsAddModalOpen(false);
        setNewStudent({ 
-         name: '', nis: '', nisn: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+         name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
          fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
          height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0,sick:0,permit:0,alpha:0},
          achievements: [], violations: []
@@ -1104,27 +1257,23 @@ const StudentList: React.FC<StudentListProps> = ({
             {!isReadOnly && <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />}
             
             <div className="flex flex-wrap gap-2 no-print">
-              <div className="relative group">
-                <button className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
-                  <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Template</span> <ChevronDown size={14} />
-                </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 hidden group-hover:block">
-                  <button onClick={handleDownloadTemplate} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
-                    <Users size={14} className="mr-2" /> Template Siswa
-                  </button>
-                </div>
-              </div>
+              <button 
+                onClick={handleDownloadTemplate} 
+                className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                title="Unduh Template Excel Data Siswa"
+              >
+                <FileSpreadsheet size={16} /> <span className="hidden sm:inline">Template</span>
+              </button>
 
-              <div className="relative group">
-                <button className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
-                  <Upload size={16} /> <span className="hidden sm:inline">Import</span> <ChevronDown size={14} />
+              {!isReadOnly && (
+                <button 
+                  onClick={handleImportClick} 
+                  className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+                  title="Impor Data Siswa dari Excel"
+                >
+                  <Upload size={16} /> <span className="hidden sm:inline">Import</span>
                 </button>
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 hidden group-hover:block">
-                  <button onClick={handleImportClick} className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center">
-                    <Users size={14} className="mr-2" /> Import Siswa
-                  </button>
-                </div>
-              </div>
+              )}
               
               <button onClick={handleExport} className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"><Download size={16} /> <span className="hidden sm:inline">Export</span></button>
               <button onClick={handlePrint} className="flex items-center space-x-2 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"><Printer size={16} /> <span>Cetak</span></button>
@@ -1338,6 +1487,7 @@ const StudentList: React.FC<StudentListProps> = ({
                             <th className="px-4 py-3">Nama</th>
                             <th className="px-4 py-3">Tempat Lahir</th>
                             <th className="px-4 py-3">Tanggal Lahir</th>
+                            <th className="px-4 py-3">NIK</th>
                             <th className="px-4 py-3">Hobi</th>
                             <th className="px-4 py-3">Cita-cita</th>
                         </tr>
@@ -1354,6 +1504,7 @@ const StudentList: React.FC<StudentListProps> = ({
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap">{student.birthPlace || '-'}</td>
                                 <td className="px-4 py-3 whitespace-nowrap">{student.birthDate ? formatDateID(student.birthDate) : '-'}</td>
+                                <td className="px-4 py-3 font-mono text-gray-500 whitespace-nowrap">{student.nik || '-'}</td>
                                 <td className="px-4 py-3">{student.hobbies || '-'}</td>
                                 <td className="px-4 py-3">{student.ambition || '-'}</td>
                             </tr>
@@ -1382,6 +1533,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <th className="px-4 py-3 text-center">L/P</th>
                     <th className="px-4 py-3">Tempat Lahir</th>
                     <th className="px-4 py-3">Tanggal Lahir</th>
+                    <th className="px-4 py-3">NIK</th>
                     <th className="px-4 py-3">Agama</th>
                     <th className="px-4 py-3">Nama Ayah</th>
                     <th className="px-4 py-3">Nama Ibu</th>
@@ -1407,6 +1559,7 @@ const StudentList: React.FC<StudentListProps> = ({
                     <td className="px-4 py-3 text-center" onClick={() => setSelectedStudent(student)}>{student.gender}</td>
                     <td className="px-4 py-3 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.birthPlace || '-'}</td>
                     <td className="px-4 py-3 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.birthDate ? formatDateID(student.birthDate) : '-'}</td>
+                    <td className="px-4 py-3 font-mono text-gray-500 whitespace-nowrap" onClick={() => setSelectedStudent(student)}>{student.nik || '-'}</td>
                     <td className="px-4 py-3" onClick={() => setSelectedStudent(student)}>{student.religion || '-'}</td>
                     <td className="px-4 py-3 uppercase" onClick={() => setSelectedStudent(student)}>{student.fatherName?.toUpperCase() || '-'}</td>
                     <td className="px-4 py-3 uppercase" onClick={() => setSelectedStudent(student)}>{student.motherName?.toUpperCase() || '-'}</td>
@@ -1437,8 +1590,12 @@ const StudentList: React.FC<StudentListProps> = ({
                     <div className="grid grid-cols-2 gap-4">
                         <input required className="border p-2 rounded uppercase" placeholder="Nama" value={newStudent.name} onChange={e=>setNewStudent({...newStudent, name:e.target.value.toUpperCase()})}/>
                         <input required className="border p-2 rounded uppercase" placeholder="NIS" value={newStudent.nis} onChange={e=>setNewStudent({...newStudent, nis:e.target.value})}/>
+                        <input className="border p-2 rounded font-mono" placeholder="NISN" value={newStudent.nisn || ''} onChange={e=>setNewStudent({...newStudent, nisn:e.target.value})}/>
+                        <input className="border p-2 rounded font-mono" placeholder="NIK" value={newStudent.nik || ''} onChange={e=>setNewStudent({...newStudent, nik:e.target.value})}/>
                         <input className="border p-2 rounded" placeholder="Kelas" value={newStudent.classId} onChange={e=>setNewStudent({...newStudent, classId:e.target.value})}/>
                         <select className="border p-2 rounded" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value as any})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
+                        <input className="border p-2 rounded" placeholder="Tempat Lahir" value={newStudent.birthPlace || ''} onChange={e=>setNewStudent({...newStudent, birthPlace:e.target.value})}/>
+                        <input type="date" className="border p-2 rounded" placeholder="Tanggal Lahir" value={newStudent.birthDate || ''} onChange={e=>setNewStudent({...newStudent, birthDate:e.target.value})}/>
                     </div>
                 </div>
             </form>

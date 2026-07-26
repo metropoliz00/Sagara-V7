@@ -58,6 +58,8 @@ import AgendaView from './components/AgendaView';
 import MaterialsView from './components/MaterialsView';
 import SumatifView from './components/SumatifView';
 import PerformanceAssessmentView from './components/PerformanceAssessmentView';
+import MailManagementView from './components/MailManagementView';
+import StaffLeaveView from './components/StaffLeaveView';
 import ManualBookView from './components/ManualBookView';
 import EmergencyAlert from './components/EmergencyAlert';
 import MitigasiBencanaView from './components/MitigasiBencanaView';
@@ -72,7 +74,21 @@ import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog,
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
 import { apiService } from './services/apiService';
 import { cacheService } from './src/services/cacheService';
-import { Menu, Loader2, RefreshCw, AlertCircle, CheckCircle, WifiOff, ChevronDown, UserCog, LogOut, Filter, Bell, X, XCircle, Send, Info, LayoutDashboard, CalendarCheck, ClipboardList, FileText, Database, Lock, Eye, EyeOff } from 'lucide-react';
+import { Menu, Loader2, RefreshCw, AlertCircle, CheckCircle, WifiOff, ChevronDown, UserCog, LogOut, Filter, Bell, X, XCircle, Send, Info, LayoutDashboard, CalendarCheck, ClipboardList, FileText, Database, Lock, Eye, EyeOff, GraduationCap, School } from 'lucide-react';
+
+const getClassLabelWithIcon = (cls: string) => {
+  const clsStr = String(cls).trim().toUpperCase();
+  if (clsStr === 'ALL' || clsStr === 'SEMUA') return '🌐 Semua Kelas';
+  
+  if (clsStr.startsWith('1')) return '🎒 Kelas ' + cls;
+  if (clsStr.startsWith('2')) return '📚 Kelas ' + cls;
+  if (clsStr.startsWith('3')) return '📖 Kelas ' + cls;
+  if (clsStr.startsWith('4')) return '🎨 Kelas ' + cls;
+  if (clsStr.startsWith('5')) return '🌟 Kelas ' + cls;
+  if (clsStr.startsWith('6')) return '🎓 Kelas ' + cls;
+  
+  return '🏫 Kelas ' + cls;
+};
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -92,6 +108,11 @@ const App: React.FC = () => {
 };
 
 const AppContent: React.FC = () => {
+  useEffect(() => {
+    if (localStorage.getItem('learningDocumentation')) {
+      localStorage.removeItem('learningDocumentation');
+    }
+  }, []);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -134,6 +155,8 @@ const AppContent: React.FC = () => {
       'agenda': 'Agenda Kelas',
       'materi': 'Materi Pembelajaran',
       'nilai': 'Nilai & Rapor',
+      'administrasi/surat': 'Arsip Surat',
+      'administrasi/izin-pegawai': 'Izin Pegawai',
       'administrasi/kelas': 'Administrasi Kelas',
       'konseling': 'Konseling & Pelanggaran',
       'kegiatan': 'Ekstrakurikuler',
@@ -264,7 +287,7 @@ const AppContent: React.FC = () => {
   const [karakterAssessments, setKarakterAssessments] = useState<KarakterAssessment[]>(() => cacheService.get<KarakterAssessment[]>('karakterAssessments') || []);
   const [employmentLinks, setEmploymentLinks] = useState<EmploymentLink[]>(() => cacheService.get<EmploymentLink[]>('employmentLinks') || []);
   const [learningReports, setLearningReports] = useState<LearningReport[]>(() => cacheService.get<LearningReport[]>('learningReports') || []);
-  const [learningDocumentation, setLearningDocumentation] = useState<LearningDocumentation[]>(() => cacheService.get<LearningDocumentation[]>('learningDocumentation') || []);
+  const [learningDocumentation, setLearningDocumentation] = useState<LearningDocumentation[]>([]);
   const [liaisonLogs, setLiaisonLogs] = useState<LiaisonLog[]>(() => cacheService.get<LiaisonLog[]>('liaisonLogs') || []);
   const [permissionRequests, setPermissionRequests] = useState<PermissionRequest[]>(() => cacheService.get<PermissionRequest[]>('permissionRequests') || []);
   const [supportDocuments, setSupportDocuments] = useState<SupportDocument[]>(() => cacheService.get<SupportDocument[]>('supportDocuments') || []);
@@ -346,6 +369,8 @@ const AppContent: React.FC = () => {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
   const [processingPermissionId, setProcessingPermissionId] = useState<string | null>(null);
+  const [rejectPermissionModalData, setRejectPermissionModalData] = useState<{ isOpen: boolean; id: string }>({ isOpen: false, id: "" });
+  const [permissionRejectionReason, setPermissionRejectionReason] = useState("");
   const [adminPercentage, setAdminPercentage] = useState<number>(0);
   const [teacherProfile, setTeacherProfile] = useState<TeacherProfileData>(() => {
     try {
@@ -632,7 +657,7 @@ const AppContent: React.FC = () => {
 
       // Clear all sumatif and profile-related data on logout
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('sumatif_') || key.startsWith('teacher_profile_') || key.startsWith('school_profile_')) {
+        if (key.startsWith('sumatif_') || key.startsWith('teacher_profile_') || key.startsWith('school_profile_') || key === 'learningDocumentation') {
           localStorage.removeItem(key);
         }
       });
@@ -879,7 +904,6 @@ const AppContent: React.FC = () => {
       : [newDoc, ...oldDocs];
 
     setLearningDocumentation(newDocs);
-    cacheService.set('learningDocumentation', newDocs);
     handleShowNotification('Dokumentasi berhasil disimpan.', 'success');
 
     if (isDemoMode) return;
@@ -889,7 +913,6 @@ const AppContent: React.FC = () => {
       await fetchData(); // Refresh to get server-side IDs
     } catch (error) {
       setLearningDocumentation(oldDocs);
-      cacheService.set('learningDocumentation', oldDocs);
       handleShowNotification('Gagal menyimpan dokumentasi.', 'error');
     }
   };
@@ -899,14 +922,12 @@ const AppContent: React.FC = () => {
       const oldDocs = learningDocumentation;
       const newDocs = oldDocs.filter(d => d.id !== id);
       setLearningDocumentation(newDocs);
-      cacheService.set('learningDocumentation', newDocs);
       handleShowNotification('Dokumentasi berhasil dihapus.', 'success');
 
       if (isDemoMode) return;
 
       apiService.deleteLearningDocumentation(id, activeClassId).catch(() => {
         setLearningDocumentation(oldDocs);
-        cacheService.set('learningDocumentation', oldDocs);
         handleShowNotification('Gagal menghapus dokumentasi.', 'error');
       });
     });
@@ -999,12 +1020,16 @@ const AppContent: React.FC = () => {
       }
   };
 
-  const handleProcessPermission = async (id: string, action: 'approve' | 'reject') => {
+  const handleProcessPermission = async (id: string, action: 'approve' | 'reject', reason?: string) => {
       setProcessingPermissionId(id);
       try {
           const req = permissionRequests.find(p => String(p.id).trim() === String(id).trim());
           if (isDemoMode) {
-              setPermissionRequests(prev => prev.map(p => p.id === id ? { ...p, status: action === 'approve' ? 'Approved' : 'Rejected' } : p));
+              setPermissionRequests(prev => prev.map(p => p.id === id ? { 
+                  ...p, 
+                  status: action === 'approve' ? 'Approved' : 'Rejected',
+                  ...(action === 'reject' && reason ? { rejectionReason: reason } : {})
+              } : p));
               if (action === 'approve' && req) {
                   setAllAttendanceRecords(prev => {
                       const filtered = prev.filter(r => !(String(r.studentId) === String(req.studentId) && String(r.date) === String(req.date)));
@@ -1012,9 +1037,17 @@ const AppContent: React.FC = () => {
                   });
               }
               handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'} (Demo).`, 'success');
+              if (action === 'reject') {
+                  setRejectPermissionModalData({ isOpen: false, id: "" });
+                  setPermissionRejectionReason("");
+              }
           } else {
-              await apiService.processPermissionRequest(id, action);
+              await apiService.processPermissionRequest(id, action, reason);
               handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'}.`, 'success');
+              if (action === 'reject') {
+                  setRejectPermissionModalData({ isOpen: false, id: "" });
+                  setPermissionRejectionReason("");
+              }
               await fetchData();
           }
       } catch (e) { handleShowNotification('Gagal memproses ijin.', 'error'); } finally { setProcessingPermissionId(null); }
@@ -1055,8 +1088,24 @@ const AppContent: React.FC = () => {
   };
   const handleBatchAddStudents = async (newStudents: Omit<Student, 'id'>[]) => { 
     const batchWithClass = newStudents.map(s => ({ ...s, classId: s.classId || activeClassId || '1A' }));
-    if (isDemoMode) { const demoStudents = batchWithClass.map((s, i) => ({ ...s, id: Date.now().toString() + i })); setStudents([...students, ...demoStudents].sort((a, b) => a.name.localeCompare(b.name))); return; }
-    try { const res = await apiService.createStudentBatch(batchWithClass); if (res.status === 'success') { fetchData(); handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa!`, 'success'); } } catch (e) { handleShowNotification('Gagal upload batch siswa', 'error'); }
+    if (isDemoMode) { 
+      const demoStudents = batchWithClass.map((s, i) => ({ ...s, id: Date.now().toString() + i })); 
+      setStudents(prev => [...prev, ...demoStudents].sort((a, b) => a.name.localeCompare(b.name))); 
+      handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa! (Demo)`, 'success');
+      return; 
+    }
+    try { 
+      const res = await apiService.createStudentBatch(batchWithClass); 
+      if (res && (res.status === 'success' || Array.isArray(res))) { 
+        await fetchData(); 
+        handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa!`, 'success'); 
+      } else {
+        handleShowNotification('Gagal upload batch siswa', 'error');
+      }
+    } catch (e: any) { 
+      console.error("Batch add students error:", e);
+      handleShowNotification(e?.message ? `Gagal upload batch siswa: ${e.message}` : 'Gagal upload batch siswa', 'error'); 
+    }
   };
   const handleUpdateStudent = async (updatedStudent: Student) => {
     const oldStudents = students;
@@ -1274,6 +1323,22 @@ const AppContent: React.FC = () => {
       setExtracurriculars(oldExtras);
       cacheService.set('extracurriculars', oldExtras);
       handleShowNotification('Gagal memperbarui ekskul.', 'error');
+    }
+  };
+  const handleDeleteExtracurricular = async (id: string) => {
+    const oldExtras = extracurriculars;
+    const newExtras = oldExtras.filter(ex => ex.id !== id);
+    setExtracurriculars(newExtras);
+    cacheService.set('extracurriculars', newExtras);
+
+    if (isDemoMode) return;
+
+    try {
+      await apiService.deleteExtracurricular(id);
+    } catch (error) {
+      setExtracurriculars(oldExtras);
+      cacheService.set('extracurriculars', oldExtras);
+      handleShowNotification('Gagal menghapus ekskul.', 'error');
     }
   };
   
@@ -2048,7 +2113,6 @@ const AppContent: React.FC = () => {
       if (fKarakter !== null) cacheService.set('karakterAssessments', fKarakter as KarakterAssessment[]);
       if (fLinks !== null) cacheService.set('employmentLinks', fLinks as EmploymentLink[]);
       if (fReports !== null) cacheService.set('learningReports', fReports as LearningReport[]);
-      if (fLearningDocs !== null) cacheService.set('learningDocumentation', fLearningDocs as LearningDocumentation[]);
       if (fLiaison !== null) cacheService.set('liaisonLogs', fLiaison as LiaisonLog[]);
       if (fSupportDocs !== null) cacheService.set('supportDocuments', fSupportDocs as SupportDocument[]);
       if (fInventory !== null) cacheService.set('inventory', fInventory as InventoryItem[]);
@@ -2227,7 +2291,7 @@ const AppContent: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <div className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 z-[-10] flex items-center justify-center pointer-events-none overflow-hidden">
             <img 
               src="https://www.image2url.com/r2/default/images/1776528081180-f5356afe-2059-4426-8309-4f5af1b9227e.png"
               alt="Watermark"
@@ -2254,16 +2318,18 @@ const AppContent: React.FC = () => {
             </div>
 
             {canSelectClass && (
-                <div className="hidden lg:flex items-center bg-[#CAF4FF]/30 border border-[#A0DEFF]/50 rounded-lg px-3 py-1.5 shadow-sm">
-                    <Filter size={14} className="text-[#5AB2FF] mr-2" />
-                    <span className="text-xs font-bold text-gray-50 uppercase mr-2">Pilih Kelas:</span>
+                <div className="hidden lg:flex items-center bg-[#CAF4FF]/40 border border-[#A0DEFF] hover:border-[#5AB2FF] rounded-xl px-3.5 py-1.5 shadow-xs transition-all">
+                    <GraduationCap size={18} className="text-[#0066CC] mr-2 shrink-0 animate-pulse" />
+                    <span className="text-xs font-extrabold text-gray-600 uppercase tracking-wider mr-2">Pilih Kelas:</span>
                     <select 
                         value={selectedClassId} 
                         onChange={(e) => setSelectedClassId(e.target.value)}
-                        className="bg-transparent text-sm font-bold text-[#5AB2FF] outline-none cursor-pointer"
+                        className="bg-transparent text-sm font-extrabold text-[#0055B3] outline-none cursor-pointer py-0.5"
                     >
                         {availableClasses.map(cls => (
-                            <option key={cls} value={cls}>Kelas {cls}</option>
+                            <option key={cls} value={cls} className="text-gray-800 font-bold py-1.5 bg-white">
+                                {getClassLabelWithIcon(cls)}
+                            </option>
                         ))}
                     </select>
                 </div>
@@ -2403,21 +2469,24 @@ const AppContent: React.FC = () => {
         </header>
 
         {canSelectClass && (
-            <div className="lg:hidden bg-white border-b px-4 py-2 flex items-center justify-center shadow-sm relative z-20">
-                <span className="text-xs font-bold text-gray-500 uppercase mr-2">Kelas Aktif:</span>
+            <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2 flex items-center justify-center shadow-xs relative z-20">
+                <GraduationCap size={18} className="text-[#0066CC] mr-1.5 shrink-0" />
+                <span className="text-xs font-extrabold text-gray-600 uppercase mr-2 tracking-wider">Kelas Aktif:</span>
                 <select 
                     value={selectedClassId} 
                     onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="bg-[#CAF4FF]/50 border border-[#A0DEFF] rounded px-2 py-1 text-sm font-bold text-[#5AB2FF] outline-none"
+                    className="bg-[#CAF4FF]/50 border border-[#A0DEFF] rounded-lg px-3 py-1 text-sm font-extrabold text-[#0055B3] outline-none cursor-pointer"
                 >
                     {availableClasses.map(cls => (
-                        <option key={cls} value={cls}>Kelas {cls}</option>
+                        <option key={cls} value={cls} className="text-gray-800 font-bold py-1.5 bg-white">
+                            {getClassLabelWithIcon(cls)}
+                        </option>
                     ))}
                 </select>
             </div>
         )}
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24 lg:pb-8 scroll-smooth print:p-0 relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24 lg:pb-8 scroll-smooth print:p-0 relative">
            <div className="max-w-[1440px] mx-auto print:w-full">
              {error && (
                 <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between no-print">
@@ -2440,6 +2509,7 @@ const AppContent: React.FC = () => {
                         grades={grades}
                         liaisonLogs={liaisonLogs}
                         filteredCounseling={filteredCounseling}
+                        counselingLogs={counselingLogs}
                         permissionRequests={permissionRequests}
                         karakterAssessments={karakterAssessments}
                         onSavePermission={handleSavePermissionRequest}
@@ -2818,6 +2888,7 @@ const AppContent: React.FC = () => {
                         onDeleteAgenda={handleDeleteAgenda}
                         onUpdateExtracurricular={handleUpdateExtracurricular}
                         onAddExtracurricular={handleAddExtracurricular}
+                        onDeleteExtracurricular={handleDeleteExtracurricular}
                         onShowNotification={handleShowNotification}
                         classId={activeClassId}
                     />
@@ -2830,6 +2901,22 @@ const AppContent: React.FC = () => {
                         onReply={handleSaveLiaison}
                         onUpdateStatus={handleUpdateLiaisonStatus}
                         classId={activeClassId}
+                    />
+                } />
+                <Route path="/administrasi/surat" element={
+                    isStudentRole ? <Navigate to="/Dashboard-Student" replace /> :
+                    <MailManagementView 
+                        schoolProfile={schoolProfile}
+                        onShowNotification={handleShowNotification}
+                        classId={activeClassId}
+                        currentUser={currentUser}
+                    />
+                } />
+                <Route path="/administrasi/izin-pegawai" element={
+                    isStudentRole ? <Navigate to="/Dashboard-Student" replace /> :
+                    <StaffLeaveView 
+                        currentUser={currentUser}
+                        onShowNotification={handleShowNotification}
                     />
                 } />
                 <Route path="/administrasi/kelas" element={
@@ -3004,7 +3091,7 @@ const AppContent: React.FC = () => {
       </div>
 
       {isPermissionModalOpen && !isStudentRole && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsPermissionModalOpen(false)}>
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in" onClick={() => setIsPermissionModalOpen(false)}>
               <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
                   <div className="p-5 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
                       <h3 className="font-bold text-lg text-gray-800">Permintaan Ijin / Sakit</h3>
@@ -3042,7 +3129,7 @@ const AppContent: React.FC = () => {
                                                   {processingPermissionId === req.id ? <Loader2 size={16} className="animate-spin"/> : <CheckCircle size={16}/>}
                                               </button>
                                               <button 
-                                                  onClick={() => handleProcessPermission(req.id, 'reject')}
+                                                  onClick={() => { setRejectPermissionModalData({ isOpen: true, id: req.id }); setPermissionRejectionReason(""); }}
                                                   disabled={processingPermissionId === req.id}
                                                   className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                                                   title="Tolak"
@@ -3058,6 +3145,41 @@ const AppContent: React.FC = () => {
                   </div>
               </div>
           </div>
+      )}
+
+      {rejectPermissionModalData.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[150] flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Tolak Ijin Siswa</h3>
+            <p className="text-sm text-gray-600 mb-4">Silakan masukkan alasan penolakan ijin ini.</p>
+            <textarea
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 mb-4 min-h-[100px]"
+              placeholder="Alasan penolakan..."
+              value={permissionRejectionReason}
+              onChange={(e) => setPermissionRejectionReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button 
+                onClick={() => { setRejectPermissionModalData({ isOpen: false, id: "" }); setPermissionRejectionReason(""); }}
+                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button 
+                onClick={() => {
+                  if (!permissionRejectionReason.trim()) {
+                      handleShowNotification('Harap isi alasan penolakan.', 'warning');
+                      return;
+                  }
+                  handleProcessPermission(rejectPermissionModalData.id, 'reject', permissionRejectionReason);
+                }}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-bold hover:bg-red-700"
+              >
+                Tolak Ijin
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <Notification notification={notification} onClear={() => setNotification(null)} />

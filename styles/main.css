@@ -116,20 +116,23 @@
         animation: pulse-slow 3s ease-in-out infinite;
       }
 
-      /* PRINT STYLES GLOBAL */
+      /* PRINT STYLES GLOBAL & SAGARA RPM/RPK ENGINE */
       @media print {
         @page {
-          margin: 0;
-          size: A4 portrait; 
+          size: A4 portrait;
+          margin: 10mm 12mm 10mm 12mm;
         }
         
-        body {
+        html, body {
           background-color: white !important;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
+          color: black !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
         }
 
-        .no-print {
+        .no-print, .print\:hidden, nav, header, sidebar {
           display: none !important;
         }
 
@@ -158,26 +161,13 @@
         /* A4 Sheet Simulation Reset for Print */
         .sheet-a4 {
             width: 100% !important;
-            height: 100% !important;
+            height: auto !important;
             margin: 0 !important;
             padding: 0 !important;
-            page-break-after: always;
             box-shadow: none !important;
             border: none !important;
-            transform: none !important; /* Reset scale for print */
+            transform: none !important;
             overflow: visible !important;
-            display: grid !important; /* Ensure grid is active in print */
-            grid-template-columns: repeat(4, 1fr) !important;
-            grid-template-rows: repeat(2, 1fr) !important;
-            gap: 5mm !important; 
-            align-content: start;
-        }
-
-        .id-card-grid {
-           display: grid !important;
-           grid-template-columns: repeat(4, 1fr) !important;
-           gap: 5mm !important; /* Jarak antar kartu */
-           align-content: start;
         }
 
         /* Hide scrollbars in print */
@@ -185,24 +175,102 @@
           overflow: visible !important;
         }
 
-        /* --- NEW PRINT AREA LOGIC --- */
+        /* --- SAGARA GLOBAL PRINT AREA LOGIC (Mobile & Desktop) --- */
+        html, body {
+          overflow: visible !important;
+          height: auto !important;
+        }
+
         body * {
           visibility: hidden;
         }
 
         #print-area,
-        #print-area * {
-          visibility: visible;
+        #print-area *,
+        #printable-area,
+        #printable-area *,
+        .printable-area,
+        .printable-area *,
+        #sagara-standalone-print-container,
+        #sagara-standalone-print-container *,
+        #sagara-cloned-print-content,
+        #sagara-cloned-print-content *,
+        .sagara-print-content,
+        .sagara-print-content *,
+        .sagara-print-wrapper,
+        .sagara-print-wrapper * {
+          visibility: visible !important;
         }
 
-        #print-area {
-          position: absolute;
-          left: 0;
-          top: 0;
-          width: 100%;
-          padding: 20px;
-          /* Optional: Set a specific font for printed documents if desired */
-          /* font-family: "Times New Roman", serif; */
+        #print-area,
+        #printable-area,
+        .printable-area,
+        #sagara-standalone-print-container,
+        #sagara-cloned-print-content,
+        .sagara-print-content,
+        .sagara-print-wrapper {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          display: block !important;
+          background: white !important;
+          color: #0f172a !important;
+        }
+
+        /* Table Pagination Flow and Header Repetition Engine */
+        table {
+          width: 100% !important;
+          border-collapse: collapse !important;
+          page-break-inside: auto !important;
+          break-inside: auto !important;
+        }
+
+        th, td {
+          border-color: #94a3b8 !important;
+        }
+
+        .bg-\[\#e0f2fe\], .bg-sky-100 {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          background-color: #e0f2fe !important;
+        }
+
+        thead {
+          display: table-header-group !important;
+        }
+
+        tbody {
+          display: table-row-group !important;
+        }
+
+        tfoot {
+          display: table-footer-group !important;
+        }
+
+        tr {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+          page-break-after: auto !important;
+          break-after: auto !important;
+        }
+
+        th, td {
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+        }
+
+        .page-break-inside-avoid, .avoid-break {
+          page-break-inside: avoid !important;
+          break-inside: avoid !important;
+        }
+
+        .break-before-page {
+          page-break-before: always !important;
+          break-before: page !important;
         }
       }
 

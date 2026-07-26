@@ -5,7 +5,7 @@ import {
   Clock, BookOpen, AlertCircle, Save, ChevronLeft, ChevronRight,
   HelpCircle, Check, X, ListFilter, User as UserIcon, LogIn, Monitor,
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
-  Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2,
+  Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2, FileText,
   ArrowUp, HeartHandshake, Medal, Calculator, Compass, Music, Trophy, Book, Globe, Printer
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
@@ -17,7 +17,9 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
-import { PrintButton } from './PrintButton';
+import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
+import html2canvas from 'html2canvas';
 import PrintLayout from './PrintLayout';
 
 const SUBJECT_DECORATIONS: {
@@ -265,6 +267,22 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   }, [isEditing, isTaking, isEnteringToken, currentSumatif]);
   const [viewingResults, setViewingResults] = useState<Sumatif | null>(null);
   const [results, setResults] = useState<SumatifResult[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterSubjectId, setFilterSubjectId] = useState('all');
+
+  const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
+
+  const filteredSumatifs = useMemo(() => {
+    let list = isTeacher ? sumatifs : sumatifs.filter(s => s.isVisible);
+    if (searchQuery) {
+      list = list.filter(s => s.title.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+    if (filterSubjectId !== 'all') {
+      list = list.filter(s => s.subjectId === filterSubjectId);
+    }
+    return list;
+  }, [sumatifs, isTeacher, searchQuery, filterSubjectId]);
+
   const [modal, setModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -285,7 +303,6 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     cancelText: 'Batal'
   });
 
-  const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
   const isStudent = currentUser?.role === 'siswa';
 
   const isGuru6 = useMemo(() => {
@@ -777,170 +794,127 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {(() => {
-          const filteredSumatifs = isTeacher 
-            ? sumatifs 
-            : sumatifs.filter(s => s.isVisible);
+      {/* Search and Filter */}
+      <div className="flex flex-col sm:flex-row gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+        <input
+          type="text"
+          placeholder="Cari sumatif..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] focus:border-transparent"
+        />
+        <select
+          value={filterSubjectId}
+          onChange={(e) => setFilterSubjectId(e.target.value)}
+          className="px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] focus:border-transparent"
+        >
+          <option value="all">Semua Mata Pelajaran</option>
+          {MOCK_SUBJECTS.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+        </select>
+      </div>
 
-          if (filteredSumatifs.length === 0) {
-            return (
-              <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
-                <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <BookOpen size={40} className="text-slate-300" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-700">Belum ada Sumatif</h3>
-                <p className="text-slate-500 max-w-xs mx-auto mt-2">
-                  {isTeacher ? 'Mulai buat sumatif baru untuk kelas ini.' : 'Belum ada tugas sumatif yang tersedia.'}
-                </p>
-              </div>
-            );
-          }
-
-          return filteredSumatifs.map((s) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {filteredSumatifs.length === 0 ? (
+          <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
+            <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <BookOpen size={40} className="text-slate-300" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-700">Belum ada Sumatif</h3>
+            <p className="text-slate-500 max-w-xs mx-auto mt-2">
+              {isTeacher ? 'Mulai buat sumatif baru untuk kelas ini.' : 'Belum ada tugas sumatif yang tersedia.'}
+            </p>
+          </div>
+        ) : (
+          filteredSumatifs.map((s) => {
             const decoration = SUBJECT_DECORATIONS[s.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS['default'];
             const IconComponent = decoration.icon;
             
             return (
               <div 
                 key={s.id} 
-                className={`flex flex-col justify-between bg-gradient-to-br ${decoration.gradient} rounded-3xl border-2 ${decoration.borderColor} p-6 shadow-sm ${decoration.shadow} hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1.5 overflow-hidden group relative`}
+                className={`flex flex-col justify-between bg-gradient-to-br ${decoration.gradient} rounded-3xl border-2 ${decoration.borderColor} p-4 shadow-sm ${decoration.shadow} hover:shadow-lg transition-all duration-300 aspect-video overflow-hidden group relative`}
               >
                 {/* Ambient Large Floating Symbol in the Background */}
-                <div className="absolute -right-6 -bottom-6 text-8xl opacity-[0.06] select-none pointer-events-none transform rotate-12 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-45">
+                <div className="absolute -right-6 -bottom-6 text-6xl opacity-[0.06] select-none pointer-events-none transform rotate-12 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-45">
                   {decoration.emoji}
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center mb-4 relative z-10">
+                <div className="flex-1 flex flex-col justify-between min-h-0">
+                  {/* Header Row */}
+                  <div className="flex justify-between items-center mb-2 relative z-10">
                     <div className="flex items-center space-x-1.5">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
                         s.isActive ? 'bg-green-100/90 text-green-700 border border-green-200/50 backdrop-blur-sm' : 'bg-slate-100 text-slate-500 border border-slate-200/50 backdrop-blur-sm'
                       }`}>
                         {s.isActive ? '🔴 Aktif' : '⚪ Draft'}
                       </span>
                       {isTeacher && (
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
                           s.isVisible ? 'bg-blue-100/90 text-blue-700 border border-blue-200/50' : 'bg-amber-100 text-amber-600 border border-amber-200'
                         }`}>
                           {s.isVisible ? '👁️ Terlihat' : '🔒 Sembunyi'}
                         </span>
                       )}
                     </div>
-                    <div className="text-xs font-black uppercase bg-white/75 px-2.5 py-1 rounded-full border border-gray-100 text-slate-500/80 shadow-sm backdrop-blur-sm">
+                    {/* Jenis Sumatif di Pojok Kanan Atas */}
+                    <span className="text-[8px] font-black uppercase bg-white/80 px-2 py-0.5 rounded-full border border-slate-200/40 shadow-sm text-slate-600 backdrop-blur-sm">
                       {s.type.toUpperCase()}
-                    </div>
+                    </span>
                   </div>
 
-                  <div className="flex items-center gap-3 mb-3 relative z-10">
-                    <div className={`p-2.5 rounded-2xl ${decoration.accentColor} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                      <IconComponent size={24} className="stroke-[2.5]" />
-                    </div>
-                    <div>
-                      <span className={`inline-flex items-center gap-1 text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full ${decoration.badgeBg}`}>
-                        <span>{decoration.emoji}</span>
-                        <span>{MOCK_SUBJECTS.find(sub => sub.id === s.subjectId)?.name || s.subjectId}</span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <h3 className={`text-lg font-black ${decoration.textColor} mb-4 leading-tight tracking-tight relative z-10 group-hover:text-blue-600 transition-colors line-clamp-2 min-h-[3.5rem]`}>
-                    {s.title}
-                  </h3>
-
-                  <div className="space-y-2.5 bg-white/40 p-4 rounded-2xl border border-white/60 backdrop-blur-sm mb-6 relative z-10 shadow-inner">
-                    <div className="flex items-center text-sm font-semibold text-slate-600">
-                      <Clock size={16} className={`mr-2.5 ${decoration.textColor}`} />
-                      <span>{s.duration} Menit</span>
-                    </div>
-                    <div className="flex items-center text-sm font-semibold text-slate-600">
-                      <HelpCircle size={16} className={`mr-2.5 ${decoration.textColor}`} />
-                      <span>{s.questions.length} Soal Ujian</span>
-                    </div>
-                    {s.token && isTeacher && (
-                      <div className="flex items-center justify-between bg-white/95 p-3 rounded-xl border border-slate-150 mt-3 shadow-sm">
-                        <div className="flex items-center space-x-2.5">
-                          <span className="font-extrabold text-slate-500 uppercase tracking-widest text-xs">Token:</span>
-                          <span className="font-mono font-black text-rose-600 text-sm md:text-base bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">{s.token}</span>
+                  {/* Middle Row with Split Layout */}
+                  <div className="flex justify-between items-center gap-3 relative z-10 min-h-0 my-1">
+                    {/* Left: Detail Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <div className={`p-1 rounded-lg ${decoration.accentColor} shrink-0`}>
+                          <IconComponent size={12} className="stroke-[2.5]" />
                         </div>
+                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${decoration.badgeBg} truncate max-w-full`}>
+                          {MOCK_SUBJECTS.find(sub => sub.id === s.subjectId)?.name || s.subjectId}
+                        </span>
+                      </div>
+
+                      <h3 className={`text-xs font-black ${decoration.textColor} leading-tight tracking-tight group-hover:text-blue-600 transition-colors line-clamp-2`}>
+                        {s.title}
+                      </h3>
+
+                      <div className="flex flex-col gap-0.5 text-[9px] font-semibold text-slate-500 mt-1">
+                        <div>⏱️ Durasi: {s.duration} Menit</div>
+                        <div>📝 Jumlah soal: {s.questions.length} Soal</div>
+                      </div>
+                    </div>
+
+                    {/* Right: Token (Middle Right) - Enlarged by 50% */}
+                    {isTeacher && s.token && (
+                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/95 border border-slate-200/85 p-2 rounded-2xl shadow-md text-center min-w-[105px] max-w-[125px]">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">TOKEN</span>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(s.token || '');
-                            onShowNotification('Token berhasil disalin', 'success');
+                            onShowNotification('Token disalin', 'success');
                           }}
-                          className="p-1.5 md:p-2 bg-white text-blue-600 hover:text-blue-750 rounded-lg shadow-sm hover:bg-blue-50 border border-slate-100 transition-colors"
-                          title="Salin Token"
+                          className="font-mono font-black text-rose-600 text-base md:text-lg bg-rose-50 px-2 py-1 rounded-xl border-2 border-rose-100 hover:bg-rose-100/70 transition-all tracking-widest cursor-pointer w-full text-center hover:scale-105 active:scale-95"
+                          title="Klik untuk menyalin token"
                         >
-                          <Copy size={16} />
+                          {s.token}
                         </button>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-4 border-t border-slate-200/30 mt-auto relative z-10 w-full">
+                <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/30 mt-auto relative z-10 w-full text-[10px]">
                   {isTeacher ? (
-                    <>
-                      <button
-                        onClick={() => handleToggleVisibility(s)}
-                        title={s.isVisible ? 'Sembunyikan dari Siswa' : 'Tampilkan ke Siswa'}
-                        className={`p-2.5 rounded-xl transition-colors cursor-pointer border ${
-                          s.isVisible 
-                            ? 'bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-150' 
-                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100 border-slate-200'
-                        }`}
-                      >
-                        {s.isVisible ? <Eye size={18} /> : <EyeOff size={18} className="opacity-50" />}
-                      </button>
-                      <button
-                        onClick={() => handleToggleActive(s)}
-                        title={s.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-                        className={`p-2.5 rounded-xl transition-colors cursor-pointer border ${
-                          s.isActive 
-                            ? 'bg-amber-50 text-amber-600 hover:bg-amber-100 border-amber-150' 
-                            : 'bg-green-50 text-green-600 hover:bg-green-100 border-green-150'
-                        }`}
-                      >
-                        {s.isActive ? <Pause size={18} /> : <Play size={18} />}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentSumatif(s);
-                          setIsEditing(true);
-                        }}
-                        className="p-2.5 bg-blue-50 text-blue-600 border border-blue-150 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer"
-                        title="Edit"
-                      >
-                        <Edit2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleViewResults(s)}
-                        className="p-2.5 bg-purple-50 text-purple-600 border border-purple-150 rounded-xl hover:bg-purple-100 transition-colors cursor-pointer"
-                        title="Lihat Hasil & Analisis"
-                      >
-                        <BarChart2 size={18} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setCurrentSumatif(s);
-                          setIsPembahasan(true);
-                          window.dispatchEvent(new CustomEvent('closeSidebar'));
-                          window.dispatchEvent(new CustomEvent('minimizeSidebar'));
-                        }}
-                        className="p-2.5 bg-orange-50 text-orange-600 border border-orange-150 rounded-xl hover:bg-orange-100 transition-colors cursor-pointer"
-                        title="Pembahasan Soal"
-                      >
-                        <List size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSumatif(s.id)}
-                        className="p-2.5 bg-red-50 text-red-600 border border-red-150 rounded-xl hover:bg-red-100 transition-colors cursor-pointer ml-auto"
-                        title="Hapus"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </>
+                    <div className="flex flex-wrap gap-1">
+                      <button onClick={() => handleToggleVisibility(s)} title={s.isVisible ? 'Sembunyikan' : 'Tampilkan'} className={`p-1 rounded ${s.isVisible ? 'bg-blue-100 text-blue-600' : 'bg-slate-100'}`}><Eye size={10} /></button>
+                      <button onClick={() => handleToggleActive(s)} title={s.isActive ? 'Nonaktifkan' : 'Aktifkan'} className={`p-1 rounded ${s.isActive ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}><Play size={10} /></button>
+                      <button onClick={() => { setCurrentSumatif(s); setIsEditing(true); }} className="p-1 bg-blue-100 text-blue-600 rounded"><Edit2 size={10} /></button>
+                      <button onClick={() => handleViewResults(s)} className="p-1 bg-purple-100 text-purple-600 rounded"><BarChart2 size={10} /></button>
+                      <button onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} className="p-1 bg-orange-100 text-orange-600 rounded"><List size={10} /></button>
+                      <button onClick={() => handleDeleteSumatif(s.id)} className="p-1 bg-red-100 text-red-600 rounded"><Trash2 size={10} /></button>
+                    </div>
                   ) : (
                     <button
                       disabled={!s.isActive}
@@ -950,27 +924,21 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         if (!canProceed) return;
                         
                         setCurrentSumatif(s);
-                        if (s.token) {
-                          setIsEnteringToken(true);
-                        } else {
-                          setIsTaking(true);
-                        }
+                        if (s.token) setIsEnteringToken(true);
+                        else setIsTaking(true);
                       }}
-                      className={`w-full py-3 px-5 rounded-2xl font-extrabold transition-all flex items-center justify-center space-x-2 transform hover:scale-[1.02] active:scale-98 cursor-pointer shadow-md border-2 ${
-                        s.isActive 
-                          ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-700 shadow-blue-500/10 hover:shadow-blue-500/20' 
-                          : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none'
+                      className={`w-full py-1 rounded font-bold text-[10px] ${
+                        s.isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
                       }`}
                     >
-                      <Play size={18} className={s.isActive ? "fill-white text-white" : ""} />
-                      <span>{s.isActive ? 'Mulai Kerjakan Sekarang' : 'Belum Aktif'}</span>
+                      {s.isActive ? 'Mulai' : 'Belum Aktif'}
                     </button>
                   )}
                 </div>
               </div>
             );
           })
-        })()}
+        )}
       </div>
 
       <Modal 
@@ -1447,8 +1415,10 @@ const SumatifEditor: React.FC<{
                   onChange={e => setFormData({ ...formData, subjectId: e.target.value })}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] focus:border-transparent outline-none transition-all"
                 >
-                  {MOCK_SUBJECTS.filter(s => formData.type !== 'tka' || s.id === 'mat' || s.id === 'indo').map(s => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
+                  {MOCK_SUBJECTS.filter(s => formData.type !== 'tka' || s.id === 'mat' || s.id === 'indo' || s.id === 'ipas').map(s => (
+                    <option key={s.id} value={s.id}>
+                      {formData.type === 'tka' && s.id === 'ipas' ? 'IPA' : s.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -1461,7 +1431,7 @@ const SumatifEditor: React.FC<{
                     let newSubjectId = formData.subjectId;
                     let newTitle = formData.title;
                     if (newType === 'tka') {
-                      if (newSubjectId !== 'mat' && newSubjectId !== 'indo') {
+                      if (newSubjectId !== 'mat' && newSubjectId !== 'indo' && newSubjectId !== 'ipas') {
                         newSubjectId = 'mat';
                       }
                       // Find default TKA title if current title isn't a TKA title
@@ -1604,27 +1574,35 @@ const SumatifEditor: React.FC<{
 
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    {!q.imageUrl ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="bg-white p-2 rounded-lg border border-slate-200">
-                          <ImageIcon size={18} className="text-slate-400" />
+                    {(!q.imageUrl || (!q.imageUrl.startsWith('data:image/') && !q.imageUrl.startsWith('http://') && !q.imageUrl.startsWith('https://') && !q.imageUrl.startsWith('/') && !q.imageUrl.startsWith('blob:'))) ? (
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          <div className="bg-white p-2 rounded-lg border border-slate-200">
+                            <ImageIcon size={18} className="text-slate-400" />
+                          </div>
+                          <textarea
+                            value={q.imageUrl || ''}
+                            onChange={e => updateQuestion(idx, { imageUrl: e.target.value })}
+                            placeholder="Link Gambar Soal atau Deskripsi Teks / Wacana (Opsional)"
+                            className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-sm min-h-[40px] resize-y"
+                          />
+                          <label className="p-2 cursor-pointer bg-slate-100 rounded-lg hover:bg-slate-200">
+                            <Upload size={18} className="text-slate-600" />
+                            <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if(file) {
+                                    const base64 = await compressImage(file, 1024, 0.85);
+                                    updateQuestion(idx, { imageUrl: base64 });
+                                }
+                            }}/>
+                          </label>
                         </div>
-                        <textarea
-                          value={q.imageUrl || ''}
-                          onChange={e => updateQuestion(idx, { imageUrl: e.target.value })}
-                          placeholder="Link Gambar Soal (Opsional)"
-                          className="flex-1 px-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-sm min-h-[40px] resize-y"
-                        />
-                        <label className="p-2 cursor-pointer bg-slate-100 rounded-lg hover:bg-slate-200">
-                          <Upload size={18} className="text-slate-600" />
-                          <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                              const file = e.target.files?.[0];
-                              if(file) {
-                                  const base64 = await compressImage(file, 1024, 0.85);
-                                  updateQuestion(idx, { imageUrl: base64 });
-                              }
-                          }}/>
-                        </label>
+                        {q.imageUrl && (
+                          <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap">
+                            <span className="font-bold block text-amber-700 mb-1">Preview Deskripsi Teks / Wacana:</span>
+                            {renderFormattedText(q.imageUrl)}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -1811,31 +1789,39 @@ const SumatifEditor: React.FC<{
                           <div className="flex items-center space-x-2 pl-6">
                             <ImageIcon size={14} className="text-slate-300" />
                             <div className="flex-1 space-y-2">
-                              {!sq.imageUrl ? (
-                                <div className="flex items-center space-x-2">
-                                  <input
-                                    type="text"
-                                    value={sq.imageUrl || ''}
-                                    onChange={e => {
-                                      const newSQs = [...(q.subQuestions || [])];
-                                      newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: e.target.value };
-                                      updateQuestion(idx, { subQuestions: newSQs });
-                                    }}
-                                    placeholder="Link Gambar Pernyataan"
-                                    className="flex-1 px-3 py-1.5 rounded-lg border border-slate-100 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-[10px]"
-                                  />
-                                  <label className="p-1.5 cursor-pointer bg-slate-50 rounded-lg hover:bg-slate-100 shrink-0">
-                                    <Upload size={14} className="text-slate-600" />
-                                    <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if(file) {
-                                            const base64 = await compressImage(file, 800, 0.8);
-                                            const newSQs = [...(q.subQuestions || [])];
-                                            newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: base64 };
-                                            updateQuestion(idx, { subQuestions: newSQs });
-                                        }
-                                    }}/>
-                                  </label>
+                              {(!sq.imageUrl || (!sq.imageUrl.startsWith('data:image/') && !sq.imageUrl.startsWith('http://') && !sq.imageUrl.startsWith('https://') && !sq.imageUrl.startsWith('/') && !sq.imageUrl.startsWith('blob:'))) ? (
+                                <div className="flex flex-col space-y-2">
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="text"
+                                      value={sq.imageUrl || ''}
+                                      onChange={e => {
+                                        const newSQs = [...(q.subQuestions || [])];
+                                        newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: e.target.value };
+                                        updateQuestion(idx, { subQuestions: newSQs });
+                                      }}
+                                      placeholder="Link Gambar Pernyataan atau Deskripsi Teks / Wacana"
+                                      className="flex-1 px-3 py-1.5 rounded-lg border border-slate-100 focus:ring-2 focus:ring-[#5AB2FF] outline-none transition-all text-[10px]"
+                                    />
+                                    <label className="p-1.5 cursor-pointer bg-slate-50 rounded-lg hover:bg-slate-100 shrink-0">
+                                      <Upload size={14} className="text-slate-600" />
+                                      <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                                          const file = e.target.files?.[0];
+                                          if(file) {
+                                              const base64 = await compressImage(file, 800, 0.8);
+                                              const newSQs = [...(q.subQuestions || [])];
+                                              newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: base64 };
+                                              updateQuestion(idx, { subQuestions: newSQs });
+                                          }
+                                      }}/>
+                                    </label>
+                                  </div>
+                                  {sq.imageUrl && (
+                                    <div className="p-2 bg-amber-50/50 border border-amber-100 rounded-lg text-amber-900 text-[10px] font-medium leading-relaxed whitespace-pre-wrap">
+                                      <span className="font-bold block text-amber-700 mb-0.5">Preview Deskripsi Teks / Wacana:</span>
+                                      {renderFormattedText(sq.imageUrl)}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <div className="space-y-2">
@@ -2964,6 +2950,11 @@ const SumatifTaking: React.FC<{
                       <textarea
                         value={answers[currentQuestion.id] || ''}
                         onChange={e => handleAnswer(currentQuestion.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.stopPropagation();
+                          }
+                        }}
                         placeholder="Ketikkan jawaban uraian Anda di sini..."
                         className={`w-full px-4 rounded-xl border-2 border-slate-100 focus:border-[#5AB2FF] focus:bg-blue-50/20 outline-none transition-all shadow-sm text-slate-700 font-medium leading-relaxed ${
                           scaleMode === 'kecil' 
@@ -3881,19 +3872,149 @@ const SumatifStudentResultPrint: React.FC<{
 }> = ({ sumatif, result, student, onClose }) => {
   const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
 
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const getSumatifTypeLabel = (type: string) => {
+    switch (type) {
+      case 'sum1':
+        return 'Asesmen Sumatif 1';
+      case 'sum2':
+        return 'Asesmen Sumatif 2';
+      case 'sum3':
+        return 'Asesmen Sumatif 3';
+      case 'sum4':
+        return 'Asesmen Sumatif 4';
+      case 'sas':
+        return 'Asesmen Sumatif Akhir Semester';
+      case 'tka':
+        return 'Tes Kemampuan Akademik';
+      default:
+        return 'Asesmen Sumatif';
+    }
+  };
+
   const startTime = result.createdAt || result.startedAt || (result as any).created_at;
   const durationStr = result.submittedAt && startTime 
     ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
     : '-';
 
+  const handleDownloadPDF = async () => {
+    setIsGenerating(true);
+    document.body.classList.add('pdf-generating');
+    
+    // Give browser a short window to apply styles and recalculate 1:1 layouts
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    try {
+      const pages = document.querySelectorAll('.pdf-page-container');
+      if (!pages.length) {
+        setIsGenerating(false);
+        document.body.classList.remove('pdf-generating');
+        return;
+      }
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < pages.length; i++) {
+        const page = pages[i] as HTMLElement;
+        
+        const canvas = await html2canvas(page, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff',
+          windowWidth: 794 // 210mm at 96dpi
+        });
+
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        
+        if (i > 0) {
+          pdf.addPage();
+        }
+
+        // Exact proportions to fit A4 page perfectly
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+      }
+
+      pdf.save(`Hasil_${sumatif.title}_${student.name}.pdf`.replace(/\s+/g, '_'));
+    } catch (err) {
+      console.error('Gagal mengunduh PDF:', err);
+    } finally {
+      document.body.classList.remove('pdf-generating');
+      setIsGenerating(false);
+    }
+  };
+
+  // Group questions into pages: Page 1 gets 2 questions, others get 3
+  const firstPageQuestions = sumatif.questions.slice(0, 2);
+  const remainingQuestions = sumatif.questions.slice(2);
+  const questionPages = [firstPageQuestions];
+  for (let i = 0; i < remainingQuestions.length; i += 3) {
+    questionPages.push(remainingQuestions.slice(i, i + 3));
+  }
+
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      {isGenerating && (
+        <div className="absolute inset-0 bg-white/90 backdrop-blur-md z-[110] flex flex-col items-center justify-center space-y-4 rounded-2xl">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+          <p className="text-slate-800 font-bold text-lg">Sedang Mengunduh PDF...</p>
+          <p className="text-slate-500 text-sm">Dokumen sedang diproses...</p>
+        </div>
+      )}
+      <style>{`
+        .pdf-page-container {
+          width: 210mm;
+          height: 297mm;
+          background: white;
+          margin: 0 auto 20px auto;
+          padding: 15mm;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          position: relative;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          page-break-after: always;
+          overflow: hidden;
+          text-rendering: optimizeLegibility;
+          -webkit-font-smoothing: antialiased;
+          font-variant-ligatures: none;
+        }
+        .pdf-page-container * {
+          letter-spacing: normal !important;
+          word-spacing: normal !important;
+        }
+        body.pdf-generating .pdf-scale-wrapper {
+          transform: none !important;
+          scale: none !important;
+        }
+        @media print {
+          .pdf-page-container {
+            margin: 0;
+            box-shadow: none;
+            width: 100%;
+            height: 100vh;
+            padding: 15mm;
+          }
+        }
+      `}</style>
+      <div className="bg-white w-full max-w-5xl max-h-[95vh] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative">
         {/* Header (No Print) */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 no-print shrink-0">
-          <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
+          <div>
+            <h3 className="font-bold text-slate-700">Lembar Jawaban Siswa</h3>
+            <p className="text-xs text-slate-500">Preview cetak PDF (A4)</p>
+          </div>
           <div className="flex space-x-2">
-            <PrintButton />
+            <button 
+              onClick={handleDownloadPDF}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold flex items-center space-x-2 hover:bg-indigo-700 transition-all shadow-md active:scale-95"
+            >
+              <FileText size={18} />
+              <span>Unduh PDF</span>
+            </button>
             <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-500">
               <X size={20} />
             </button>
@@ -3901,128 +4022,148 @@ const SumatifStudentResultPrint: React.FC<{
         </div>
 
         {/* Printable Area */}
-        <div className="overflow-y-auto flex-1 p-8 bg-slate-200 print:bg-white print:p-0">
+        <div className="overflow-y-auto flex-1 p-4 bg-slate-100 print:bg-white print:p-0">
           <PrintLayout>
-            <div className="bg-white w-full max-w-[210mm] mx-auto shadow-sm print:shadow-none p-10 print:p-0 print:max-w-none print:w-full print:m-0 text-slate-800 text-sm origin-top sm:scale-100 sm:origin-center sm:m-auto m-0 print:break-inside-auto">
-            
-            <h1 className="text-2xl font-black text-center uppercase tracking-widest">Assement Sumatif</h1>
-            <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
-            
-            <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
-              <div className="space-y-2 text-sm">
-                <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
-                <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
-              </div>
-              
-              <div className="flex flex-col items-center justify-center gap-2">
-                <span className="font-black text-xl text-slate-800">NILAI</span>
-                <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
-              </div>
+            <div className="pdf-scale-wrapper flex flex-col items-center min-w-max sm:min-w-0 origin-top scale-[0.45] xs:scale-[0.55] sm:scale-[0.75] md:scale-[0.9] lg:scale-100 print:scale-100">
+              <div id="print-area" className="w-[210mm] text-slate-800 text-sm flex flex-col items-center">
+                {questionPages.map((questions, pageIdx) => (
+                <div key={pageIdx} className="pdf-page-container">
+                  {pageIdx === 0 && (
+                    <>
+                      <h1 className="text-2xl font-black text-center uppercase tracking-widest">{getSumatifTypeLabel(sumatif.type)}</h1>
+                      <h2 className="text-lg font-bold text-center mb-8 uppercase text-slate-600">{sumatif.title}</h2>
+                      
+                      <div className="grid grid-cols-[1.3fr_0.7fr_1fr] gap-4 mb-8">
+                        <div className="space-y-2 text-sm">
+                          <div className="flex"><span className="w-24 font-bold shrink-0">NAMA</span><span className="mr-2">:</span><span className="uppercase">{student?.name}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">KELAS</span><span className="mr-2">:</span><span className="uppercase">{sumatif.classId}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">MAPEL</span><span className="mr-2">:</span><span className="uppercase">{subject?.name || sumatif.subjectId}</span></div>
+                          <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <span className="font-black text-xl text-slate-800">NILAI</span>
+                          <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
+                        </div>
 
-              <div className="flex flex-col gap-4 items-end">
-                <div className="w-48 text-center">
-                  <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
-                  <div className="border-b border-black"></div>
-                </div>
-                <div className="w-48 text-center">
-                  <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
-                  <div className="border-b border-black"></div>
-                </div>
-              </div>
-            </div>
+                        <div className="flex flex-col gap-4 items-end">
+                          <div className="w-48 text-center">
+                            <p className="font-bold text-xs mb-10">Tanda Tangan Guru</p>
+                            <div className="border-b border-black"></div>
+                          </div>
+                          <div className="w-48 text-center">
+                            <p className="font-bold text-xs mb-10">Tanda Tangan Orang Tua</p>
+                            <div className="border-b border-black"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="border-t-2 border-black pt-4 mb-4">
+                        <h2 className="font-bold text-lg">Hasil Pekerjaan Siswa</h2>
+                      </div>
+                    </>
+                  )}
 
-            <div className="border-t-2 border-black pt-6">
-              <h2 className="font-bold text-lg mb-4">Hasil Pekerjaan Siswa</h2>
-              
-              <div className="space-y-6">
-                {sumatif.questions.map((q, idx) => {
-                  const studentAnswer = result.answers[q.id];
-                  let isCorrect = false;
-                  let studentAnswerText = studentAnswer;
-                  let correctAnswerText = '';
+                  {pageIdx > 0 && (
+                    <div className="flex justify-between items-center mb-6 border-b pb-2 text-slate-400 text-xs italic">
+                      <span>{sumatif.title} - {student.name}</span>
+                      <span>Halaman {pageIdx + 1}</span>
+                    </div>
+                  )}
 
-                  if (q.type === 'pg') {
-                    isCorrect = studentAnswer === q.correctAnswer;
-                    const studentOpt = q.options?.find(o => o.id === studentAnswer);
-                    const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
-                    studentAnswerText = studentOpt?.text || studentAnswer || '-';
-                    correctAnswerText = correctOpt?.text || q.correctAnswer || '-';
-                  } else if (q.type === 'pgk') {
-                    const studentAnswersArr = Array.isArray(studentAnswer) ? studentAnswer : [];
-                    const correctAnswersArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
-                    isCorrect = studentAnswersArr.length === correctAnswersArr.length && 
-                                studentAnswersArr.every(a => correctAnswersArr.includes(a));
-                    
-                    studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
-                    correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
-                  } else if (q.type === 'bs') {
-                    const subAnswers = studentAnswer || {};
-                    const subQuestions = q.subQuestions || [];
-                    
-                    let allCorrect = true;
-                    const studentTextArr: string[] = [];
-                    const correctTextArr: string[] = [];
-                    
-                    subQuestions.forEach((sq, i) => {
-                      const ans = subAnswers[sq.id];
-                      const correct = sq.correctAnswer;
-                      if (ans !== correct) allCorrect = false;
-                      studentTextArr.push(`${i + 1}. ${ans || '-'}`);
-                      correctTextArr.push(`${i + 1}. ${correct}`);
-                    });
-                    
-                    isCorrect = allCorrect;
-                    studentAnswerText = studentTextArr.join('\n');
-                    correctAnswerText = correctTextArr.join('\n');
-                  } else if (q.type === 'uraian') {
-                    // For uraian, there is no automatic correctness, we just show what they wrote and the rubrics/keywords if any
-                    isCorrect = (result.manualScores?.[q.id] || 0) > 0;
-                    studentAnswerText = studentAnswer || '-';
-                    correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
-                  }
+                  <div className="space-y-6 flex-1">
+                    {questions.map((q) => {
+                      const absoluteIdx = sumatif.questions.findIndex(sq => sq.id === q.id);
+                      const studentAnswer = result.answers[q.id];
+                      let isCorrect = false;
+                      let studentAnswerText = studentAnswer;
+                      let correctAnswerText = '';
 
-                  return (
-                    <div key={q.id} className="border-b border-slate-200 pb-4 break-inside-avoid avoid-break">
-                      <div className="flex gap-4">
-                        <div className="font-bold w-6">{idx + 1}.</div>
-                        <div className="flex-1 space-y-2">
-                          {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
-                            <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[300px] rounded-lg my-2 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                          ) : q.imageUrl ? (
-                            <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium text-sm my-2">
-                              {q.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
-                            </div>
-                          ) : null}
-                          <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap" />
-                          
-                          <div className="flex mt-2 items-start">
-                            <div className="w-[40%] pr-4">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Jawaban Siswa:</div>
-                              <div className={`p-2 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-                                {studentAnswerText}
-                              </div>
-                            </div>
-                            <div className="w-[40%] pl-4 border-l border-slate-200">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Kunci Jawaban:</div>
-                              <div className="p-2 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
-                                {correctAnswerText}
-                              </div>
-                            </div>
-                            <div className="w-[20%] pl-4 border-l border-slate-200">
-                              <div className="text-xs font-bold text-slate-500 mb-1">Skor:</div>
-                              <div className={`p-2 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
-                                {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)} / {q.points || 0}
+                      if (q.type === 'pg') {
+                        isCorrect = studentAnswer === q.correctAnswer;
+                        const studentOpt = q.options?.find(o => o.id === studentAnswer);
+                        const correctOpt = q.options?.find(o => o.id === q.correctAnswer);
+                        studentAnswerText = studentOpt?.text || studentAnswer || '-';
+                        correctAnswerText = correctOpt?.text || q.correctAnswer || '-';
+                      } else if (q.type === 'pgk') {
+                        const studentAnswersArr = Array.isArray(studentAnswer) ? studentAnswer : [];
+                        const correctAnswersArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [];
+                        isCorrect = studentAnswersArr.length === correctAnswersArr.length && 
+                                    studentAnswersArr.every(a => correctAnswersArr.includes(a));
+                        
+                        studentAnswerText = studentAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                        correctAnswerText = correctAnswersArr.map(id => q.options?.find(o => o.id === id)?.text).filter(Boolean).join(', ') || '-';
+                      } else if (q.type === 'bs') {
+                        const subAnswers = studentAnswer || {};
+                        const subQuestions = q.subQuestions || [];
+                        
+                        let allCorrect = true;
+                        const studentTextArr: string[] = [];
+                        const correctTextArr: string[] = [];
+                        
+                        subQuestions.forEach((sq, i) => {
+                          const ans = subAnswers[sq.id];
+                          const correct = sq.correctAnswer;
+                          if (ans !== correct) allCorrect = false;
+                          studentTextArr.push(`${i + 1}. ${ans || '-'}`);
+                          correctTextArr.push(`${i + 1}. ${correct}`);
+                        });
+                        
+                        isCorrect = allCorrect;
+                        studentAnswerText = studentTextArr.join('\n');
+                        correctAnswerText = correctTextArr.join('\n');
+                      } else if (q.type === 'uraian') {
+                        isCorrect = (result.manualScores?.[q.id] || 0) > 0;
+                        studentAnswerText = studentAnswer || '-';
+                        correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
+                      }
+
+                      return (
+                        <div key={q.id} className="border-b border-slate-100 pb-4 break-inside-avoid avoid-break">
+                          <div className="flex gap-4">
+                            <div className="font-bold w-6">{absoluteIdx + 1}.</div>
+                            <div className="flex-1 space-y-2">
+                              {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
+                                <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[150px] rounded-lg my-1 border border-slate-200 object-contain" />
+                              ) : q.imageUrl ? (
+                                <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap mb-2">
+                                  {renderFormattedText(q.imageUrl)}
+                                </div>
+                              ) : null}
+                              <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium" />
+                              
+                              <div className="flex mt-2 items-start text-[11px]">
+                                <div className="w-[42%] pr-2">
+                                  <div className="font-bold text-slate-500 mb-0.5">Jawaban:</div>
+                                  <div className={`p-1.5 rounded border whitespace-pre-wrap ${isCorrect ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+                                    {studentAnswerText}
+                                  </div>
+                                </div>
+                                <div className="w-[42%] px-2 border-l border-slate-200">
+                                  <div className="font-bold text-slate-500 mb-0.5">Kunci:</div>
+                                  <div className="p-1.5 bg-slate-50 rounded border border-slate-200 text-slate-700 whitespace-pre-wrap">
+                                    {correctAnswerText}
+                                  </div>
+                                </div>
+                                <div className="w-[16%] pl-2 border-l border-slate-200">
+                                  <div className="font-bold text-slate-500 mb-0.5">Skor:</div>
+                                  <div className={`p-1.5 rounded font-bold text-center border ${q.type === 'uraian' ? 'bg-blue-100 text-blue-700 border-blue-300' : isCorrect ? 'bg-green-100 text-green-700 border-green-300' : 'bg-red-100 text-red-700 border-red-300'}`}>
+                                    {q.type === 'uraian' ? (result.manualScores?.[q.id] || 0) : (isCorrect ? q.points : 0)}/{q.points || 0}
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="mt-4 pt-2 border-t border-slate-100 flex justify-between text-[10px] text-slate-400">
+                    <span>Dicetak pada: {format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })}</span>
+                    <span>Halaman {pageIdx + 1} dari {questionPages.length}</span>
+                  </div>
+                </div>
+              ))}
               </div>
             </div>
           </PrintLayout>

@@ -9,7 +9,6 @@ import {
   Search, UserPlus, BookOpen, Monitor, AlertCircle
 } from 'lucide-react';
 import CustomModal from './CustomModal';
-import AgendaView from './AgendaView';
 
 interface ActivitiesViewProps {
   students: Student[];
@@ -21,6 +20,7 @@ interface ActivitiesViewProps {
   onDeleteAgenda: (id: string) => void;
   onUpdateExtracurricular?: (item: Extracurricular) => void;
   onAddExtracurricular?: (item: Extracurricular) => void;
+  onDeleteExtracurricular?: (id: string) => void;
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
   classId: string;
 }
@@ -44,13 +44,23 @@ const CATEGORY_OPTIONS = ['Wajib', 'Seni', 'Keagamaan', 'Olahraga', 'Teknologi']
 
 const ActivitiesView: React.FC<ActivitiesViewProps> = ({ 
   students, agendas, extracurriculars = [], 
-  onAddAgenda, onUpdateAgenda, onToggleAgenda, onDeleteAgenda, onUpdateExtracurricular, onAddExtracurricular,
+  onAddAgenda, onUpdateAgenda, onToggleAgenda, onDeleteAgenda, onUpdateExtracurricular, onAddExtracurricular, onDeleteExtracurricular,
   onShowNotification, classId
 }) => {
   const [activeTab, setActiveTab] = useState<ActivityType>('ekskul');
   const [editingActivity, setEditingActivity] = useState<Extracurricular | null>(null);
   const [memberSearchTerm, setMemberSearchTerm] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Hidden/Deleted default activities
+  const [hiddenDefaults, setHiddenDefaults] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem(`hidden_ekskul_${classId}`);
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
 
   // Modal State for confirmations
   const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, action: () => void, message: string}>({
@@ -60,35 +70,36 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
   // --- MERGE LOGIC: Combine DB Data with Defaults ---
   const displayActivities = useMemo(() => {
       // 1. Map Defaults: Check if they exist in DB (match by name)
-      const mappedDefaults = DEFAULT_ACTIVITIES.map((def, index) => {
-          // Normalize check
-          const existing = extracurriculars.find(e => e.name.trim().toUpperCase() === def.name.toUpperCase());
-          
-          if (existing) {
-              return { ...existing, isVirtual: false }; // It exists in DB
-          }
+      const mappedDefaults = DEFAULT_ACTIVITIES
+          .filter(def => !hiddenDefaults.includes(def.name.trim().toUpperCase()))
+          .map((def, index) => {
+              const existing = extracurriculars.find(e => e.name.trim().toUpperCase() === def.name.toUpperCase());
+              
+              if (existing) {
+                  return { ...existing, isVirtual: false }; // It exists in DB
+              }
 
-          // Return a "Virtual" item (Placeholder)
-          return {
-              id: `virtual-${index}`, // Temp ID
-              classId,
-              name: def.name,
-              category: def.category,
-              schedule: '-',
-              coach: '-',
-              members: [],
-              color: '', 
-              isVirtual: true // Flag to indicate it's not saved yet
-          } as Extracurricular & { isVirtual: boolean };
-      });
+              return {
+                  id: `virtual-${index}`, // Temp ID
+                  classId,
+                  name: def.name,
+                  category: def.category,
+                  schedule: '-',
+                  coach: '-',
+                  members: [],
+                  color: '', 
+                  isVirtual: true // Flag to indicate it's not saved yet
+              } as Extracurricular & { isVirtual: boolean };
+          });
 
-      // 2. Find Custom Items (In DB but not in Defaults)
+      // 2. Find Custom Items (In DB but not in Defaults and not hidden)
       const customItems = extracurriculars.filter(e => 
+          !hiddenDefaults.includes(e.name.trim().toUpperCase()) &&
           !DEFAULT_ACTIVITIES.some(def => def.name.trim().toUpperCase() === e.name.trim().toUpperCase())
       ).map(e => ({ ...e, isVirtual: false }));
 
       return [...mappedDefaults, ...customItems];
-  }, [extracurriculars, classId]);
+  }, [extracurriculars, classId, hiddenDefaults]);
 
   const getCategoryIcon = (category: string) => {
       switch (category) {
@@ -134,6 +145,16 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
     e.preventDefault();
     if (!editingActivity) return;
 
+    // Remove from hiddenDefaults if previously deleted
+    const normName = editingActivity.name.trim().toUpperCase();
+    if (hiddenDefaults.includes(normName)) {
+        const updated = hiddenDefaults.filter(n => n !== normName);
+        setHiddenDefaults(updated);
+        try {
+            localStorage.setItem(`hidden_ekskul_${classId}`, JSON.stringify(updated));
+        } catch (e) {}
+    }
+
     // Check if it's a new item OR a virtual item being saved for the first time
     const isNew = !editingActivity.id || String(editingActivity.id).startsWith('virtual-');
     
@@ -162,6 +183,28 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
     setEditingActivity(null);
     setMemberSearchTerm('');
+  };
+
+  const handleDeleteEkskul = (ekskul: Extracurricular & { isVirtual?: boolean }) => {
+    setConfirmModal({
+      isOpen: true,
+      message: `Apakah Anda yakin ingin menghapus ekstrakurikuler "${ekskul.name}"?`,
+      action: () => {
+        if (!ekskul.isVirtual && onDeleteExtracurricular) {
+          onDeleteExtracurricular(ekskul.id);
+        }
+        const normName = ekskul.name.trim().toUpperCase();
+        setHiddenDefaults(prev => {
+          const updated = Array.from(new Set([...prev, normName]));
+          try {
+            localStorage.setItem(`hidden_ekskul_${classId}`, JSON.stringify(updated));
+          } catch (e) {}
+          return updated;
+        });
+        onShowNotification(`Ekskul "${ekskul.name}" berhasil dihapus.`, 'success');
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const toggleMemberInEdit = (studentId: string) => {
@@ -328,155 +371,155 @@ const ActivitiesView: React.FC<ActivitiesViewProps> = ({
 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Kegiatan</h2>
-          <p className="text-gray-500">Daftar ekskul dan agenda kelas.</p>
+          <h2 className="text-2xl font-bold text-gray-800">Ekstrakurikuler</h2>
+          <p className="text-gray-500">Daftar ekskul kelas.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
             <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".xlsx, .xls, .csv" />
-            <div className="flex bg-white p-1 rounded-xl border border-[#CAF4FF] shadow-sm mr-2">
-              <button onClick={() => setActiveTab('ekskul')} className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'ekskul' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><Tent size={16} /><span>Ekskul</span></button>
-              <button onClick={() => setActiveTab('agenda')} className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'agenda' ? 'bg-[#5AB2FF] text-white shadow-md' : 'text-gray-600 hover:bg-gray-50'}`}><ListTodo size={16} /><span>Agenda</span></button>
-            </div>
             
-            {activeTab === 'ekskul' && (
-              <>
-                <button 
-                  onClick={handleDownloadTemplate}
-                  className="flex items-center space-x-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-semibold"
-                  title="Unduh Template Excel"
-                >
-                  <Download size={16} />
-                  <span>Unduh Template</span>
-                </button>
-                <button 
-                  onClick={handleImportClick}
-                  className="flex items-center space-x-2 bg-amber-50 text-amber-600 border border-amber-200 px-3 py-2 rounded-lg hover:bg-amber-100 transition text-sm font-semibold"
-                  title="Import Ekskul dari Excel"
-                >
-                  <Upload size={16} />
-                  <span>Import Excel</span>
-                </button>
-                <button 
-                  onClick={handleExport}
-                  className="flex items-center space-x-2 bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-semibold"
-                  title="Export Ekskul ke Excel"
-                >
-                  <FileSpreadsheet size={16} />
-                  <span>Export Excel</span>
-                </button>
-                <button 
-                    onClick={handleAddNewActivity} 
-                    className="p-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] shadow-md flex items-center gap-2 text-sm font-bold"
-                    title="Tambah Ekskul Manual"
-                >
-                    <Plus size={18} /> <span className="hidden sm:inline">Tambah Lainnya</span>
-                </button>
-              </>
+            <button 
+              onClick={handleDownloadTemplate}
+              className="flex items-center space-x-2 bg-blue-50 text-blue-600 border border-blue-200 px-3 py-2 rounded-lg hover:bg-blue-100 transition text-sm font-semibold"
+              title="Unduh Template Excel"
+            >
+              <Download size={16} />
+              <span>Unduh Template</span>
+            </button>
+            <button 
+              onClick={handleImportClick}
+              className="flex items-center space-x-2 bg-amber-50 text-amber-600 border border-amber-200 px-3 py-2 rounded-lg hover:bg-amber-100 transition text-sm font-semibold"
+              title="Import Ekskul dari Excel"
+            >
+              <Upload size={16} />
+              <span>Import Excel</span>
+            </button>
+            <button 
+              onClick={handleExport}
+              className="flex items-center space-x-2 bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition text-sm font-semibold"
+              title="Export Ekskul ke Excel"
+            >
+              <FileSpreadsheet size={16} />
+              <span>Export Excel</span>
+            </button>
+            {hiddenDefaults.length > 0 && (
+              <button 
+                onClick={() => {
+                  setHiddenDefaults([]);
+                  try { localStorage.removeItem(`hidden_ekskul_${classId}`); } catch(e) {}
+                  onShowNotification("Semua template default ekskul berhasil dipulihkan.", 'success');
+                }}
+                className="flex items-center space-x-1 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-200 transition text-sm font-semibold"
+                title="Pulihkan Semua Template Default"
+              >
+                <span>Reset Template ({hiddenDefaults.length})</span>
+              </button>
             )}
+            <button 
+                onClick={handleAddNewActivity} 
+                className="p-2 bg-[#5AB2FF] text-white rounded-lg hover:bg-[#A0DEFF] shadow-md flex items-center gap-2 text-sm font-bold"
+                title="Tambah Ekskul Manual"
+            >
+                <Plus size={18} /> <span className="hidden sm:inline">Tambah Lainnya</span>
+            </button>
 
             <button onClick={handlePrint} className="p-2 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50"><Printer size={18}/></button>
         </div>
       </div>
 
       <div className="print-container">
-        {activeTab === 'ekskul' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2">
-            {displayActivities.map((ekskul: any, index) => {
-                const CategoryIcon = getCategoryIcon(ekskul.category);
-                const { bg, text } = getThemeHeaderColor(index);
-                const isVirtual = ekskul.isVirtual;
-                
-                return (
-                <div 
-                    key={ekskul.id} 
-                    className={`bg-white rounded-2xl shadow-sm border ${isVirtual ? 'border-dashed border-gray-300' : 'border-[#CAF4FF]'} overflow-hidden hover:shadow-lg transition-all print:border-black print:break-inside-avoid flex flex-col relative`}
-                >
-                    <div className={`${isVirtual ? 'bg-gray-100 text-gray-500' : bg + ' ' + text} p-4 print:bg-gray-200 print:text-black flex justify-between items-start`}>
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg">
-                                <CategoryIcon size={20} />
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg leading-tight">{ekskul.name}</h3>
-                                <span className={`text-xs font-semibold opacity-90 px-2 py-0.5 rounded mt-1 inline-block ${isVirtual ? 'bg-gray-200' : 'bg-black/10'}`}>{ekskul.category}</span>
-                            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 print:grid-cols-2">
+        {displayActivities.map((ekskul: any, index) => {
+            const CategoryIcon = getCategoryIcon(ekskul.category);
+            const { bg, text } = getThemeHeaderColor(index);
+            const isVirtual = ekskul.isVirtual;
+            
+            return (
+            <div 
+                key={ekskul.id} 
+                className={`bg-white rounded-2xl shadow-sm border ${isVirtual ? 'border-dashed border-gray-300' : 'border-[#CAF4FF]'} overflow-hidden hover:shadow-lg transition-all print:border-black print:break-inside-avoid flex flex-col relative`}
+            >
+                <div className={`${isVirtual ? 'bg-gray-100 text-gray-500' : bg + ' ' + text} p-4 print:bg-gray-200 print:text-black flex justify-between items-start`}>
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-white/20 rounded-lg">
+                            <CategoryIcon size={20} />
                         </div>
+                        <div>
+                            <h3 className="font-bold text-lg leading-tight">{ekskul.name}</h3>
+                            <span className={`text-xs font-semibold opacity-90 px-2 py-0.5 rounded mt-1 inline-block ${isVirtual ? 'bg-gray-200' : 'bg-black/10'}`}>{ekskul.category}</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 no-print">
                         <button 
                             onClick={() => setEditingActivity(ekskul)} 
-                            className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs no-print flex items-center gap-1 transition-colors font-bold`}
+                            className={`${isVirtual ? 'bg-indigo-600 text-white shadow-md' : 'bg-white/20'} hover:opacity-90 px-3 py-1.5 rounded-lg text-xs flex items-center gap-1 transition-colors font-bold`}
+                            title={isVirtual ? "Aktifkan Ekskul" : "Edit Ekskul"}
                         >
                             {isVirtual ? <><Plus size={12}/> Aktifkan</> : <><PenTool size={12}/> Edit</>}
                         </button>
-                    </div>
-                    
-                    <div className="p-5 space-y-4 flex-1">
-                        {isVirtual && (
-                            <div className="bg-amber-50 border border-amber-100 p-2 rounded-lg text-xs text-amber-700 flex items-start">
-                                <AlertCircle size={14} className="mr-1.5 mt-0.5 shrink-0"/>
-                                <span>Ekskul ini adalah template default. Edit & Simpan untuk mulai menambahkan anggota.</span>
-                            </div>
-                        )}
-                        <div className="space-y-3">
-                            <div className="flex items-start text-sm group">
-                                <Clock size={16} className="mr-3 text-gray-400 mt-0.5" />
-                                <div><span className="text-xs text-gray-400 font-bold uppercase block">Jadwal</span><span className="font-medium text-gray-700">{ekskul.schedule || '-'}</span></div>
-                            </div>
-                            <div className="flex items-start text-sm group">
-                                <User size={16} className="mr-3 text-gray-400 mt-0.5" />
-                                <div><span className="text-xs text-gray-400 font-bold uppercase block">Pelatih</span><span className="font-medium text-gray-700">{ekskul.coach || '-'}</span></div>
-                            </div>
-                        </div>
-                        <div className="border-t pt-3 mt-2">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs font-bold text-gray-500 uppercase flex items-center"><Users size={12} className="mr-1"/> Anggota ({ekskul.members.length})</span>
-                                {!isVirtual && (
-                                    <button 
-                                        onClick={() => setEditingActivity(ekskul)} 
-                                        className="text-[10px] text-[#5AB2FF] font-bold hover:underline flex items-center no-print"
-                                    >
-                                        <UserPlus size={10} className="mr-1"/> Kelola
-                                    </button>
-                                )}
-                            </div>
-                            {ekskul.members.length > 0 ? (
-                                <div className="bg-[#FFF9D0]/50 rounded-lg p-2 max-h-[120px] overflow-y-auto custom-scrollbar border border-amber-100">
-                                    <ul className="text-xs text-gray-700 space-y-1.5">
-                                        {ekskul.members.map((mid: string, idx: number) => (
-                                            <li key={idx} className="flex items-center justify-between group/item hover:bg-white p-1 rounded transition-colors">
-                                                <div className="flex items-center overflow-hidden">
-                                                    <span className="truncate max-w-[150px] uppercase">{students.find(st => st.id === mid)?.name.toUpperCase() || `ID: ${mid}`}</span>
-                                                </div>
-                                                <button 
-                                                    onClick={() => handleQuickRemoveMember(ekskul, mid)}
-                                                    className="text-gray-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all no-print"
-                                                    title="Hapus anggota"
-                                                >
-                                                    <X size={12} />
-                                                </button>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ) : <div className="bg-gray-50 rounded-lg p-3 text-center border-dashed border text-xs text-gray-400 italic">Belum ada anggota.</div>}
-                        </div>
+                        <button
+                            onClick={() => handleDeleteEkskul(ekskul)}
+                            className={`${isVirtual ? 'bg-red-100 text-red-600 hover:bg-red-600 hover:text-white' : 'bg-red-500/80 hover:bg-red-600 text-white'} p-1.5 rounded-lg text-xs flex items-center justify-center transition-colors shadow-sm`}
+                            title="Hapus Ekstrakurikuler"
+                        >
+                            <Trash2 size={14} />
+                        </button>
                     </div>
                 </div>
-            )})}
+                
+                <div className="p-5 space-y-4 flex-1">
+                    {isVirtual && (
+                        <div className="bg-amber-50 border border-amber-100 p-2 rounded-lg text-xs text-amber-700 flex items-start">
+                            <AlertCircle size={14} className="mr-1.5 mt-0.5 shrink-0"/>
+                            <span>Ekskul ini adalah template default. Edit & Simpan untuk mulai menambahkan anggota.</span>
+                        </div>
+                    )}
+                    <div className="space-y-3">
+                        <div className="flex items-start text-sm group">
+                            <Clock size={16} className="mr-3 text-gray-400 mt-0.5" />
+                            <div><span className="text-xs text-gray-400 font-bold uppercase block">Jadwal</span><span className="font-medium text-gray-700">{ekskul.schedule || '-'}</span></div>
+                        </div>
+                        <div className="flex items-start text-sm group">
+                            <User size={16} className="mr-3 text-gray-400 mt-0.5" />
+                            <div><span className="text-xs text-gray-400 font-bold uppercase block">Pelatih</span><span className="font-medium text-gray-700">{ekskul.coach || '-'}</span></div>
+                        </div>
+                    </div>
+                    <div className="border-t pt-3 mt-2">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase flex items-center"><Users size={12} className="mr-1"/> Anggota ({ekskul.members.length})</span>
+                            {!isVirtual && (
+                                <button 
+                                    onClick={() => setEditingActivity(ekskul)} 
+                                    className="text-[10px] text-[#5AB2FF] font-bold hover:underline flex items-center no-print"
+                                >
+                                    <UserPlus size={10} className="mr-1"/> Kelola
+                                </button>
+                            )}
+                        </div>
+                        {ekskul.members.length > 0 ? (
+                            <div className="bg-[#FFF9D0]/50 rounded-lg p-2 max-h-[120px] overflow-y-auto custom-scrollbar border border-amber-100">
+                                <ul className="text-xs text-gray-700 space-y-1.5">
+                                    {ekskul.members.map((mid: string, idx: number) => (
+                                        <li key={idx} className="flex items-center justify-between group/item hover:bg-white p-1 rounded transition-colors">
+                                            <div className="flex items-center overflow-hidden">
+                                                <span className="truncate max-w-[150px] uppercase">{students.find(st => st.id === mid)?.name.toUpperCase() || `ID: ${mid}`}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleQuickRemoveMember(ekskul, mid)}
+                                                className="text-gray-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all no-print"
+                                                title="Hapus anggota"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ) : <div className="bg-gray-50 rounded-lg p-3 text-center border-dashed border text-xs text-gray-400 italic">Belum ada anggota.</div>}
+                    </div>
+                </div>
             </div>
-        )}
-
-        {activeTab === 'agenda' && (
-            <AgendaView 
-                agendas={agendas}
-                onAddAgenda={onAddAgenda}
-                onUpdateAgenda={onUpdateAgenda}
-                onToggleAgenda={onToggleAgenda}
-                onDeleteAgenda={onDeleteAgenda}
-                onShowNotification={onShowNotification}
-                classId={classId}
-                hideHeader={true}
-            />
-        )}
+        )})}
+        </div>
       </div>
 
       {editingActivity && (

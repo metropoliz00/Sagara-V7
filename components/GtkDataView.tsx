@@ -165,11 +165,24 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Merge users into GTK list
-    const gtkMap = new Map(gtkData.map(g => [g.id, g]));
+    // Helper to identify system admin / Admin Sagara accounts (not GTK)
+    const isSystemAdminUser = (u: any) => {
+      const name = (u.fullName || u.name || '').toLowerCase();
+      const pos = (u.position || '').toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      return (
+        name.includes('admin sagara') ||
+        name.includes('admin sistem') ||
+        username === 'admin' ||
+        username.includes('admin') ||
+        pos.includes('admin') ||
+        pos.includes('operator sistem') ||
+        (u.role === 'admin' && (name.includes('admin') || pos.includes('admin') || !pos))
+      );
+    };
 
-    // Find staff in users table
-    const staffUsers = users.filter(u => u.role === 'admin' || u.role === 'guru' || u.role === 'Kepala Sekolah');
+    // Find staff in users table (excluding system admins)
+    const staffUsers = users.filter(u => !isSystemAdminUser(u) && (u.role === 'admin' || u.role === 'guru' || u.role === 'Kepala Sekolah'));
     
     let hasChanges = false;
     const mergedData = [...gtkData];
@@ -249,7 +262,13 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
 
   // Sort logic
   const sortedData = useMemo(() => {
-    let result = [...data].filter(r => r.jabatan && r.jabatan.trim() !== '');
+    const isSysAdmin = (name?: string, pos?: string) => {
+      const n = (name || '').toLowerCase();
+      const p = (pos || '').toLowerCase();
+      return n.includes('admin sagara') || n.includes('admin sistem') || p.includes('admin sistem') || p === 'admin' || p.includes('operator sistem');
+    };
+
+    let result = [...data].filter(r => r.jabatan && r.jabatan.trim() !== '' && !isSysAdmin(r.nama, r.jabatan));
     if (searchTerm) {
         const lowerSearch = searchTerm.toLowerCase();
         result = result.filter(r => r.nama.toLowerCase().includes(lowerSearch) || r.nip.includes(lowerSearch));

@@ -133,7 +133,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
   // Admin sees all
   // Kepala Sekolah (supervisor) sees Guru & Siswa
   // Guru sees Siswa
-  // Siswa sees nothing (widget won't be shown or empty)
+  // Siswa sees all online users (to encourage connection and check active teachers/students)
   let visibleRoles: string[] = [];
   if (currentUser.role === 'admin') {
     visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
@@ -141,6 +141,8 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     visibleRoles = ['guru', 'siswa'];
   } else if (currentUser.role === 'guru') {
     visibleRoles = ['siswa'];
+  } else if (currentUser.role === 'siswa') {
+    visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
   }
 
   if (visibleRoles.length === 0) return null;
@@ -179,7 +181,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
       {/* Floating Button Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed ${positionClasses} left-6 z-40 bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
+        className={`fixed ${positionClasses} left-6 z-[200] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
         title="Lihat Status Online"
       >
         <div className="relative">
@@ -194,7 +196,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
 
       {/* Pop Up */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
           <div 
             className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl h-[80vh] sm:h-auto sm:max-h-[80vh] flex flex-col transform transition-all translate-y-0"
             onClick={e => e.stopPropagation()}

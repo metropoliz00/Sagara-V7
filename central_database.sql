@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS school_databases (
   school_name VARCHAR(255) NOT NULL,
   supabase_url TEXT NOT NULL,
   supabase_anon_key TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

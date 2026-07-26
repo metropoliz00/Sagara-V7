@@ -271,7 +271,7 @@ export const TextToSpeechAccessibility: React.FC<TextToSpeechAccessibilityProps>
   const positionClasses = "bottom-[96px] md:bottom-[40px] left-6";
 
   return (
-    <div id="tts-accessibility-root" className={`fixed ${positionClasses} w-14 h-14 z-[100] no-print`}>
+    <div id="tts-accessibility-root" className={`fixed ${positionClasses} w-14 h-14 z-[200] no-print`}>
       <div className="relative w-full h-full">
         
         {/* Expanded Settings Panel */}

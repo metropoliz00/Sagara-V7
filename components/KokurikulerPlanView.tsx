@@ -65,6 +65,29 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
   
   const teacherList = rawTeacherList.length > 0 ? rawTeacherList : users.filter(u => u.role === 'guru');
 
+  const triggerPrintAction = () => {
+    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+    if (!standaloneContainer) {
+      standaloneContainer = document.createElement('div');
+      standaloneContainer.id = 'sagara-standalone-print-container';
+      document.body.appendChild(standaloneContainer);
+    }
+    const printArea = document.getElementById('print-area');
+    if (printArea && standaloneContainer) {
+      standaloneContainer.innerHTML = '';
+      const clonedContent = printArea.cloneNode(true) as HTMLElement;
+      clonedContent.id = 'sagara-cloned-print-content';
+      standaloneContainer.appendChild(clonedContent);
+    }
+    window.print();
+    
+    setTimeout(() => {
+      if (standaloneContainer) {
+        standaloneContainer.innerHTML = '';
+      }
+    }, 3000);
+  };
+
   const getAutoIdentitas = () => {
     const satuanPendidikan = schoolProfile?.name || 'UPT SD Negeri Remen 2';
     
@@ -92,8 +115,9 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
     let semester = activeSemester.toLowerCase().includes('genap') || activeSemester === '2' ? '2 (Genap)' : '1 (Ganjil)';
 
     const tahunAjaran = schoolProfile?.year || '2025/2026';
+    const tempatPengesahan = schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen';
 
-    return { satuanPendidikan, jenjangKelas, semester, tahunAjaran, alokasiWaktu };
+    return { satuanPendidikan, jenjangKelas, semester, tahunAjaran, alokasiWaktu, tempatPengesahan };
   };
 
   const autoInfo = getAutoIdentitas();
@@ -312,14 +336,14 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
     const worksheet = XLSX.utils.aoa_to_sheet([['No', 'Kegiatan'], ...formData.kegiatan.map((k, i) => [i + 1, k])]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Langkah Pembelajaran');
-    XLSX.writeFile(workbook, 'Langkah_Pembelajaran_RPK.xlsx');
+    XLSX.writeFile(workbook, `Dokumen_Langkah_Pembelajaran_RPK_Kelas_${classId}.xlsx`);
   };
 
   const downloadTemplate = () => {
     const worksheet = XLSX.utils.aoa_to_sheet([['No', 'Kegiatan'], [1, ''], [2, ''], [3, '']]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Langkah Pembelajaran');
-    XLSX.writeFile(workbook, 'Template_Langkah_Pembelajaran.xlsx');
+    XLSX.writeFile(workbook, 'Template_Langkah_Pembelajaran_RPK.xlsx');
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -364,7 +388,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                     alokasiWaktu: auto.alokasiWaktu,
                     tipeAlokasi: 'mingguan',
                     lokasiKegiatan: 'di lingkungan satuan pendidikan dan rumah',
-                    tempatPengesahan: schoolProfile?.address?.split(',')[0] || 'Remen',
+                    tempatPengesahan: schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen',
                     tanggalPengesahan: new Date().toISOString().split('T')[0],
                     penanggungJawab: teacherProfile?.fullName || currentUser?.fullName || 'Guru Kelas'
                   },
@@ -386,6 +410,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                   identitas: {
                     ...basePlan.identitas,
                     jenjangKelas: auto.jenjangKelas,
+                    tempatPengesahan: basePlan.identitas?.tempatPengesahan || auto.tempatPengesahan,
                     penanggungJawab: basePlan.identitas?.penanggungJawab || teacherProfile?.fullName || currentUser?.fullName || 'Guru Kelas'
                   }
                 });
@@ -725,10 +750,10 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                   <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">Tempat Pengesahan</label>
                   <input 
                     type="text" 
-                    value={formData.identitas.tempatPengesahan || ''}
+                    value={formData.identitas.tempatPengesahan || (schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen')}
                     onChange={e => setFormData({...formData, identitas: {...formData.identitas, tempatPengesahan: e.target.value}})}
                     className="w-full p-2.5 bg-white border border-gray-300 rounded-lg text-sm" 
-                    placeholder="Contoh: Remen"
+                    placeholder={`Contoh: ${schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}`}
                   />
                 </div>
                 <div>
@@ -1140,316 +1165,324 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
       )}
 
       {view === 'detail' && selectedPlan && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 max-w-4xl mx-auto print:shadow-none">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b print:hidden">
+        <div className="max-w-4xl mx-auto space-y-4">
+          {/* Action Toolbar on Screen */}
+          <div className="no-print flex flex-wrap items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 shadow-sm gap-3">
             <button 
               onClick={() => setView('list')}
-              className="flex items-center gap-1 text-gray-600 hover:text-gray-900 font-medium"
+              className="flex items-center gap-2 text-slate-700 hover:text-slate-900 font-semibold text-sm px-3.5 py-2 rounded-xl hover:bg-slate-100 transition"
             >
-              <ArrowLeft size={18} /> Kembali ke Daftar
+              <ArrowLeft size={18} /> Kembali ke Daftar RPK
             </button>
-            <button 
-              onClick={() => window.print()}
-              className="flex items-center gap-2 bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition"
-            >
-              <Printer size={18} /> Cetak / Ekspor PDF
-            </button>
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200">
+                A4 Portrait
+              </span>
+              <button 
+                onClick={triggerPrintAction}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition text-sm"
+              >
+                <Printer size={18} /> Cetak
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-6 text-gray-900">
-            <div className="text-center border-b pb-6 space-y-2">
-              <h2 className="text-2xl font-bold uppercase tracking-wide text-blue-900">Rencana Pembelajaran Kokurikuler (RPK)</h2>
-              <div className="flex flex-col items-center gap-1.5 mt-2">
-                <span className="px-3 py-1 bg-blue-100 text-blue-900 text-xs font-bold rounded-full uppercase tracking-wider border border-blue-200">
-                  {selectedPlan.identitas.bentukKokurikuler || 'Gerakan 7 Kebiasaan Anak Indonesia Hebat (7KAIH)'}
-                </span>
-                <span className="px-3 py-1 bg-emerald-100 text-emerald-900 text-xs font-bold rounded-full uppercase tracking-wider border border-emerald-200">
-                  Tema: {selectedPlan.identitas.temaKokurikuler || '-'}
-                </span>
-              </div>
-            </div>
-
-            {/* Identitas Table */}
-            <table className="w-full border-collapse border border-gray-300 text-sm">
-              <tbody>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300 w-1/3">Nama satuan pendidikan</td>
-                  <td className="p-3 border border-gray-300">: {selectedPlan.identitas.satuanPendidikan}</td>
-                </tr>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300">Kelas/Fase</td>
-                  <td className="p-3 border border-gray-300">: {selectedPlan.identitas.jenjangKelas}</td>
-                </tr>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300">Tahun Ajaran/Semester</td>
-                  <td className="p-3 border border-gray-300">: {selectedPlan.identitas.tahunAjaran || schoolProfile?.year || '2025/2026'} / {selectedPlan.identitas.semester}</td>
-                </tr>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300">Tema</td>
-                  <td className="p-3 border border-gray-300">: {selectedPlan.identitas.temaKokurikuler}</td>
-                </tr>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300">Alokasi Waktu</td>
-                  <td className="p-3 border border-gray-300">
-                    : {selectedPlan.identitas.alokasiWaktu} {getAlokasiCalculation(selectedPlan.identitas.alokasiWaktu, selectedPlan.identitas.tipeAlokasi)}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="p-3 bg-gray-50 font-semibold border border-gray-300">Lokasi Kegiatan</td>
-                  <td className="p-3 border border-gray-300">: {selectedPlan.identitas.lokasiKegiatan || 'di lingkungan satuan pendidikan dan rumah'}</td>
-                </tr>
-              </tbody>
-            </table>
-
-            {/* A. Dimensi Profil Lulusan */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">A. Dimensi Profil Lulusan</h3>
-              <ol className="list-decimal pl-6 space-y-2 text-gray-800">
-                {selectedPlan.dimensiProfil && selectedPlan.dimensiProfil.length > 0 ? (
-                  selectedPlan.dimensiProfil.map((d, idx) => (
-                    <li key={idx} className="space-y-0.5">
-                      <div className="font-semibold text-gray-900">{d.dimensi}</div>
-                      {d.fokus && <div className="text-gray-700 text-sm">{d.fokus}</div>}
-                    </li>
-                  ))
-                ) : (
-                  <li>Kesehatan dan Penalaran Kritis</li>
-                )}
-              </ol>
-            </div>
-
-            {/* B. Tujuan Pembelajaran */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">B. Tujuan Pembelajaran</h3>
-              <p className="text-gray-800 mb-2 pl-4">Kegiatan kokurikuler ini bertujuan untuk menguatkan kompetensi:</p>
-              <ol className="list-decimal pl-6 space-y-1">
-                {selectedPlan.tujuanPembelajaran.map((tp, idx) => (
-                  <li key={idx}>{tp}</li>
-                ))}
-              </ol>
-            </div>
-
-            {/* C. Praktik Pedagogis */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">C. Praktik Pedagogis</h3>
-              <p className="text-gray-800 pl-4">{selectedPlan.praktikPedagogis}</p>
-            </div>
-
-            {/* D. Lingkungan pembelajaran */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">D. Lingkungan pembelajaran</h3>
-              <p className="text-gray-800 pl-4">{selectedPlan.lingkunganPembelajaran}</p>
-            </div>
-
-            {/* E. Pemanfaatan Digital */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">E. Pemanfaatan Digital</h3>
-              <p className="text-gray-800 pl-4">{selectedPlan.pemanfaatanDigital || 'Video pembelajaran tentang pengaruh kebiasaan tidur terhadap kesehatan, pengumpulan data dari sumber digital tentang pentingnya tidur cukup dan bangun pagi oleh murid'}</p>
-            </div>
-
-            {/* F. Kemitraan Pembelajaran */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-1">F. Kemitraan Pembelajaran</h3>
-              <ol className="list-decimal pl-6 space-y-1">
-                <li>Satuan Pendidikan: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.satuanPendidikan : selectedPlan.kemitraan}</li>
-                <li>Keluarga: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.keluarga : 'menggiatkan anak untuk pembiasaan bangun pagi dan tidur cepat.'}</li>
-                <li>Masyarakat: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.masyarakat : 'tokoh masyarakat dan tokoh agama, memberikan inspirasi pentingnya kebiasaan bangun pagi dan tidur cepat bagi anak-anak.'}</li>
-              </ol>
-            </div>
-
-            {/* G. Kegiatan */}
-            <div>
-              {(() => {
-                const isHarian = selectedPlan.identitas.tipeAlokasi === 'harian';
-                const unitLabel = isHarian ? 'Pertemuan Ke-' : 'Minggu Ke-';
-                const alokasiStr = selectedPlan.identitas.alokasiWaktu || '';
-                const numMatch = alokasiStr.match(/\d+/);
-                const num = numMatch ? parseInt(numMatch[0], 10) : 4;
-                const upper = alokasiStr.toUpperCase();
-                const jp = upper.includes('JP') || (!upper.includes('MINGGU') && !upper.includes('PERTEMUAN') && !upper.includes('P')) ? num : (upper.includes('MINGGU') ? num * 7 : num * 2);
-                const totalUnits = isHarian ? Math.max(1, Math.round(jp / 2)) : Math.max(1, Math.round(jp / 7));
-                const itemsPerGroup = 3;
-                const currentKegs = [...selectedPlan.kegiatan];
-                while (currentKegs.length < totalUnits * itemsPerGroup) {
-                  currentKegs.push('Aktivitas pembelajaran...');
-                }
-                const groups = [];
-                for (let i = 0; i < totalUnits * itemsPerGroup; i += itemsPerGroup) {
-                  groups.push({
-                    groupNumber: Math.floor(i / itemsPerGroup) + 1,
-                    activities: currentKegs.slice(i, i + itemsPerGroup)
-                  });
-                }
-
-                const themeColors = [
-                  'bg-blue-100 text-blue-800 border-blue-200',
-                  'bg-emerald-100 text-emerald-800 border-emerald-200',
-                  'bg-amber-100 text-amber-800 border-amber-200',
-                  'bg-purple-100 text-purple-800 border-purple-200',
-                  'bg-rose-100 text-rose-800 border-rose-200',
-                  'bg-indigo-100 text-indigo-800 border-indigo-200',
-                ];
-
-                return (
-                  <>
-                    <h3 className="font-bold text-base text-blue-900 mb-3">
-                      G. Kegiatan (Alur Aktivitas {isHarian ? 'Harian / Pertemuan' : 'Mingguan'})
-                    </h3>
-                    <div className="space-y-4">
-                      {groups.map((group, gIdx) => {
-                        const colorClass = themeColors[gIdx % themeColors.length];
-                        return (
-                          <div key={gIdx} className="bg-gray-50 rounded-xl p-4 border border-gray-200">
-                            <div className="mb-3">
-                              <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold border ${colorClass} shadow-sm`}>
-                                {unitLabel}{group.groupNumber}
-                              </span>
-                            </div>
-                            <ol className="list-decimal pl-5 space-y-2 text-sm text-gray-800">
-                              {group.activities.map((keg, aIdx) => (
-                                <li key={aIdx} className="whitespace-pre-line leading-relaxed">
-                                  {typeof keg === 'string' ? keg : String(keg)}
-                                </li>
-                              ))}
-                            </ol>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-
-            {/* H. Asesmen */}
-            <div>
-              <h3 className="font-bold text-base text-blue-900 mb-2">H. Asesmen & Produk Akhir</h3>
-              <div className="space-y-4">
-                <div>
-                  <p className="font-semibold text-gray-800 mb-1 text-xs uppercase text-blue-800">1. Asesmen Formatif:</p>
-                  <p className="text-sm text-gray-700 bg-blue-50/50 p-3 rounded-lg border border-blue-100 mb-3">{selectedPlan.asesmen.formatif}</p>
-                  
-                  <table className="w-full border-collapse border border-gray-300 text-xs mt-3">
-                    <thead>
-                      <tr className="bg-sky-100 text-gray-800 text-center">
-                        <th className="border border-gray-300 p-2 w-1/4" rowSpan={2}>Nama Murid</th>
-                        <th className="border border-gray-300 p-2" colSpan={2}>Perkembangan {selectedPlan.identitas.temaKokurikuler}</th>
-                        <th className="border border-gray-300 p-2 w-1/3" rowSpan={2}>Catatan Guru / Observasi</th>
-                      </tr>
-                      <tr className="bg-sky-100 text-gray-800 text-center">
-                        <th className="border border-gray-300 p-2">Belum Terbiasa / Berkembang</th>
-                        <th className="border border-gray-300 p-2">Sudah Terbiasa / Membudaya</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td className="border border-gray-300 p-4 h-12 text-gray-400 italic">Contoh: Nama Siswa 1</td>
-                        <td className="border border-gray-300 p-4"></td>
-                        <td className="border border-gray-300 p-4">✓</td>
-                        <td className="border border-gray-300 p-4">Menunjukkan keaktifan dan antusias tinggi</td>
-                      </tr>
-                      <tr>
-                        <td className="border border-gray-300 p-4 h-12 text-gray-400 italic">Contoh: Nama Siswa 2</td>
-                        <td className="border border-gray-300 p-4">✓</td>
-                        <td className="border border-gray-300 p-4"></td>
-                        <td className="border border-gray-300 p-4">Perlu pendampingan dan motivasi tambahan</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <div>
-                  <p className="font-semibold text-gray-800 mb-1 text-xs uppercase text-blue-800">2. Asesmen Sumatif & Rubrik Kinerja:</p>
-                  <p className="text-sm text-gray-700 bg-blue-50/50 p-3 rounded-lg border border-blue-100 mb-3">{selectedPlan.asesmen.sumatif}</p>
-                  
-                  <table className="w-full border-collapse border border-gray-300 text-xs mt-3">
-                    <thead>
-                      <tr className="bg-sky-100 text-gray-800 text-center">
-                        <th className="border border-gray-300 p-2">Dimensi Profil Lulusan</th>
-                        <th className="border border-gray-300 p-2">Aspek yang Dinilai ({selectedPlan.identitas.temaKokurikuler})</th>
-                        <th className="border border-gray-300 p-2">Sangat Baik</th>
-                        <th className="border border-gray-300 p-2">Baik</th>
-                        <th className="border border-gray-300 p-2">Cukup</th>
-                        <th className="border border-gray-300 p-2">Kurang</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedPlan.dimensiProfil && selectedPlan.dimensiProfil.length > 0 ? (
-                        selectedPlan.dimensiProfil.map((dim, dIdx) => {
-                          const fokusAspek = dim.fokus || selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler;
-                          return (
-                            <tr key={dIdx}>
-                              <td className="border border-gray-300 p-2 font-medium">{dim.dimensi}</td>
-                              <td className="border border-gray-300 p-2">{fokusAspek}</td>
-                              <td className="border border-gray-300 p-2">Sangat konsisten dan mahir dalam {fokusAspek.toLowerCase()}</td>
-                              <td className="border border-gray-300 p-2">Konsisten dan baik dalam {fokusAspek.toLowerCase()}</td>
-                              <td className="border border-gray-300 p-2">Cukup menunjukkan pemahaman dalam {fokusAspek.toLowerCase()}</td>
-                              <td className="border border-gray-300 p-2">Perlu bimbingan intensif dalam {fokusAspek.toLowerCase()}</td>
-                            </tr>
-                          );
-                        })
-                      ) : (
-                        <tr>
-                          <td className="border border-gray-300 p-2 font-medium">Penguatan Profil</td>
-                          <td className="border border-gray-300 p-2">{selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler}</td>
-                          <td className="border border-gray-300 p-2">Sangat baik</td>
-                          <td className="border border-gray-300 p-2">Baik</td>
-                          <td className="border border-gray-300 p-2">Cukup</td>
-                          <td className="border border-gray-300 p-2">Kurang</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {selectedPlan.produk && selectedPlan.produk.length > 0 && (
-                  <div>
-                    <p className="font-semibold text-gray-800 mb-1 text-xs uppercase text-blue-800">3. Produk Akhir / Luaran Proyek:</p>
-                    <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                      {selectedPlan.produk.map((prod, idx) => (
-                        <li key={idx}>{prod}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Tanda Tangan / Signature Section */}
-            <div className="mt-12 pt-6 border-t border-gray-200 grid grid-cols-2 text-sm text-gray-900 page-break-inside-avoid">
-              <div className="text-center px-4">
-                <p className="font-medium">Mengetahui,</p>
-                <p className="font-medium">Kepala {schoolProfile?.name || selectedPlan.identitas.satuanPendidikan || 'Satuan Pendidikan'}</p>
-                <div className="h-20 flex items-center justify-center my-2">
-                  {schoolProfile?.headmasterSignature ? (
-                    <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan Kepala Sekolah" className="h-16 object-contain mx-auto" />
-                  ) : (
-                    <div className="h-16"></div>
-                  )}
-                </div>
-                <p className="font-bold underline">{schoolProfile?.headmaster || '........................................'}</p>
-                <p>NIP. {schoolProfile?.headmasterNip || '........................................'}</p>
-              </div>
-              <div className="text-center px-4">
-                <p className="font-medium">
-                  {selectedPlan.identitas.tempatPengesahan || schoolProfile?.address?.split(',')[0] || 'Remen'}, {
-                    selectedPlan.identitas.tanggalPengesahan 
-                      ? new Date(selectedPlan.identitas.tanggalPengesahan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                      : new Date(selectedPlan.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
-                  }
+          {/* Printable Document Container */}
+          <div 
+            id="print-area" 
+            className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 w-full"
+          >
+            <div className="space-y-6 text-gray-900">
+              <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
+                <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-wide text-slate-900">
+                  RENCANA PEMBELAJARAN KOKURIKULER
+                </h2>
+                <h3 className="text-base sm:text-lg font-bold uppercase tracking-wide text-slate-800">
+                  {selectedPlan.identitas.bentukKokurikuler ? selectedPlan.identitas.bentukKokurikuler.toUpperCase() : 'LINTAS DISIPLIN ILMU'}
+                </h3>
+                <p className="text-sm sm:text-base font-extrabold uppercase tracking-wide text-slate-900 pt-1">
+                  TEMA: {selectedPlan.identitas.temaKokurikuler ? selectedPlan.identitas.temaKokurikuler.toUpperCase() : 'HEMAT ENERGI MASA DEPAN'}
                 </p>
-                <p className="font-medium">Koordinator Kokurikuler</p>
-                <div className="h-20 flex items-center justify-center my-2">
-                  {teacherProfile?.signature ? (
-                    <img src={teacherProfile.signature} alt="Tanda Tangan Guru" className="h-16 object-contain mx-auto" />
-                  ) : currentUser?.signature ? (
-                    <img src={currentUser.signature} alt="Tanda Tangan Guru" className="h-16 object-contain mx-auto" />
+              </div>
+
+              {/* Identitas Table */}
+              <table className="w-full border-collapse border border-gray-400 text-xs sm:text-sm">
+                <tbody>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400 w-1/3">Nama Satuan Pendidikan</td>
+                    <td className="p-2.5 border border-gray-400">: {selectedPlan.identitas.satuanPendidikan}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400">Kelas / Fase</td>
+                    <td className="p-2.5 border border-gray-400">: {selectedPlan.identitas.jenjangKelas}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400">Tahun Ajaran / Semester</td>
+                    <td className="p-2.5 border border-gray-400">: {selectedPlan.identitas.tahunAjaran || schoolProfile?.year || '2025/2026'} / {selectedPlan.identitas.semester}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400">Tema Kokurikuler</td>
+                    <td className="p-2.5 border border-gray-400">: {selectedPlan.identitas.temaKokurikuler}</td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400">Alokasi Waktu</td>
+                    <td className="p-2.5 border border-gray-400">
+                      : {selectedPlan.identitas.alokasiWaktu} {getAlokasiCalculation(selectedPlan.identitas.alokasiWaktu, selectedPlan.identitas.tipeAlokasi)}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td className="p-2.5 bg-gray-50 font-semibold border border-gray-400">Lokasi Kegiatan</td>
+                    <td className="p-2.5 border border-gray-400">: {selectedPlan.identitas.lokasiKegiatan || 'di lingkungan satuan pendidikan dan rumah'}</td>
+                  </tr>
+                </tbody>
+              </table>
+
+              {/* A. Dimensi Profil Lulusan */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">A. Dimensi Profil Lulusan</h3>
+                <ol className="list-decimal pl-6 space-y-1 text-sm text-gray-800">
+                  {selectedPlan.dimensiProfil && selectedPlan.dimensiProfil.length > 0 ? (
+                    selectedPlan.dimensiProfil.map((d, idx) => (
+                      <li key={idx} className="space-y-0.5">
+                        <span className="font-semibold text-gray-900">{d.dimensi}</span>
+                        {d.fokus && <div className="text-gray-700 text-xs sm:text-sm pl-1">{d.fokus}</div>}
+                      </li>
+                    ))
                   ) : (
-                    <div className="h-16"></div>
+                    <li>Kesehatan dan Penalaran Kritis</li>
+                  )}
+                </ol>
+              </div>
+
+              {/* B. Tujuan Pembelajaran */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">B. Tujuan Pembelajaran</h3>
+                <p className="text-sm text-gray-800 mb-1.5 pl-2">Kegiatan kokurikuler ini bertujuan untuk menguatkan kompetensi:</p>
+                <ol className="list-decimal pl-6 space-y-1 text-sm text-gray-800">
+                  {selectedPlan.tujuanPembelajaran.map((tp, idx) => (
+                    <li key={idx}>{tp}</li>
+                  ))}
+                </ol>
+              </div>
+
+              {/* C. Praktik Pedagogis */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">C. Praktik Pedagogis</h3>
+                <p className="text-sm text-gray-800 pl-2 leading-relaxed">{selectedPlan.praktikPedagogis}</p>
+              </div>
+
+              {/* D. Lingkungan Pembelajaran */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">D. Lingkungan Pembelajaran</h3>
+                <p className="text-sm text-gray-800 pl-2 leading-relaxed">{selectedPlan.lingkunganPembelajaran}</p>
+              </div>
+
+              {/* E. Pemanfaatan Digital */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">E. Pemanfaatan Digital</h3>
+                <p className="text-sm text-gray-800 pl-2 leading-relaxed">{selectedPlan.pemanfaatanDigital || 'Video pembelajaran tentang pengaruh kebiasaan tidur terhadap kesehatan, pengumpulan data dari sumber digital tentang pentingnya tidur cukup dan bangun pagi oleh murid'}</p>
+              </div>
+
+              {/* F. Kemitraan Pembelajaran */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-1">F. Kemitraan Pembelajaran</h3>
+                <ol className="list-decimal pl-6 space-y-1 text-sm text-gray-800">
+                  <li>Satuan Pendidikan: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.satuanPendidikan : selectedPlan.kemitraan}</li>
+                  <li>Keluarga: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.keluarga : 'menggiatkan anak untuk pembiasaan bangun pagi dan tidur cepat.'}</li>
+                  <li>Masyarakat: {typeof selectedPlan.kemitraan === 'object' ? selectedPlan.kemitraan.masyarakat : 'tokoh masyarakat dan tokoh agama, memberikan inspirasi pentingnya kebiasaan bangun pagi dan tidur cepat bagi anak-anak.'}</li>
+                </ol>
+              </div>
+
+              {/* G. Kegiatan Matrix Table */}
+              <div>
+                {(() => {
+                  const isHarian = selectedPlan.identitas.tipeAlokasi === 'harian';
+                  const unitLabel = isHarian ? 'Pertemuan Ke-' : 'Minggu Ke-';
+                  const alokasiStr = selectedPlan.identitas.alokasiWaktu || '';
+                  const numMatch = alokasiStr.match(/\d+/);
+                  const num = numMatch ? parseInt(numMatch[0], 10) : 4;
+                  const upper = alokasiStr.toUpperCase();
+                  const jp = upper.includes('JP') || (!upper.includes('MINGGU') && !upper.includes('PERTEMUAN') && !upper.includes('P')) ? num : (upper.includes('MINGGU') ? num * 7 : num * 2);
+                  const totalUnits = isHarian ? Math.max(1, Math.round(jp / 2)) : Math.max(1, Math.round(jp / 7));
+                  const itemsPerGroup = 3;
+                  const currentKegs = [...selectedPlan.kegiatan];
+                  while (currentKegs.length < totalUnits * itemsPerGroup) {
+                    currentKegs.push('Aktivitas pembelajaran...');
+                  }
+                  const groups = [];
+                  for (let i = 0; i < totalUnits * itemsPerGroup; i += itemsPerGroup) {
+                    groups.push({
+                      groupNumber: Math.floor(i / itemsPerGroup) + 1,
+                      activities: currentKegs.slice(i, i + itemsPerGroup)
+                    });
+                  }
+
+                  return (
+                    <>
+                      <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-2">
+                        G. Kegiatan (Alur Aktivitas {isHarian ? 'Harian / Pertemuan' : 'Mingguan'})
+                      </h3>
+                      <table className="w-full border-collapse border border-gray-400 text-xs sm:text-sm">
+                        <thead>
+                          <tr className="bg-sky-100 text-slate-900 font-bold text-center border-b border-gray-400">
+                            <th className="border border-gray-400 p-2.5 w-1/4 uppercase">Waktu / Unit</th>
+                            <th className="border border-gray-400 p-2.5 w-3/4 uppercase text-left">Rincian Alur Aktivitas Pembelajaran Kokurikuler</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groups.map((group, gIdx) => (
+                            <tr key={gIdx} className="border-b border-gray-400">
+                              <td className="border border-gray-400 p-3 bg-slate-50 font-bold text-center align-top text-slate-800">
+                                {unitLabel}{group.groupNumber}
+                              </td>
+                              <td className="border border-gray-400 p-3 align-top text-slate-800">
+                                <ol className="list-decimal pl-4 space-y-1.5 leading-relaxed">
+                                  {group.activities.map((keg, aIdx) => (
+                                    <li key={aIdx} className="whitespace-pre-line">
+                                      {typeof keg === 'string' ? keg : String(keg)}
+                                    </li>
+                                  ))}
+                                </ol>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </>
+                  );
+                })()}
+              </div>
+
+              {/* H. Asesmen */}
+              <div>
+                <h3 className="font-bold text-sm sm:text-base text-slate-900 mb-2">H. Asesmen & Produk Akhir</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="font-semibold text-xs sm:text-sm uppercase text-slate-900 mb-1">1. Asesmen Formatif:</p>
+                    <p className="text-xs sm:text-sm text-gray-800 bg-slate-50 p-3 rounded-lg border border-gray-300 mb-3">{selectedPlan.asesmen.formatif}</p>
+                    
+                    <table className="w-full table-fixed border-collapse border border-slate-400 text-xs mt-3">
+                      <thead>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '25%' }} rowSpan={2}>Nama Murid</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '40%' }} colSpan={2}>Perkembangan {selectedPlan.identitas.temaKokurikuler}</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '35%' }} rowSpan={2}>Catatan Guru / Observasi</th>
+                        </tr>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '20%' }}>Belum Terbiasa / Berkembang</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '20%' }}>Sudah Terbiasa / Membudaya</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className="border border-slate-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 1</td>
+                          <td className="border border-slate-400 p-3 text-center"></td>
+                          <td className="border border-slate-400 p-3 text-center font-bold text-emerald-700">✓</td>
+                          <td className="border border-slate-400 p-3">Menunjukkan keaktifan dan antusias tinggi</td>
+                        </tr>
+                        <tr>
+                          <td className="border border-slate-400 p-3 h-10 text-gray-500 italic">Contoh: Nama Siswa 2</td>
+                          <td className="border border-slate-400 p-3 text-center font-bold text-amber-700">✓</td>
+                          <td className="border border-slate-400 p-3 text-center"></td>
+                          <td className="border border-slate-400 p-3">Perlu pendampingan dan motivasi tambahan</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div>
+                    <p className="font-semibold text-xs sm:text-sm uppercase text-slate-900 mb-1">2. Asesmen Sumatif & Rubrik Kinerja:</p>
+                    <p className="text-xs sm:text-sm text-gray-800 bg-slate-50 p-3 rounded-lg border border-gray-300 mb-3">{selectedPlan.asesmen.sumatif}</p>
+                    
+                    <table className="w-full table-fixed border-collapse border border-slate-400 text-xs mt-3">
+                      <thead>
+                        <tr className="bg-[#e0f2fe] text-slate-900 font-bold text-center border-b border-slate-400">
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '15%' }}>Dimensi Profil Lulusan</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '21%' }}>Aspek yang Dinilai ({selectedPlan.identitas.temaKokurikuler})</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Sangat Baik</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Baik</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Cukup</th>
+                          <th className="border border-slate-400 p-2.5 text-center align-middle" style={{ width: '16%' }}>Kurang</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedPlan.dimensiProfil && selectedPlan.dimensiProfil.length > 0 ? (
+                          selectedPlan.dimensiProfil.map((dim, dIdx) => {
+                            const fokusAspek = dim.fokus || selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler;
+                            return (
+                              <tr key={dIdx}>
+                                <td className="border border-slate-400 p-2.5 font-bold align-middle text-slate-900">{dim.dimensi}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">{fokusAspek}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Sangat konsisten dan mahir dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Konsisten dan baik dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Cukup menunjukkan pemahaman dalam {fokusAspek.toLowerCase()}</td>
+                                <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Perlu bimbingan intensif dalam {fokusAspek.toLowerCase()}</td>
+                              </tr>
+                            );
+                          })
+                        ) : (
+                          <tr>
+                            <td className="border border-slate-400 p-2.5 font-bold align-middle text-slate-900">Penguatan Profil</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">{selectedPlan.tujuanPembelajaran[0] || selectedPlan.identitas.temaKokurikuler}</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Sangat baik</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Baik</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Cukup</td>
+                            <td className="border border-slate-400 p-2.5 align-middle text-slate-800">Kurang</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {selectedPlan.produk && selectedPlan.produk.length > 0 && (
+                    <div>
+                      <p className="font-semibold text-xs sm:text-sm uppercase text-slate-900 mb-1">3. Produk Akhir / Luaran Proyek:</p>
+                      <ul className="list-disc pl-5 text-xs sm:text-sm text-gray-800 space-y-1 bg-slate-50 p-3 rounded-lg border border-gray-300">
+                        {selectedPlan.produk.map((prod, idx) => (
+                          <li key={idx}>{prod}</li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
-                <p className="font-bold underline">{selectedPlan.identitas.penanggungJawab || teacherProfile?.fullName || currentUser?.fullName || '........................................'}</p>
-                <p>NIP. {teacherProfile?.nip || currentUser?.nip || '........................................'}</p>
+              </div>
+
+              {/* Tanda Tangan / Signature Section */}
+              <div className="mt-10 pt-6 border-t border-gray-300 grid grid-cols-2 text-xs sm:text-sm text-gray-900 page-break-inside-avoid avoid-break">
+                <div className="text-center px-4">
+                  <p className="font-medium">Mengetahui,</p>
+                  <p className="font-medium">Kepala {schoolProfile?.name || selectedPlan.identitas.satuanPendidikan || 'Satuan Pendidikan'}</p>
+                  <div className="h-20 flex items-center justify-center my-2">
+                    {schoolProfile?.headmasterSignature ? (
+                      <img src={schoolProfile.headmasterSignature} alt="Tanda Tangan Kepala Sekolah" className="h-16 object-contain mx-auto" />
+                    ) : (
+                      <div className="h-16"></div>
+                    )}
+                  </div>
+                  <p className="font-bold underline">{schoolProfile?.headmaster || '........................................'}</p>
+                  <p>NIP. {schoolProfile?.headmasterNip || '........................................'}</p>
+                </div>
+                <div className="text-center px-4">
+                  <p className="font-medium">
+                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {
+                      selectedPlan.identitas.tanggalPengesahan 
+                        ? new Date(selectedPlan.identitas.tanggalPengesahan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                        : new Date(selectedPlan.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+                    }
+                  </p>
+                  <p className="font-medium">Koordinator Kokurikuler</p>
+                  <div className="h-20 flex items-center justify-center my-2">
+                    {teacherProfile?.signature ? (
+                      <img src={teacherProfile.signature} alt="Tanda Tangan Guru" className="h-16 object-contain mx-auto" />
+                    ) : currentUser?.signature ? (
+                      <img src={currentUser.signature} alt="Tanda Tangan Guru" className="h-16 object-contain mx-auto" />
+                    ) : (
+                      <div className="h-16"></div>
+                    )}
+                  </div>
+                  <p className="font-bold underline">{selectedPlan.identitas.penanggungJawab || teacherProfile?.fullName || currentUser?.fullName || '........................................'}</p>
+                  <p>NIP. {teacherProfile?.nip || currentUser?.nip || '........................................'}</p>
+                </div>
               </div>
             </div>
           </div>

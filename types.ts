@@ -6,6 +6,7 @@ export interface User {
   role: 'admin' | 'guru' | 'siswa' | 'Kepala Sekolah' | 'superadmin';
   fullName: string;
   nip?: string;
+  statusPegawai?: string;
   nuptk?: string;
   birthPlace?: string;
   birthDate?: string;
@@ -26,6 +27,7 @@ export interface Student {
   classId: string;
   nis: string;
   nisn?: string;
+  nik?: string;
   name: string;
   gender: 'L' | 'P';
   birthDate: string;
@@ -265,6 +267,7 @@ export interface PermissionRequest {
   type: 'sick' | 'permit' | 'dispensation';
   reason: string;
   status: 'Pending' | 'Approved' | 'Rejected';
+  rejectionReason?: string;
 }
 
 export interface TeacherProfileData {
@@ -288,6 +291,12 @@ export interface SchoolProfileData {
   name: string;
   npsn: string;
   address: string;
+  jalan?: string;
+  desa?: string;
+  kecamatan?: string;
+  kabupaten?: string;
+  postalCode?: string;
+  email?: string;
   headmaster: string;
   headmasterNip: string;
   year: string;
@@ -422,6 +431,10 @@ export interface Material {
   description?: string;
   link: string;
   videoLink?: string;
+  infographic?: string;
+  taskLink?: string;
+  taskFile?: string;
+  taskTitle?: string;
   isVisible: boolean;
   createdAt: string;
 }
@@ -444,6 +457,8 @@ export type ViewState =
   | 'materi'
   | 'nilai' 
   | 'administrasi/kelas' 
+  | 'administrasi/surat'
+  | 'administrasi/izin-pegawai'
   | 'konseling' 
   | 'kegiatan' 
   | 'profil' 
@@ -708,4 +723,39 @@ export interface KokurikulerPlan {
   };
   produk: string[];
   createdAt: string;
+}
+
+export interface MailRecord {
+  id: string;
+  type: 'masuk' | 'keluar';
+  letterNumber: string;
+  agendaNumber?: string;
+  senderOrRecipient: string;
+  subject: string;
+  letterDate: string;
+  receivedOrSentDate: string;
+  category: string;
+  description?: string;
+  fileUrl?: string;
+  status?: 'Tersimpan' | 'Proses' | 'Selesai' | 'Arsip';
+  classId?: string;
+  createdAt?: string;
+}
+
+export interface StaffLeaveRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  nip: string;
+  statusPegawai?: string;
+  jabatan: string;
+  pangkat: string;
+  kategoriIjin: string;
+  tanggalMulai: string;
+  tanggalSelesai: string;
+  alasan: string;
+  status: 'Menunggu' | 'Disetujui' | 'Ditolak';
+  rejectionReason?: string;
+  fileUrl?: string;
+  createdAt?: string;
 }

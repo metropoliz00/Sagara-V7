@@ -8,7 +8,7 @@ import {
   AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
   LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
   BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Graduate, Material,
-  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment
+  Sumatif, SumatifResult, GradeHistoryRecord, LearningPlan, KokurikulerPlan, EmergencyAlert, GtkRecord, PerformanceAssessment, MailRecord, StaffLeaveRequest
 } from '../types';
 
 const isApiConfigured = () => {
@@ -160,7 +160,7 @@ export const apiService = {
       position: user.position,
       rank: user.rank,
       class_id: user.classId,
-      email: user.email,
+      email: (user.email && user.email.trim() !== '' && user.email.trim() !== '-') ? user.email.trim() : null,
       phone: user.phone,
       address: user.address,
       photo: user.photo,
@@ -202,7 +202,7 @@ export const apiService = {
 
   saveUserBatch: async (users: Omit<User, 'id'>[]): Promise<void> => {
     const dbUsers = users.map(u => ({
-      username: u.username,
+      username: u.username.trim().toLowerCase(),
       password: u.password,
       role: u.role,
       full_name: u.fullName,
@@ -213,7 +213,7 @@ export const apiService = {
       position: u.position,
       rank: u.rank,
       class_id: u.classId,
-      email: u.email,
+      email: (u.email && u.email.trim() !== '' && u.email.trim() !== '-') ? u.email.trim().toLowerCase() : null,
       phone: u.phone,
       address: u.address,
       photo: u.photo,
@@ -221,11 +221,12 @@ export const apiService = {
       student_id: u.studentId
     }));
     
-    // Chunk for stability
-    const chunkSize = 50;
+    // Chunk for stability (increase to 100 for high efficiency)
+    const chunkSize = 100;
     for (let i = 0; i < dbUsers.length; i += chunkSize) {
         const chunk = dbUsers.slice(i, i + chunkSize);
-        const { error } = await supabase.from('users').insert(chunk);
+        // Use upsert onConflict username to gracefully handle existing records and updates
+        const { error } = await supabase.from('users').upsert(chunk, { onConflict: 'username' });
         if (error) {
             console.error("Error batch inserting users chunk:", error);
             throw error;
@@ -579,48 +580,78 @@ export const apiService = {
   },
 
   createStudentBatch: async (students: Omit<Student, 'id'>[]): Promise<any> => {
-    const dbStudents = students.map(s => ({
-      class_id: s.classId,
-      nis: s.nis,
-      nisn: s.nisn,
-      name: s.name,
-      gender: s.gender,
-      birth_place: s.birthPlace,
-      birth_date: s.birthDate,
-      religion: s.religion,
-      address: s.address,
-      father_name: s.fatherName,
-      father_job: s.fatherJob,
-      father_education: s.fatherEducation,
-      mother_name: s.motherName,
-      mother_job: s.motherJob,
-      mother_education: s.motherEducation,
-      parent_name: s.parentName,
-      parent_phone: s.parentPhone,
-      parent_job: s.parentJob,
-      economy_status: s.economyStatus,
-      height: s.height,
-      weight: s.weight,
-      blood_type: s.bloodType,
-      health_notes: s.healthNotes,
-      hobbies: s.hobbies,
-      ambition: s.ambition,
-      achievements: s.achievements,
-      violations: s.violations,
-      behavior_score: s.behaviorScore,
-      photo: s.photo,
-      teacher_notes: s.teacherNotes,
-      present: s.attendance?.present || 0,
-      sick: s.attendance?.sick || 0,
-      permit: s.attendance?.permit || 0,
-      alpha: s.attendance?.alpha || 0
-    }));
-    const { data, error } = await supabase.from('students').insert(dbStudents);
-    if (error) {
-      console.error("Error creating student batch:", error);
-      throw error;
+    const dbStudents = students.map(s => {
+      let cleanBirthDate: string | null = null;
+      if (s.birthDate && String(s.birthDate).trim() !== '' && String(s.birthDate).trim() !== '-') {
+        const bdStr = String(s.birthDate).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(bdStr)) {
+          cleanBirthDate = bdStr;
+        } else {
+          // Attempt to parse if string is e.g. DD/MM/YYYY or similar
+          const parts = bdStr.split(/[\/\.-]/);
+          if (parts.length === 3) {
+            if (parts[0].length === 4) {
+              cleanBirthDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            } else if (parts[2].length === 4) {
+              cleanBirthDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+          }
+        }
+      }
+
+      return {
+        class_id: s.classId || '1A',
+        nis: String(s.nis).trim(),
+        nisn: (s.nisn && String(s.nisn).trim() !== '-' && String(s.nisn).trim() !== '') ? String(s.nisn).trim() : null,
+        nik: (s.nik && String(s.nik).trim() !== '-' && String(s.nik).trim() !== '') ? String(s.nik).trim() : null,
+        name: String(s.name).trim().toUpperCase(),
+        gender: (s.gender && String(s.gender).toUpperCase().includes('P')) ? 'P' : 'L',
+        birth_place: (s.birthPlace && String(s.birthPlace).trim() !== '-') ? String(s.birthPlace).trim() : null,
+        birth_date: cleanBirthDate,
+        religion: s.religion || 'Islam',
+        address: (s.address && String(s.address).trim() !== '-') ? String(s.address).trim() : null,
+        father_name: (s.fatherName && String(s.fatherName).trim() !== '-') ? String(s.fatherName).trim().toUpperCase() : null,
+        father_job: (s.fatherJob && String(s.fatherJob).trim() !== '-') ? String(s.fatherJob).trim() : null,
+        father_education: (s.fatherEducation && String(s.fatherEducation).trim() !== '-') ? String(s.fatherEducation).trim() : null,
+        mother_name: (s.motherName && String(s.motherName).trim() !== '-') ? String(s.motherName).trim().toUpperCase() : null,
+        mother_job: (s.motherJob && String(s.motherJob).trim() !== '-') ? String(s.motherJob).trim() : null,
+        mother_education: (s.motherEducation && String(s.motherEducation).trim() !== '-') ? String(s.motherEducation).trim() : null,
+        parent_name: (s.parentName && String(s.parentName).trim() !== '-') ? String(s.parentName).trim().toUpperCase() : null,
+        parent_phone: (s.parentPhone && String(s.parentPhone).trim() !== '-') ? String(s.parentPhone).trim() : null,
+        parent_job: (s.parentJob && String(s.parentJob).trim() !== '-') ? String(s.parentJob).trim() : null,
+        economy_status: s.economyStatus || 'Mampu',
+        height: isNaN(Number(s.height)) ? 0 : Number(s.height),
+        weight: isNaN(Number(s.weight)) ? 0 : Number(s.weight),
+        blood_type: (s.bloodType && String(s.bloodType).trim() !== '-') ? String(s.bloodType).trim() : null,
+        health_notes: (s.healthNotes && String(s.healthNotes).trim() !== '-') ? String(s.healthNotes).trim() : null,
+        hobbies: (s.hobbies && String(s.hobbies).trim() !== '-') ? String(s.hobbies).trim() : null,
+        ambition: (s.ambition && String(s.ambition).trim() !== '-') ? String(s.ambition).trim() : null,
+        achievements: Array.isArray(s.achievements) ? s.achievements : [],
+        violations: Array.isArray(s.violations) ? s.violations : [],
+        behavior_score: isNaN(Number(s.behaviorScore)) ? 100 : Number(s.behaviorScore),
+        photo: s.photo || null,
+        teacher_notes: s.teacherNotes || null,
+        present: s.attendance?.present || 0,
+        sick: s.attendance?.sick || 0,
+        permit: s.attendance?.permit || 0,
+        alpha: s.attendance?.alpha || 0
+      };
+    });
+
+    const chunkSize = 50;
+    const allResults: any[] = [];
+
+    for (let i = 0; i < dbStudents.length; i += chunkSize) {
+      const chunk = dbStudents.slice(i, i + chunkSize);
+      const { data, error } = await supabase.from('students').upsert(chunk, { onConflict: 'nis' }).select();
+      if (error) {
+        console.error("Error creating student batch chunk:", error);
+        throw error;
+      }
+      if (data) allResults.push(...data);
     }
-    return data;
+
+    return { status: 'success', data: allResults };
   },
 
   updateStudent: async (student: Student): Promise<void> => {
@@ -749,12 +780,20 @@ export const apiService = {
     }
     console.log("Materials fetched from Supabase:", data);
     return data.map((m: any) => {
-      let link = m.link;
+      let link = m.link || '';
       let videoLink = '';
+      let infographic = '';
+      let taskLink = '';
+      let taskFile = '';
+      let taskTitle = '';
       if (link && link.includes('|||')) {
           const parts = link.split('|||');
-          link = parts[0];
+          link = parts[0] || '';
           videoLink = parts[1] || '';
+          infographic = parts[2] || '';
+          taskLink = parts[3] || '';
+          taskFile = parts[4] || '';
+          taskTitle = parts[5] || '';
       }
       return {
         id: m.id,
@@ -764,13 +803,19 @@ export const apiService = {
         description: m.description,
         link: link,
         videoLink: videoLink,
+        infographic: infographic,
+        taskLink: taskLink,
+        taskFile: taskFile,
+        taskTitle: taskTitle,
         isVisible: m.is_visible,
         createdAt: m.created_at
       };
     });
   },
   createMaterial: async (material: Omit<Material, 'id' | 'createdAt'> & { createdAt?: string }): Promise<void> => {
-    const combinedLink = material.videoLink ? `${material.link}|||${material.videoLink}` : material.link;
+    const combinedLink = (material.videoLink || material.infographic || material.taskLink || material.taskFile || material.taskTitle)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}|||${material.taskLink || ''}|||${material.taskFile || ''}|||${material.taskTitle || ''}`
+      : material.link;
     const { error } = await supabase.from('materials').insert([{
       class_id: material.classId,
       subject_id: material.subjectId,
@@ -786,7 +831,9 @@ export const apiService = {
     }
   },
   updateMaterial: async (material: Material): Promise<void> => {
-    const combinedLink = material.videoLink ? `${material.link}|||${material.videoLink}` : material.link;
+    const combinedLink = (material.videoLink || material.infographic || material.taskLink || material.taskFile || material.taskTitle)
+      ? `${material.link}|||${material.videoLink || ''}|||${material.infographic || ''}|||${material.taskLink || ''}|||${material.taskFile || ''}|||${material.taskTitle || ''}`
+      : material.link;
     const { error } = await supabase.from('materials').update({
       subject_id: material.subjectId,
       title: material.title,
@@ -1822,7 +1869,12 @@ export const apiService = {
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
     const { data, error } = await supabase.from('permission_requests').select('*');
     if (error) return [];
-    return data.map((p: any) => ({ ...p, classId: p.class_id, studentId: p.student_id }));
+    return data.map((p: any) => ({ 
+      ...p, 
+      classId: p.class_id, 
+      studentId: p.student_id,
+      rejectionReason: p.rejection_reason 
+    }));
   },
   savePermissionRequest: async (request: any): Promise<void> => {
     await supabase.from('permission_requests').insert([{
@@ -1834,7 +1886,7 @@ export const apiService = {
       status: 'Pending'
     }]);
   },
-  processPermissionRequest: async (id: string, actionStatus: string): Promise<void> => {
+  processPermissionRequest: async (id: string, actionStatus: string, reason?: string): Promise<void> => {
     const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
     
     // 1. Get request details
@@ -1847,7 +1899,11 @@ export const apiService = {
     if (fetchError || !request) throw fetchError || new Error('Request not found');
 
     // 2. Update status
-    await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
+    const updateData: any = { status: newStatus };
+    if (newStatus === 'Rejected' && reason) {
+        updateData.rejection_reason = reason;
+    }
+    await supabase.from('permission_requests').update(updateData).eq('id', id);
 
     // 3. If approved, add to attendance
     if (actionStatus === 'approve') {
@@ -2650,6 +2706,7 @@ export const apiService = {
           if (data && data._local_cache) {
             const cacheData = data._local_cache;
             Object.keys(cacheData).forEach(key => {
+              if (key === 'learningDocumentation') return;
               const item = cacheData[key];
               if (item && typeof item === 'object' && 'value' in item) {
                 localStorage.setItem(key, JSON.stringify(item));
@@ -3417,4 +3474,285 @@ export const apiService = {
       throw error;
     }
   },
+
+  // --- Mail Records (Surat Menyurat) ---
+  getMailRecords: async (classId?: string): Promise<MailRecord[]> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      if (!isApiConfigured()) return cached;
+      const { data, error } = await supabase.from('mail_records').select('*').order('created_at', { ascending: false });
+      if (error || !data) return cached;
+      const mapped: MailRecord[] = data.map((item: any) => ({
+        id: item.id,
+        type: item.type || 'masuk',
+        letterNumber: item.letter_number || '',
+        agendaNumber: item.agenda_number || '',
+        senderOrRecipient: item.sender_or_recipient || '',
+        subject: item.subject || '',
+        letterDate: item.letter_date || '',
+        receivedOrSentDate: item.received_or_sent_date || '',
+        category: item.category || 'Biasa',
+        description: item.description || '',
+        fileUrl: item.file_url || '',
+        status: item.status || 'Tersimpan',
+        classId: item.class_id || '',
+        createdAt: item.created_at || new Date().toISOString()
+      }));
+      cacheService.set('mail_records', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getMailRecords error, returning cached:", e);
+      return cacheService.get<MailRecord[]>('mail_records') || [];
+    }
+  },
+  saveMailRecord: async (mail: MailRecord): Promise<void> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      const index = cached.findIndex(m => m.id === mail.id);
+      if (index !== -1) {
+        cached[index] = mail;
+      } else {
+        cached.unshift(mail);
+      }
+      cacheService.set('mail_records', cached);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return;
+
+    try {
+      const dbItem = {
+        id: mail.id,
+        type: mail.type,
+        letter_number: mail.letterNumber,
+        agenda_number: mail.agendaNumber || '',
+        sender_or_recipient: mail.senderOrRecipient,
+        subject: mail.subject,
+        letter_date: mail.letterDate,
+        received_or_sent_date: mail.receivedOrSentDate,
+        category: mail.category,
+        description: mail.description || '',
+        file_url: mail.fileUrl || '',
+        status: mail.status || 'Tersimpan',
+        class_id: mail.classId || ''
+      };
+
+      const { data: existing } = await supabase.from('mail_records').select('id').eq('id', mail.id).single();
+      if (existing) {
+        await supabase.from('mail_records').update(dbItem).eq('id', mail.id);
+      } else {
+        await supabase.from('mail_records').insert([dbItem]);
+      }
+    } catch (err) {
+      console.warn("saveMailRecord DB error (fallback to local cache):", err);
+    }
+  },
+  deleteMailRecord: async (id: string): Promise<{ status: string; message?: string }> => {
+    try {
+      const cached = cacheService.get<MailRecord[]>('mail_records') || [];
+      const filtered = cached.filter(m => m.id !== id);
+      cacheService.set('mail_records', filtered);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return { status: 'success' };
+
+    try {
+      await supabase.from('mail_records').delete().eq('id', id);
+      return { status: 'success' };
+    } catch (err: any) {
+      console.warn("deleteMailRecord DB error:", err);
+      return { status: 'error', message: err?.message };
+    }
+  },
+
+  // --- Staff Leave Requests (Izin Pegawai) ---
+  getStaffLeaveRequests: async (): Promise<StaffLeaveRequest[]> => {
+    const DEFAULT_LEAVE_REQUESTS: StaffLeaveRequest[] = [
+      {
+        id: 'leave-sample-1',
+        userId: 'guru-1',
+        userName: 'Ahmad Subagyo, S.Pd.',
+        nip: '198503152010011002',
+        jabatan: 'Guru Kelas 4A',
+        pangkat: 'Penata Muda / III a',
+        kategoriIjin: 'Dispensasi - Dispensasi Dinas',
+        tanggalMulai: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() + 86400000 * 1).toISOString().split('T')[0],
+        alasan: 'Mengikuti Bimbingan Teknis Implementasi Kurikulum Merdeka.',
+        status: 'Menunggu',
+        createdAt: new Date(Date.now() - 86400000 * 2).toISOString()
+      },
+      {
+        id: 'leave-sample-2',
+        userId: 'guru-2',
+        userName: 'Dewi Sartika, S.Pd.',
+        nip: '199005202015022001',
+        jabatan: 'Guru Kelas 2B',
+        pangkat: 'Penata Muda / III a',
+        kategoriIjin: 'Cuti - Cuti Tahunan',
+        tanggalMulai: new Date(Date.now() - 86400000 * 5).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
+        alasan: 'Kepentingan keluarga di luar kota.',
+        status: 'Disetujui',
+        createdAt: new Date(Date.now() - 86400000 * 6).toISOString()
+      },
+      {
+        id: 'leave-sample-3',
+        userId: 'guru-3',
+        userName: 'Budi Santoso, S.Pd.',
+        nip: '198811122012011003',
+        jabatan: 'Guru PJOK',
+        pangkat: 'Penata / III c',
+        kategoriIjin: 'Izin - Pelatihan',
+        tanggalMulai: new Date(Date.now() - 86400000 * 10).toISOString().split('T')[0],
+        tanggalSelesai: new Date(Date.now() - 86400000 * 9).toISOString().split('T')[0],
+        alasan: 'Pendampingan Siswa Lomba O2SN.',
+        status: 'Disetujui',
+        createdAt: new Date(Date.now() - 86400000 * 11).toISOString()
+      }
+    ];
+
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests');
+      if (!isApiConfigured()) {
+        if (!cached || cached.length === 0) {
+          cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
+          return DEFAULT_LEAVE_REQUESTS;
+        }
+        return cached;
+      }
+      const { data, error } = await supabase.from('staff_leave_requests').select('*').order('created_at', { ascending: false });
+      if (error || !data || data.length === 0) {
+        if (!cached || cached.length === 0) {
+          cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
+          return DEFAULT_LEAVE_REQUESTS;
+        }
+        return cached;
+      }
+      const mapped: StaffLeaveRequest[] = data.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        userName: item.user_name,
+        nip: item.nip,
+        jabatan: item.jabatan,
+        pangkat: item.pangkat,
+        kategoriIjin: item.kategori_ijin,
+        tanggalMulai: item.tanggal_mulai,
+        tanggalSelesai: item.tanggal_selesai,
+        alasan: item.alasan,
+        status: item.status,
+        rejectionReason: item.rejection_reason,
+        fileUrl: item.file_url,
+        createdAt: item.created_at
+      }));
+      cacheService.set('staff_leave_requests', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getStaffLeaveRequests error, returning cached or default:", e);
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests');
+      if (!cached || cached.length === 0) {
+        return DEFAULT_LEAVE_REQUESTS;
+      }
+      return cached;
+    }
+  },
+  saveStaffLeaveRequest: async (leaveRequest: StaffLeaveRequest): Promise<void> => {
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      const index = cached.findIndex(m => m.id === leaveRequest.id);
+      if (index !== -1) {
+        cached[index] = leaveRequest;
+      } else {
+        cached.unshift(leaveRequest);
+      }
+      cacheService.set('staff_leave_requests', cached);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return;
+
+    try {
+      const dbItem = {
+        id: leaveRequest.id,
+        user_id: leaveRequest.userId,
+        user_name: leaveRequest.userName,
+        nip: leaveRequest.nip,
+        jabatan: leaveRequest.jabatan,
+        pangkat: leaveRequest.pangkat,
+        kategori_ijin: leaveRequest.kategoriIjin,
+        tanggal_mulai: leaveRequest.tanggalMulai,
+        tanggal_selesai: leaveRequest.tanggalSelesai,
+        alasan: leaveRequest.alasan,
+        status: leaveRequest.status,
+        rejection_reason: leaveRequest.rejectionReason || null,
+        file_url: leaveRequest.fileUrl
+      };
+
+      const { data: existing } = await supabase.from('staff_leave_requests').select('id').eq('id', leaveRequest.id).single();
+      if (existing) {
+        await supabase.from('staff_leave_requests').update(dbItem).eq('id', leaveRequest.id);
+      } else {
+        await supabase.from('staff_leave_requests').insert([dbItem]);
+      }
+    } catch (err) {
+      console.warn("saveStaffLeaveRequest DB error (fallback to local cache):", err);
+    }
+  },
+  deleteStaffLeaveRequest: async (id: string): Promise<{ status: string; message?: string }> => {
+    try {
+      const cached = cacheService.get<StaffLeaveRequest[]>('staff_leave_requests') || [];
+      const filtered = cached.filter(m => m.id !== id);
+      cacheService.set('staff_leave_requests', filtered);
+    } catch (e) {}
+
+    if (!isApiConfigured()) return { status: 'success' };
+
+    try {
+      await supabase.from('staff_leave_requests').delete().eq('id', id);
+      return { status: 'success' };
+    } catch (err: any) {
+      console.warn("deleteStaffLeaveRequest DB error:", err);
+      return { status: 'error', message: err?.message };
+    }
+  },
+
+  // --- GTK Data ---
+  getGtkRecords: async (): Promise<GtkRecord[]> => {
+    try {
+      const cached = cacheService.get<GtkRecord[]>('gtk_data');
+      if (!isApiConfigured()) {
+        return cached || [];
+      }
+      const { data, error } = await supabase.from('gtk_data').select('*');
+      if (error || !data) {
+        return cached || [];
+      }
+      const mapped: GtkRecord[] = data.map((item: any) => ({
+        id: item.id,
+        userId: item.user_id,
+        nama: item.nama,
+        nip: item.nip,
+        nuptk: item.nuptk,
+        jenisKelamin: item.jenis_kelamin || item.jenisKelamin || '',
+        tempatLahir: item.tempat_lahir || item.tempatLahir || '',
+        tanggalLahir: item.tanggal_lahir || item.tanggalLahir || '',
+        ijazahTertinggi: item.ijazah_tertinggi || item.ijazahTertinggi || '',
+        jabatan: item.jabatan || '',
+        statusPegawai: item.status_pegawai || item.statusPegawai || '',
+        tmtPengangkatan: item.tmt_pengangkatan || item.tmtPengangkatan || '',
+        mulaiBekerjaDiSini: item.mulai_bekerja_di_sini || item.mulaiBekerjaDiSini || '',
+        pangkatGolongan: item.pangkat_golongan || item.pangkatGolongan || '',
+        masaKerjaTahun: item.masa_kerja_tahun || item.masaKerjaTahun || 0,
+        masaKerjaBulan: item.masa_kerja_bulan || item.masaKerjaBulan || 0,
+        skTerakhir: item.sk_terakhir || item.skTerakhir || '',
+        emailPribadi: item.email_pribadi || item.emailPribadi || '',
+        emailBelajar: item.email_belajar || item.emailBelajar || '',
+        foto: item.foto || ''
+      }));
+      cacheService.set('gtk_data', mapped);
+      return mapped;
+    } catch (e) {
+      console.warn("getGtkRecords error, returning cached:", e);
+      return cacheService.get<GtkRecord[]>('gtk_data') || [];
+    }
+  }
 };
+

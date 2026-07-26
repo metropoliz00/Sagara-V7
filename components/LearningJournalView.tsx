@@ -44,6 +44,12 @@ const EVALUASI_OPTIONS = {
   ]
 };
 
+const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'literasi', 'numerasi', 'istirahat', 'senam', 'sholat', 'pramuka'];
+const isSpecialSubject = (subj?: string) => {
+  const s = (subj || '').toLowerCase();
+  return specialActivities.some(act => s.includes(act));
+};
+
 
 const LearningJournalView: React.FC<LearningJournalViewProps> = ({ 
   classId, isReadOnly, targetDate, onSaveBatch, schoolProfile, teacherProfile, currentUser, onShowNotification
@@ -364,15 +370,15 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
        'TANGGAL': item.date,
        'SLOT WAKTU': item.timeSlot || '-',
        'MATA PELAJARAN': item.subject,
-       'TOPIK/BAB': item.topic || '-',
-       'MODEL PEMBELAJARAN': item.model || '-',
-       'PENDEKATAN': item.pendekatan || '-',
-       'METODE': item.metode ? item.metode.join(', ') : '-',
-       'KEGIATAN PEMBELAJARAN': item.activities || '-',
-       'EVALUASI': item.evaluation || '-',
-       'REFLEKSI GURU': item.reflection || '-',
-       'TINDAK LANJUT': item.followUp || '-',
-       'GURU HADIR': item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir',
+       'TOPIK/BAB': isSpecialSubject(item.subject) ? '-' : (item.topic || '-'),
+       'MODEL PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.model || '-'),
+       'PENDEKATAN': isSpecialSubject(item.subject) ? '-' : (item.pendekatan || '-'),
+       'METODE': isSpecialSubject(item.subject) ? '-' : (item.metode ? item.metode.join(', ') : '-'),
+       'KEGIATAN PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.activities || '-'),
+       'EVALUASI': isSpecialSubject(item.subject) ? '-' : (item.evaluation || '-'),
+       'REFLEKSI GURU': isSpecialSubject(item.subject) ? '-' : (item.reflection || '-'),
+       'TINDAK LANJUT': isSpecialSubject(item.subject) ? '-' : (item.followUp || '-'),
+       'GURU HADIR': isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
        'NAMA GURU': item.teacherName || '-'
      }));
 
@@ -494,6 +500,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     scheduledToday.forEach(sch => {
         const covered = existingEntries.some(e => e.subject === sch.subject && e.timeSlot === sch.time);
         if (!covered) {
+            const isSpecial = isSpecialSubject(sch.subject);
             rows.push({
                 id: `temp-${targetDate}-${sch.id}`, 
                 classId,
@@ -501,17 +508,34 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                 day: dayName,
                 timeSlot: sch.time,
                 subject: sch.subject,
-                topic: '',
-                activities: generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
-                evaluation: 'Kuis singkat',
-                reflection: '',
-                followUp: '',
-                pendekatan: PENDEKATAN_OPTIONS[0],
-                model: MODEL_OPTIONS[0],
-                metode: [METODE_OPTIONS[0]],
+                topic: isSpecial ? '-' : '',
+                activities: isSpecial ? '-' : generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
+                evaluation: isSpecial ? '-' : 'Kuis singkat',
+                reflection: isSpecial ? '-' : '',
+                followUp: isSpecial ? '-' : '',
+                pendekatan: isSpecial ? '' : PENDEKATAN_OPTIONS[0],
+                model: isSpecial ? '' : MODEL_OPTIONS[0],
+                metode: isSpecial ? [] : [METODE_OPTIONS[0]],
             });
         }
     });
+
+    if (rows.length === 0) {
+        rows.push({
+            id: `default-${targetDate}`,
+            classId,
+            date: targetDate,
+            day: dayName,
+            timeSlot: '07:30 - 09:00',
+            subject: 'Tematik / Pembelajaran Umum',
+            topic: '-',
+            activities: generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
+            evaluation: 'Kuis singkat',
+            reflection: '',
+            followUp: '',
+            isTeacherPresent: true
+        });
+    }
 
     return rows.sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''));
   };
@@ -736,30 +760,34 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
             <div class="print-header">
                 <h2>JURNAL HARIAN PEMBELAJARAN</h2>
                 <p>KELAS ${classId}</p>
-                <p>HARI/TANGGAL: ${getDayName(currentDate).toUpperCase()}, ${new Date(currentDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}</p>
+                <p style="margin-top: 4px; font-weight: normal;">HARI/TANGGAL: ${getDayName(currentDate).toUpperCase()}, ${new Date(currentDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}</p>
             </div>
-            <table>
+            <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 25px;">
                 <thead>
                     <tr>
                         <th style="width: 4%">No</th>
-                        <th style="width: 12%">Jam</th>
-                        <th style="width: 16%">Mata Pelajaran</th>
-                        <th style="width: 18%">Materi / Topik</th>
-                        <th style="width: 25%">Kegiatan Pembelajaran</th>
-                        <th style="width: 15%">Refleksi</th>
-                        <th style="width: 10%">Ket.</th>
+                        <th style="width: 10%">Jam</th>
+                        <th style="width: 15%">Mata Pelajaran</th>
+                        <th style="width: 15%">Materi / Topik</th>
+                        <th style="width: 24%">Kegiatan Pembelajaran</th>
+                        <th style="width: 11%">Evaluasi</th>
+                        <th style="width: 11%">Refleksi</th>
+                        <th style="width: 10%">Tindak Lanjut</th>
                     </tr>
                 </thead>
                 <tbody>
-                    ${draftData.map((row, idx) => `
+                    ${draftData.length === 0 
+                      ? `<tr><td colspan="8" style="text-align: center; padding: 15px; font-style: italic; color: #666;">Tidak ada data jurnal untuk hari ini</td></tr>`
+                      : draftData.map((row, idx) => `
                         <tr>
-                            <td style="text-align: center">${idx + 1}</td>
-                            <td>${row.timeSlot || ''}</td>
-                            <td>${row.subject || ''}</td>
-                            <td>${row.topic || ''}</td>
-                            <td>${row.activities || ''}</td>
-                            <td>${row.reflection || ''}</td>
-                            <td>${row.followUp ? 'TL: '+row.followUp : ''}</td>
+                            <td style="text-align: center; vertical-align: middle;">${idx + 1}</td>
+                            <td style="text-align: center; vertical-align: middle;">${row.timeSlot || ''}</td>
+                            <td style="font-weight: bold; vertical-align: middle;">${row.subject || ''}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.evaluation || '-')}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
+                            <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
                         </tr>
                     `).join('')}
                 </tbody>
@@ -767,56 +795,74 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
             ${signatureBlock}
         `;
     } else if (viewMode === 'weekly') {
-        const weekContent = weekDates.map(dateStr => {
+        let rowsHtml = '';
+        let hasData = false;
+
+        weekDates.forEach(dateStr => {
             const rows = getRowsForDate(dateStr);
-            if (rows.length === 0) return '';
-            
-            return `
-                <div style="page-break-inside: avoid; margin-bottom: 20px;">
-                    <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px;">
-                        ${getDayName(dateStr)}, ${new Date(dateStr).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th style="width: 4%">No</th>
-                                <th style="width: 8%">Jam</th>
-                                <th style="width: 12%">Mapel</th>
-                                <th style="width: 14%">Materi</th>
-                                <th style="width: 24%">Kegiatan</th>
-                                <th style="width: 12%">Evaluasi</th>
-                                <th style="width: 12%">Refleksi</th>
-                                <th style="width: 8%">Tindak Lanjut</th>
-                                <th style="width: 6%">Kehadiran</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${rows.map((row, idx) => `
-                                <tr>
-                                    <td style="text-align: center">${idx + 1}</td>
-                                    <td>${row.timeSlot || ''}</td>
-                                    <td>${row.subject || ''}</td>
-                                    <td>${row.topic || ''}</td>
-                                    <td>${row.activities || ''}</td>
-                                    <td>${row.evaluation || ''}</td>
-                                    <td>${row.reflection || ''}</td>
-                                    <td>${row.followUp || ''}</td>
-                                    <td>${row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
+            if (rows.length === 0) return;
+
+            hasData = true;
+
+            // Day Header Row (Date on top)
+            rowsHtml += `
+                <tr style="page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid;">
+                    <td colspan="9" style="background-color: #f1f5f9 !important; font-weight: bold; text-align: left; padding: 8px 10px; border: 1px solid black; font-size: 9pt; text-transform: uppercase; -webkit-print-color-adjust: exact;">
+                        HARI/TANGGAL: ${getDayName(dateStr).toUpperCase()}, ${new Date(dateStr).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'}).toUpperCase()}
+                    </td>
+                </tr>
+                <tr style="page-break-inside: avoid; break-inside: avoid; page-break-after: avoid; break-after: avoid; background-color: #f1f5f9 !important; font-weight: bold; -webkit-print-color-adjust: exact;">
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">No</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Jam</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Mapel</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Materi</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kegiatan Pembelajaran</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Evaluasi</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Refleksi</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Tindak Lanjut</th>
+                    <th style="font-weight: bold; text-align: center; font-size: 8pt; border: 1px solid black; padding: 5px;">Kehadiran</th>
+                </tr>
             `;
-        }).join('');
+
+            rows.forEach((row, idx) => {
+                rowsHtml += `
+                    <tr style="page-break-inside: avoid; break-inside: avoid;">
+                        <td style="text-align: center; vertical-align: middle; border: 1px solid black; padding: 5px; font-size: 8pt;">${idx + 1}</td>
+                        <td style="vertical-align: middle; text-align: center; border: 1px solid black; padding: 5px; font-size: 8pt;">${row.timeSlot || ''}</td>
+                        <td style="font-weight: bold; vertical-align: middle; border: 1px solid black; padding: 5px; font-size: 8pt;">${row.subject || ''}</td>
+                        <td style="border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
+                        <td style="border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
+                        <td style="border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.evaluation || '-')}</td>
+                        <td style="border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
+                        <td style="border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
+                        <td style="text-align: center; vertical-align: middle; border: 1px solid black; padding: 5px; font-size: 8pt;">${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
+                    </tr>
+                `;
+            });
+        });
 
         content = `
             <div class="print-header">
                 <h2>JURNAL PEMBELAJARAN MINGGUAN</h2>
                 <p>KELAS ${classId}</p>
-                <p>PERIODE: ${currentMonday.toLocaleDateString('id-ID', {day:'numeric', month:'long'})} - ${currentSaturday.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
+                <p style="margin-top: 4px; font-weight: normal;">PERIODE: ${currentMonday.toLocaleDateString('id-ID', {day:'numeric', month:'long'})} - ${currentSaturday.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})}</p>
             </div>
-            ${weekContent}
+            <table style="width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 25px;">
+                <colgroup>
+                    <col style="width: 3%;" />
+                    <col style="width: 7%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 12%;" />
+                    <col style="width: 36%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 11%;" />
+                    <col style="width: 5%;" />
+                    <col style="width: 4%;" />
+                </colgroup>
+                <tbody>
+                    ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666; border: 1px solid black;">Tidak ada data jurnal minggu ini</td></tr>`}
+                </tbody>
+            </table>
             ${signatureBlock}
         `;
     } else {
@@ -841,34 +887,34 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                         <h3 style="font-size: 13px; font-weight: bold; margin-bottom: 6px; color: #1e1b4b; background-color: #f1f5f9; padding: 6px 10px; border-radius: 4px; border-left: 3px solid #4f46e5;">
                             Minggu ${weekGroup.weekOfMonth} (${rangeLabel})
                         </h3>
-                        <table>
+                        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
                             <thead>
                                 <tr>
                                     <th style="width: 4%">No</th>
-                                    <th style="width: 8%">Kelas</th>
-                                    <th style="width: 14%">Hari/Tanggal</th>
-                                    <th style="width: 10%">Jam</th>
-                                    <th style="width: 16%">Materi / Topik</th>
+                                    <th style="width: 6%">Kelas</th>
+                                    <th style="width: 12%">Hari/Tanggal</th>
+                                    <th style="width: 8%">Jam</th>
+                                    <th style="width: 14%">Materi / Topik</th>
                                     <th style="width: 20%">Kegiatan Pembelajaran</th>
-                                    <th style="width: 8%">Evaluasi</th>
-                                    <th style="width: 8%">Refleksi</th>
-                                    <th style="width: 8%">Tindak Lanjut</th>
+                                    <th style="width: 11%">Evaluasi</th>
+                                    <th style="width: 12%">Refleksi</th>
+                                    <th style="width: 12%">Tindak Lanjut</th>
                                     <th style="width: 4%">Kehadiran</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${weekGroup.entries.map((row, idx) => `
                                     <tr>
-                                        <td style="text-align: center">${idx + 1}</td>
-                                        <td style="text-align: center; font-weight: bold;">${row.classId || '-'}</td>
+                                        <td style="text-align: center; vertical-align: middle;">${idx + 1}</td>
+                                        <td style="text-align: center; font-weight: bold; vertical-align: middle;">${row.classId || '-'}</td>
                                         <td>${getDayName(row.date)}, ${new Date(row.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</td>
                                         <td>${row.timeSlot || ''}</td>
-                                        <td>${row.topic || ''}</td>
-                                        <td>${row.activities || ''}</td>
-                                        <td>${row.evaluation || ''}</td>
-                                        <td>${row.reflection || ''}</td>
-                                        <td>${row.followUp || ''}</td>
-                                        <td style="text-align: center">${row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}</td>
+                                        <td>${isSpecialSubject(row.subject) ? '-' : (row.topic || '-')}</td>
+                                        <td>${isSpecialSubject(row.subject) ? '-' : (row.activities || '-')}</td>
+                                        <td>${isSpecialSubject(row.subject) ? '-' : (row.evaluation || '-')}</td>
+                                        <td>${isSpecialSubject(row.subject) ? '-' : (row.reflection || '-')}</td>
+                                        <td>${isSpecialSubject(row.subject) ? '-' : (row.followUp || '-')}</td>
+                                        <td style="text-align: center; vertical-align: middle;">${isSpecialSubject(row.subject) ? '-' : (row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir')}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -882,7 +928,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
             <div class="print-header">
                 <h2>REKAPITULASI JURNAL PEMBELAJARAN GURU MATA PELAJARAN</h2>
                 <p>MATA PELAJARAN: ${titleMapel}</p>
-                <p>${filterClassText} | PERIODE: ${filterMonthText} ${schoolProfile?.year || ''}</p>
+                <p style="margin-top: 4px; font-weight: normal;">${filterClassText} | PERIODE: ${filterMonthText} ${schoolProfile?.year || ''}</p>
             </div>
             
             ${tablesContent}
@@ -909,76 +955,71 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     const htmlContent = `
       <div style="font-family: 'Times New Roman', Times, serif; padding: 10px; font-size: 9pt; width: 100%; box-sizing: border-box; color: #000; background: #fff;">
         <style>
-          table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: fixed; word-wrap: break-word; page-break-inside: avoid; break-inside: avoid; }
-          th, td { border: 1px solid black; padding: 4px; text-align: left; vertical-align: top; font-size: 8pt; word-wrap: break-word; overflow-wrap: break-word; }
-          th { text-align: center; font-weight: bold; background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; word-wrap: break-word; }
+          th, td { border: 1px solid black; padding: 5px; text-align: left; vertical-align: top; font-size: 8pt; word-wrap: break-word; overflow-wrap: break-word; }
+          th { text-align: center; font-weight: bold; background-color: #f1f5f9 !important; -webkit-print-color-adjust: exact; }
           tr { page-break-inside: avoid; break-inside: avoid; }
-          .print-header { text-align: center; margin-bottom: 15px; line-height: 1.2; font-weight: bold; page-break-inside: avoid; break-inside: avoid; }
-          .print-header h2, .print-header p { margin: 0; padding: 0; text-transform: uppercase; }
-          .print-footer { margin-top: 20px; width: 100%; font-size: 9pt; page-break-inside: avoid; break-inside: avoid; }
-          .signature-box { width: 45%; text-align: center; page-break-inside: avoid; break-inside: avoid; }
-          .signature-box p { margin: 0; line-height: 1.4; }
+          .print-header { text-align: center; margin-bottom: 20px; line-height: 1.3; font-weight: bold; page-break-inside: avoid; break-inside: avoid; }
+          .print-header h2 { font-size: 14pt; margin: 0 0 4px 0; padding: 0; text-transform: uppercase; }
+          .print-header p { font-size: 10pt; margin: 0; padding: 0; text-transform: uppercase; }
+          .print-footer { margin-top: 25px; width: 100%; font-size: 9pt; page-break-inside: avoid; break-inside: avoid; }
+          .signature-box { width: 40%; text-align: center; page-break-inside: avoid; break-inside: avoid; }
+          .signature-box p { margin: 0; line-height: 1.5; }
           .signature-left { float: left; }
           .signature-right { float: right; }
-          .signature-space { height: 50px; }
+          .signature-space { height: 60px; }
           .underline { text-decoration: underline; font-weight: bold; }
           .clearfix::after { content: ""; clear: both; display: table; }
-          @page { size: A4 landscape; margin: 1cm; }
+          @page { size: A4 landscape; margin: 10mm; }
           @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            table, tr, td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: #fff !important; }
+            table { page-break-inside: auto !important; break-inside: auto !important; }
+            tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+            thead { display: table-header-group !important; }
+            .day-header-row { page-break-after: avoid !important; break-after: avoid !important; }
           }
         </style>
         ${content}
       </div>
     `;
 
-    if (onShowNotification) onShowNotification('Sedang menyiapkan dokumen PDF...', 'warning');
-    
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    
-    const opt = {
-      margin: 10,
-      filename: `Jurnal_Pembelajaran_${classId}_${new Date().getTime()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          windowWidth: 1122
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['table', 'tr', '.print-header', '.print-footer', '.signature-box'] }
-    };
+      // 1. Populate standalone container for clean window.print() output
+      let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+      if (!standaloneContainer) {
+        standaloneContainer = document.createElement('div');
+        standaloneContainer.id = 'sagara-standalone-print-container';
+        document.body.appendChild(standaloneContainer);
+      }
+      standaloneContainer.innerHTML = htmlContent;
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        if (onShowNotification) onShowNotification('PDF berhasil diunduh', 'success');
-    }).catch((err: any) => {
-        console.error('PDF generation error:', err);
-        if (onShowNotification) onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
-        
-        const newWindow = window.open("", "", "width=1200,height=800");
-        if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>Jurnal Pembelajaran - Kelas ${classId}</title>
-                </head>
-                <body>
-                  ${htmlContent}
-                </body>
-              </html>
-            `);
-            newWindow.document.close();
-            setTimeout(() => {
-                newWindow.focus();
-                newWindow.print();
-                newWindow.close();
-            }, 500);
+      // 2. Add dynamic print orientation style
+      let styleTag = document.getElementById('sagara-dynamic-print-style');
+      if (!styleTag) {
+        styleTag = document.createElement('style');
+        styleTag.id = 'sagara-dynamic-print-style';
+        document.head.appendChild(styleTag);
+      }
+      styleTag.innerHTML = `@media print { @page { size: A4 landscape; margin: 10mm; } }`;
+
+      // 3. Update document title for the print job
+      const originalTitle = document.title;
+      const mappedMode = viewMode === 'weekly' ? 'Mingguan' : (viewMode === 'daily' ? 'Harian' : 'Rekapitulasi');
+      document.title = `Jurnal_Pembelajaran_Kelas ${classId}_${mappedMode}`;
+
+      // 4. Trigger print command directly
+      window.print();
+
+      // 5. Cleanup after print dialog finishes
+      const cleanup = () => {
+        document.title = originalTitle;
+        if (standaloneContainer) {
+          standaloneContainer.innerHTML = '';
         }
-    });
+        window.removeEventListener('afterprint', cleanup);
+      };
+
+      window.addEventListener('afterprint', cleanup);
+      setTimeout(cleanup, 2000);
   };
 
   // Navigation Handlers
@@ -1216,12 +1257,20 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                         <select 
                             value={selectedRecapClass} 
                             onChange={(e) => setSelectedRecapClass(e.target.value)}
-                            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-sm font-bold text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                         >
-                            <option value="all">Semua Kelas</option>
-                            {dbClasses.map(cls => (
-                                <option key={cls} value={cls}>Kelas {cls}</option>
-                            ))}
+                            <option value="all">🌐 Semua Kelas</option>
+                            {dbClasses.map(cls => {
+                                const clsStr = String(cls).trim().toUpperCase();
+                                let label = '🏫 Kelas ' + cls;
+                                if (clsStr.startsWith('1')) label = '🎒 Kelas ' + cls;
+                                else if (clsStr.startsWith('2')) label = '📚 Kelas ' + cls;
+                                else if (clsStr.startsWith('3')) label = '📖 Kelas ' + cls;
+                                else if (clsStr.startsWith('4')) label = '🎨 Kelas ' + cls;
+                                else if (clsStr.startsWith('5')) label = '🌟 Kelas ' + cls;
+                                else if (clsStr.startsWith('6')) label = '🎓 Kelas ' + cls;
+                                return <option key={cls} value={cls}>{label}</option>;
+                            })}
                         </select>
                     </div>
 
@@ -1287,9 +1336,8 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                             <tr><td colSpan={9} className="p-8 text-center text-gray-400 italic">Tidak ada jadwal atau jurnal untuk hari ini.</td></tr>
                         ) : (
                             draftData.map((row, idx) => {
-                                const specialActivities = ['upacara', 'pembiasaan', 'literasi/numerasi', 'istirahat'];
                                 const subjectLower = row.subject?.toLowerCase() || '';
-                                const isSpecialActivity = specialActivities.some(activity => subjectLower.includes(activity));
+                                const isSpecialActivity = isSpecialSubject(row.subject);
                                 const isBreak = subjectLower.includes('istirahat');
                                 const disabled = !isRowEditable(row) || isSpecialActivity;
                                 return (
@@ -1441,6 +1489,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                     <tbody className="divide-y divide-gray-100 print:divide-gray-400">
                                         {rows.map((row, rIdx) => {
                                             const isBreak = row.subject?.toLowerCase().includes('istirahat');
+                                            const isSpecial = isSpecialSubject(row.subject);
                                             return (
                                             <tr key={rIdx} className={isBreak ? 'bg-orange-50/60' : ''}>
                                                 <td className="p-2 align-top text-gray-500">{row.timeSlot || '-'}</td>
@@ -1448,13 +1497,15 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                                     {isBreak && <Coffee size={12} className="inline mr-1 text-orange-600 no-print"/>}
                                                     {row.subject}
                                                 </td>
-                                                <td className="p-2 align-top">{row.topic || '-'}</td>
-                                                <td className="p-2 align-top">{row.activities || '-'}</td>
-                                                <td className="p-2 align-top text-gray-600">{row.evaluation || '-'}</td>
-                                                <td className="p-2 align-top text-gray-600">{row.reflection || '-'}</td>
-                                                <td className="p-2 align-top text-gray-600">{row.followUp || '-'}</td>
+                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
+                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
+                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
+                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
+                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
                                                 <td className="p-2 align-top text-gray-600">
-                                                    {isBreak ? '-' : (
+                                                    {isBreak || isSpecial ? (
+                                                        <span className="text-gray-400 font-medium">-</span>
+                                                    ) : (
                                                         <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                             {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
                                                         </span>
@@ -1554,15 +1605,19 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                                             {getDayName(row.date)}, {new Date(row.date).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}
                                                         </td>
                                                         <td className="p-3 text-gray-600 font-medium">{row.timeSlot || '-'}</td>
-                                                        <td className="p-3 font-medium text-gray-800">{row.topic || '-'}</td>
-                                                        <td className="p-3 text-gray-600 leading-relaxed max-w-xs truncate hover:whitespace-normal transition-all">{row.activities || '-'}</td>
-                                                        <td className="p-3 text-gray-600 leading-relaxed">{row.evaluation || '-'}</td>
-                                                        <td className="p-3 text-gray-600 leading-relaxed">{row.reflection || '-'}</td>
-                                                        <td className="p-3 text-gray-600 leading-relaxed">{row.followUp || '-'}</td>
+                                                        <td className="p-3 font-medium text-gray-800">{isSpecialSubject(row.subject) ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
+                                                        <td className="p-3 text-gray-600 leading-relaxed max-w-xs truncate hover:whitespace-normal transition-all">{isSpecialSubject(row.subject) ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
+                                                        <td className="p-3 text-gray-600 leading-relaxed">{isSpecialSubject(row.subject) ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
+                                                        <td className="p-3 text-gray-600 leading-relaxed">{isSpecialSubject(row.subject) ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
+                                                        <td className="p-3 text-gray-600 leading-relaxed">{isSpecialSubject(row.subject) ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
                                                         <td className="p-3 text-center">
-                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-sm ${row.isTeacherPresent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
-                                                                {row.isTeacherPresent ? 'Hadir' : 'Absen'}
-                                                            </span>
+                                                            {isSpecialSubject(row.subject) ? (
+                                                                <span className="text-gray-400 font-medium">-</span>
+                                                            ) : (
+                                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold shadow-sm ${row.isTeacherPresent ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                                                                    {row.isTeacherPresent ? 'Hadir' : 'Absen'}
+                                                                </span>
+                                                            )}
                                                             {row.teacherName && (
                                                                 <span className="block text-[9px] text-gray-500 font-medium mt-1 truncate max-w-[120px] mx-auto" title={row.teacherName}>
                                                                     ({row.teacherName})

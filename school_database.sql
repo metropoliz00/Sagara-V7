@@ -69,6 +69,7 @@ CREATE TABLE IF NOT EXISTS students (
   class_id TEXT NOT NULL,
   nis TEXT UNIQUE NOT NULL,
   nisn TEXT,
+  nik TEXT,
   name TEXT NOT NULL,
   gender TEXT,
   birth_place TEXT,
@@ -353,6 +354,7 @@ CREATE TABLE IF NOT EXISTS book_inventory (
   stock NUMERIC DEFAULT 0,
   total_stock NUMERIC DEFAULT 0,
   cover_url TEXT,
+  digital_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -502,6 +504,7 @@ CREATE TABLE IF NOT EXISTS learning_plans (
   asesmen_akhir TEXT,
   attachments JSONB DEFAULT '[]'::jsonb,
   created_date TEXT,
+  tempat_pengesahan TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -519,6 +522,41 @@ CREATE TABLE IF NOT EXISTS kokurikuler_plans (
   kegiatan JSONB DEFAULT '[]'::jsonb,
   asesmen JSONB NOT NULL,
   produk JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 37. Mail Records (Surat Menyurat) table
+CREATE TABLE IF NOT EXISTS mail_records (
+  id TEXT PRIMARY KEY,
+  type TEXT NOT NULL DEFAULT 'masuk',
+  letter_number TEXT NOT NULL,
+  agenda_number TEXT,
+  sender_or_recipient TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  letter_date DATE,
+  received_or_sent_date DATE,
+  category TEXT DEFAULT 'Kedinasan',
+  description TEXT,
+  file_url TEXT,
+  status TEXT DEFAULT 'Selesai',
+  class_id TEXT DEFAULT 'ALL',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 38. Staff Leave Requests (Izin Pegawai) table
+CREATE TABLE IF NOT EXISTS staff_leave_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL,
+  nip TEXT NOT NULL,
+  jabatan TEXT NOT NULL,
+  pangkat TEXT NOT NULL,
+  kategori_ijin TEXT NOT NULL,
+  tanggal_mulai TIMESTAMP WITH TIME ZONE NOT NULL,
+  tanggal_selesai TIMESTAMP WITH TIME ZONE NOT NULL,
+  alasan TEXT NOT NULL,
+  status TEXT DEFAULT 'Menunggu',
+  file_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

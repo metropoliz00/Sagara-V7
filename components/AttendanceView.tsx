@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
+import { AttendancePrint } from './print/AttendancePrint';
 
 interface AttendanceViewProps {
   students: Student[];
@@ -936,26 +937,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
         console.error('PDF generation error:', err);
         onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
         
-        const printWindow = window.open('', '', 'width=1000,height=800');
-        if (printWindow) {
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Cetak Rekap Absensi</title>
-              </head>
-              <body>
-                ${htmlContent}
-                <script>
-                  setTimeout(() => {
-                    window.print();
-                    window.close();
-                  }, 1000);
-                </script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
-        }
+        window.print();
     });
   };
 
@@ -1243,7 +1225,15 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                 </button>
                             </>
                         )}
-                        <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF]"><Printer size={16} /> <span>Cetak</span></button>
+                        <AttendancePrint 
+                          students={students} 
+                          allStudents={allStudents} 
+                          allAttendanceRecords={allAttendanceRecords} 
+                          holidays={holidays} 
+                          schoolProfile={schoolProfile} 
+                          teacherProfile={teacherProfile} 
+                          currentClassId={classId} 
+                        />
                      </div>
                  </div>
              </div>
@@ -1545,7 +1535,16 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                              <Download size={16} />
                              <span>Export Excel</span>
                          </button>
-                         <button onClick={handlePrint} className="flex items-center space-x-2 bg-[#5AB2FF] text-white px-4 py-2 rounded-lg shadow-md hover:bg-[#A0DEFF] font-semibold"><Printer size={16} /> <span>Cetak</span></button>
+                         <AttendancePrint 
+                          students={students} 
+                          allStudents={allStudents} 
+                          allAttendanceRecords={allAttendanceRecords} 
+                          holidays={holidays} 
+                          schoolProfile={schoolProfile} 
+                          teacherProfile={teacherProfile} 
+                          currentClassId={classId} 
+                          type="semester"
+                         />
                       </div>
                   </div>
               </div>
@@ -2107,7 +2106,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
             </div>
 
             {isScannerOpen && (
-                <div className="fixed inset-0 z-[60] bg-black flex flex-col animate-fade-in">
+                <div className="fixed inset-0 z-[200] bg-black flex flex-col animate-fade-in">
                     {/* Header / Controls */}
                     <div className="p-4 flex justify-between items-center z-20 absolute top-0 left-0 right-0 bg-gradient-to-b from-black/70 to-transparent">
                         <button 

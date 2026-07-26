@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
 import { MOCK_SUBJECTS, CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIPTIONS_2025_2026, WEEKDAYS } from '../constants';
 import { 
-  User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
+  Search, Filter, User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
   BookOpen, Book, LayoutDashboard, Clock,
   Star, HeartHandshake, ListTodo,
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
@@ -12,7 +12,7 @@ import {
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
   Camera, ChevronLeft, ChevronRight, Link2, Download,
   Sun, Moon, CloudSun, Sunset, Coffee, Youtube, Printer, ExternalLink,
-  Calculator, Globe, Compass, Music
+  Calculator, Globe, Compass, Music, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
@@ -26,6 +26,18 @@ import 'react-pdf/dist/Page/TextLayer.css';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+
+
+const formatWaUrl = (phone?: string) => {
+  if (!phone) return '#';
+  let cleaned = phone.replace(/\D/g, '');
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.slice(1);
+  } else if (cleaned.startsWith('8')) {
+    cleaned = '62' + cleaned;
+  }
+  return `https://wa.me/${cleaned}`;
+};
 
 function PDFViewer({ fileUrl }: { fileUrl: string }) {
   const [numPages, setNumPages] = useState<number | null>(null);
@@ -523,6 +535,41 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [viewingMaterialLink, setViewingMaterialLink] = useState<string | null>(null);
   const [viewingVideoLink, setViewingVideoLink] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [viewingPoster, setViewingPoster] = useState<Material | null>(null);
+  const [viewingTask, setViewingTask] = useState<Material | null>(null);
+  const [materialSearchQuery, setMaterialSearchQuery] = useState('');
+  const [materialSelectedSubject, setMaterialSelectedSubject] = useState('ALL');
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    setZoomScale(1);
+    setPan({ x: 0, y: 0 });
+  }, [viewingPoster]);
+
+  useEffect(() => {
+    if (zoomScale === 1) {
+      setPan({ x: 0, y: 0 });
+    }
+  }, [zoomScale]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (zoomScale <= 1) return;
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+  };
+
+  const handleMouseUpOrLeave = () => {
+    setIsPanning(false);
+  };
+
   const { showAlert } = useModal();
   
   const getDocumentEmbedUrl = (url: string) => {
@@ -540,6 +587,29 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     }
     return cleanUrl;
   };
+
+    const filteredMaterials = useMemo(() => {
+    return materials.filter(m => {
+      if (m.classId !== student.classId || !m.isVisible) return false;
+      
+      if (materialSelectedSubject !== 'ALL' && m.subjectId !== materialSelectedSubject) {
+        return false;
+      }
+
+      if (materialSearchQuery.trim()) {
+        const q = materialSearchQuery.toLowerCase().trim();
+        const subject = MOCK_SUBJECTS.find(s => s.id === m.subjectId);
+        const titleMatch = m.title?.toLowerCase().includes(q);
+        const descMatch = m.description?.toLowerCase().includes(q);
+        const subjMatch = subject?.name?.toLowerCase().includes(q) || m.subjectId?.toLowerCase().includes(q);
+        const taskTitleMatch = m.taskTitle?.toLowerCase().includes(q);
+
+        return titleMatch || descMatch || subjMatch || taskTitleMatch;
+      }
+
+      return true;
+    });
+  }, [materials, student.classId, materialSelectedSubject, materialSearchQuery]);
 
   const handleOpenMaterialLink = (url: string) => {
     const embedUrl = getDocumentEmbedUrl(url);
@@ -603,6 +673,27 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [journals, setJournals] = useState<any[]>([]);
   const [isLoadingSchedule, setIsLoadingSchedule] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState(new Date());
+
+  const handlePrevScheduleDay = () => {
+    setScheduleDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() - 1);
+      return next;
+    });
+  };
+
+  const handleNextScheduleDay = () => {
+    setScheduleDate(prev => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + 1);
+      return next;
+    });
+  };
+
+  const handleTodayScheduleDay = () => {
+    setScheduleDate(new Date());
+  };
 
   // -- STATES FOR FORMS --
   const [permissionForm, setPermissionForm] = useState({
@@ -1006,6 +1097,31 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
     const todayRecord = allAttendance.find((r: any) => String(r.studentId) === String(student.id) && r.date === todayStr);
     const todayStatus = todayRecord ? todayRecord.status : null;
 
+    // Detect if today is a holiday
+    const tYear = now.getFullYear();
+    const tMonth = now.getMonth();
+    const tDay = now.getDate();
+    const tDayOfWeek = now.getDay(); // 0 = Sunday
+    const tMonthKey = `${tYear}-${String(tMonth + 1).padStart(2, '0')}`;
+    const tMonthCalendarData = academicCalendar?.[tMonthKey] || [];
+    
+    let isTodayHoliday = false;
+    let holidayLabel = '';
+    
+    if (tMonthCalendarData[tDay - 1]) {
+        const code = tMonthCalendarData[tDay - 1];
+        if (CALENDAR_CODES[code]) {
+            const label = academicCalendar?.__descriptions__?.[todayStr] || HOLIDAY_DESCRIPTIONS_2025_2026[todayStr] || CALENDAR_CODES[code].label;
+            if (code.startsWith('L') || code === 'CB') {
+                isTodayHoliday = true;
+                holidayLabel = label;
+            }
+        }
+    } else if (tDayOfWeek === 0) {
+        isTodayHoliday = true;
+        holidayLabel = 'Libur Akhir Pekan';
+    }
+
     return { 
         percentage, 
         counts, 
@@ -1013,9 +1129,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
         startMonthName: new Date(currentYear, startMonth).toLocaleString('id-ID', { month: 'long' }),
         semesterName: isSemester1 ? 'Ganjil' : 'Genap',
         year: currentYear,
-        todayStatus 
+        todayStatus,
+        isTodayHoliday,
+        holidayLabel
     };
-  }, [student, allAttendance]);
+  }, [student, allAttendance, academicCalendar]);
 
   const upcomingAgendas = useMemo(() => {
       return agendas
@@ -1124,6 +1242,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       const studentGrades = grades.find(g => g.studentId === student.id);
       const matSubject = studentGrades?.subjects?.['mat'];
       const indoSubject = studentGrades?.subjects?.['indo'];
+      const ipaSubject = studentGrades?.subjects?.['ipas'];
 
       // Default TKA list
       const titlesSet = new Set<string>(['TKA 1']);
@@ -1132,6 +1251,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       }
       if (indoSubject?.tka_scores) {
         Object.keys(indoSubject.tka_scores).forEach(t => titlesSet.add(t));
+      }
+      if (ipaSubject?.tka_scores) {
+        Object.keys(ipaSubject.tka_scores).forEach(t => titlesSet.add(t));
       }
       const titles = Array.from(titlesSet);
 
@@ -1148,11 +1270,18 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
         }
         indoScore = indoScore || 0;
 
+        let ipaScore = ipaSubject?.tka_scores?.[title];
+        if (ipaScore === undefined && title === 'TKA 1' && ipaSubject?.tka !== undefined) {
+          ipaScore = ipaSubject.tka;
+        }
+        ipaScore = ipaScore || 0;
+
         return {
           title,
           mat: matScore,
           indo: indoScore,
-          average: Math.round((matScore + indoScore) / 2)
+          ipa: ipaScore,
+          average: Math.round((matScore + indoScore + ipaScore) / 3)
         };
       });
   }, [grades, student.id, student.classId]);
@@ -1222,6 +1351,18 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       .filter(item => item && item.day && item.day.replace("'", "") === currentDayName.replace("'", ""))
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [schedule, currentDayName]);
+
+  const scheduleDayName = useMemo(() => {
+    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', "Jum'at", 'Sabtu'];
+    return days[scheduleDate.getDay()];
+  }, [scheduleDate]);
+
+  const selectedSchedule = useMemo(() => {
+    if (!schedule) return [];
+    return schedule
+      .filter(item => item && item.day && item.day.replace("'", "") === scheduleDayName.replace("'", ""))
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+  }, [schedule, scheduleDayName]);
 
   const TABS = [
     { id: 'dashboard', label: 'Ringkasan', icon: LayoutDashboard },
@@ -1442,6 +1583,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="bg-gray-50 border border-gray-200 p-4 rounded-xl flex items-center justify-between">
                           <span className="text-sm font-bold text-gray-700">Status Kehadiran Hari Ini:</span>
                           <span className={`text-sm font-bold px-3 py-1 rounded-lg ${
+                              attendanceStats.isTodayHoliday ? 'bg-rose-100 text-rose-700' :
                               attendanceStats.todayStatus === 'present' ? 'bg-emerald-100 text-emerald-700' :
                               attendanceStats.todayStatus === 'sick' ? 'bg-amber-100 text-amber-700' :
                               attendanceStats.todayStatus === 'permit' ? 'bg-blue-100 text-blue-700' :
@@ -1449,7 +1591,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               attendanceStats.todayStatus === 'dispensation' ? 'bg-purple-100 text-purple-700' :
                               'bg-gray-200 text-gray-600'
                           }`}>
-                              {attendanceStats.todayStatus === 'present' ? 'Hadir' :
+                              {attendanceStats.isTodayHoliday ? (attendanceStats.holidayLabel ? `Libur (${attendanceStats.holidayLabel})` : 'Libur') :
+                               attendanceStats.todayStatus === 'present' ? 'Hadir' :
                                attendanceStats.todayStatus === 'sick' ? 'Sakit' :
                                attendanceStats.todayStatus === 'permit' ? 'Izin' :
                                attendanceStats.todayStatus === 'alpha' ? 'Alpha' :
@@ -1560,7 +1703,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           {myTkaData.map((tka, index) => {
                               const matPred = tka.mat > 90 ? 'Istimewa' : tka.mat >= 76 ? 'Baik' : tka.mat >= 60 ? 'Memadai' : tka.mat > 0 ? 'Kurang' : '-';
                               const indoPred = tka.indo > 90 ? 'Istimewa' : tka.indo >= 76 ? 'Baik' : tka.indo >= 60 ? 'Memadai' : tka.indo > 0 ? 'Kurang' : '-';
-                              const hasData = tka.mat > 0 || tka.indo > 0;
+                              const ipaPred = tka.ipa > 90 ? 'Istimewa' : tka.ipa >= 76 ? 'Baik' : tka.ipa >= 60 ? 'Memadai' : tka.ipa > 0 ? 'Kurang' : '-';
+                              const hasData = tka.mat > 0 || tka.indo > 0 || tka.ipa > 0;
                               
                               return (
                                   <div key={index} className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex flex-col justify-between hover:shadow-md transition-all">
@@ -1607,6 +1751,25 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                           'bg-gray-100 text-gray-600'
                                                       }`}>
                                                           {indoPred}
+                                                      </span>
+                                                  )}
+                                              </div>
+                                          </div>
+
+                                          <div className="flex justify-between items-center text-xs">
+                                              <span className="text-slate-500 font-bold">IPA (TKA)</span>
+                                              <div className="flex items-center gap-2">
+                                                  <span className={`font-bold ${tka.ipa > 0 ? 'text-slate-800' : 'text-slate-300'}`}>
+                                                      {tka.ipa > 0 ? tka.ipa : '-'}
+                                                  </span>
+                                                  {tka.ipa > 0 && (
+                                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${
+                                                          ipaPred === 'Istimewa' ? 'bg-rose-100 text-rose-700' :
+                                                          ipaPred === 'Baik' ? 'bg-amber-100 text-amber-700' :
+                                                          ipaPred === 'Memadai' ? 'bg-blue-100 text-blue-700' :
+                                                          'bg-gray-100 text-gray-600'
+                                                      }`}>
+                                                          {ipaPred}
                                                       </span>
                                                   )}
                                               </div>
@@ -2150,7 +2313,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           </div>
                                           <p className="text-sm text-gray-700 font-medium line-clamp-1">{req.reason}</p>
                                       </div>
-                                      <div className="text-right">
+                                      <div className="text-right flex flex-col items-end gap-1">
                                           <span className={`text-xs font-bold px-2 py-1 rounded-full border ${
                                               req.status === 'Approved' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
                                               req.status === 'Rejected' ? 'bg-red-50 text-red-600 border-red-200' :
@@ -2158,6 +2321,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           }`}>
                                               {req.status === 'Approved' ? 'Diterima' : req.status === 'Rejected' ? 'Ditolak' : 'Menunggu'}
                                           </span>
+                                          {req.status === 'Rejected' && req.rejectionReason && (
+                                              <span className="text-[10px] text-red-500 italic max-w-[120px] text-right leading-tight">
+                                                  Alasan: {req.rejectionReason}
+                                              </span>
+                                          )}
                                       </div>
                                   </div>
                               ))
@@ -2197,16 +2365,74 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           </div>
                       ) : (
                           <>
-                              {materials.length === 0 ? (
-                                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                                      <BookOpen size={48} className="mx-auto text-gray-300 mb-4" />
-                                      <p className="text-gray-500 font-medium">Belum ada materi yang dibagikan.</p>
-                                  </div>
-                              ) : (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-                                      {materials
-                                        .filter(m => m.classId === student.classId && m.isVisible)
-                                        .map((material) => {
+                               {/* Search & Subject Filter Bar */}
+                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-6 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80">
+                                   <div className="relative flex-1">
+                                       <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                       <input
+                                           type="text"
+                                           placeholder="Cari materi, topik, atau kata kunci..."
+                                           value={materialSearchQuery}
+                                           onChange={(e) => setMaterialSearchQuery(e.target.value)}
+                                           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all shadow-sm"
+                                       />
+                                       {materialSearchQuery && (
+                                           <button 
+                                               type="button"
+                                               onClick={() => setMaterialSearchQuery('')}
+                                               className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 rounded-full hover:bg-slate-100 transition-colors"
+                                           >
+                                               <X size={15} />
+                                           </button>
+                                       )}
+                                   </div>
+
+                                   <div className="relative min-w-[200px] sm:w-64">
+                                       <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={17} />
+                                       <select
+                                           value={materialSelectedSubject}
+                                           onChange={(e) => setMaterialSelectedSubject(e.target.value)}
+                                           className="w-full pl-10 pr-9 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 appearance-none cursor-pointer transition-all shadow-sm"
+                                       >
+                                           <option value="ALL">Semua Mata Pelajaran</option>
+                                           {MOCK_SUBJECTS.map((subj) => (
+                                               <option key={subj.id} value={subj.id}>
+                                                   {subj.name}
+                                               </option>
+                                           ))}
+                                       </select>
+                                       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                                   </div>
+                               </div>
+
+                               {filteredMaterials.length === 0 ? (
+                                   <div className="text-center py-12 px-4 bg-slate-50/60 rounded-2xl border border-dashed border-slate-300">
+                                       <BookOpen size={48} className="mx-auto text-slate-300 mb-3" />
+                                       <p className="text-slate-700 font-bold text-base mb-1">
+                                           {materials.length === 0 ? 'Belum Ada Materi' : 'Materi Tidak Ditemukan'}
+                                       </p>
+                                       <p className="text-slate-500 text-xs max-w-md mx-auto mb-4">
+                                           {materials.length === 0 
+                                               ? 'Belum ada materi pembelajaran yang dibagikan oleh guru untuk kelas Anda.' 
+                                               : 'Coba sesuaikan kata kunci pencarian atau ganti filter mata pelajaran.'}
+                                       </p>
+                                       {(materialSearchQuery || materialSelectedSubject !== 'ALL') && (
+                                           <button
+                                               type="button"
+                                               onClick={() => {
+                                                   setMaterialSearchQuery('');
+                                                   setMaterialSelectedSubject('ALL');
+                                               }}
+                                               className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                                           >
+                                               <RotateCcw size={14} />
+                                               <span>Reset Pencarian & Filter</span>
+                                           </button>
+                                       )}
+                                   </div>
+                               ) : (
+                                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+                                       {filteredMaterials.map((material) => {
                                           const subject = MOCK_SUBJECTS.find(s => s.id === material.subjectId);
                                           const decoration = SUBJECT_DECORATIONS[material.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS['default'];
                                           const IconComponent = decoration.icon;
@@ -2244,7 +2470,34 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                               <span className="text-sm leading-none">{decoration.emoji}</span>
                                                               <span>{subject?.name || material.subjectId}</span>
                                                           </span>
+                                                           {(material.taskLink || material.taskFile || material.taskTitle) && (
+                                                               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] md:text-xs font-black bg-amber-500 text-white shadow-sm uppercase tracking-wide">
+                                                                   <ClipboardList size={12} />
+                                                                   Ada Tugas
+                                                               </span>
+                                                           )}
                                                       </div>
+
+                                                      {/* Poster Thumbnail inside Card */}
+                                                      {material.infographic && (
+                                                        <div 
+                                                          onClick={() => setViewingPoster(material)}
+                                                          className="mb-4 rounded-xl overflow-hidden border border-gray-150/80 aspect-video relative group/poster bg-slate-900 cursor-pointer shadow-md"
+                                                        >
+                                                          <img 
+                                                            src={material.infographic} 
+                                                            alt={`Poster ${material.title}`}
+                                                            className="w-full h-full object-cover group-hover/poster:scale-105 transition-transform duration-300"
+                                                            referrerPolicy="no-referrer"
+                                                          />
+                                                          <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/poster:opacity-100 flex items-center justify-center transition-all duration-300">
+                                                            <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-[11px] font-black text-slate-800 flex items-center gap-1 shadow-md scale-90 group-hover/poster:scale-100 transition-all duration-300">
+                                                              <ImageIcon size={12} className="text-indigo-600 animate-pulse" />
+                                                              <span>Zoom Poster</span>
+                                                            </div>
+                                                          </div>
+                                                        </div>
+                                                      )}
 
                                                       {/* Title and Description */}
                                                       <h4 className={`font-black text-base md:text-lg ${decoration.textColor} mb-2 leading-tight tracking-tight group-hover:text-blue-600 transition-colors relative z-10`}>
@@ -2257,6 +2510,24 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                                   {/* Interactive Action Button Panels */}
                                                   <div className="flex flex-col gap-2.5 mt-auto relative z-10">
+                                                     {(material.taskLink || material.taskFile || material.taskTitle) && (
+                                                       <button 
+                                                           type="button"
+                                                           onClick={() => setViewingTask(material)}
+                                                           className="w-full flex items-center justify-center py-2.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs md:text-sm font-extrabold shadow-md shadow-amber-500/15 hover:shadow-amber-500/20 active:scale-98 transition-all transform hover:scale-[1.02] cursor-pointer"
+                                                       >
+                                                           <ClipboardList size={18} className="mr-2" /> Kerjakan / Lihat Tugas
+                                                       </button>
+                                                     )}
+                                                    {material.infographic && (
+                                                      <button 
+                                                          type="button"
+                                                          onClick={() => setViewingPoster(material)}
+                                                          className="w-full flex items-center justify-center py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs md:text-sm font-extrabold shadow-md shadow-indigo-500/15 hover:shadow-indigo-500/20 active:scale-98 transition-all transform hover:scale-[1.02] cursor-pointer"
+                                                      >
+                                                          <ImageIcon size={18} className="mr-2" /> Lihat Poster / Infografis
+                                                      </button>
+                                                    )}
                                                     {material.videoLink && (
                                                       <button 
                                                           type="button"
@@ -2412,7 +2683,24 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               }`}>{student.name.toUpperCase()}</span></div>
                               <div><strong className="block text-xs text-gray-500">NIS / NISN</strong> <span className="font-semibold text-gray-800">{student.nis} / {student.nisn || '-'}</span></div>
                               <div><strong className="block text-xs text-gray-500">Alamat</strong> <span className="font-semibold text-gray-800">{student.address}</span></div>
-                              <div><strong className="block text-xs text-gray-500">No. HP Wali</strong> <span className="font-semibold text-gray-800">{student.parentPhone}</span></div>
+                              <div>
+                                  <strong className="block text-xs text-gray-500 mb-0.5">No. WA Wali</strong>
+                                  {student.parentPhone && student.parentPhone !== '-' ? (
+                                      <a
+                                          href={formatWaUrl(student.parentPhone)}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-xs transition-all cursor-pointer hover:scale-102 shadow-xs"
+                                          title="Klik untuk chat WhatsApp Orang Tua"
+                                      >
+                                          <MessageCircle size={14} className="text-emerald-600 fill-emerald-100" />
+                                          <span>{student.parentPhone}</span>
+                                          <ExternalLink size={11} className="text-emerald-500 ml-0.5" />
+                                      </a>
+                                  ) : (
+                                      <span className="font-semibold text-gray-800">-</span>
+                                  )}
+                              </div>
                           </div>
                       </div>
                   </div>
@@ -2563,18 +2851,43 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           {activeTab === 'schedule' && (
               <div className="space-y-6 animate-fade-in max-w-2xl mx-auto">
                   <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 flex flex-col">
-                      <div className="flex items-center justify-between mb-8">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4 pb-6 border-b border-gray-100">
                           <div className="flex items-center gap-4">
                               <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl shadow-inner">
                                   <Calendar size={28} />
                               </div>
                               <div>
                                   <h3 className="font-bold text-gray-800 text-xl tracking-tight">Jadwal Pelajaran</h3>
-                                  <p className="text-sm text-gray-500 font-medium tracking-tight">Hari ini: {currentDayName}, {currentDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                                  <p className="text-sm text-gray-500 font-medium tracking-tight">
+                                      {scheduleDayName}, {scheduleDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                                  </p>
                               </div>
                           </div>
-                          <div className="text-right">
-                               <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">{todaySchedule.length} Sesi</p>
+                          
+                          <div className="flex items-center gap-2 self-end sm:self-auto">
+                              <button 
+                                  onClick={handlePrevScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 border border-indigo-100/30 shadow-sm"
+                                  title="Jadwal Kemarin"
+                              >
+                                  <ChevronLeft size={14} /> Kemarin
+                              </button>
+                              <button 
+                                  onClick={handleTodayScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-black rounded-xl transition-all shadow-sm"
+                              >
+                                  Hari Ini
+                              </button>
+                              <button 
+                                  onClick={handleNextScheduleDay}
+                                  className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl transition-all flex items-center gap-1 border border-indigo-100/30 shadow-sm"
+                                  title="Jadwal Besok"
+                              >
+                                  Besok <ChevronRight size={14} />
+                              </button>
+                              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100/30">
+                                  {selectedSchedule.length} Sesi
+                              </span>
                           </div>
                       </div>
 
@@ -2583,17 +2896,19 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                               <Loader2 className="animate-spin text-indigo-300 mb-4" size={40} />
                               <p className="text-sm text-gray-400 font-bold italic tracking-wide">Menyiapkan buku-buku...</p>
                           </div>
-                      ) : todaySchedule.length === 0 ? (
+                      ) : selectedSchedule.length === 0 ? (
                           <div className="flex flex-col items-center justify-center p-24 text-center bg-gray-50/30 rounded-3xl border border-dashed border-gray-200">
                               <div className="w-20 h-20 bg-white rounded-3xl shadow-md flex items-center justify-center text-indigo-200 mb-6 rotate-6 transform hover:rotate-12 transition-transform">
                                   <Coffee size={40} />
                               </div>
                               <p className="text-xl text-gray-700 font-black">Waktunya Santai!</p>
-                              <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto leading-relaxed">Tidak ada jadwal pelajaran untuk hari ini. Gunakan waktumu untuk belajar mandiri atau beristirahat!</p>
+                              <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto leading-relaxed">
+                                  Tidak ada jadwal pelajaran untuk {scheduleDayName === currentDayName ? 'hari ini' : 'hari ' + scheduleDayName}. Gunakan waktumu untuk belajar mandiri atau beristirahat!
+                              </p>
                           </div>
                       ) : (
                           <div className="relative pl-6 sm:pl-8 border-l-2 border-dashed border-gray-100 space-y-6 ml-4">
-                              {todaySchedule.map((item, idx) => {
+                              {selectedSchedule.map((item, idx) => {
                                   const isBreak = item.subject.toLowerCase().includes('istirahat');
                                   const colorClass = getSubjectColor(item.subject);
                                   
@@ -2964,6 +3279,119 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
               document.body
           )}
 
+          {/* --- POSTER PREVIEW MODAL --- */}
+          {viewingPoster && viewingPoster.infographic && createPortal(
+              <div className="fixed inset-0 z-[99999] bg-slate-950/95 flex flex-col justify-between select-none animate-fade-in">
+                  {/* Modal Header */}
+                  <div className="p-4 md:p-5 flex justify-between items-center bg-slate-950/80 border-b border-slate-800/80">
+                      <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                              <ImageIcon size={20} />
+                          </div>
+                          <div className="text-left">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">
+                                  Pratinjau Poster Materi
+                              </span>
+                              <h3 className="font-extrabold text-sm md:text-base text-slate-200 line-clamp-1 max-w-[200px] sm:max-w-[400px] md:max-w-[600px]">
+                                  {viewingPoster.title}
+                              </h3>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <a 
+                              href={viewingPoster.infographic}
+                              download={`Poster_${viewingPoster.title.replace(/\s+/g, '_')}.jpg`}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-xs md:text-sm font-bold text-white rounded-xl transition-all active:scale-95 duration-200 shrink-0 cursor-pointer"
+                          >
+                              <Download size={14} />
+                              <span className="hidden sm:inline">Unduh Poster</span>
+                          </a>
+                          <button 
+                              onClick={() => setViewingPoster(null)}
+                              className="p-2 text-slate-400 hover:text-slate-100 bg-slate-900 hover:bg-slate-800 rounded-xl border border-slate-800 transition-all active:scale-95 duration-200 cursor-pointer"
+                              title="Tutup (Esc)"
+                          >
+                              <X size={16} />
+                          </button>
+                      </div>
+                  </div>
+
+                  {/* Modal Content / Preview Area */}
+                  <div className="flex-1 bg-slate-950 flex flex-col items-center justify-center relative p-4 overflow-hidden">
+                      <div 
+                          className="w-full h-full flex items-center justify-center relative p-2 overflow-hidden select-none bg-slate-950/40"
+                          onMouseDown={handleMouseDown}
+                          onMouseMove={handleMouseMove}
+                          onMouseUp={handleMouseUpOrLeave}
+                          onMouseLeave={handleMouseUpOrLeave}
+                      >
+                          {/* Floating Zoom & Reset Control Bar */}
+                          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/95 backdrop-blur-md border border-slate-800/80 rounded-full px-5 py-2.5 flex items-center gap-4 shadow-2xl z-20">
+                              <button 
+                                  type="button"
+                                  onClick={() => setZoomScale(prev => Math.max(0.5, prev - 0.25))}
+                                  disabled={zoomScale <= 0.5}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Zoom Out"
+                              >
+                                  <ZoomOut size={16} />
+                              </button>
+                              <span className="text-xs font-mono font-extrabold text-slate-300 select-none min-w-[40px] text-center tracking-tight">
+                                  {Math.round(zoomScale * 100)}%
+                              </span>
+                              <button 
+                                  type="button"
+                                  onClick={() => setZoomScale(prev => Math.min(4, prev + 0.25))}
+                                  disabled={zoomScale >= 4}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Zoom In"
+                              >
+                                  <ZoomIn size={16} />
+                              </button>
+                              <div className="w-px h-5 bg-slate-800" />
+                              <button 
+                                  type="button"
+                                  onClick={() => {
+                                      setZoomScale(1);
+                                      setPan({ x: 0, y: 0 });
+                                  }}
+                                  disabled={zoomScale === 1 && pan.x === 0 && pan.y === 0}
+                                  className="p-1.5 hover:bg-slate-800 rounded-full text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 cursor-pointer"
+                                  title="Reset Tampilan"
+                              >
+                                  <RotateCcw size={14} />
+                              </button>
+                          </div>
+
+                          {/* Interactive Panning Canvas */}
+                          <div 
+                              className={`w-full h-full flex items-center justify-center ${
+                                  zoomScale > 1 ? (isPanning ? 'cursor-grabbing' : 'cursor-grab') : ''
+                              }`}
+                          >
+                              <div
+                                  style={{
+                                      transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoomScale})`,
+                                      transformOrigin: 'center center',
+                                      transition: isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)',
+                                  }}
+                                  className="max-w-full max-h-[70vh] flex items-center justify-center"
+                              >
+                                  <img 
+                                      src={viewingPoster.infographic} 
+                                      alt={viewingPoster.title} 
+                                      className="max-w-full max-h-[68vh] object-contain rounded-xl shadow-2xl border border-slate-800/80 bg-slate-900"
+                                      referrerPolicy="no-referrer"
+                                      draggable={false}
+                                  />
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>,
+              document.body
+          )}
+
           {/* --- MOBILE BOTTOM NAVIGATION (User Request 5) --- */}
           <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center px-4 py-2 md:hidden shadow-[0_-8px_20px_rgba(0,0,0,0.08)]">
               {[
@@ -2998,6 +3426,150 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                   );
               })}
           </div>
+          {viewingTask && createPortal(
+              <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-fade-in transition-all duration-300">
+                  <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh] animate-scale-in border border-amber-200">
+                      {/* Modal Header */}
+                      <div className="p-5 flex justify-between items-center bg-gradient-to-r from-amber-500 to-orange-500 text-white shrink-0">
+                          <div className="flex items-center gap-3">
+                              <div className="p-2.5 rounded-2xl bg-white/20 backdrop-blur-sm text-white">
+                                  <ClipboardList size={22} />
+                              </div>
+                              <div>
+                                  <span className="text-[10px] text-amber-100 font-extrabold uppercase tracking-wider block">
+                                      Tugas & Latihan Siswa
+                                  </span>
+                                  <h3 className="font-extrabold text-base md:text-lg text-white line-clamp-1">
+                                      {viewingTask.title}
+                                  </h3>
+                              </div>
+                          </div>
+                          <button 
+                              onClick={() => setViewingTask(null)} 
+                              className="p-1.5 hover:bg-white/20 rounded-full transition-colors text-white cursor-pointer"
+                          >
+                              <X size={20} />
+                          </button>
+                      </div>
+
+                      {/* Modal Content */}
+                      <div className="p-6 space-y-5 overflow-y-auto flex-1 bg-amber-50/20">
+                          {/* Task Title & Instruction */}
+                          <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-2">
+                              <div className="flex items-center gap-2 text-amber-700 font-extrabold text-xs uppercase tracking-wider">
+                                  <CheckSquare size={16} />
+                                  <span>Petunjuk / Instruksi Tugas</span>
+                              </div>
+                              <h4 className="text-base font-extrabold text-gray-800">
+                                  {viewingTask.taskTitle || "Selesaikan tugas berikut sesuai instruksi dari guru."}
+                              </h4>
+                              {viewingTask.description && (
+                                  <p className="text-xs text-gray-600 leading-relaxed whitespace-pre-wrap pt-1 border-t border-gray-100 mt-2">
+                                      {viewingTask.description}
+                                  </p>
+                              )}
+                          </div>
+
+                          {/* Task Link Attachment */}
+                          {viewingTask.taskLink && (
+                              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                                  <div className="flex items-center justify-between">
+                                      <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                                          <Link2 size={14} className="text-amber-600" />
+                                          Tautan / Google Form / Quiz Online
+                                      </span>
+                                      <span className="text-[10px] bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-md font-bold uppercase">
+                                          Tugas Online
+                                      </span>
+                                  </div>
+                                  <a
+                                      href={viewingTask.taskLink}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-md transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
+                                  >
+                                      <ExternalLink size={16} />
+                                      <span>Kerjakan Tugas</span>
+                                  </a>
+                              </div>
+                          )}
+
+                          {/* Task File Attachment */}
+                          {viewingTask.taskFile && (
+                              <div className="bg-white p-4 rounded-2xl border border-amber-200/80 shadow-sm space-y-3">
+                                  <div className="flex items-center justify-between">
+                                      <span className="text-xs font-extrabold text-gray-700 flex items-center gap-1.5">
+                                          <FileText size={14} className="text-amber-600" />
+                                          Berkas Lampiran Tugas
+                                      </span>
+                                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                                          {viewingTask.taskFile.startsWith('data:application/pdf') ? 'Dokumen PDF' : 'Foto Gambar'}
+                                      </span>
+                                  </div>
+
+                                  {viewingTask.taskFile.startsWith('data:image/') ? (
+                                      <div className="space-y-3">
+                                          <div className="rounded-xl overflow-hidden border border-slate-200 bg-slate-900 max-h-80 flex items-center justify-center">
+                                              <img 
+                                                  src={viewingTask.taskFile} 
+                                                  alt="Foto Tugas" 
+                                                  className="max-h-80 object-contain w-full"
+                                              />
+                                          </div>
+                                          <a 
+                                              href={viewingTask.taskFile}
+                                              download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_') + '.jpg'}
+                                              className="flex items-center justify-center gap-2 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow transition-all cursor-pointer"
+                                          >
+                                              <Download size={14} />
+                                              <span>Unduh Foto Tugas</span>
+                                          </a>
+                                      </div>
+                                  ) : viewingTask.taskFile.startsWith('data:application/pdf') ? (
+                                      <div className="space-y-3">
+                                          <iframe 
+                                              src={viewingTask.taskFile}
+                                              title="Dokumen PDF Tugas"
+                                              className="w-full h-80 rounded-xl border border-slate-200"
+                                          />
+                                          <a 
+                                              href={viewingTask.taskFile}
+                                              download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_') + '.pdf'}
+                                              className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                                          >
+                                              <Download size={14} />
+                                              <span>Unduh Dokumen PDF Tugas</span>
+                                          </a>
+                                      </div>
+                                  ) : (
+                                      <a 
+                                          href={viewingTask.taskFile}
+                                          download={'Tugas_' + viewingTask.title.replace(/\s+/g, '_')}
+                                          className="flex items-center justify-center gap-2 w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                                      >
+                                          <Download size={14} />
+                                          <span>Unduh File Tugas</span>
+                                      </a>
+                                  )}
+                              </div>
+                          )}
+                      </div>
+
+                      {/* Footer */}
+                      <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end shrink-0">
+                          <button 
+                              type="button"
+                              onClick={() => setViewingTask(null)}
+                              className="px-6 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow transition-all cursor-pointer"
+                          >
+                              Tutup
+                          </button>
+                      </div>
+                  </div>
+              </div>,
+              document.body
+          )}
+
           {pdfUrl && (
             <ContentModal 
                 isOpen={!!pdfUrl} 

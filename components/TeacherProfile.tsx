@@ -86,6 +86,10 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
     const areaPrint = document.getElementById('printContent');
     if (areaPrint) {
         let printWindow = window.open('', '', 'width=900,height=600');
+        if (!printWindow) {
+            window.print();
+            return;
+        }
         if (printWindow) {
             printWindow.document.write(`
                 <html>

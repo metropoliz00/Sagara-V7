@@ -2055,7 +2055,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1 pl-36">
+                <div className="space-y-1">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>
@@ -2079,8 +2079,14 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                 </div>
               </div>
 
-              {/* Main Plan Matrix */}
+              {/* Main Plan Matrix with Repeating Header Engine */}
               <table className="w-full border-collapse border border-slate-900 mb-6">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[11px] border-b border-slate-900">
+                    <th className="p-2.5 w-1/4 border-r border-slate-900 text-center uppercase">Komponen RPM</th>
+                    <th className="p-2.5 w-3/4 text-center uppercase">Deskripsi & Rincian Rencana Pembelajaran Mendalam</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {/* Row Identifikasi */}
                   <tr className="border-b border-slate-900">

@@ -397,20 +397,3 @@
         padding: 8px;
         color: #334155;
       }
-
-/* A4 Preview Scaling for Mobile */
-
-/* A4 Preview Scaling for Mobile */
-.mobile-a4-preview {
-  width: 794px !important;
-  min-width: 794px !important;
-  margin-left: auto;
-  margin-right: auto;
-  transform-origin: top left;
-}
-@media screen and (max-width: 820px) {
-  .mobile-a4-preview {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-  }
-}

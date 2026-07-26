@@ -2,7 +2,6 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { User, Student } from '../types';
 import * as XLSX from 'xlsx';
-import { exportToExcel } from '../src/utils/excelUtils';
 import { 
   UserCog, Plus, X, Save, Trash2, PenTool, Loader2, Download, Upload, 
   RefreshCw, LayoutGrid, Shield, Briefcase, GraduationCap, CheckSquare, Square, FileSpreadsheet
@@ -184,50 +183,21 @@ const AccountManagement: React.FC<AccountManagementProps> = ({ users, students, 
 
   // --- Export/Import ---
   const handleDownloadTemplate = () => {
-    const columns = [
-        { key: 'username', header: 'Username *', width: 20 },
-        { key: 'password', header: 'Password *', width: 15 },
-        { key: 'role', header: 'Role (admin/guru/siswa/supervisor) *', width: 30 },
-        { key: 'fullName', header: 'Nama Lengkap *', width: 30 },
-        { key: 'nip', header: 'NIP', width: 20 },
-        { key: 'nuptk', header: 'NUPTK', width: 20 },
-        { key: 'birth', header: 'Tempat, Tgl Lahir', width: 30 },
-        { key: 'education', header: 'Pendidikan Terakhir', width: 20 },
-        { key: 'position', header: 'Jabatan', width: 20 },
-        { key: 'rank', header: 'Pangkat / Gol', width: 15 },
-        { key: 'classId', header: 'Class ID', width: 10 },
-        { key: 'email', header: 'Email', width: 30 },
-        { key: 'phone', header: 'No HP', width: 20 },
-        { key: 'address', header: 'Alamat', width: 30 }
-    ];
-    
-    const templateData = [{
-      username: "guru01", password: "123456", role: "guru", fullName: "Budi Santoso, S.Pd", nip: "19800101...", nuptk: "1234...", birth: "Jakarta, 01-01-1980", education: "S1 PGSD", position: "Guru Kelas", rank: "III/a", classId: "1A", email: "budi@email.com", phone: "081...", address: "Jl. Merdeka"
-    }];
-    
-    exportToExcel(templateData, "Template_Akun_Pengguna", "Template User", columns, null);
+    const headers = ["Username *", "Password *", "Role (admin/guru/siswa/supervisor) *", "Nama Lengkap *", "NIP", "NUPTK", "Tempat, Tgl Lahir", "Pendidikan Terakhir", "Jabatan", "Pangkat / Gol", "Class ID", "Email", "No HP", "Alamat"];
+    const example = ["guru01", "123456", "guru", "Budi Santoso, S.Pd", "19800101...", "1234...", "Jakarta, 01-01-1980", "S1 PGSD", "Guru Kelas", "III/a", "1A", "budi@email.com", "081...", "Jl. Merdeka"];
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template User");
+    XLSX.writeFile(workbook, "template_akun_pengguna.xlsx");
   };
 
   const handleExport = () => {
-    const columns = [
-        { key: 'username', header: 'Username', width: 20 },
-        { key: 'role', header: 'Role', width: 15 },
-        { key: 'fullName', header: 'Nama Lengkap', width: 30 },
-        { key: 'nip', header: 'NIP', width: 20 },
-        { key: 'classId', header: 'Class ID', width: 10 },
-        { key: 'status', header: 'Status Link', width: 15 }
-    ];
-
-    const exportData = users.map(u => ({
-        username: u.username,
-        role: u.role,
-        fullName: u.fullName,
-        nip: u.nip,
-        classId: u.classId,
-        status: u.role === 'siswa' ? (u.studentId ? 'Linked' : 'Unlinked') : '-'
-    }));
-
-    exportToExcel(exportData, "Data_Akun_Pengguna", "Data Akun", columns, null);
+    const headers = ["Username", "Role", "Nama Lengkap", "NIP", "Class ID", "Status Link"];
+    const rows = users.map(u => [u.username, u.role, u.fullName, u.nip, u.classId, u.role === 'siswa' ? (u.studentId ? 'Linked' : 'Unlinked') : '-']);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Akun");
+    XLSX.writeFile(workbook, "data_akun_pengguna.xlsx");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

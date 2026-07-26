@@ -6,7 +6,6 @@ import { apiService } from '../services/apiService';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import { Save, FileSpreadsheet, Printer, Upload, Download, Calculator, CheckCircle, AlertCircle, Settings2, Lock, ChevronDown, Trophy, List, Grid, Eye, EyeOff, Loader2, Plus, Minus, History, Trash2 } from 'lucide-react';
-import { exportToExcel } from '../src/utils/excelUtils';
 import { useModal } from '../context/ModalContext';
 
 interface GradesViewProps {
@@ -282,20 +281,7 @@ const GradesView: React.FC<GradesViewProps> = ({
   };
 
   const handleExportTKA = () => {
-    const columns = [
-      { key: 'no', header: 'No', width: 5 },
-      { key: 'nis', header: 'NIS', width: 15 },
-      { key: 'nisn', header: 'NISN', width: 15 },
-      { key: 'namaSiswa', header: 'Nama Siswa', width: 30 },
-      { key: 'tryout', header: 'Tryout TKA', width: 20 },
-      { key: 'mat', header: 'Matematika', width: 15 },
-      { key: 'predMat', header: 'Predikat Matematika', width: 20 },
-      { key: 'indo', header: 'Bahasa Indonesia', width: 15 },
-      { key: 'predIndo', header: 'Predikat Bahasa Indonesia', width: 25 },
-      { key: 'ipa', header: 'IPA', width: 15 },
-      { key: 'predIpa', header: 'Predikat IPA', width: 20 }
-    ];
-
+    const headers = ["No", "NIS", "NISN", "Nama Siswa", "Tryout TKA", "Matematika", "Predikat Matematika", "Bahasa Indonesia", "Predikat Bahasa Indonesia", "IPA", "Predikat IPA"];
     const rows = students.map((student, idx) => {
       const matScore = getTKAScore(student.id, 'mat');
       const matPredicate = getPredicate(matScore);
@@ -303,22 +289,24 @@ const GradesView: React.FC<GradesViewProps> = ({
       const indoPredicate = getPredicate(indoScore);
       const ipaScore = getTKAScore(student.id, 'ipas');
       const ipaPredicate = getPredicate(ipaScore);
-      return {
-        no: idx + 1,
-        nis: student.nis,
-        nisn: student.nisn || '-',
-        namaSiswa: student.name.toUpperCase(),
-        tryout: selectedTkaTitle,
-        mat: matScore,
-        predMat: matPredicate,
-        indo: indoScore,
-        predIndo: indoPredicate,
-        ipa: ipaScore,
-        predIpa: ipaPredicate
-      };
+      return [
+        idx + 1,
+        student.nis,
+        student.nisn || '-',
+        student.name.toUpperCase(),
+        selectedTkaTitle,
+        matScore,
+        matPredicate,
+        indoScore,
+        indoPredicate,
+        ipaScore,
+        ipaPredicate
+      ];
     });
-
-    exportToExcel(rows, `rekap_nilai_tka_kelas_${classId}`, "Rekap TKA", columns, currentUser || null);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap TKA");
+    XLSX.writeFile(workbook, `rekap_nilai_tka_kelas_${classId}.xlsx`);
     onShowNotification("Rekap TKA berhasil diekspor!", 'success');
   };
 
@@ -842,102 +830,56 @@ const GradesView: React.FC<GradesViewProps> = ({
       setTimeout(cleanup, 2000);
   };
 
-  const handleDownloadTemplate = () => {
-    const columns = [
-      { key: 'no', header: 'No', width: 5 },
-      { key: 'nis', header: 'NIS', width: 15 },
-      { key: 'nisn', header: 'NISN', width: 15 },
-      { key: 'namaSiswa', header: 'Nama Siswa', width: 30 },
-      { key: 'mataPelajaran', header: 'Mata Pelajaran(ID)', width: 20 },
-      { key: 'sum1', header: 'SUM 1', width: 10 },
-      { key: 'sum2', header: 'SUM 2', width: 10 },
-      { key: 'sum3', header: 'SUM 3', width: 10 },
-      { key: 'sum4', header: 'SUM 4', width: 10 },
-      { key: 'sas', header: 'SAS', width: 10 }
-    ];
+  const handleDownloadTemplate = () => { 
+      const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran(ID)", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS"];
+      
+      const rows = students.map((student, idx) => [
+        idx + 1,
+        student.nis || '-',
+        student.nisn || '-',
+        student.name.toUpperCase(),
+        selectedSubject,
+        "", "", "", "", ""
+      ]);
 
-    const rows = students.map((student, idx) => ({
-      no: idx + 1,
-      nis: student.nis || '-',
-      nisn: student.nisn || '-',
-      namaSiswa: student.name.toUpperCase(),
-      mataPelajaran: selectedSubject,
-      sum1: "", sum2: "", sum3: "", sum4: "", sas: ""
-    }));
-
-    exportToExcel(rows, `Template_Nilai_${selectedSubject}`, "Template Nilai", columns, currentUser || null);
-    onShowNotification("Template Nilai berhasil diunduh!", 'success');
+      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Nilai");
+      XLSX.writeFile(workbook, `Template_Nilai_${selectedSubject}.xlsx`);
   };
   
   const handleExport = () => { 
       if (viewMode === 'recap') {
-          const columns = [
-              { key: 'rank', header: 'Rank', width: 10 },
-              { key: 'nis', header: 'NIS', width: 15 },
-              { key: 'nisn', header: 'NISN', width: 15 },
-              { key: 'namaSiswa', header: 'Nama Siswa', width: 30 },
-              ...activeSubjectsForRecap.map(s => ({ key: s.id, header: s.name, width: 15 })),
-              { key: 'totalNilai', header: 'Total Nilai', width: 15 },
-              { key: 'rataRata', header: 'Rata-Rata', width: 15 }
-          ];
-
+          const headers = ["Rank", "NIS", "NISN", "Nama Siswa", ...activeSubjectsForRecap.map(s => s.name), "Total Nilai", "Rata-Rata"];
           const rows = recapData.map(s => {
               const avg = s.subjectsCount > 0 ? Number((s.totalScore / s.subjectsCount).toFixed(2)) : 0;
-              const row: any = {
-                  rank: s.rank, 
-                  nis: s.nis, 
-                  nisn: s.nisn || '-',
-                  namaSiswa: s.name.toUpperCase(),
-                  totalNilai: s.totalScore,
-                  rataRata: avg
-              };
-              activeSubjectsForRecap.forEach(subj => {
-                  row[subj.id] = s.scores[subj.id] || 0;
-              });
-              return row;
+              return [
+                  s.rank, 
+                  s.nis, 
+                  s.nisn || '-',
+                  s.name.toUpperCase(), 
+                  ...activeSubjectsForRecap.map(subj => s.scores[subj.id] || 0),
+                  s.totalScore,
+                  avg
+              ];
           });
-          
-          exportToExcel(rows, `Dokumen_Rekap_Nilai_Rapor_Kelas_${classId}`, "Rekap Rapor", columns, currentUser || null);
-          onShowNotification("Rekap Rapor berhasil diekspor!", 'success');
+          const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Rapor");
+          XLSX.writeFile(workbook, `Dokumen_Rekap_Nilai_Rapor_Kelas_${classId}.xlsx`);
       } else {
           const subjectName = activeSubject?.name || selectedSubject;
-          const columns = [
-              { key: 'no', header: 'No', width: 5 },
-              { key: 'nis', header: 'NIS', width: 15 },
-              { key: 'nisn', header: 'NISN', width: 15 },
-              { key: 'namaSiswa', header: 'Nama Siswa', width: 30 },
-              { key: 'mataPelajaran', header: 'Mata Pelajaran', width: 20 },
-              { key: 'sum1', header: 'SUM 1', width: 10 },
-              { key: 'sum2', header: 'SUM 2', width: 10 },
-              { key: 'sum3', header: 'SUM 3', width: 10 },
-              { key: 'sum4', header: 'SUM 4', width: 10 },
-              { key: 'sas', header: 'SAS', width: 10 },
-              { key: 'nilaiAkhir', header: 'Nilai Akhir', width: 15 },
-              { key: 'status', header: 'Status', width: 15 }
-          ];
-
+          const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS", "Nilai Akhir", "Status"];
           const rows = students.map((s, idx) => {
              const g = getStudentGrade(s.id);
              const avg = calculateFinalAverage(g);
              const status = avg >= currentKktp ? 'Tuntas' : 'Belum Tuntas';
-             return {
-                no: idx + 1, 
-                nis: s.nis, 
-                nisn: s.nisn || '-', 
-                namaSiswa: s.name.toUpperCase(), 
-                mataPelajaran: subjectName, 
-                sum1: g.sum1, 
-                sum2: g.sum2, 
-                sum3: g.sum3, 
-                sum4: g.sum4, 
-                sas: g.sas, 
-                nilaiAkhir: avg, 
-                status: status
-             };
+             return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, g.sum1, g.sum2, g.sum3, g.sum4, g.sas, avg, status];
           });
-          
-          exportToExcel(rows, `Dokumen_Nilai_${selectedSubject}_Kelas_${classId}`, `Nilai ${selectedSubject}`, columns, currentUser || null);
-          onShowNotification("Data nilai berhasil diekspor!", 'success');
+          const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, `Nilai ${selectedSubject}`);
+          XLSX.writeFile(workbook, `Dokumen_Nilai_${selectedSubject}_Kelas_${classId}.xlsx`);
       }
   };
   

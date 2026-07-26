@@ -8,7 +8,6 @@ import {
   ClipboardList, FileCheck, Paperclip, CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { exportToExcel } from '../src/utils/excelUtils';
 import CustomModal from './CustomModal';
 
 // Helper to compress image and convert to Base64 (lightweight but sharp)
@@ -219,23 +218,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
-    const columns = [
-      { key: 'mataPelajaran', header: 'Mata Pelajaran', width: 20 },
-      { key: 'judulMateri', header: 'Judul Materi', width: 30 },
-      { key: 'deskripsi', header: 'Deskripsi', width: 40 },
-      { key: 'linkTautan', header: 'Link Tautan (Opsional)', width: 30 },
-      { key: 'statusTampilkan', header: 'Status Tampilkan (Ya/Tidak)', width: 25 }
+    const templateData = [
+      {
+        'Mata Pelajaran': subjects[0]?.name || 'Matematika',
+        'Judul Materi': 'Aljabar Dasar Bagian 1',
+        'Deskripsi': 'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
+        'Link Tautan (Opsional)': 'https://youtube.com/... atau https://drive.google.com/...',
+        'Status Tampilkan (Ya/Tidak)': 'Ya'
+      }
     ];
 
-    const templateData = [{
-      mataPelajaran: subjects[0]?.name || 'Matematika',
-      judulMateri: 'Aljabar Dasar Bagian 1',
-      deskripsi: 'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
-      linkTautan: 'https://youtube.com/... atau https://drive.google.com/...',
-      statusTampilkan: 'Ya'
-    }];
-
-    exportToExcel(templateData, "Template_Materi_Pembelajaran", "Template Materi", columns, currentUser || null);
+    const ws = XLSX.utils.json_to_sheet(templateData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Template Materi");
+    XLSX.writeFile(wb, "Template_Materi_Pembelajaran.xlsx");
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
@@ -314,30 +310,23 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
       return;
     }
 
-    const columns = [
-        { key: 'no', header: 'NO', width: 5 },
-        { key: 'mataPelajaran', header: 'MATA PELAJARAN', width: 25 },
-        { key: 'judulMateri', header: 'JUDUL MATERI', width: 30 },
-        { key: 'deskripsi', header: 'DESKRIPSI', width: 40 },
-        { key: 'linkTautan', header: 'LINK TAUTAN', width: 30 },
-        { key: 'tampilkan', header: 'TAMPILKAN', width: 15 },
-        { key: 'tanggalBuat', header: 'TANGGAL BUAT', width: 20 }
-    ];
-
     const exportData = activeMaterials.map((item, idx) => {
       const sub = subjects.find(s => s.id === item.subjectId);
       return {
-        no: idx + 1,
-        mataPelajaran: sub ? sub.name : 'Lainnya',
-        judulMateri: item.title,
-        deskripsi: item.description || '-',
-        linkTautan: item.link || '-',
-        tampilkan: item.isVisible ? 'Ya' : 'Tidak',
-        tanggalBuat: item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-'
+        'NO': idx + 1,
+        'MATA PELAJARAN': sub ? sub.name : 'Lainnya',
+        'JUDUL MATERI': item.title,
+        'DESKRIPSI': item.description || '-',
+        'LINK TAUTAN': item.link || '-',
+        'TAMPILKAN': item.isVisible ? 'Ya' : 'Tidak',
+        'TANGGAL BUAT': item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-'
       };
     });
 
-    exportToExcel(exportData, `Dokumen_Materi_Pembelajaran_Kelas_${classId}`, "Materi Pembelajaran", columns, currentUser || null);
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
+    XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
     onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
   };
 

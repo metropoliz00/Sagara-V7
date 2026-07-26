@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
-import { exportToExcel } from '../src/utils/excelUtils';
 import { 
   Search, Printer, Download, ArrowUpDown, ChevronUp, ChevronDown, 
   Users, UserCheck, Eye, RefreshCw, X, Shield, Award, MapPin, 
@@ -126,47 +125,42 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
       return;
     }
 
-    const columns = [
-        { key: 'no', header: 'No', width: 5 },
-        { key: 'bukuInduk', header: 'No. Buku Induk', width: 15 },
-        { key: 'nis', header: 'NIS', width: 15 },
-        { key: 'nisn', header: 'NISN', width: 15 },
-        { key: 'nik', header: 'NIK', width: 20 },
-        { key: 'name', header: 'Nama Lengkap', width: 30 },
-        { key: 'gender', header: 'L/P', width: 10 },
-        { key: 'classId', header: 'Kelas', width: 10 },
-        { key: 'birth', header: 'Tempat, Tanggal Lahir', width: 30 },
-        { key: 'religion', header: 'Agama', width: 15 },
-        { key: 'address', header: 'Alamat', width: 30 },
-        { key: 'fatherName', header: 'Nama Ayah', width: 20 },
-        { key: 'fatherJob', header: 'Pekerjaan Ayah', width: 20 },
-        { key: 'motherName', header: 'Nama Ibu', width: 20 },
-        { key: 'motherJob', header: 'Pekerjaan Ibu', width: 20 },
-        { key: 'parentPhone', header: 'No. HP Orang Tua', width: 20 },
-        { key: 'economyStatus', header: 'Status Ekonomi', width: 15 }
+    const headers = [
+      'No', 'No. Buku Induk', 'NIS', 'NISN', 'NIK', 'Nama Lengkap', 'L/P', 'Kelas', 
+      'Tempat, Tanggal Lahir', 'Agama', 'Alamat', 
+      'Nama Ayah', 'Pekerjaan Ayah', 'Nama Ibu', 'Pekerjaan Ibu', 
+      'No. HP Orang Tua', 'Status Ekonomi'
     ];
 
-    const exportData = processedStudents.map((s, idx) => ({
-      no: idx + 1,
-      bukuInduk: s.bukuInduk || '-',
-      nis: s.nis,
-      nisn: s.nisn || '-',
-      nik: s.nik || '-',
-      name: s.name.toUpperCase(),
-      gender: s.gender,
-      classId: s.classId || '-',
-      birth: `${s.birthPlace || '-'}, ${formatDate(s.birthDate)}`,
-      religion: s.religion || '-',
-      address: s.address || '-',
-      fatherName: s.fatherName || '-',
-      fatherJob: s.fatherJob || '-',
-      motherName: s.motherName || '-',
-      motherJob: s.motherJob || '-',
-      parentPhone: s.parentPhone || '-',
-      economyStatus: s.economyStatus || '-'
-    }));
+    const rows = processedStudents.map((s, idx) => [
+      idx + 1,
+      s.bukuInduk || '-',
+      s.nis,
+      s.nisn || '-',
+      s.nik || '-',
+      s.name.toUpperCase(),
+      s.gender,
+      s.classId || '-',
+      `${s.birthPlace || '-'}, ${formatDate(s.birthDate)}`,
+      s.religion || '-',
+      s.address || '-',
+      s.fatherName || '-',
+      s.fatherJob || '-',
+      s.motherName || '-',
+      s.motherJob || '-',
+      s.parentPhone || '-',
+      s.economyStatus || '-'
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ikhtisar Induk');
     
-    exportToExcel(exportData, `ikhtisar_induk_siswa_${new Date().toISOString().split('T')[0]}`, 'Ikhtisar Induk', columns, null);
+    // Auto-fit column widths
+    const maxLens = headers.map((_, i) => Math.max(...[headers[i], ...rows.map(r => String(r[i] || ''))].map(v => v.length)));
+    worksheet['!cols'] = maxLens.map(len => ({ wch: Math.min(40, Math.max(10, len + 2)) }));
+
+    XLSX.writeFile(workbook, `ikhtisar_induk_siswa_${new Date().toISOString().split('T')[0]}.xlsx`);
     onShowNotification('Data berhasil diekspor ke Excel', 'success');
   };
 

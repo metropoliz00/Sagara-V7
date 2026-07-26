@@ -341,7 +341,7 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
               <span>Administrasi & Tata Usaha</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              Surat Menyurat & Agenda
+              Arsip Surat dan Agenda
             </h1>
             <p className="text-blue-100 mt-1.5 text-sm sm:text-base max-w-2xl font-medium">
               Sistem pencatatan agenda digital Surat Masuk, Surat Keluar, dan pengarsipan berkas dinas sekolah.
@@ -349,17 +349,17 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
           </div>
 
           {isAdmin && (
-            <div className="flex flex-wrap items-center gap-3 no-print">
+            <div className="flex flex-row items-center gap-2 sm:gap-3 no-print shrink-0">
               <button
                 onClick={() => handleOpenAddModal('masuk')}
-                className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-emerald-400/30"
+                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3.5 sm:px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm shadow-lg shadow-emerald-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-1.5 sm:space-x-2 border border-emerald-400/30 whitespace-nowrap"
               >
                 <Inbox size={18} />
                 <span>+ Surat Masuk</span>
               </button>
               <button
                 onClick={() => handleOpenAddModal('keluar')}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-2xl font-bold text-sm shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-2 border border-amber-400/30"
+                className="bg-amber-500 hover:bg-amber-600 text-white px-3.5 sm:px-4 py-2.5 rounded-2xl font-bold text-xs sm:text-sm shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center space-x-1.5 sm:space-x-2 border border-amber-400/30 whitespace-nowrap"
               >
                 <Send size={18} />
                 <span>+ Surat Keluar</span>

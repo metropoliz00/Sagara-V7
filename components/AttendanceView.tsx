@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
-import { exportToExcel } from '../src/utils/excelUtils';
 import { Student, Holiday, TeacherProfileData, SchoolProfileData, User, ScheduleItem } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 import html2pdf from 'html2pdf.js';
@@ -288,23 +287,19 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    const columns = [
-        { key: 'nis', header: 'NIS', width: 15 },
-        { key: 'name', header: 'Nama', width: 30 },
-        { key: 'tanggal', header: 'Tanggal (YYYY-MM-DD)', width: 20 },
-        { key: 'status', header: 'Status (Hadir/Sakit/Izin/Alpha/Dispensasi)', width: 30 },
-        { key: 'catatan', header: 'Catatan', width: 30 }
+    const headers = ["NIS", "Nama", "Tanggal (YYYY-MM-DD)", "Status (Hadir/Sakit/Izin/Alpha/Dispensasi)", "Catatan"];
+    const example = [
+      students[0]?.nis || "12345",
+      students[0]?.name || "Nama Siswa",
+      getLocalISODate(new Date()),
+      "Hadir",
+      "Keterangan opsional"
     ];
     
-    const templateData = [{
-      nis: students[0]?.nis || "12345",
-      name: students[0]?.name || "Nama Siswa",
-      tanggal: getLocalISODate(new Date()),
-      status: "Hadir",
-      catatan: "Keterangan opsional"
-    }];
-
-    exportToExcel(templateData, "Template_Absensi_Siswa", "Template Absensi", columns, currentUser || null);
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Absensi");
+    XLSX.writeFile(workbook, "template_absensi_siswa.xlsx");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

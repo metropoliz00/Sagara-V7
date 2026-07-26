@@ -1,7 +1,6 @@
 {
-  "name": "SAGARA",
-  "description": "Sistem Akademik dan Administrasi Terintegrasi",
-  "requestFramePermissions": [
-    "camera"
-  ]
+  "name": "Gugus 03 | Melati V3",
+  "description": "Platform Digital Gugus 03 Melati Kecamatan Jenu yang kompleks, sebagai Media Layanan Terintegrasi dan Informatif.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

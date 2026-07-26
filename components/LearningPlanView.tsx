@@ -1544,9 +1544,21 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             word-wrap: break-word !important;
             vertical-align: top;
           }
+          .meta-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-bottom: 15px;
+            table-layout: fixed !important;
+          }
           .meta-table td {
-            padding: 3px;
+            padding: 3px 0;
             font-size: 10pt;
+            vertical-align: top;
+          }
+          .meta-label {
+            color: #475569;
+            font-weight: 500;
+            white-space: nowrap;
           }
           .main-table {
             border: 1.5pt solid #000;
@@ -1600,34 +1612,34 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
           <tr>
             <td class="meta-label" style="width: 18%;">Nama Sekolah</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 30%;">${plan.schoolName}</td>
-            <td class="meta-label" style="width: 18%; padding-left: 140px;">Materi Pokok</td>
+            <td style="width: 30%; font-weight: bold;">${plan.schoolName}</td>
+            <td class="meta-label" style="width: 18%; padding-left: 12px;">Materi Pokok</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 30%;">${plan.topic}</td>
+            <td style="width: 30%; font-weight: bold;">${plan.topic}</td>
           </tr>
           <tr>
             <td class="meta-label">Nama Penyusun</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.compiler}</td>
-            <td class="meta-label" style="padding-left: 140px;">Kelas/Semester</td>
+            <td style="font-weight: bold;">${plan.compiler}</td>
+            <td class="meta-label" style="padding-left: 12px;">Kelas/Semester</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.classSemester}</td>
+            <td style="font-weight: bold;">${plan.classSemester}</td>
           </tr>
           <tr>
             <td class="meta-label">NIP</td>
             <td style="text-align: center;">:</td>
             <td>${plan.nip || '-'}</td>
-            <td class="meta-label" style="padding-left: 140px;">Tahun Ajaran</td>
+            <td class="meta-label" style="padding-left: 12px;">Tahun Ajaran</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.academicYear}</td>
+            <td style="font-weight: bold;">${plan.academicYear}</td>
           </tr>
           <tr>
             <td class="meta-label">Mata Pelajaran</td>
             <td style="text-align: center;">:</td>
             <td class="text-blue">${plan.subject}</td>
-            <td class="meta-label" style="padding-left: 140px;">Alokasi Waktu</td>
+            <td class="meta-label" style="padding-left: 12px;">Alokasi Waktu</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.timeAllocation}</td>
+            <td style="font-weight: bold;">${plan.timeAllocation}</td>
           </tr>
         </table>
 
@@ -2072,7 +2084,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1 pl-36">
+                <div className="space-y-1 pl-4 sm:pl-6">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>

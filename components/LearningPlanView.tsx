@@ -2541,13 +2541,6 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                             >
                               <Eye size={16} />
                             </button>
-                            <button
-                              onClick={() => handlePrint(plan)}
-                              title="Cetak RPM"
-                              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 p-2 rounded-xl transition-all border border-emerald-200"
-                            >
-                              <Printer size={16} />
-                            </button>
                             {!isReadOnly && (
                               <>
                                 <button

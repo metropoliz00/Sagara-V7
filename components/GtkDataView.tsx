@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { GtkRecord, User } from '../types';
 import { Save, Plus, Trash2, Edit2, Download, Search, X, Camera, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcel } from '../src/utils/excelUtils';
 import { formatDateID, formatDateNumericID } from '../utils/dateUtils';
 import { compressImage } from '../utils/imageHelper';
 
@@ -82,10 +83,17 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
       }
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template GTK");
-    XLSX.writeFile(wb, "Template_Data_GTK.xlsx");
+    const columns = [
+        { key: 'ID', header: 'ID', width: 10 },
+        { key: 'NAMA', header: 'NAMA', width: 30 },
+        { key: 'NIP', header: 'NIP', width: 20 },
+        { key: 'JENIS KELAMIN', header: 'JENIS KELAMIN', width: 15 },
+        { key: 'JABATAN', header: 'JABATAN', width: 20 },
+        { key: 'EMAIL PRIBADI', header: 'EMAIL PRIBADI', width: 30 },
+        { key: 'EMAIL BELAJAR', header: 'EMAIL BELAJAR', width: 30 }
+    ];
+    
+    exportToExcel(templateData, "Template_Data_GTK", "Template GTK", columns, currentUser || null);
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 

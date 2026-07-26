@@ -698,6 +698,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
 
   // Print Preview state
   const [printPlan, setPrintPlan] = useState<LearningPlan | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   // TP Generator States
   const [selectedGoalIndex, setSelectedGoalIndex] = useState<number | null>(null);
@@ -1914,26 +1915,32 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   };
 
   const triggerPrintAction = () => {
-    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
-    if (!standaloneContainer) {
-      standaloneContainer = document.createElement('div');
-      standaloneContainer.id = 'sagara-standalone-print-container';
-      document.body.appendChild(standaloneContainer);
-    }
-    const printArea = document.getElementById('print-area');
-    if (printArea && standaloneContainer) {
-      standaloneContainer.innerHTML = '';
-      const clonedContent = printArea.cloneNode(true) as HTMLElement;
-      clonedContent.id = 'sagara-cloned-print-content';
-      standaloneContainer.appendChild(clonedContent);
-    }
-    window.print();
-    
+    const originalZoom = zoom;
+    setZoom(1);
+
     setTimeout(() => {
-      if (standaloneContainer) {
-        standaloneContainer.innerHTML = '';
-      }
-    }, 3000);
+        let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+        if (!standaloneContainer) {
+          standaloneContainer = document.createElement('div');
+          standaloneContainer.id = 'sagara-standalone-print-container';
+          document.body.appendChild(standaloneContainer);
+        }
+        const printArea = document.getElementById('print-area');
+        if (printArea && standaloneContainer) {
+          standaloneContainer.innerHTML = '';
+          const clonedContent = printArea.cloneNode(true) as HTMLElement;
+          clonedContent.id = 'sagara-cloned-print-content';
+          standaloneContainer.appendChild(clonedContent);
+        }
+        window.print();
+        
+        setTimeout(() => {
+          if (standaloneContainer) {
+            standaloneContainer.innerHTML = '';
+          }
+          setZoom(originalZoom);
+        }, 3000);
+    }, 500);
   };
 
   const handlePrint = (plan: LearningPlan) => {
@@ -1959,6 +1966,11 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               <ArrowLeft size={18} /> Tutup Pratinjau
             </button>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 no-print bg-gray-50 p-1 rounded-lg border">
+                <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1.5 rounded hover:bg-gray-200">-</button>
+                <span className="text-xs font-semibold w-10 text-center">{Math.round(zoom * 100)}%</span>
+                <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1.5 rounded hover:bg-gray-200">+</button>
+              </div>
               <span className="hidden sm:inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
                 A4 Portrait
               </span>
@@ -1971,8 +1983,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </div>
           </div>
 
-          <div className="w-full flex justify-center overflow-x-hidden sm:overflow-visible">
-            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 overflow-hidden mobile-a4-preview" id="print-area">
+          <div className="w-full overflow-auto custom-scrollbar flex sm:justify-center rounded-2xl">
+            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 mobile-a4-preview shrink-0" id="print-area" style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}>
             <style>{`
               @media print {
                 @page {

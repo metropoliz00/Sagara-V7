@@ -6,6 +6,7 @@ import {
   Printer, Search, Edit2, Filter, X, AlertCircle, Clock, Upload, Download, FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcel } from '../src/utils/excelUtils';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
 
@@ -138,10 +139,16 @@ const AgendaView: React.FC<AgendaViewProps> = ({
       'STATUS': item.completed ? 'Selesai' : 'Belum Selesai'
     }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Agenda Kelas");
-    XLSX.writeFile(wb, `Agenda_Kelas_${classId}.xlsx`);
+    const columns = [
+        { key: 'NO', header: 'NO', width: 5 },
+        { key: 'JUDUL AGENDA', header: 'JUDUL AGENDA', width: 30 },
+        { key: 'TANGGAL', header: 'TANGGAL', width: 15 },
+        { key: 'WAKTU', header: 'WAKTU', width: 10 },
+        { key: 'PRIORITAS', header: 'PRIORITAS', width: 15 },
+        { key: 'STATUS', header: 'STATUS', width: 20 },
+    ];
+
+    exportToExcel(exportData, `Agenda_Kelas_${classId}`, "Agenda Kelas", columns, null);
     onShowNotification("Data agenda berhasil diekspor ke Excel!", "success");
   };
 

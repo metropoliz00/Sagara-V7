@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Student, TeacherProfileData, SchoolProfileData, Graduate } from '../types';
 import * as XLSX from 'xlsx';
+import { exportToExcel } from '../src/utils/excelUtils';
 import JSZip from 'jszip';
 import html2pdf from 'html2pdf.js';
 import { compressImage } from '../utils/imageHelper';
@@ -594,33 +595,84 @@ const StudentList: React.FC<StudentListProps> = ({
   };
 
   const handleDownloadTemplate = () => {
-    try {
-      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
-      const example = ["1A", "2024001", "0012345678", "1234567890123456", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Input Siswa");
-      XLSX.writeFile(workbook, "template_input_siswa.xlsx");
-      onShowNotification("Template Excel berhasil diunduh!", "success");
-    } catch (err: any) {
-      console.error("Gagal mengunduh template:", err);
-      onShowNotification("Gagal mengunduh template Excel.", "error");
-    }
+    const columns = [
+        { key: 'classId', header: 'Class ID', width: 10 },
+        { key: 'nis', header: 'NIS', width: 15 },
+        { key: 'nisn', header: 'NISN', width: 15 },
+        { key: 'nik', header: 'NIK', width: 20 },
+        { key: 'name', header: 'Nama Lengkap', width: 30 },
+        { key: 'gender', header: 'Gender (L/P)', width: 15 },
+        { key: 'birthPlace', header: 'Tempat Lahir', width: 20 },
+        { key: 'birthDate', header: 'Tanggal Lahir (YYYY-MM-DD)', width: 25 },
+        { key: 'religion', header: 'Agama', width: 15 },
+        { key: 'address', header: 'Alamat', width: 30 },
+        { key: 'fatherName', header: 'Nama Ayah', width: 30 },
+        { key: 'fatherJob', header: 'Pekerjaan Ayah', width: 20 },
+        { key: 'fatherEducation', header: 'Pendidikan Ayah', width: 20 },
+        { key: 'motherName', header: 'Nama Ibu', width: 30 },
+        { key: 'motherJob', header: 'Pekerjaan Ibu', width: 20 },
+        { key: 'motherEducation', header: 'Pendidikan Ibu', width: 20 },
+        { key: 'parentName', header: 'Nama Wali', width: 30 },
+        { key: 'parentPhone', header: 'No HP Wali', width: 20 },
+        { key: 'parentJob', header: 'Pekerjaan Wali', width: 20 },
+        { key: 'economyStatus', header: 'Status Ekonomi', width: 15 },
+        { key: 'height', header: 'Tinggi (cm)', width: 15 },
+        { key: 'weight', header: 'Berat (kg)', width: 15 },
+        { key: 'bloodType', header: 'Gol Darah', width: 10 },
+        { key: 'healthNotes', header: 'Riwayat Penyakit', width: 20 },
+        { key: 'hobbies', header: 'Hobi', width: 20 },
+        { key: 'ambition', header: 'Cita-cita', width: 20 },
+        { key: 'achievements', header: 'Prestasi', width: 20 },
+        { key: 'violations', header: 'Pelanggaran', width: 20 }
+    ];
+
+    const templateData = [{
+        classId: "1A", nis: "2024001", nisn: "0012345678", nik: "1234567890123456", name: "Ahmad Santoso", gender: "L", birthPlace: "Surabaya", birthDate: "2015-05-20", religion: "Islam", address: "Jl. Merpati No. 10", fatherName: "Budi Santoso", fatherJob: "Wiraswasta", fatherEducation: "SMA", motherName: "Siti Aminah", motherJob: "Ibu Rumah Tangga", motherEducation: "SMP", parentName: "Budi Santoso", parentPhone: "081234567890", parentJob: "Wiraswasta", economyStatus: "Mampu", height: 145, weight: 38, bloodType: "O", healthNotes: "Tidak ada", hobbies: "Sepak Bola", ambition: "Polisi", achievements: "Juara 1 Lari", violations: "-"
+    }];
+
+    exportToExcel(templateData, "Template_Input_Siswa", "Template Input Siswa", columns, null);
+    onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
   const handleExport = () => {
-    try {
-      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
-      const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
-      XLSX.writeFile(workbook, "data_siswa_lengkap.xlsx");
-      onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
-    } catch (err: any) {
-      console.error("Gagal melakukan ekspor:", err);
-      onShowNotification("Gagal mengekspor data ke Excel.", "error");
-    }
+    const columns = [
+        { key: 'classId', header: 'Class ID', width: 10 },
+        { key: 'nis', header: 'NIS', width: 15 },
+        { key: 'nisn', header: 'NISN', width: 15 },
+        { key: 'nik', header: 'NIK', width: 20 },
+        { key: 'name', header: 'Nama Lengkap', width: 30 },
+        { key: 'gender', header: 'Gender (L/P)', width: 15 },
+        { key: 'birthPlace', header: 'Tempat Lahir', width: 20 },
+        { key: 'birthDate', header: 'Tanggal Lahir (YYYY-MM-DD)', width: 25 },
+        { key: 'religion', header: 'Agama', width: 15 },
+        { key: 'address', header: 'Alamat', width: 30 },
+        { key: 'fatherName', header: 'Nama Ayah', width: 30 },
+        { key: 'fatherJob', header: 'Pekerjaan Ayah', width: 20 },
+        { key: 'fatherEducation', header: 'Pendidikan Ayah', width: 20 },
+        { key: 'motherName', header: 'Nama Ibu', width: 30 },
+        { key: 'motherJob', header: 'Pekerjaan Ibu', width: 20 },
+        { key: 'motherEducation', header: 'Pendidikan Ibu', width: 20 },
+        { key: 'parentName', header: 'Nama Wali', width: 30 },
+        { key: 'parentPhone', header: 'No HP Wali', width: 20 },
+        { key: 'parentJob', header: 'Pekerjaan Wali', width: 20 },
+        { key: 'economyStatus', header: 'Status Ekonomi', width: 15 },
+        { key: 'height', header: 'Tinggi (cm)', width: 15 },
+        { key: 'weight', header: 'Berat (kg)', width: 15 },
+        { key: 'bloodType', header: 'Gol Darah', width: 10 },
+        { key: 'healthNotes', header: 'Riwayat Penyakit', width: 20 },
+        { key: 'hobbies', header: 'Hobi', width: 20 },
+        { key: 'ambition', header: 'Cita-cita', width: 20 },
+        { key: 'achievements', header: 'Prestasi', width: 20 },
+        { key: 'violations', header: 'Pelanggaran', width: 20 },
+        { key: 'completeness', header: 'Kelengkapan Data (%)', width: 20 }
+    ];
+
+    const exportData = students.map(s => ({
+        classId: s.classId, nis: s.nis, nisn: s.nisn || '-', nik: s.nik || '-', name: s.name, gender: s.gender, birthPlace: s.birthPlace || '-', birthDate: s.birthDate, religion: s.religion || '-', address: s.address, fatherName: s.fatherName, fatherJob: s.fatherJob || '-', fatherEducation: s.fatherEducation || '-', motherName: s.motherName, motherJob: s.motherJob || '-', motherEducation: s.motherEducation || '-', parentName: s.parentName, parentPhone: s.parentPhone, parentJob: s.parentJob || '-', economyStatus: s.economyStatus || 'Mampu', height: s.height || 0, weight: s.weight || 0, bloodType: s.bloodType || '-', healthNotes: s.healthNotes || '-', hobbies: s.hobbies || '-', ambition: s.ambition || '-', achievements: s.achievements?.join(', ') || '-', violations: s.violations?.join(', ') || '-', completeness: calculateCompleteness(s) + '%'
+    }));
+
+    exportToExcel(exportData, "Data_Siswa_Lengkap", "Data Siswa Lengkap", columns, null);
+    onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
   };
 
   const handleImportClick = () => {

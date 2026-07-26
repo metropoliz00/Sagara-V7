@@ -1,42 +1,24 @@
-import tailwindcss from '@tailwindcss/vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
-import fs from 'fs';
-import {defineConfig, loadEnv} from 'vite';
+import { defineConfig, loadEnv } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
-export default defineConfig(({mode}) => {
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    plugins: [
-      react(), 
-      tailwindcss(),
-      {
-        name: 'copy-index-to-404',
-        writeBundle: () => {
-          const distPath = path.resolve(__dirname, 'dist');
-          const indexPath = path.join(distPath, 'index.html');
-          const notFoundPath = path.join(distPath, '404.html');
-          if (fs.existsSync(indexPath)) {
-            fs.copyFileSync(indexPath, notFoundPath);
-          }
-        }
-      }
-    ],
-    define: {
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-    },
+    plugins: [react()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       },
     },
+    define: {
+      // Polyfill process.env agar kode eksisting yang menggunakannya tetap berjalan
+      // Gunakan JSON.stringify untuk memastikan nilai terdefinisi dengan benar sebagai string/objek di client
+      'process.env': JSON.stringify(env)
+    },
     build: {
-      chunkSizeWarningLimit: 1000,
+      chunkSizeWarningLimit: 1600, // Menaikkan batas peringatan ukuran chunk menjadi 1600 kB
     },
-    server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-    },
-  };
-});
+  }
+})

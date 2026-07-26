@@ -66,26 +66,32 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
   const teacherList = rawTeacherList.length > 0 ? rawTeacherList : users.filter(u => u.role === 'guru');
 
   const triggerPrintAction = () => {
-    let standaloneContainer = document.getElementById('sagara-standalone-print-container');
-    if (!standaloneContainer) {
-      standaloneContainer = document.createElement('div');
-      standaloneContainer.id = 'sagara-standalone-print-container';
-      document.body.appendChild(standaloneContainer);
-    }
-    const printArea = document.getElementById('print-area');
-    if (printArea && standaloneContainer) {
-      standaloneContainer.innerHTML = '';
-      const clonedContent = printArea.cloneNode(true) as HTMLElement;
-      clonedContent.id = 'sagara-cloned-print-content';
-      standaloneContainer.appendChild(clonedContent);
-    }
-    window.print();
-    
+    const originalZoom = zoom;
+    setZoom(1);
+
     setTimeout(() => {
-      if (standaloneContainer) {
-        standaloneContainer.innerHTML = '';
-      }
-    }, 3000);
+        let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+        if (!standaloneContainer) {
+          standaloneContainer = document.createElement('div');
+          standaloneContainer.id = 'sagara-standalone-print-container';
+          document.body.appendChild(standaloneContainer);
+        }
+        const printArea = document.getElementById('print-area');
+        if (printArea && standaloneContainer) {
+          standaloneContainer.innerHTML = '';
+          const clonedContent = printArea.cloneNode(true) as HTMLElement;
+          clonedContent.id = 'sagara-cloned-print-content';
+          standaloneContainer.appendChild(clonedContent);
+        }
+        window.print();
+        
+        setTimeout(() => {
+          if (standaloneContainer) {
+            standaloneContainer.innerHTML = '';
+          }
+          setZoom(originalZoom);
+        }, 3000);
+    }, 500);
   };
 
   const getAutoIdentitas = () => {
@@ -208,6 +214,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
 
   const [view, setView] = useState<'list' | 'editor' | 'detail'>('list');
   const [selectedPlan, setSelectedPlan] = useState<KokurikulerPlan | null>(null);
+  const [zoom, setZoom] = useState(1);
 
   const getAlokasiCalculation = (alokasiStr: string, tipe: 'mingguan' | 'harian' = 'mingguan') => {
     if (!alokasiStr) return '';
@@ -1175,6 +1182,11 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
               <ArrowLeft size={18} /> Kembali ke Daftar RPK
             </button>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 no-print bg-gray-50 p-1 rounded-lg border">
+                <button onClick={() => setZoom(z => Math.max(0.5, z - 0.1))} className="p-1.5 rounded hover:bg-gray-200">-</button>
+                <span className="text-xs font-semibold w-10 text-center">{Math.round(zoom * 100)}%</span>
+                <button onClick={() => setZoom(z => Math.min(2, z + 0.1))} className="p-1.5 rounded hover:bg-gray-200">+</button>
+              </div>
               <span className="hidden sm:inline-block px-3 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-lg border border-blue-200">
                 A4 Portrait
               </span>
@@ -1188,10 +1200,11 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
           </div>
 
           {/* Printable Document Container */}
-          <div className="w-full flex justify-center overflow-x-hidden sm:overflow-visible">
+          <div className="w-full overflow-auto custom-scrollbar flex sm:justify-center rounded-2xl">
             <div 
               id="print-area" 
-              className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 mobile-a4-preview"
+              className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 mobile-a4-preview shrink-0"
+              style={{ transform: `scale(${zoom})`, transformOrigin: 'top center' }}
             >
             <div className="space-y-6 text-gray-900">
               <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">

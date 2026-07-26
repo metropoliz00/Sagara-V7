@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as XLSX from 'xlsx';
+import { exportToExcel } from '../src/utils/excelUtils';
 import html2pdf from 'html2pdf.js';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -1136,10 +1137,21 @@ const SumatifEditor: React.FC<{
       }
     ];
 
-    const ws = XLSX.utils.json_to_sheet(template);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Template Soal');
-    XLSX.writeFile(wb, 'Template_Soal_Sumatif.xlsx');
+    const columns = [
+        { key: 'No', header: 'No', width: 5 },
+        { key: 'Pertanyaan', header: 'Pertanyaan', width: 40 },
+        { key: 'Tipe', header: 'Tipe', width: 10 },
+        { key: 'Bobot', header: 'Bobot', width: 10 },
+        { key: 'Opsi_A', header: 'Opsi_A', width: 20 },
+        { key: 'Opsi_B', header: 'Opsi_B', width: 20 },
+        { key: 'Opsi_C', header: 'Opsi_C', width: 20 },
+        { key: 'Opsi_D', header: 'Opsi_D', width: 20 },
+        { key: 'Jawaban_Benar', header: 'Jawaban_Benar', width: 15 },
+        { key: 'Gambar_URL', header: 'Gambar_URL', width: 20 },
+        { key: 'Keterangan_Gambar', header: 'Keterangan_Gambar', width: 20 }
+    ];
+
+    exportToExcel(template, "Template_Soal_Sumatif", "Template Soal", columns, null);
   };
 
   const handleUploadExcel = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -14,7 +14,7 @@ interface ScheduleTabProps {
 const SUBJECT_COLORS: { [key: string]: string } = {
   'default': 'bg-gray-200 text-gray-800',
   'PAI': 'bg-green-200 text-green-800',
-  'Pend. Pancasila': 'bg-emerald-200 text-emerald-800',
+  'Pendidikan Pancasila': 'bg-emerald-200 text-emerald-800',
   'Bahasa Indonesia': 'bg-blue-200 text-blue-800',
   'Matematika': 'bg-yellow-200 text-yellow-800',
   'IPAS': 'bg-slate-300 text-slate-800',

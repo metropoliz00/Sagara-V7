@@ -73,6 +73,12 @@ const CP_TEMPLATES: Record<string, Record<string, string>> = {
   }
 };
 
+const STUDENT_CHARACTERISTICS_TEMPLATES: Record<string, string> = {
+  'Fase A': 'Murid memiliki gaya belajar yang beragam, seperti visual, auditori, dan kinestetik. Murid lebih mudah belajar melalui gambar, cerita, lagu, permainan, gerak, dan kegiatan praktik sederhana. Minat murid umumnya meliputi bermain, menggambar, mewarnai, bernyanyi, membaca cerita, olahraga, dan mengeksplorasi lingkungan sekitar.',
+  'Fase B': 'Murid memiliki gaya belajar yang beragam dan mulai menunjukkan minat yang lebih jelas. Murid tertarik pada kegiatan membaca, berhitung, berdiskusi, praktik, eksperimen, permainan, seni, olahraga, teknologi, dan kegiatan yang berkaitan dengan lingkungan sekitar.',
+  'Fase C': 'Murid memiliki karakter dan gaya belajar yang semakin beragam. Murid mulai menunjukkan minat pada bidang tertentu, seperti literasi, numerasi, sains, teknologi, seni, olahraga, kreativitas, komunikasi, dan kepemimpinan. Pembelajaran perlu dilakukan secara bervariasi agar sesuai dengan gaya belajar dan minat masing-masing murid.'
+};
+
 const getPhaseFromGrade = (gradeValue: string): string => {
   const normalized = gradeValue.toUpperCase();
   if (normalized.includes('I') || normalized.includes('II')) {
@@ -1125,6 +1131,15 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     }
   }, [subject, classId, editingId]);
 
+  // Trigger student characteristics template when Phase updates
+  useEffect(() => {
+    if (editingId) return; // Don't overwrite when editing
+    const currentPhase = autoClassSemesterPlusFase().fase;
+    if (STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]) {
+      setStudentCharacteristics(STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]);
+    }
+  }, [classId, editingId]);
+
 
 
   const savePlansToStorage = (newPlans: LearningPlan[]) => {
@@ -2055,7 +2070,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1">
+                <div className="space-y-1 pl-36">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>
@@ -2079,14 +2094,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                 </div>
               </div>
 
-              {/* Main Plan Matrix with Repeating Header Engine */}
+              {/* Main Plan Matrix */}
               <table className="w-full border-collapse border border-slate-900 mb-6">
-                <thead>
-                  <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[11px] border-b border-slate-900">
-                    <th className="p-2.5 w-1/4 border-r border-slate-900 text-center uppercase">Komponen RPM</th>
-                    <th className="p-2.5 w-3/4 text-center uppercase">Deskripsi & Rincian Rencana Pembelajaran Mendalam</th>
-                  </tr>
-                </thead>
                 <tbody>
                   {/* Row Identifikasi */}
                   <tr className="border-b border-slate-900">
@@ -2738,12 +2747,27 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   <div className="space-y-4">
                     {/* Karakteristik Murid */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Profil Murid (Gaya Belajar & Minat)</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Profil Murid (Gaya Belajar & Minat) - Otomatis Sesuai Fase</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentPhase = autoClassSemesterPlusFase().fase;
+                            if (STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]) {
+                              setStudentCharacteristics(STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]);
+                              onShowNotification(`Template Profil Murid (${currentPhase}) berhasil dimuat`, 'success');
+                            }
+                          }}
+                          className="text-[#5AB2FF] hover:underline text-[11px] font-bold flex items-center gap-1"
+                        >
+                          🔄 Reset ke Template Profil {autoClassSemesterPlusFase().fase}
+                        </button>
+                      </div>
                       <textarea 
                         value={studentCharacteristics}
                         onChange={(e) => setStudentCharacteristics(e.target.value)}
                         placeholder="Masukkan Deskripsi Profil Murid (Gaya Belajar, Minat, dan Karakteristik)..."
-                        rows={2}
+                        rows={3}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                         required
                       />

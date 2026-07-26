@@ -1610,18 +1610,18 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
 
         <table class="meta-table">
           <tr>
-            <td class="meta-label" style="width: 15%;">Nama Sekolah</td>
+            <td class="meta-label" style="width: 17%;">Nama Sekolah</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 33%; font-weight: bold;">${plan.schoolName}</td>
-            <td class="meta-label" style="width: 15%; padding-left: 120px; white-space: nowrap;">Materi Pokok</td>
+            <td style="width: 31%; font-weight: bold;">${plan.schoolName}</td>
+            <td class="meta-label" style="width: 17%; padding-left: 20px;">Materi Pokok</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 33%; font-weight: bold;">${plan.topic}</td>
+            <td style="width: 31%; font-weight: bold;">${plan.topic}</td>
           </tr>
           <tr>
             <td class="meta-label">Nama Penyusun</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.compiler}</td>
-            <td class="meta-label" style="padding-left: 120px; white-space: nowrap;">Kelas/Semester</td>
+            <td class="meta-label" style="padding-left: 20px;">Kelas/Semester</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.classSemester}</td>
           </tr>
@@ -1629,7 +1629,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             <td class="meta-label">NIP</td>
             <td style="text-align: center;">:</td>
             <td>${plan.nip || '-'}</td>
-            <td class="meta-label" style="padding-left: 120px; white-space: nowrap;">Tahun Ajaran</td>
+            <td class="meta-label" style="padding-left: 20px;">Tahun Ajaran</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.academicYear}</td>
           </tr>
@@ -1637,7 +1637,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             <td class="meta-label">Mata Pelajaran</td>
             <td style="text-align: center;">:</td>
             <td class="text-blue" style="font-weight: bold;">${plan.subject}</td>
-            <td class="meta-label" style="padding-left: 120px; white-space: nowrap;">Alokasi Waktu</td>
+            <td class="meta-label" style="padding-left: 20px;">Alokasi Waktu</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.timeAllocation}</td>
           </tr>
@@ -2060,7 +2060,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               </div>
 
               {/* School Profile Grid */}
-              <div className="grid grid-cols-2 gap-4 text-xs font-medium py-2">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs font-medium py-2">
                 <div className="space-y-1">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Nama Sekolah</span>
@@ -2084,7 +2084,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1 pl-12 sm:pl-32">
+                <div className="space-y-1">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>

@@ -953,7 +953,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     }
   
     const htmlContent = `
-      <div style="font-family: 'Times New Roman', Times, serif; padding: 10px; font-size: 9pt; width: 100%; box-sizing: border-box; color: #000; background: #fff;">
+      <div style="font-family: Arial, Helvetica, sans-serif; padding: 10px; font-size: 9pt; width: 100%; box-sizing: border-box; color: #000; background: #fff;">
         <style>
           table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; word-wrap: break-word; }
           th, td { border: 1px solid black; padding: 5px; text-align: left; vertical-align: top; font-size: 8pt; word-wrap: break-word; overflow-wrap: break-word; }
@@ -963,8 +963,8 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
           .print-header h2 { font-size: 14pt; margin: 0 0 4px 0; padding: 0; text-transform: uppercase; }
           .print-header p { font-size: 10pt; margin: 0; padding: 0; text-transform: uppercase; }
           .print-footer { margin-top: 25px; width: 100%; font-size: 9pt; page-break-inside: avoid; break-inside: avoid; }
-          .signature-box { width: 40%; text-align: center; page-break-inside: avoid; break-inside: avoid; }
-          .signature-box p { margin: 0; line-height: 1.5; }
+          .signature-box { width: 40%; text-align: center; page-break-inside: avoid; break-inside: avoid; line-height: 1.15; }
+          .signature-box p { margin: 0; line-height: 1.15; }
           .signature-left { float: left; }
           .signature-right { float: right; }
           .signature-space { height: 60px; }

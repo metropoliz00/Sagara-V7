@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
   nis TEXT UNIQUE NOT NULL,
+  buku_induk TEXT,
   nisn TEXT,
   nik TEXT,
   name TEXT NOT NULL,
@@ -579,3 +580,4 @@ END $$;
 INSERT INTO users (username, password, role, full_name, class_id)
 VALUES ('admin', '123456', 'admin', 'Administrator Utama', 'all')
 ON CONFLICT (username) DO NOTHING;
+

@@ -11,7 +11,7 @@ import {
   AlertTriangle, UserCircle, Trash2, X, FileSpreadsheet, Printer, Upload, Download,
   LayoutGrid, List as ListIcon,
   Image as ImageIcon, PieChart as PieChartIcon,
-  QrCode as QrCodeIcon, Users, ArrowUpCircle, GraduationCap, ChevronDown
+  QrCode as QrCodeIcon, Users, ArrowUpCircle, GraduationCap, ChevronDown, UserMinus
 } from 'lucide-react';
 import { useModal } from '../context/ModalContext';
 import { apiService } from '../services/apiService';
@@ -36,6 +36,7 @@ interface StudentListProps {
   onDelete: (id: string) => void;
   onRemoveFiltered?: (id: string) => void;
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
+  onMutasiKeluar?: (student: Student, mutasiData: any) => void;
   isReadOnly?: boolean;
 }
 
@@ -44,7 +45,7 @@ type ViewType = 'grid' | 'list' | 'dashboard' | 'qr-codes' | 'health-data' | 'pa
 
 const StudentList: React.FC<StudentListProps> = ({ 
   students, teacherProfile, schoolProfile, classId, allAttendanceRecords,
-  onAdd, onBatchAdd, onUpdate, onDelete, onRemoveFiltered, onShowNotification, isReadOnly = false
+  onAdd, onBatchAdd, onUpdate, onDelete, onRemoveFiltered, onShowNotification, onMutasiKeluar, isReadOnly = false
 }) => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('biodata');
@@ -52,6 +53,15 @@ const StudentList: React.FC<StudentListProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMutasiKeluarModalOpen, setIsMutasiKeluarModalOpen] = useState(false);
+  const [mutasiKeluarForm, setMutasiKeluarForm] = useState({
+    tanggalMutasi: new Date().toISOString().split('T')[0],
+    alasanMutasi: 'Pindah Sekolah',
+    tujuanSekolah: '',
+    tujuanKota: '',
+    suratNomor: '',
+    suratTanggal: new Date().toISOString().split('T')[0]
+  });
   const [addModalTab, setAddModalTab] = useState<TabType>('biodata');
   const [isPromotingBatch, setIsPromotingBatch] = useState(false);
   const { showAlert, showConfirm } = useModal();
@@ -250,7 +260,7 @@ const StudentList: React.FC<StudentListProps> = ({
     `;
 
     const htmlContent = `
-      <div style="font-family: 'Times New Roman', serif; line-height: 1.2; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
+      <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.2; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
         <style>
           table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 20px; table-layout: fixed; page-break-inside: avoid; break-inside: avoid; }
           th, td { border: 1px solid black; padding: 4px; text-align: left; word-wrap: break-word; }
@@ -1165,6 +1175,13 @@ const StudentList: React.FC<StudentListProps> = ({
                   </button>
                 )}
                 <button 
+                  onClick={() => setIsMutasiKeluarModalOpen(true)} 
+                  className="flex items-center bg-rose-50 text-rose-600 px-4 py-2 rounded-lg hover:bg-rose-100 font-medium"
+                  title="Mutasi Keluar Siswa"
+                >
+                  <UserMinus size={18} className="mr-2" /> Mutasi Keluar
+                </button>
+                <button 
                     onClick={() => handleDeleteClick(selectedStudent.id)} 
                     className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 font-medium"
                 >
@@ -1603,6 +1620,100 @@ const StudentList: React.FC<StudentListProps> = ({
                <button onClick={() => setIsAddModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Batal</button>
                <button onClick={handleSubmitNew} className="px-5 py-2.5 rounded-lg bg-[#5AB2FF] text-white font-bold hover:bg-[#A0DEFF] shadow-md">Simpan Data Siswa</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isMutasiKeluarModalOpen && selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm no-print">
+          <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden flex flex-col shadow-2xl">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-rose-50">
+               <h3 className="font-bold text-lg text-rose-700 flex items-center gap-2">
+                 <UserMinus size={20} /> Form Mutasi Keluar: {(selectedStudent as Student).name}
+               </h3>
+               <button onClick={() => setIsMutasiKeluarModalOpen(false)} className="p-2 hover:bg-gray-200 rounded-full"><X size={20}/></button>
+            </div>
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              if (!mutasiKeluarForm.tujuanSekolah) {
+                onShowNotification('Harap masukkan nama sekolah tujuan mutasi!', 'warning');
+                return;
+              }
+              if (onMutasiKeluar) {
+                onMutasiKeluar(selectedStudent, mutasiKeluarForm);
+              }
+              setIsMutasiKeluarModalOpen(false);
+              setSelectedStudent(null);
+            }} className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Mutasi *</label>
+                <input
+                  type="date"
+                  value={mutasiKeluarForm.tanggalMutasi}
+                  onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, tanggalMutasi: e.target.value})}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Alasan Mutasi *</label>
+                <input
+                  type="text"
+                  placeholder="Alasan Mutasi"
+                  value={mutasiKeluarForm.alasanMutasi}
+                  onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, alasanMutasi: e.target.value})}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nama Sekolah Tujuan *</label>
+                <input
+                  type="text"
+                  placeholder="Nama Sekolah Tujuan"
+                  value={mutasiKeluarForm.tujuanSekolah}
+                  onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, tujuanSekolah: e.target.value})}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Kota / Kabupaten / Propinsi Tujuan *</label>
+                <input
+                  type="text"
+                  placeholder="Kota / Kabupaten / Propinsi Tujuan"
+                  value={mutasiKeluarForm.tujuanKota}
+                  onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, tujuanKota: e.target.value})}
+                  className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nomor Surat Mutasi</label>
+                  <input
+                    type="text"
+                    placeholder="Nomor Surat Mutasi"
+                    value={mutasiKeluarForm.suratNomor}
+                    onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, suratNomor: e.target.value})}
+                    className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Tanggal Surat Mutasi</label>
+                  <input
+                    type="date"
+                    value={mutasiKeluarForm.suratTanggal}
+                    onChange={e => setMutasiKeluarForm({...mutasiKeluarForm, suratTanggal: e.target.value})}
+                    className="w-full p-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:ring-2 focus:ring-rose-500 outline-none"
+                  />
+                </div>
+              </div>
+              <div className="pt-4 flex justify-end gap-3 border-t border-gray-100">
+                 <button type="button" onClick={() => setIsMutasiKeluarModalOpen(false)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 text-sm">Batal</button>
+                 <button type="submit" className="px-5 py-2 rounded-xl bg-rose-600 text-white font-bold hover:bg-rose-700 shadow-md text-sm">Proses Mutasi Keluar</button>
+              </div>
+            </form>
           </div>
         </div>
       )}

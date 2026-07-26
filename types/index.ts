@@ -27,6 +27,7 @@ export interface Student {
   classId: string;
   nis: string;
   nisn?: string;
+  bukuInduk?: string;
   name: string;
   gender: 'L' | 'P';
   birthDate: string;
@@ -392,7 +393,46 @@ export type ViewState =
   | 'school-assets'
   | 'bos-admin'
   | 'edit-pengembang'
-  | 'data-gtk';
+  | 'ikhtisar-induk'
+  | 'data-gtk'
+  | 'mutasi-masuk'
+  | 'mutasi-keluar';
+
+export interface MutasiMasukRecord {
+  id: string;
+  tanggalDiterima: string;
+  name: string;
+  gender: 'L' | 'P';
+  birthPlace: string;
+  birthDate: string;
+  asalSekolahName: string;
+  asalSekolahKota: string;
+  parentName: string;
+  classId: string;
+  nis: string;
+  nisn?: string;
+  suratNomor: string;
+  suratTanggal: string;
+  createdAt?: string;
+}
+
+export interface MutasiKeluarRecord {
+  id: string;
+  tanggalMutasi: string;
+  nis: string;
+  name: string;
+  gender: 'L' | 'P';
+  birthPlace: string;
+  birthDate: string;
+  classId: string;
+  parentName: string;
+  alasanMutasi: string;
+  tujuanSekolah: string;
+  tujuanKota: string;
+  suratNomor: string;
+  suratTanggal: string;
+  createdAt?: string;
+}
 
 export interface GtkRecord {
   id: string;

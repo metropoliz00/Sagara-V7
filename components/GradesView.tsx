@@ -762,7 +762,7 @@ const GradesView: React.FC<GradesViewProps> = ({
       }
 
       const htmlContent = `
-        <div style="font-family: 'Times New Roman', Times, serif; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
+        <div style="font-family: Arial, Helvetica, sans-serif; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
           <style>
             @page { size: A4 landscape; margin: 10mm; }
             table { width: 100%; border-collapse: collapse; margin-bottom: 15px; table-layout: fixed; }
@@ -773,8 +773,8 @@ const GradesView: React.FC<GradesViewProps> = ({
             .print-header h2 { margin: 0 0 4px 0; padding: 0; font-size: 13pt; text-transform: uppercase; }
             .print-header p { margin: 2px 0; padding: 0; font-size: 10pt; text-transform: uppercase; }
             .print-footer { margin-top: 35px; width: 100%; font-size: 10.5pt; page-break-inside: avoid; break-inside: avoid; }
-            .signature-box { width: 45%; text-align: center; display: inline-block; vertical-align: top; page-break-inside: avoid; break-inside: avoid; }
-            .signature-box p { margin: 0; line-height: 1.4; }
+            .signature-box { width: 45%; text-align: center; display: inline-block; vertical-align: top; page-break-inside: avoid; break-inside: avoid; line-height: 1.15; }
+            .signature-box p { margin: 0; line-height: 1.15; }
             .signature-left { float: left; }
             .signature-right { float: right; }
             .signature-space { height: 60px; }

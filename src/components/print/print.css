@@ -23,6 +23,13 @@
     overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  * {
+    font-family: Arial, Helvetica, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 
   /* Hide main React App root on print when standalone print container exists */
@@ -179,6 +186,11 @@
     padding: 10mm;
     margin: 0 auto;
     position: relative;
+    font-family: Arial, Helvetica, sans-serif !important;
+  }
+
+  .sagara-a4-sheet * {
+    font-family: Arial, Helvetica, sans-serif !important;
   }
 
   .sagara-a4-sheet.portrait {

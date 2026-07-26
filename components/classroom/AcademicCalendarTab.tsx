@@ -967,7 +967,7 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
             <table className="w-full border-collapse text-[9px] lg:text-[10px]">
                 <thead>
                     <tr className="bg-gray-100">
-                        <th className="p-1 border text-left font-bold sm:w-24 min-w-[60px]">Bulan</th>
+                        <th className="p-1 border text-left px-2 font-bold whitespace-nowrap min-w-max">Bulan</th>
                         {Array.from({length: 31}, (_, i) => i + 1).map(day => (
                             <th key={day} className="p-0.5 border font-bold text-center min-w-[20px] max-w-[32px]">{day}</th>
                         ))}
@@ -982,7 +982,7 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
 
                         return (
                             <tr key={yearMonthKey}>
-                                <td className="p-1 border font-bold bg-gray-50 uppercase">{monthName} {year}</td>
+                                <td className="p-1 border font-bold bg-gray-50 uppercase whitespace-nowrap text-left px-2">{monthName} {year}</td>
                                 {Array.from({length: 31}, (_, i) => i + 1).map(day => {
                                     const isDisabled = day > daysInMonth;
                                     const content = monthData[day - 1] || '';
@@ -995,25 +995,30 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                                     }
 
                                     return (
-                                        <td key={day} className={`p-0 border relative group ${isDisabled ? 'bg-gray-200' : ''}`} title={tooltipText}>
+                                        <td key={day} className={`p-0 border relative group h-6 sm:h-7 ${isDisabled ? 'bg-gray-200' : ''}`} title={tooltipText}>
                                             {!isDisabled && (
                                                 <>
-                                                    <input
-                                                        type="text"
-                                                        value={content}
-                                                        onChange={(e) => handleCellChange(year, month, day, e.target.value)}
-                                                        onDoubleClick={() => {
-                                                            if (isReadOnly || !codeInfo || content === 'LU') return;
-                                                            setEditingDescription({
-                                                                date: dateString,
-                                                                code: content,
-                                                                currentDesc: localData.__descriptions__?.[dateString] || '',
-                                                                defaultDesc: HOLIDAY_DESCRIPTIONS_2025_2026[dateString] || codeInfo.label
-                                                            });
-                                                        }}
-                                                        className={`w-full h-full text-center outline-none focus:ring-2 focus:ring-indigo-500 font-bold ${codeInfo ? codeInfo.color : 'bg-white text-gray-700'} ${isReadOnly ? 'cursor-not-allowed' : ''}`}
-                                                        disabled={isReadOnly}
-                                                    />
+                                                    {isReadOnly ? (
+                                                        <div className={`w-full h-full min-h-[24px] flex items-center justify-center text-center font-bold text-[9px] ${codeInfo ? codeInfo.color : 'bg-white text-gray-700'}`}>
+                                                            {content}
+                                                        </div>
+                                                    ) : (
+                                                        <input
+                                                            type="text"
+                                                            value={content}
+                                                            onChange={(e) => handleCellChange(year, month, day, e.target.value)}
+                                                            onDoubleClick={() => {
+                                                                if (isReadOnly || !codeInfo || content === 'LU') return;
+                                                                setEditingDescription({
+                                                                    date: dateString,
+                                                                    code: content,
+                                                                    currentDesc: localData.__descriptions__?.[dateString] || '',
+                                                                    defaultDesc: HOLIDAY_DESCRIPTIONS_2025_2026[dateString] || codeInfo.label
+                                                                });
+                                                            }}
+                                                            className={`w-full h-full text-center outline-none focus:ring-2 focus:ring-indigo-500 font-bold ${codeInfo ? codeInfo.color : 'bg-white text-gray-700'}`}
+                                                        />
+                                                    )}
                                                     {codeInfo && content !== 'LU' && !isReadOnly && (
                                                         <div 
                                                             className="absolute -top-1 -right-1 bg-white rounded-full shadow cursor-pointer hidden group-hover:flex items-center justify-center border border-gray-300 p-0.5 z-10 w-4 h-4"
@@ -1042,7 +1047,7 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
             </table>
 
             {/* Rekapitulasi Hari Efektif & Keterangan Tambahan */}
-            <div className="mt-6 border-t border-gray-150 pt-5 font-sans">
+            <div className="mt-6 border-t border-gray-150 pt-5 font-sans no-print">
                 <div className="flex flex-col lg:flex-row gap-6 justify-between items-stretch">
                     {/* Sisi Kiri: Rekapitulasi Hari Efektif sesuai Gambar */}
                     <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm max-w-md w-full flex flex-col justify-between">

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Calendar, ClipboardList, Map, CheckCircle, BookOpen, Users,
@@ -19,6 +19,7 @@ import InventoryTab from './classroom/InventoryTab';
 import GuestBookTab from './classroom/GuestBookTab';
 import AcademicCalendarTab from './classroom/AcademicCalendarTab';
 import OrganizationChartTab from './classroom/OrganizationChartTab'; // NEW IMPORT
+import { PrintPreview } from './print/PrintPreview';
 
 interface ClassroomAdminProps {
   students?: Student[];
@@ -57,6 +58,64 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   const [academicCalendar, setAcademicCalendar] = useState<AcademicCalendarData>({});
   const [timeSlots, setTimeSlots] = useState<string[]>(DEFAULT_TIME_SLOTS);
   const [organization, setOrganization] = useState<OrganizationStructure>({ roles: {}, sections: [] }); // NEW STATE
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+
+  // --- Calendar Metrics Calculation for Print / Preview ---
+  const calendarMetrics = useMemo(() => {
+    let ganjilKbm = 0;
+    let genapKbm = 0;
+    let ktsCount = 0;
+    let mplsCount = 0;
+
+    const getStartYear = () => {
+      if (schoolProfile?.year && schoolProfile.year.includes('/')) {
+          return Number(schoolProfile.year.split('/')[0]);
+      }
+      return 2025; // Default fallback
+    };
+    const startYear = getStartYear();
+
+    const ganjilMonths = ['07', '08', '09', '10', '11', '12'];
+    const genapMonths = ['01', '02', '03', '04', '05', '06'];
+
+    // Scan for startYear (Jul - Dec)
+    ganjilMonths.forEach(m => {
+      const key = `${startYear}-${m}`;
+      const days = academicCalendar[key] || [];
+      days.forEach((val: any) => {
+        if (val) {
+          const s = String(val).trim();
+          if (/^\d+$/.test(s)) {
+            ganjilKbm++;
+          } else if (s === 'KTS') {
+            ktsCount++;
+          } else if (s === 'MPLS') {
+            mplsCount++;
+          }
+        }
+      });
+    });
+
+    // Scan for startYear + 1 (Jan - Jun)
+    genapMonths.forEach(m => {
+      const key = `${startYear + 1}-${m}`;
+      const days = academicCalendar[key] || [];
+      days.forEach((val: any) => {
+        if (val) {
+          const s = String(val).trim();
+          if (/^\d+$/.test(s)) {
+            genapKbm++;
+          } else if (s === 'KTS') {
+            ktsCount++;
+          } else if (s === 'MPLS') {
+            mplsCount++;
+          }
+        }
+      });
+    });
+
+    return { ganjilKbm, genapKbm, ktsCount, mplsCount };
+  }, [academicCalendar, schoolProfile]);
 
   // --- Initial Fetch ---
   useEffect(() => {
@@ -360,203 +419,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
 
   // --- Utility Functions ---
   const handlePrint = () => {
-    const printContent = document.getElementById("print-area");
-    if (!printContent) return;
-
-    // Determine Title based on active tab
-    let title = "ADMINISTRASI KELAS";
-    switch(activeTab) {
-        case 'schedule': title = "JADWAL PELAJARAN"; break;
-        case 'piket': title = "JADWAL PIKET"; break;
-        case 'seating': title = "DENAH TEMPAT DUDUK"; break;
-        case 'organization': title = "STRUKTUR ORGANISASI KELAS"; break;
-        case 'calendar': title = "KALENDER AKADEMIK"; break;
-        case 'inventory': title = "INVENTARIS KELAS"; break;
-        case 'guestbook': title = "BUKU TAMU KELAS"; break;
-    }
-
-    const className = classId || "Unknown";
-    // Try to get academic year from school profile first, then calendar, or default to current year
-    const currentYear = new Date().getFullYear();
-    const academicYear = schoolProfile?.year || academicCalendar?.year || `${currentYear}/${currentYear + 1}`;
-
-    // Footer Data
-    const schoolName = schoolProfile?.name || "[Nama Sekolah]";
-    const principalName = schoolProfile?.headmaster || "[Nama Kepala Sekolah]";
-    const principalNIP = schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]";
-    const teacherName = teacherProfile?.name || "[Nama Guru]";
-    const teacherNIP = teacherProfile?.nip || "[NIP Guru]";
-    const location = schoolProfile?.address?.split(',')[0] || "Tempat";
-    const date = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    // Clone to safely manipulate for printing without affecting React DOM
-    const clone = printContent.cloneNode(true) as HTMLElement;
-    
-    // Sync input values to clone attributes
-    const originalInputs = printContent.querySelectorAll('input, textarea, select');
-    const clonedInputs = clone.querySelectorAll('input, textarea, select');
-
-    originalInputs.forEach((input: any, index) => {
-        const clonedInput = clonedInputs[index] as any;
-        if (input.type === 'checkbox' || input.type === 'radio') {
-             if (input.checked) clonedInput.setAttribute('checked', 'checked');
-        } else {
-             clonedInput.setAttribute('value', input.value);
-        }
-        if (input.tagName === 'SELECT') {
-             const options = clonedInput.querySelectorAll('option');
-             options.forEach((opt: any, i: number) => {
-                 if (i === input.selectedIndex) opt.setAttribute('selected', 'selected');
-             });
-        }
-    });
-
-    // Handle Canvas elements (cloneNode doesn't copy canvas content)
-    const originalCanvases = printContent.querySelectorAll('canvas');
-    const clonedCanvases = clone.querySelectorAll('canvas');
-    originalCanvases.forEach((canvas, index) => {
-        const clonedCanvas = clonedCanvases[index];
-        const ctx = clonedCanvas.getContext('2d');
-        if (ctx) {
-            ctx.drawImage(canvas, 0, 0);
-        }
-    });
-
-    const newWindow = window.open("", "", "width=800,height=600");
-    if (!newWindow) {
-      window.print();
-      return;
-    }
-    
-    // Copy styles from current document to ensure Tailwind/layout works
-    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-      .map(node => node.outerHTML)
-      .join('');
-
-    newWindow?.document.write(`
-      <html>
-        <head>
-          ${styles}
-          <style>
-            /* Reset for Print */
-            html, body {
-                height: auto !important;
-                overflow: visible !important;
-                width: 100% !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                background: white !important;
-                color: black !important;
-            }
-            
-            body { font-family: 'Times New Roman', serif; padding: 20px !important; }
-            table { width: 100% !important; border-collapse: collapse; }
-            th, td { border: 1px solid black; padding: 4px; }
-            @page { size: A4 ${activeTab === 'schedule' || activeTab === 'calendar' ? 'landscape' : ''}; margin: 20mm; }
-
-            /* Custom Styles for Header/Footer & Colors */
-            .print-header { text-align: center; margin-bottom: 20px; font-weight: bold; }
-            .print-header h1 { font-size: 18px; margin: 0; text-transform: uppercase; }
-            .print-header p { font-size: 12px; margin: 2px 0 0; }
-            
-            .print-footer { display: flex; justify-content: space-between; margin-top: 30px; page-break-inside: avoid; font-size: 12px; }
-            .footer-section { text-align: center; width: 40%; }
-            .signature-space { height: 60px; }
-            .name { font-weight: bold; text-decoration: underline; }
-
-            /* Force background colors for print */
-            .bg-indigo-50 { background-color: #eef2ff !important; }
-            .text-indigo-900 { color: #312e81 !important; }
-            .bg-red-500 { background-color: #ef4444 !important; color: white !important; }
-            .bg-red-400 { background-color: #f87171 !important; color: white !important; }
-            .bg-blue-500 { background-color: #3b82f6 !important; color: white !important; }
-            .bg-blue-400 { background-color: #60a5fa !important; color: white !important; }
-            .bg-yellow-500 { background-color: #eab308 !important; color: black !important; }
-            .bg-green-500 { background-color: #22c55e !important; color: white !important; }
-            .bg-green-400 { background-color: #4ade80 !important; color: white !important; }
-            .bg-purple-500 { background-color: #a855f7 !important; color: white !important; }
-            .bg-indigo-500 { background-color: #6366f1 !important; color: white !important; }
-            .text-white, .text-black { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            
-            /* Hide no-print elements */
-            .no-print { display: none !important; }
-            
-            /* Ensure full width */
-            .w-full { width: 100% !important; }
-            .overflow-x-auto { overflow: visible !important; }
-            
-            /* Force visibility */
-            * { visibility: visible !important; }
-            .hidden { display: block !important; }
-            
-            /* Adjust grid for A4 */
-            @media print {
-                html, body {
-                    zoom: 85%; /* Try to fit content */
-                }
-                .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
-                .md\\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-                .lg\\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
-                
-                /* Hide duplicate titles inside components */
-                .print-only h2 { display: none !important; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="print-header">
-            <h1>${title}</h1>
-            <p>KELAS: ${className}</p>
-            <p>TAHUN AJARAN: ${academicYear}</p>
-          </div>
-          <div style="display: block !important; width: 100% !important;">
-            ${clone.innerHTML}
-          </div>
-
-          ${activeTab === 'calendar' ? `
-            <div class="print-legend" style="page-break-inside: avoid; margin-top: 20px;">
-              <h3 style="font-size: 14px; font-weight: bold; margin-bottom: 10px;">Keterangan Kode Kalender:</h3>
-              <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px 15px; font-size: 11px;">
-                ${Object.entries(CALENDAR_CODES).map(([code, { label }]: [string, {label: string}]) => `
-                  <div style="display: flex; align-items: center;">
-                    <span style="font-weight: bold; width: 40px;">${code}</span>
-                    <span>: ${label}</span>
-                  </div>
-                `).join('')}
-              </div>
-            </div>
-          ` : ''}
-
-          <div class="print-footer">
-            <div class="footer-section">
-                <p>Mengetahui,</p>
-                <p>Kepala ${schoolName}</p>
-                <div class="signature-space"></div>
-                <p class="name">${principalName}</p>
-                <p>NIP. ${principalNIP}</p>
-            </div>
-            <div class="footer-section">
-                <p>Remen, ${date}</p>
-                <p>Guru Kelas ${className}</p>
-                <div class="signature-space"></div>
-                <p class="name">${teacherName}</p>
-                <p>NIP. ${teacherNIP}</p>
-            </div>
-          </div>
-          <script>
-             // Wait for resources to load
-             window.onload = function() {
-                 setTimeout(function() {
-                     window.print();
-                     window.close();
-                 }, 1000);
-             };
-          </script>
-        </body>
-      </html>
-    `);
-
-    newWindow?.document.close();
+    setIsPrintPreviewOpen(true);
   };
 
   const tabsList = [
@@ -571,6 +434,260 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
 
   const activeTabItem = tabsList.find(t => t.id === activeTab) || tabsList[0];
   const ActiveTabIcon = activeTabItem.icon;
+
+  if (isPrintPreviewOpen) {
+    const docTitle = activeTabItem.label === 'Struktur' ? 'STRUKTUR ORGANISASI' : 
+                     activeTabItem.label === 'Jadwal' ? 'JADWAL PELAJARAN' : 
+                     activeTabItem.label === 'Piket' ? 'JADWAL PIKET' : 
+                     activeTabItem.label === 'Denah' ? 'DENAH TEMPAT DUDUK' : 
+                     activeTabItem.label === 'Kalender' ? 'KALENDER AKADEMIK' : 
+                     activeTabItem.label === 'Inventaris' ? 'DAFTAR INVENTARIS' : 
+                     activeTabItem.label === 'Buku Tamu' ? 'BUKU TAMU' : 
+                     activeTabItem.label.toUpperCase();
+
+    return (
+      <div className="fixed inset-0 z-[200] bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/90 overflow-y-auto p-4 md:p-6 flex flex-col space-y-4 text-left">
+        <style>{`
+          .sagara-a4-sheet {
+            padding: 15mm !important;
+            color: #000000 !important;
+          }
+          .sagara-a4-sheet .no-print,
+          .sagara-a4-sheet button:not(.print-button),
+          .sagara-a4-sheet select,
+          .sagara-a4-sheet .no-print-preview {
+            display: none !important;
+          }
+          .sagara-a4-sheet .print-only,
+          .sagara-a4-sheet .print-only-inline,
+          .sagara-a4-sheet .print\\:inline {
+            display: inline !important;
+          }
+          .sagara-a4-sheet .print\\:block {
+            display: block !important;
+          }
+          .sagara-a4-sheet .print\\:hidden {
+            display: none !important;
+          }
+          .sagara-a4-sheet .print-container {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            background: transparent !important;
+          }
+          .sagara-a4-sheet table {
+            border-color: #000000 !important;
+          }
+          .sagara-a4-sheet th, .sagara-a4-sheet td {
+            border-color: #000000 !important;
+          }
+          .sagara-a4-sheet input[type="text"] {
+            border: none !important;
+            padding: 0 !important;
+            width: auto !important;
+            pointer-events: none !important;
+          }
+        `}</style>
+
+        <div className="flex items-center justify-between no-print max-w-7xl mx-auto w-full pt-2">
+          <div className="flex items-center space-x-3">
+            <Printer className="text-indigo-600" size={24} />
+            <div>
+              <h3 className="text-lg font-bold text-slate-800 leading-none">
+                Pratinjau Cetak: {activeTabItem.label}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Laporan Administrasi Kelas Terstandarisasi • Format Kertas A4
+              </p>
+            </div>
+          </div>
+          <button 
+            onClick={() => setIsPrintPreviewOpen(false)} 
+            className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg shadow-md hover:shadow-indigo-100 transition-all flex items-center gap-1.5 text-xs"
+          >
+            Tutup Pratinjau
+          </button>
+        </div>
+        
+        <div className="max-w-7xl mx-auto w-full flex-1">
+          <PrintPreview 
+            title={`${docTitle} KELAS ${classId}`} 
+            orientation={activeTab === 'schedule' || activeTab === 'calendar' || activeTab === 'seating' ? 'landscape' : 'portrait'}
+          >
+            {/* Kop Surat (Indonesian Official Header) */}
+            <div className="flex items-center justify-between border-b-4 border-double border-black pb-3 mb-6 text-center text-black font-sans">
+              <div className="w-16 h-16 shrink-0 flex items-center justify-center">
+                {schoolProfile?.regencyLogo ? (
+                  <img src={schoolProfile.regencyLogo} alt="Logo Daerah" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center font-bold text-xs uppercase">LOGO</div>
+                )}
+              </div>
+              
+              <div className="flex-1 text-center px-4 font-sans">
+                <h3 className="text-sm font-semibold uppercase tracking-wider leading-tight">PEMERINTAH KABUPATEN {schoolProfile?.kabupaten?.toUpperCase() || "TUBAN"}</h3>
+                <h4 className="text-xs font-bold uppercase tracking-wider leading-tight mt-0.5">DINAS PENDIDIKAN</h4>
+                <h2 className="text-sm font-black uppercase tracking-widest leading-normal mt-0.5">{schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
+                {(schoolProfile?.address || schoolProfile?.postalCode) ? (
+                  <p className="text-[10px] font-medium leading-relaxed mt-0.5 font-sans text-gray-700">
+                    {schoolProfile?.address ? `Alamat: ${schoolProfile.address}` : ''}
+                    {schoolProfile?.address && schoolProfile?.postalCode ? ' • ' : ''}
+                    {schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : ''}
+                  </p>
+                ) : null}
+                {schoolProfile?.email ? (
+                  <p className="text-[9px] font-sans text-gray-500">
+                    Email: {schoolProfile.email}
+                  </p>
+                ) : null}
+              </div>
+              
+              <div className="w-16 h-16 shrink-0 flex items-center justify-center font-sans">
+                {schoolProfile?.schoolLogo ? (
+                  <img src={schoolProfile.schoolLogo} alt="Logo Sekolah" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-16 h-16 invisible"></div>
+                )}
+              </div>
+            </div>
+
+            {/* Document Title Block */}
+            <div className="text-center mb-6 text-black font-sans">
+              <h2 className="text-base font-bold uppercase tracking-wider underline leading-none">
+                {docTitle} KELAS {classId}
+              </h2>
+              <p className="text-xs font-semibold tracking-wide mt-1.5 uppercase">
+                TAHUN AJARAN {schoolProfile?.year || "2025/2026"} - SEMESTER {schoolProfile?.semester || "1"}
+              </p>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="w-full text-black">
+              {activeTab === 'schedule' && <ScheduleTab schedule={schedule} timeSlots={timeSlots} onSave={async () => {}} onShowNotification={() => {}} />}
+              {activeTab === 'piket' && <PiketTab piketGroups={piketGroups} students={students} onSave={async () => {}} onShowNotification={() => {}} />}
+              {activeTab === 'seating' && <SeatingTab seatingLayouts={seatingLayouts} setSeatingLayouts={setSeatingLayouts} students={students} onSave={async () => {}} teacherProfile={teacherProfile} users={users} classId={classId} />}
+              {activeTab === 'organization' && (
+                  <OrganizationChartTab 
+                      students={students} 
+                      teacherProfile={teacherProfile} 
+                      users={users} 
+                      classId={classId}
+                      initialStructure={organization} 
+                      onSave={async () => {}} 
+                  />
+              )}
+              {activeTab === 'calendar' && (
+                  <AcademicCalendarTab 
+                      initialData={academicCalendar} 
+                      onSave={async () => {}} 
+                      onAddHoliday={async () => {}} 
+                      onShowNotification={() => {}} 
+                      classId={classId}
+                      isReadOnly={true}
+                      schoolYear={schoolProfile?.year}
+                  />
+              )}
+              {activeTab === 'inventory' && <InventoryTab inventory={inventory} onSave={async () => {}} onDelete={() => {}} onShowNotification={() => {}} classId={classId} />}
+              {activeTab === 'guestbook' && <GuestBookTab guests={guests} onSave={async () => {}} onDelete={() => {}} onShowNotification={() => {}} classId={classId} />}
+            </div>
+
+            {/* Calendar Legend & Rekapitulasi (If Applicable) */}
+            {activeTab === 'calendar' && (
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-12 gap-4 page-break-inside-avoid text-left text-black font-sans">
+                {/* Sisi Kiri (Col-span 7): Keterangan Kode Kalender */}
+                <div className="md:col-span-7 border border-gray-400 p-3 rounded bg-white">
+                  <h3 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-800 border-b border-gray-300 pb-1 flex items-center gap-1.5 font-bold">
+                    Keterangan Kode Kalender
+                  </h3>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9px]">
+                    {Object.entries(CALENDAR_CODES).map(([code, value]: any) => (
+                      <div key={code} className="flex items-center gap-1.5 border-b border-gray-100 pb-0.5">
+                        <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded uppercase text-center min-w-[32px] ${value.color || 'bg-gray-100 text-gray-800'}`}>
+                          {code}
+                        </span>
+                        <span className="text-gray-700 font-medium truncate">: {value.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sisi Kanan (Col-span 5): Rekapitulasi Hari Efektif */}
+                <div className="md:col-span-5 border border-gray-400 p-3 rounded bg-white">
+                  <h3 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-800 border-b border-gray-300 pb-1 flex items-center gap-1.5 font-bold">
+                    Rekapitulasi Hari Efektif
+                  </h3>
+                  <div className="space-y-1.5 text-[9px] text-gray-750 font-semibold">
+                    <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
+                      <span>Hari Efektif Semester Ganjil</span>
+                      <div className="flex items-center gap-1 font-bold">
+                        <span>:</span>
+                        <span className="text-indigo-600 text-xs font-black">{calendarMetrics.ganjilKbm}</span>
+                        <span className="text-[8px] text-gray-500 font-normal">hari</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
+                      <span>Hari Efektif Semester Genap</span>
+                      <div className="flex items-center gap-1 font-bold">
+                        <span>:</span>
+                        <span className="text-indigo-600 text-xs font-black">{calendarMetrics.genapKbm}</span>
+                        <span className="text-[8px] text-gray-500 font-normal">hari</span>
+                      </div>
+                    </div>
+                    {calendarMetrics.ktsCount > 0 && (
+                      <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
+                        <span>KTS (Kegiatan Tengah Semester)</span>
+                        <div className="flex items-center gap-1 font-bold">
+                          <span>:</span>
+                          <span className="text-purple-600 text-xs font-black">{calendarMetrics.ktsCount}</span>
+                          <span className="text-[8px] text-gray-500 font-normal">hari</span>
+                        </div>
+                      </div>
+                    )}
+                    {calendarMetrics.mplsCount > 0 && (
+                      <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
+                        <span>MPLS</span>
+                        <div className="flex items-center gap-1 font-bold">
+                          <span>:</span>
+                          <span className="text-teal-600 text-xs font-black">{calendarMetrics.mplsCount}</span>
+                          <span className="text-[8px] text-gray-500 font-normal">hari</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-[8px] text-gray-500 italic mt-1 font-normal">
+                      * Hari libur Minggu ditandai dengan kode <span className="font-bold text-red-500">LU</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Official Signatures Section */}
+            <div className="mt-10 flex justify-between text-xs text-black font-sans page-break-inside-avoid">
+              <div className="text-center w-[40%]">
+                <p className="leading-normal">Mengetahui,</p>
+                <p className="font-semibold leading-normal">Kepala {schoolProfile?.name || "Sekolah"}</p>
+                <div className="h-20"></div>
+                <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
+                <p className="mt-1 leading-none text-[10px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
+              </div>
+              <div className="text-center w-[40%]">
+                <p className="leading-normal">
+                  {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </p>
+                <p className="font-semibold leading-normal">Guru Kelas {classId}</p>
+                <div className="h-20"></div>
+                <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
+                <p className="mt-1 leading-none text-[10px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
+              </div>
+            </div>
+          </PrintPreview>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in page-landscape">

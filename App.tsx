@@ -63,6 +63,9 @@ import StaffLeaveView from './components/StaffLeaveView';
 import ManualBookView from './components/ManualBookView';
 import EmergencyAlert from './components/EmergencyAlert';
 import MitigasiBencanaView from './components/MitigasiBencanaView';
+import { IkhtisarIndukView } from './components/IkhtisarIndukView';
+import { MutasiMasukView } from './components/student/MutasiMasukView';
+import { MutasiKeluarView } from './components/student/MutasiKeluarView';
 import CustomModal from './components/CustomModal'; 
 import PaperPlaneIcon from './components/PaperPlaneIcon';
 import OnlineUsersWidget from './components/OnlineUsersWidget';
@@ -70,7 +73,7 @@ import { DeveloperInfoView } from './components/DeveloperInfoView';
 import { TextToSpeechAccessibility } from './components/TextToSpeechAccessibility';
 import { MasterDatabaseManagement } from './components/MasterDatabaseManagement';
 import { masterSupabase, setTemporarySupabase } from './services/supabaseClient';
-import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Sumatif, GtkRecord, PerformanceAssessment } from './types';
+import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Sumatif, GtkRecord, PerformanceAssessment, MutasiMasukRecord, MutasiKeluarRecord } from './types';
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
 import { apiService } from './services/apiService';
 import { cacheService } from './src/services/cacheService';
@@ -181,6 +184,7 @@ const AppContent: React.FC = () => {
       'sumatif': 'PENILAIAN SUMATIF',
       'sumatif/manage': 'Kelola Sumatif',
       'manual-book': 'Buku Panduan',
+      'ikhtisar-induk': 'Ikhtisar Induk',
     };
 
     const title = viewTitles[currentView] || 'Sistem Akademik';
@@ -299,7 +303,60 @@ const AppContent: React.FC = () => {
   const [sumatifs, setSumatifs] = useState<Sumatif[]>(() => cacheService.get<Sumatif[]>('sumatifs') || []);
   const [kktpMap, setKktpMap] = useState<Record<string, number>>({});
   const [gtkData, setGtkData] = useState<GtkRecord[]>(() => cacheService.get<GtkRecord[]>('gtkData') || []);
+  const [mutasiMasuk, setMutasiMasuk] = useState<MutasiMasukRecord[]>(() => cacheService.get<MutasiMasukRecord[]>('mutasiMasuk') || []);
+  const [mutasiKeluar, setMutasiKeluar] = useState<MutasiKeluarRecord[]>(() => cacheService.get<MutasiKeluarRecord[]>('mutasiKeluar') || []);
   const [notification, setNotification] = useState<{message: string, type: 'success' | 'error' | 'warning'} | null>(null);
+
+  const handleAddMutasiMasuk = (record: Omit<MutasiMasukRecord, 'id'>, studentData: Omit<Student, 'id'>) => {
+    const newRecord: MutasiMasukRecord = {
+      ...record,
+      id: 'mm-' + Date.now()
+    };
+    const updated = [newRecord, ...mutasiMasuk];
+    setMutasiMasuk(updated);
+    cacheService.set('mutasiMasuk', updated);
+
+    // Auto-add student to active students list
+    handleAddStudent(studentData);
+  };
+
+  const handleDeleteMutasiMasuk = (id: string) => {
+    const updated = mutasiMasuk.filter(r => r.id !== id);
+    setMutasiMasuk(updated);
+    cacheService.set('mutasiMasuk', updated);
+  };
+
+  const handleDeleteMutasiKeluar = (id: string) => {
+    const updated = mutasiKeluar.filter(r => r.id !== id);
+    setMutasiKeluar(updated);
+    cacheService.set('mutasiKeluar', updated);
+  };
+
+  const handleMutasiKeluarStudent = (student: Student, mutasiData: any) => {
+    const newRecord: MutasiKeluarRecord = {
+      id: 'mk-' + Date.now(),
+      tanggalMutasi: mutasiData.tanggalMutasi,
+      nis: student.nis || '-',
+      name: student.name,
+      gender: student.gender,
+      birthPlace: student.birthPlace || '-',
+      birthDate: student.birthDate || '-',
+      classId: student.classId,
+      parentName: student.parentName || student.fatherName || '-',
+      alasanMutasi: mutasiData.alasanMutasi,
+      tujuanSekolah: mutasiData.tujuanSekolah,
+      tujuanKota: mutasiData.tujuanKota,
+      suratNomor: mutasiData.suratNomor,
+      suratTanggal: mutasiData.suratTanggal
+    };
+
+    const updatedKeluar = [newRecord, ...mutasiKeluar];
+    setMutasiKeluar(updatedKeluar);
+    cacheService.set('mutasiKeluar', updatedKeluar);
+
+    handleDeleteStudent(student.id);
+    handleShowNotification(`Siswa ${student.name} berhasil dimutasi keluar.`, 'success');
+  };
   
   // ... (Rest of existing state code)
   
@@ -1122,6 +1179,29 @@ const AppContent: React.FC = () => {
       setStudents(oldStudents);
       cacheService.set('students', oldStudents);
       handleShowNotification('Gagal memperbarui data siswa.', 'error');
+    }
+  };
+
+  const handleUpdateMultipleStudents = async (updatedStudents: Student[]) => {
+    const oldStudents = students;
+    const updatedIds = new Set(updatedStudents.map(s => s.id));
+    const newStudents = oldStudents.map(s => {
+      const updated = updatedStudents.find(us => us.id === s.id);
+      return updated ? updated : s;
+    }).sort((a, b) => a.name.localeCompare(b.name));
+    setStudents(newStudents);
+    cacheService.set('students', newStudents);
+
+    if (isDemoMode) return;
+
+    try {
+      for (const updatedStudent of updatedStudents) {
+         await apiService.updateStudent(updatedStudent);
+      }
+    } catch (error) {
+      setStudents(oldStudents);
+      cacheService.set('students', oldStudents);
+      handleShowNotification('Gagal memperbarui data siswa secara massal.', 'error');
     }
   };
   const handleDeleteStudent = async (id: string) => {
@@ -2644,7 +2724,38 @@ const AppContent: React.FC = () => {
                           });
                         }}
                         onShowNotification={handleShowNotification}
+                        onMutasiKeluar={handleMutasiKeluarStudent}
                         isReadOnly={isGlobalReadOnly} 
+                    />
+                } />
+                <Route path="/mutasi-masuk" element={
+                    (isStudentRole || (!isAdminRole && !isSupervisor)) ? <Navigate to="/dashboard-student" replace /> :
+                    <MutasiMasukView
+                        records={mutasiMasuk}
+                        onAddRecord={handleAddMutasiMasuk}
+                        onDeleteRecord={handleDeleteMutasiMasuk}
+                        schoolProfile={schoolProfile}
+                        onShowNotification={handleShowNotification}
+                        currentUser={currentUser}
+                    />
+                } />
+                <Route path="/mutasi-keluar" element={
+                    (isStudentRole || (!isAdminRole && !isSupervisor)) ? <Navigate to="/dashboard-student" replace /> :
+                    <MutasiKeluarView
+                        records={mutasiKeluar}
+                        onDeleteRecord={handleDeleteMutasiKeluar}
+                        schoolProfile={schoolProfile}
+                        onShowNotification={handleShowNotification}
+                        currentUser={currentUser}
+                    />
+                } />
+                <Route path="/ikhtisar-induk" element={
+                    (isStudentRole || (!isAdminRole && !isSupervisor)) ? <Navigate to="/dashboard-student" replace /> :
+                    <IkhtisarIndukView 
+                        students={students} 
+                        schoolProfile={schoolProfile}
+                        onShowNotification={handleShowNotification}
+                        onUpdateMultipleStudents={handleUpdateMultipleStudents}
                     />
                 } />
                 <Route path="/data-gtk" element={

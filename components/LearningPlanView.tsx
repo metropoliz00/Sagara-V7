@@ -73,6 +73,12 @@ const CP_TEMPLATES: Record<string, Record<string, string>> = {
   }
 };
 
+const STUDENT_CHARACTERISTICS_TEMPLATES: Record<string, string> = {
+  'Fase A': 'Murid memiliki gaya belajar yang beragam, seperti visual, auditori, dan kinestetik. Murid lebih mudah belajar melalui gambar, cerita, lagu, permainan, gerak, dan kegiatan praktik sederhana. Minat murid umumnya meliputi bermain, menggambar, mewarnai, bernyanyi, membaca cerita, olahraga, dan mengeksplorasi lingkungan sekitar.',
+  'Fase B': 'Murid memiliki gaya belajar yang beragam dan mulai menunjukkan minat yang lebih jelas. Murid tertarik pada kegiatan membaca, berhitung, berdiskusi, praktik, eksperimen, permainan, seni, olahraga, teknologi, dan kegiatan yang berkaitan dengan lingkungan sekitar.',
+  'Fase C': 'Murid memiliki karakter dan gaya belajar yang semakin beragam. Murid mulai menunjukkan minat pada bidang tertentu, seperti literasi, numerasi, sains, teknologi, seni, olahraga, kreativitas, komunikasi, dan kepemimpinan. Pembelajaran perlu dilakukan secara bervariasi agar sesuai dengan gaya belajar dan minat masing-masing murid.'
+};
+
 const getPhaseFromGrade = (gradeValue: string): string => {
   const normalized = gradeValue.toUpperCase();
   if (normalized.includes('I') || normalized.includes('II')) {
@@ -1125,6 +1131,15 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     }
   }, [subject, classId, editingId]);
 
+  // Trigger student characteristics template when Phase updates
+  useEffect(() => {
+    if (editingId) return; // Don't overwrite when editing
+    const currentPhase = autoClassSemesterPlusFase().fase;
+    if (STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]) {
+      setStudentCharacteristics(STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]);
+    }
+  }, [classId, editingId]);
+
 
 
   const savePlansToStorage = (newPlans: LearningPlan[]) => {
@@ -1486,7 +1501,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             margin: 0;
           }
           body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 11pt;
             line-height: 1.5;
             color: #0f172a;
@@ -1552,12 +1567,14 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
           .signature-section {
             page-break-inside: avoid !important;
             margin-top: 25px;
+            line-height: 1.15;
           }
           .signature-table td {
             width: 50%;
             text-align: center;
             font-size: 10pt;
             padding: 10px;
+            line-height: 1.15;
           }
           .fase-box {
             border-left: 3px solid #e2e8f0;
@@ -1806,7 +1823,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
           ${plan.attachments?.length ? plan.attachments.map(att => `
             <div style="page-break-before: always; margin-top: 20px; border-top: 1px solid #000; padding-top: 15px;">
               <h3 style="font-size: 16pt; font-weight: bold; margin-bottom: 20px; text-align: center; color: #0f172a;">${att.title.toUpperCase()}</h3>
-              <div style="font-size: 11pt; text-align: justify; line-height: 1.5; font-family: 'Times New Roman', serif; color: #0f172a;">
+              <div style="font-size: 11pt; text-align: justify; line-height: 1.5; font-family: Arial, Helvetica, sans-serif; color: #0f172a;">
                 ${groupBlocks(parseRichText(att.content)).map(node => {
                 const alignStyle = node.align ? `text-align: ${node.align};` : '';
                 
@@ -1816,7 +1833,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                     const marginLeft = node.listStyle === 'lower-alpha' ? 'margin-left: 55px;' : 'margin-left: 35px;';
                     const startAttr = (node.listType === 'numbered' && node.startIndex && node.startIndex > 1) ? ` start="${node.startIndex}"` : '';
                     let items = node.items!.map(item => `<li>${item.content}</li>`).join('');
-                    return `<${tag}${startAttr} style="margin-bottom: 15px; font-family: 'Times New Roman', serif; ${alignStyle} ${listStyleType} ${marginLeft}">${items}</${tag}>`;
+                    return `<${tag}${startAttr} style="margin-bottom: 15px; font-family: Arial, Helvetica, sans-serif; ${alignStyle} ${listStyleType} ${marginLeft}">${items}</${tag}>`;
                 }
 
                 const block = node.block!;
@@ -1824,13 +1841,13 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   return `<div style="text-align: center; margin: 15px 0;"><img src="${block.content}" style="max-width: 100%; max-height: 400px; border-radius: 6px; border: 1px solid #cbd5e1;" alt="Media" /></div>`;
                 }
                 if (block.type === 'heading') {
-                  return `<h4 style="font-size: 13pt; font-weight: bold; margin-top: 15px; margin-bottom: 5px; font-family: 'Times New Roman', serif; ${alignStyle}">${block.content}</h4>`;
+                  return `<h4 style="font-size: 13pt; font-weight: bold; margin-top: 15px; margin-bottom: 5px; font-family: Arial, Helvetica, sans-serif; ${alignStyle}">${block.content}</h4>`;
                 }
                 if (block.type === 'table') {
                   const tableWidth = block.content || '100%';
                   const widthAttr = tableWidth.includes('%') ? `width="${tableWidth.replace('%', '')}%"` : `width="${tableWidth}"`;
                   return `
-                    <table ${widthAttr} align="center" style="width: ${tableWidth}; border-collapse: collapse; margin: 15px auto; font-family: 'Times New Roman', serif; font-size: 10pt; border: 1px solid #cbd5e1;">
+                    <table ${widthAttr} align="center" style="width: ${tableWidth}; border-collapse: collapse; margin: 15px auto; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; border: 1px solid #cbd5e1;">
                       ${block.caption ? `<caption style="caption-side: top; padding: 5px; font-weight: bold; text-align: center; font-size: 11pt; color: #1e293b;">${block.caption}</caption>` : ''}
                       <thead>
                         <tr style="background-color: #f1f5f9;">
@@ -1855,7 +1872,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   `;
                 }
                 const blockAlignStyle = block.align ? `text-align: ${block.align};` : '';
-                return `<div style="margin-bottom: 10px; font-family: 'Times New Roman', serif; ${blockAlignStyle}">${block.content?.replace(/\n/g, '<br/>')}</div>`;
+                return `<div style="margin-bottom: 10px; font-family: Arial, Helvetica, sans-serif; ${blockAlignStyle}">${block.content?.replace(/\n/g, '<br/>')}</div>`;
               }).join('')}
             </div>
           </div>
@@ -1954,7 +1971,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 w-full overflow-hidden" id="print-area">
+          <div className="w-full flex justify-center overflow-x-hidden sm:overflow-visible">
+            <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 overflow-hidden mobile-a4-preview" id="print-area">
             <style>{`
               @media print {
                 @page {
@@ -2055,7 +2073,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1">
+                <div className="space-y-1 pl-36">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>
@@ -2079,14 +2097,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                 </div>
               </div>
 
-              {/* Main Plan Matrix with Repeating Header Engine */}
+              {/* Main Plan Matrix */}
               <table className="w-full border-collapse border border-slate-900 mb-6">
-                <thead>
-                  <tr className="bg-slate-200 text-slate-900 font-bold uppercase text-[11px] border-b border-slate-900">
-                    <th className="p-2.5 w-1/4 border-r border-slate-900 text-center uppercase">Komponen RPM</th>
-                    <th className="p-2.5 w-3/4 text-center uppercase">Deskripsi & Rincian Rencana Pembelajaran Mendalam</th>
-                  </tr>
-                </thead>
                 <tbody>
                   {/* Row Identifikasi */}
                   <tr className="border-b border-slate-900">
@@ -2412,6 +2424,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                 </div>
               </div>
             ))}
+            </div>
           </div>
         </div>
       </div>
@@ -2738,12 +2751,27 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   <div className="space-y-4">
                     {/* Karakteristik Murid */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Profil Murid (Gaya Belajar & Minat)</label>
+                      <div className="flex justify-between items-center mb-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Profil Murid (Gaya Belajar & Minat) - Otomatis Sesuai Fase</label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const currentPhase = autoClassSemesterPlusFase().fase;
+                            if (STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]) {
+                              setStudentCharacteristics(STUDENT_CHARACTERISTICS_TEMPLATES[currentPhase]);
+                              onShowNotification(`Template Profil Murid (${currentPhase}) berhasil dimuat`, 'success');
+                            }
+                          }}
+                          className="text-[#5AB2FF] hover:underline text-[11px] font-bold flex items-center gap-1"
+                        >
+                          🔄 Reset ke Template Profil {autoClassSemesterPlusFase().fase}
+                        </button>
+                      </div>
                       <textarea 
                         value={studentCharacteristics}
                         onChange={(e) => setStudentCharacteristics(e.target.value)}
                         placeholder="Masukkan Deskripsi Profil Murid (Gaya Belajar, Minat, dan Karakteristik)..."
-                        rows={2}
+                        rows={3}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                         required
                       />

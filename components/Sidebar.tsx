@@ -6,7 +6,7 @@ import {
   UserCog, HeartHandshake, Tent, BookText, Smile, Link2, FileText, Contact, BookOpen, 
   UserCheck, Database, NotebookPen, Files, Activity, Building, Wallet, Camera, Book,
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
-  AlertTriangle, ClipboardList, Code, Mail
+  AlertTriangle, ClipboardList, Code, Mail, UserPlus, UserMinus
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 
@@ -18,14 +18,28 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
+export interface MenuItem {
+  id: string;
+  label: string;
+  icon: any;
+  roles: string[];
+  subItems?: MenuItem[];
+}
+
+interface MenuGroup {
+  title: string;
+  icon: any;
+  items: MenuItem[];
+}
+
 // 1. Dashboard dipisahkan sebagai item mandiri
 const dashboardItem = { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'guru', 'siswa', 'superadmin'] };
 
 // 2. Overview KS dipisahkan sebagai item mandiri (Moved from Utama)
 const supervisorItem = { id: 'supervisi', label: 'Supervisi KS', icon: Activity, roles: ['supervisor', 'admin'] };
 
-// 3. Menu Groups (Updated)
-const menuGroups = [
+// 3. Menu Groups (Updated with Submenu)
+const menuGroups: MenuGroup[] = [
   {
     title: 'Utama',
     icon: Star,
@@ -36,12 +50,31 @@ const menuGroups = [
     ]
   },
   {
+    title: 'Kepegawaian',
+    icon: Contact,
+    items: [
+      { id: 'data-gtk', label: 'Data GTK', icon: Users, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'administrasi/surat', label: 'Arsip Surat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'administrasi/izin-pegawai', label: 'Izin Pegawai', icon: FileText, roles: ['admin', 'guru', 'supervisor'] },
+    ]
+  },
+  {
     title: 'Data Induk',
     icon: FolderOpen,
     items: [
-      { id: 'data-gtk', label: 'Data GTK', icon: Users, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'siswa', label: 'Data Siswa', icon: Users, roles: ['admin', 'guru', 'supervisor'] },
+      { id: 'ikhtisar-induk', label: 'Ikhtisar Induk', icon: ClipboardList, roles: ['admin', 'supervisor'] },
       { id: 'data-lulusan', label: 'Data Lulusan', icon: Award, roles: ['admin', 'guru', 'supervisor'] },
+      {
+        id: 'mutasi',
+        label: 'Mutasi Siswa',
+        icon: UsersRound,
+        roles: ['admin', 'guru', 'supervisor'],
+        subItems: [
+          { id: 'mutasi-masuk', label: 'Mutasi Masuk', icon: UserPlus, roles: ['admin', 'guru', 'supervisor'] },
+          { id: 'mutasi-keluar', label: 'Mutasi Keluar', icon: UserMinus, roles: ['admin', 'guru', 'supervisor'] },
+        ]
+      },
     ]
   },
   {
@@ -81,8 +114,6 @@ const menuGroups = [
     title: 'Administrasi',
     icon: Briefcase,
     items: [
-      { id: 'administrasi/surat', label: 'Arsip Surat', icon: Mail, roles: ['admin', 'guru', 'supervisor'] },
-      { id: 'administrasi/izin-pegawai', label: 'Izin Pegawai', icon: FileText, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/kelas', label: 'Administrasi Kelas', icon: School, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/peminjaman-buku', label: 'Peminjaman Buku', icon: Book, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'administrasi/sarana-prasarana', label: 'Sarana Prasarana', icon: Building, roles: ['admin', 'supervisor'] },
@@ -106,6 +137,7 @@ const menuGroups = [
 
 const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onClose, onLogout }) => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [schoolName, setSchoolName] = useState('Dinas Pendidikan');
 
@@ -131,17 +163,32 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
 
   useEffect(() => {
     let activeGroup = '';
+    let activeSubMenu = '';
     for (const group of menuGroups) {
-        if (group.items.some(item => item.id === currentView || currentView.startsWith(item.id + '/'))) {
-            activeGroup = group.title;
-            break;
+      let found = false;
+      for (const item of group.items) {
+        if (item.id === currentView || currentView.startsWith(item.id + '/')) {
+          activeGroup = group.title;
+          found = true;
+          break;
         }
+        if (item.subItems) {
+          if (item.subItems.some(sub => sub.id === currentView || currentView.startsWith(sub.id + '/'))) {
+            activeGroup = group.title;
+            activeSubMenu = item.id;
+            found = true;
+            break;
+          }
+        }
+      }
+      if (found) break;
     }
+
     if (activeGroup) {
-        setOpenGroups({ [activeGroup]: true });
-    } else {
-        // Jika tampilan aktif (seperti Dashboard) tidak ada di grup manapun, tutup semua grup.
-        setOpenGroups({});
+      setOpenGroups(prev => ({ ...prev, [activeGroup]: true }));
+    }
+    if (activeSubMenu) {
+      setOpenSubMenus(prev => ({ ...prev, [activeSubMenu]: true }));
     }
   }, [currentView]);
 
@@ -154,9 +201,22 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
       }
   };
 
+  const toggleSubMenu = (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      setOpenSubMenus({ [id]: true });
+    } else {
+      setOpenSubMenus(prev => ({ ...prev, [id]: !prev[id] }));
+    }
+  };
+
   const userEffectiveRole = currentUser?.role === 'Kepala Sekolah' ? 'supervisor' : currentUser?.role;
 
-  const renderMenuItem = (item: { id: string, label: string, icon: any, roles: string[] }) => {
+  const renderMenuItem = (item: MenuItem) => {
     const Icon = item.icon;
     let isVisible = currentUser && userEffectiveRole && item.roles.includes(userEffectiveRole);
     
@@ -170,6 +230,73 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
     }
     
     if (!isVisible) return null;
+
+    const hasSubItems = item.subItems && item.subItems.length > 0;
+    
+    if (hasSubItems) {
+      const visibleSubItems = item.subItems!.filter(sub => currentUser && userEffectiveRole && sub.roles.includes(userEffectiveRole));
+      if (visibleSubItems.length === 0) return null;
+
+      const isSubActive = item.subItems?.some(sub => sub.id === currentView || currentView.startsWith(sub.id + '/'));
+      const isSubOpen = openSubMenus[item.id] || false;
+
+      return (
+        <div key={item.id} className="w-full flex flex-col">
+          <button
+            onClick={(e) => toggleSubMenu(item.id, e)}
+            title={isCollapsed ? item.label : undefined}
+            className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} text-left ${isCollapsed ? 'px-2' : 'px-4'} py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
+              isSubActive
+                ? 'bg-gradient-to-r from-[#5AB2FF]/10 to-[#A0DEFF]/10 text-[#5AB2FF] border border-[#5AB2FF]/30 translate-x-1'
+                : 'text-slate-500 hover:bg-[#FFF9D0]/50 hover:text-[#5AB2FF] hover:translate-x-1'
+            }`}
+          >
+            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} relative z-10 w-full`}>
+              <Icon size={20} className={`${isSubActive ? 'text-[#5AB2FF]' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'} ${isCollapsed ? 'mx-auto' : ''}`} />
+              {!isCollapsed && (
+                <span className={`font-medium whitespace-nowrap ${isSubActive ? 'text-[#5AB2FF] font-semibold' : 'text-slate-600 group-hover:text-[#5AB2FF]'}`}>{item.label}</span>
+              )}
+            </div>
+            {!isCollapsed && (
+              <ChevronRight size={16} className={`text-slate-400 transition-transform duration-300 shrink-0 ${isSubOpen ? 'rotate-90 text-[#5AB2FF]' : ''}`} />
+            )}
+          </button>
+          
+          <div className={`overflow-hidden transition-all duration-300 ease-in-out ${isSubOpen && !isCollapsed ? 'max-h-[500px] opacity-100 mt-1 pl-4 ml-4 border-l-2 border-[#CAF4FF]' : 'max-h-0 opacity-0'}`}>
+            <div className="space-y-1 py-1">
+              {visibleSubItems.map(sub => {
+                const SubIcon = sub.icon;
+                const isSubItemActive = sub.id === currentView || currentView.startsWith(sub.id + '/');
+                const subPath = `/${sub.id}`;
+                
+                return (
+                  <NavLink
+                    key={sub.id}
+                    to={subPath}
+                    onClick={onClose}
+                    className={() => `w-full flex items-center justify-between text-left px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
+                      isSubItemActive 
+                        ? 'bg-[#5AB2FF] text-white shadow-md shadow-[#5AB2FF]/20 translate-x-1' 
+                        : 'text-slate-500 hover:bg-[#FFF9D0]/40 hover:text-[#5AB2FF] hover:translate-x-1'
+                    }`}
+                  >
+                    {() => (
+                      <>
+                        <div className="flex items-center space-x-3 relative z-10 w-full">
+                          <SubIcon size={16} className={`${isSubItemActive ? 'text-white' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'}`} />
+                          <span className={`text-xs font-medium whitespace-nowrap ${isSubItemActive ? 'text-white' : 'text-slate-600 group-hover:text-[#5AB2FF]'}`}>{sub.label}</span>
+                        </div>
+                        {isSubItemActive && <ChevronRight size={12} className="text-[#CAF4FF] animate-pulse shrink-0" />}
+                      </>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     const path = item.id === 'dashboard' ? '/dashboard' : `/${item.id}`;
 

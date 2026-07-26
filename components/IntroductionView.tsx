@@ -36,7 +36,7 @@ const IntroductionView: React.FC = () => {
                         @import url('https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&display=swap');
                         @page { size: A4; margin: 2.54cm; }
                         body { 
-                            font-family: 'Tinos', serif;
+                            font-family: Arial, Helvetica, sans-serif;
                             margin: 0;
                             padding: 20px;
                         }

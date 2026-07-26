@@ -382,11 +382,6 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
               </div>
           </div>
 
-          <div className="hidden print-only text-center mb-6 w-full">
-             <h2 className="text-xl font-bold uppercase">DENAH TEMPAT DUDUK</h2>
-             <p className="text-sm text-gray-500">Mode: {layoutMode === 'classical' ? 'Klasikal' : layoutMode === 'groups' ? 'Kelompok' : 'Letter U'}</p>
-          </div>
-          
           <div className="w-full min-w-[800px] py-4 pt-16 md:pt-4">
               {/* Papan Tulis */}
               <div className="w-1/2 h-8 bg-slate-700 rounded-b-lg shadow-lg mb-8 flex items-center justify-center border-b-4 border-slate-800 print:bg-white print:border-2 print:border-black print:text-black print:border-t-0 mx-auto">

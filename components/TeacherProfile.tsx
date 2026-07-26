@@ -105,7 +105,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
                         }
                         
                         body { 
-                            font-family: 'Tinos', serif; 
+                            font-family: Arial, Helvetica, sans-serif; 
                             background-color: white;
                             margin: 0;
                             padding: 0;
@@ -249,7 +249,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
                 <FileText size={32} />
              </div>
              <h3 className="font-bold text-lg mb-1">Cover Administrasi</h3>
-             <p className="text-indigo-100 text-sm mb-4">Cetak otomatis cover perangkat pembelajaran dengan data terbaru.</p>
+             <p className="text-indigo-100 text-sm mb-4">Cetak otomatis cover dokumen pembelajaran dengan data terbaru.</p>
              <button onClick={handlePrint} className="w-full bg-white text-indigo-700 font-bold py-2 rounded-lg hover:bg-indigo-50 transition-colors flex items-center justify-center">
                <Printer size={18} className="mr-2"/> Cetak Cover
              </button>
@@ -317,7 +317,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
             {/* 2. Main Title */}
             <div className="text-center w-full">
                 <h1 className="text-4xl font-extrabold uppercase tracking-wide leading-snug text-black">
-                    PERANGKAT PEMBELAJARAN
+                    DOKUMEN PEMBELAJARAN
                 </h1>
                 <div className="my-6">
                     <h2 className="text-2xl font-bold uppercase text-black mb-2">ADMINISTRASI GURU KELAS {profile.teachingClass}</h2>

@@ -71,7 +71,7 @@ const TeacherIdentityTab: React.FC<TeacherIdentityTabProps> = ({ profile, setPro
                     <style>
                         @import url('https://fonts.googleapis.com/css2?family=Tinos:wght@400;700&display=swap');
                         body { 
-                            font-family: 'Tinos', serif; 
+                            font-family: Arial, Helvetica, sans-serif; 
                             padding: 40px; 
                             color: #000;
                         }
@@ -132,10 +132,12 @@ const TeacherIdentityTab: React.FC<TeacherIdentityTabProps> = ({ profile, setPro
                         .signature-box {
                             text-align: center;
                             width: 280px;
+                            line-height: 1.15;
                         }
                         .signature-box p {
                             margin: 4px 0;
                             font-size: 16px;
+                            line-height: 1.15;
                         }
                         .sig-img {
                             height: 80px;

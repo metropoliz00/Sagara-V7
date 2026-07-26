@@ -220,9 +220,6 @@ const PiketTab: React.FC<PiketTabProps> = ({ piketGroups, students, onSave, onSh
                 </button>
             </div>
             
-            <div className="hidden print-only text-center mb-6">
-                <h2 className="text-xl font-bold uppercase">JADWAL PIKET KELAS</h2>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
                 {WEEKDAYS.map((day, idx) => {
                     const group = localPiketGroups.find(g => isSameDay(g.day, day));

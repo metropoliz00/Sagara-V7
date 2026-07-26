@@ -42,15 +42,11 @@ const InventoryTab: React.FC<InventoryTabProps> = ({ inventory, onSave, onDelete
           </button>
        </div>
        
-       <div className="hidden print-only text-center py-4 border-b">
-          <h2 className="text-xl font-bold uppercase">DAFTAR INVENTARIS KELAS</h2>
-       </div>
-
        <div className="overflow-x-auto">
            <table className="w-full text-left text-sm">
              <thead className="bg-gray-50 text-gray-600 font-bold uppercase text-xs print:bg-white print:border-b print:text-black">
                <tr>
-                 <th className="px-6 py-3">Nama Barang</th>
+                 <th className="px-6 py-3 text-center">Nama Barang</th>
                  <th className="px-6 py-3 text-center">Jumlah</th>
                  <th className="px-6 py-3 text-center">Kondisi</th>
                  <th className="px-6 py-3 text-right no-print">Aksi</th>

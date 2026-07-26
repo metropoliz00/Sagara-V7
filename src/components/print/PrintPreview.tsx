@@ -116,7 +116,7 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({
       )}
 
       {/* Screen Preview Container with A4 Simulation */}
-      <div className="sagara-a4-preview-container overflow-auto max-w-full py-6 bg-slate-100 rounded-2xl border border-slate-200 shadow-inner flex justify-center">
+      <div className="sagara-a4-preview-container overflow-auto max-w-full py-6 bg-gradient-to-tr from-indigo-50/45 via-white to-purple-50/45 rounded-2xl border border-slate-200 shadow-sm flex justify-center">
         <div
           className={`sagara-a4-sheet bg-white transition-all duration-200 ${
             currentOrientation === 'landscape'

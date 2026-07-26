@@ -242,7 +242,7 @@ const OrganizationChartTab: React.FC<OrganizationChartTabProps> = ({ students, t
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[600px] text-center overflow-x-auto custom-scrollbar">
                     <div className="min-w-[800px] md:min-w-0">
-                        <h3 className="font-bold text-xl uppercase mb-8">STRUKTUR ORGANISASI KELAS {classId}</h3>
+                        <h3 className="font-bold text-xl uppercase mb-8 no-print">STRUKTUR ORGANISASI KELAS {classId}</h3>
                     
                     {/* Level 1: Guru */}
                     <div className="flex justify-center mb-4">

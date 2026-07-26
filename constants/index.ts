@@ -16,7 +16,7 @@ export const CLASS_LIST = [
 // Konfigurasi Mata Pelajaran (Tetap ada sebagai referensi struktur kurikulum)
 export const MOCK_SUBJECTS: Subject[] = [
   { id: 'pai', name: 'PAI', kkm: 75 },
-  { id: 'pancasila', name: 'Pend. Pancasila', kkm: 75 },
+  { id: 'pancasila', name: 'Pendidikan Pancasila', kkm: 75 },
   { id: 'indo', name: 'Bahasa Indonesia', kkm: 70 },
   { id: 'mat', name: 'Matematika', kkm: 70 },
   { id: 'ipas', name: 'IPAS', kkm: 75 },

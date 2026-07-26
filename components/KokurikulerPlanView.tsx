@@ -1188,10 +1188,11 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
           </div>
 
           {/* Printable Document Container */}
-          <div 
-            id="print-area" 
-            className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 w-full"
-          >
+          <div className="w-full flex justify-center overflow-x-hidden sm:overflow-visible">
+            <div 
+              id="print-area" 
+              className="sagara-print-content print-page print-portrait bg-white rounded-2xl shadow-sm border border-gray-200 p-8 sm:p-12 text-gray-900 print:shadow-none print:border-none print:p-0 mobile-a4-preview"
+            >
             <div className="space-y-6 text-gray-900">
               <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
                 <h2 className="text-xl sm:text-2xl font-extrabold uppercase tracking-wide text-slate-900">
@@ -1448,7 +1449,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
               </div>
 
               {/* Tanda Tangan / Signature Section */}
-              <div className="mt-10 pt-6 border-t border-gray-300 grid grid-cols-2 text-xs sm:text-sm text-gray-900 page-break-inside-avoid avoid-break">
+              <div style={{ lineHeight: '1.15' }} className="mt-10 pt-6 border-t border-gray-300 grid grid-cols-2 text-xs sm:text-sm text-gray-900 page-break-inside-avoid avoid-break leading-[1.15]">
                 <div className="text-center px-4">
                   <p className="font-medium">Mengetahui,</p>
                   <p className="font-medium">Kepala {schoolProfile?.name || selectedPlan.identitas.satuanPendidikan || 'Satuan Pendidikan'}</p>
@@ -1485,6 +1486,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                 </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       )}

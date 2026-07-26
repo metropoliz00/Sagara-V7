@@ -14,7 +14,7 @@ interface ScheduleTabProps {
 const SUBJECT_COLORS: { [key: string]: string } = {
   'default': 'bg-gray-200 text-gray-800',
   'PAI': 'bg-green-200 text-green-800',
-  'Pend. Pancasila': 'bg-emerald-200 text-emerald-800',
+  'Pendidikan Pancasila': 'bg-emerald-200 text-emerald-800',
   'Bahasa Indonesia': 'bg-blue-200 text-blue-800',
   'Matematika': 'bg-yellow-200 text-yellow-800',
   'IPAS': 'bg-slate-300 text-slate-800',
@@ -237,17 +237,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
                     </button>
                 </div>
             </div>
-            <div className="hidden print-only text-center mb-6">
-                <h2 className="text-xl font-bold uppercase">JADWAL PELAJARAN</h2>
-            </div>
-            
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
                 <table className="w-full border-collapse text-xs min-w-[1000px]">
                     <thead>
                         <tr className="bg-indigo-50 print:bg-indigo-50">
-                            <th className="p-2 border font-bold text-indigo-900 w-32 print:text-indigo-900">Waktu</th>
+                            <th className="p-2 border font-bold text-indigo-900 w-32 print:text-indigo-900 text-center">Waktu</th>
                             {WEEKDAYS.map(day => (
-                                <th key={day} className="p-2 border font-bold text-indigo-900 print:text-indigo-900">{day}</th>
+                                <th key={day} className="p-2 border font-bold text-indigo-900 print:text-indigo-900 text-center">{day}</th>
                             ))}
                         </tr>
                     </thead>

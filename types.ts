@@ -26,6 +26,7 @@ export interface Student {
   id: string;
   classId: string;
   nis: string;
+  bukuInduk?: string;
   nisn?: string;
   nik?: string;
   name: string;
@@ -484,7 +485,10 @@ export type ViewState =
   | 'mitigasi-bencana'
   | 'manajemen-database-pusat'
   | 'edit-pengembang'
-  | 'data-gtk';
+  | 'ikhtisar-induk'
+  | 'data-gtk'
+  | 'mutasi-masuk'
+  | 'mutasi-keluar';
 
 export type QuestionType = 'pg' | 'pgk' | 'bs' | 'uraian';
 
@@ -757,5 +761,41 @@ export interface StaffLeaveRequest {
   status: 'Menunggu' | 'Disetujui' | 'Ditolak';
   rejectionReason?: string;
   fileUrl?: string;
+  createdAt?: string;
+}
+
+export interface MutasiMasukRecord {
+  id: string;
+  tanggalDiterima: string;
+  name: string;
+  gender: 'L' | 'P';
+  birthPlace: string;
+  birthDate: string;
+  asalSekolahName: string;
+  asalSekolahKota: string;
+  parentName: string;
+  classId: string;
+  nis: string;
+  nisn?: string;
+  suratNomor: string;
+  suratTanggal: string;
+  createdAt?: string;
+}
+
+export interface MutasiKeluarRecord {
+  id: string;
+  tanggalMutasi: string;
+  nis: string;
+  name: string;
+  gender: 'L' | 'P';
+  birthPlace: string;
+  birthDate: string;
+  classId: string;
+  parentName: string;
+  alasanMutasi: string;
+  tujuanSekolah: string;
+  tujuanKota: string;
+  suratNomor: string;
+  suratTanggal: string;
   createdAt?: string;
 }

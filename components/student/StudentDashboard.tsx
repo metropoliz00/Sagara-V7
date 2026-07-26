@@ -2,7 +2,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Student, SchoolProfileData, TeacherProfileData, ViewState } from '../../types';
-import { BarChart2, Calendar, Users, Briefcase, GraduationCap, Heart, Sparkles, DollarSign, Trophy, AlertTriangle, Bell, Activity } from 'lucide-react';
+import { BarChart2, Calendar, Users, Briefcase, GraduationCap, Heart, Sparkles, DollarSign, Trophy, AlertTriangle, Bell, Activity, Printer } from 'lucide-react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   Bar, XAxis, YAxis, CartesianGrid, BarChart as RechartsBarChart
@@ -23,6 +23,443 @@ const NEGATIVE_COLOR = '#ef4444'; // red
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttendanceRecords, schoolProfile, teacherProfile, hasNewMessages = false, unreadMessageCount = 0 }) => {
     const navigate = useNavigate();
+
+    const handlePrintCard = (cardName: string) => {
+        const classId = students[0]?.classId || "-";
+        
+        let docTitle = "";
+        let contentHtml = "";
+        let orientation: 'portrait' | 'landscape' = 'portrait';
+
+        if (cardName === 'bulan-lahir') {
+            docTitle = "DAFTAR UMUR SISWA MENURUT BULAN LAHIR";
+            orientation = 'landscape';
+            contentHtml = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 8pt; text-align: center; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 100px;">Bulan Lahir</th>
+                            ${Array.from({length: 13}, (_,i) => i+6).map(age => `<th style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 35px;">${age} Th</th>`).join('')}
+                            <th style="border: 1px solid #000; padding: 4px; font-weight: bold; width: 50px; background-color: #e5e5e5;">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${ageByMonthData.map((monthData, monthIndex) => {
+                            const monthName = new Date(0, monthIndex).toLocaleString('id-ID', {month: 'long'});
+                            return `
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 4px; font-weight: bold; text-align: left;">${monthName}</td>
+                                    ${Array.from({length: 13}, (_,i) => i).map(ageIndex => {
+                                        const l = monthData.L[ageIndex];
+                                        const p = monthData.P[ageIndex];
+                                        const parts = [];
+                                        if (l > 0) parts.push(`L:${l}`);
+                                        if (p > 0) parts.push(`P:${p}`);
+                                        return `<td style="border: 1px solid #000; padding: 4px;">${parts.join(' ') || '-'}</td>`;
+                                    }).join('')}
+                                    <td style="border: 1px solid #000; padding: 4px; font-weight: bold; background-color: #f9f9f9;">${monthData.total}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else if (cardName === 'tahun-lahir') {
+            docTitle = "DAFTAR JUMLAH SISWA MENURUT TAHUN LAHIR";
+            orientation = 'portrait';
+            contentHtml = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 10pt; text-align: center; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold; width: 60px;">No</th>
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold;">Tahun Kelahiran</th>
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold;">Estimasi Umur</th>
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold; width: 100px;">Laki-Laki (L)</th>
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold; width: 100px;">Perempuan (P)</th>
+                            <th style="border: 1px solid #000; padding: 8px; font-weight: bold; width: 120px; background-color: #e5e5e5;">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${countByYearData.map(([year, data], index) => `
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 8px;">${index + 1}</td>
+                                <td style="border: 1px solid #000; padding: 8px; font-weight: bold;">${year}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${data.age} Th</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${data.L}</td>
+                                <td style="border: 1px solid #000; padding: 8px;">${data.P}</td>
+                                <td style="border: 1px solid #000; padding: 8px; font-weight: bold; background-color: #f9f9f9;">${data.total}</td>
+                            </tr>
+                        `).join('')}
+                        <tr style="background-color: #f2f2f2; font-weight: bold;">
+                            <td colspan="3" style="border: 1px solid #000; padding: 8px; text-align: right;">TOTAL:</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${countByYearData.reduce((acc, [, d]) => acc + d.L, 0)}</td>
+                            <td style="border: 1px solid #000; padding: 8px;">${countByYearData.reduce((acc, [, d]) => acc + d.P, 0)}</td>
+                            <td style="border: 1px solid #000; padding: 8px; background-color: #e5e5e5;">${countByYearData.reduce((acc, [, d]) => acc + d.total, 0)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+        } else if (cardName === 'kesehatan') {
+            docTitle = "TABEL DATA KESEHATAN SISWA";
+            orientation = 'portrait';
+            contentHtml = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 9pt; text-align: left; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2; text-align: center;">
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 40px;">No</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 80px;">NIS</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold;">Nama Lengkap</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 50px;">L/P</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 100px;">Tinggi (cm)</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 100px;">Berat (kg)</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 80px;">Gol. Darah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${students.map((student, index) => `
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${index + 1}</td>
+                                <td style="border: 1px solid #000; padding: 6px; font-family: monospace; text-align: center;">${student.nis}</td>
+                                <td style="border: 1px solid #000; padding: 6px; font-weight: bold; text-transform: uppercase;">${student.name}</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${student.gender}</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${student.height || '-'}</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center;">${student.weight || '-'}</td>
+                                <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold;">${student.bloodType || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else if (cardName === 'minat-bakat') {
+            docTitle = "PETA MINAT & BAKAT SISWA";
+            orientation = 'landscape';
+            contentHtml = `
+                <div style="display: flex; gap: 20px; margin-bottom: 25px; margin-top: 10px;">
+                    <div style="flex: 1;">
+                        <h4 style="font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 8px;">Top 5 Hobi Siswa</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                            <thead>
+                                <tr style="background-color: #f2f2f2;">
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 40px;">No</th>
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: left;">Hobi</th>
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 100px;">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${talentsData.topHobbies.map(([name, count], i) => `
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${i + 1}</td>
+                                        <td style="border: 1px solid #000; padding: 6px; text-transform: capitalize; font-weight: bold;">${name}</td>
+                                        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${count} siswa</td>
+                                    </tr>
+                                `).join('')}
+                                ${talentsData.topHobbies.length === 0 ? `<tr><td colspan="3" style="border: 1px solid #000; padding: 6px; text-align: center; color: #777;">Belum ada data</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div style="flex: 1;">
+                        <h4 style="font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 8px;">Top 5 Cita-cita Siswa</h4>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 10pt;">
+                            <thead>
+                                <tr style="background-color: #f2f2f2;">
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 40px;">No</th>
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: left;">Cita-cita</th>
+                                    <th style="border: 1px solid #000; padding: 6px; text-align: center; width: 100px;">Jumlah</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${talentsData.topAmbitions.map(([name, count], i) => `
+                                    <tr>
+                                        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${i + 1}</td>
+                                        <td style="border: 1px solid #000; padding: 6px; text-transform: capitalize; font-weight: bold;">${name}</td>
+                                        <td style="border: 1px solid #000; padding: 6px; text-align: center;">${count} siswa</td>
+                                    </tr>
+                                `).join('')}
+                                ${talentsData.topAmbitions.length === 0 ? `<tr><td colspan="3" style="border: 1px solid #000; padding: 6px; text-align: center; color: #777;">Belum ada data</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h4 style="font-size: 11pt; font-weight: bold; text-align: left; margin: 20px 0 8px 0; border-bottom: 1px solid #000; padding-bottom: 4px;">Daftar Detail Minat & Bakat Per Siswa</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 9pt;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 40px;">No</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 80px;">NIS</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Nama Lengkap</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 50px;">L/P</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Hobi</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Cita-Cita</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${students.map((student, index) => `
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${index + 1}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center; font-family: monospace;">${student.nis}</td>
+                                <td style="border: 1px solid #000; padding: 5px; font-weight: bold; text-transform: uppercase;">${student.name}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${student.gender}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-transform: capitalize;">${student.hobbies || '-'}</td>
+                                <td style="border: 1px solid #000; padding: 5px; text-transform: capitalize;">${student.ambition || '-'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else if (cardName === 'prestasi-pelanggaran') {
+            docTitle = "CATATAN PRESTASI & PELANGGARAN SISWA";
+            orientation = 'portrait';
+            contentHtml = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 9pt; text-align: left; margin-bottom: 25px; margin-top: 10px;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2; text-align: center;">
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 40px;">No</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 80px;">NIS</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold;">Nama Lengkap</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 50px;">L/P</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 100px;">Jml Prestasi</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 110px;">Jml Pelanggaran</th>
+                            <th style="border: 1px solid #000; padding: 6px; font-weight: bold; width: 80px;">Skor Sikap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${students.map((student, index) => {
+                            const achCount = student.achievements?.length || 0;
+                            const vioCount = student.violations?.length || 0;
+                            return `
+                                <tr>
+                                    <td style="border: 1px solid #000; padding: 6px; text-align: center;">${index + 1}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; font-family: monospace; text-align: center;">${student.nis}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; font-weight: bold; text-transform: uppercase;">${student.name}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; text-align: center;">${student.gender}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; color: ${achCount > 0 ? '#10b981' : '#000'}">${achCount}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; color: ${vioCount > 0 ? '#ef4444' : '#000'}">${vioCount}</td>
+                                    <td style="border: 1px solid #000; padding: 6px; text-align: center; font-weight: bold; font-family: monospace;">${student.behaviorScore || 100}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+
+                <h4 style="font-size: 11pt; font-weight: bold; text-align: left; margin: 20px 0 8px 0; border-bottom: 1px solid #000; padding-bottom: 4px;">Detail Catatan Khusus Siswa</h4>
+                <table style="width: 100%; border-collapse: collapse; font-size: 8.5pt;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="border: 1px solid #000; padding: 5px; text-align: center; width: 40px;">No</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left; width: 180px;">Nama Siswa</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Daftar Prestasi</th>
+                            <th style="border: 1px solid #000; padding: 5px; text-align: left;">Daftar Pelanggaran</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${students.filter(s => (s.achievements && s.achievements.length > 0) || (s.violations && s.violations.length > 0)).map((student, idx) => `
+                            <tr>
+                                <td style="border: 1px solid #000; padding: 5px; text-align: center;">${idx + 1}</td>
+                                <td style="border: 1px solid #000; padding: 5px; font-weight: bold; text-transform: uppercase;">${student.name}</td>
+                                <td style="border: 1px solid #000; padding: 5px; color: #10b981; font-weight: 500;">
+                                    ${student.achievements && student.achievements.length > 0 
+                                        ? `<ul>${student.achievements.map(a => `<li>${a}</li>`).join('')}</ul>` 
+                                        : '-'
+                                    }
+                                </td>
+                                <td style="border: 1px solid #000; padding: 5px; color: #ef4444; font-weight: 500;">
+                                    ${student.violations && student.violations.length > 0 
+                                        ? `<ul>${student.violations.map(v => `<li>${v}</li>`).join('')}</ul>` 
+                                        : '-'
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                        ${students.filter(s => (s.achievements && s.achievements.length > 0) || (s.violations && s.violations.length > 0)).length === 0 
+                            ? `<tr><td colspan="4" style="border: 1px solid #000; padding: 15px; text-align: center; color: #777; font-style: italic;">Tidak ada catatan prestasi maupun pelanggaran untuk siswa kelas ini.</td></tr>` 
+                            : ''
+                        }
+                    </tbody>
+                </table>
+            `;
+        }
+
+        const printWindow = window.open('', '_blank', 'width=1200,height=800');
+        if (!printWindow) {
+            alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+            return;
+        }
+
+        const logoKiriHtml = schoolProfile?.regencyLogo 
+            ? `<img src="${schoolProfile.regencyLogo}" alt="" style="max-width: 65px; max-height: 65px; object-fit: contain;" />`
+            : `<div style="width: 50px; height: 50px; border: 1px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold;">LOGO</div>`;
+
+        const logoKananHtml = schoolProfile?.schoolLogo 
+            ? `<img src="${schoolProfile.schoolLogo}" alt="" style="max-width: 65px; max-height: 65px; object-fit: contain;" />`
+            : `<div style="width: 65px; height: 65px;"></div>`;
+
+        const htmlContent = `
+            <html>
+                <head>
+                    <title>${docTitle} KELAS ${classId}</title>
+                    <style>
+                        @page {
+                            size: A4 ${orientation};
+                            margin: 12mm 10mm 12mm 10mm;
+                        }
+                        body {
+                            font-family: Arial, Helvetica, sans-serif !important;
+                            color: #000;
+                            background: #fff;
+                            margin: 0;
+                            padding: 0;
+                            font-size: 9.5pt;
+                            line-height: 1.3;
+                        }
+                        .kop-surat {
+                            display: flex;
+                            align-items: center;
+                            justify-content: space-between;
+                            border-bottom: 4px double #000;
+                            padding-bottom: 8px;
+                            margin-bottom: 20px;
+                        }
+                        .kop-logo {
+                            width: 70px;
+                            height: 70px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .kop-text {
+                            flex: 1;
+                            text-align: center;
+                            padding: 0 10px;
+                        }
+                        .kop-text h3 {
+                            margin: 0;
+                            font-size: 11pt;
+                            font-weight: 600;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .kop-text h4 {
+                            margin: 2px 0 0 0;
+                            font-size: 9pt;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                        }
+                        .kop-text h2 {
+                            margin: 2px 0 0 0;
+                            font-size: 11.5pt;
+                            font-weight: 900;
+                            text-transform: uppercase;
+                            letter-spacing: 0.5px;
+                        }
+                        .kop-text p {
+                            margin: 3px 0 0 0;
+                            font-size: 8pt;
+                            color: #444;
+                        }
+                        .doc-title-block {
+                            text-align: center;
+                            margin-bottom: 20px;
+                        }
+                        .doc-title-block h2 {
+                            margin: 0;
+                            font-size: 11.5pt;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                            text-decoration: underline;
+                        }
+                        .doc-title-block p {
+                            margin: 5px 0 0 0;
+                            font-size: 9pt;
+                            font-weight: bold;
+                            text-transform: uppercase;
+                        }
+                        .signature-section {
+                            margin-top: 35px;
+                            display: flex;
+                            justify-content: space-between;
+                            font-size: 9.5pt;
+                            page-break-inside: avoid;
+                            break-inside: avoid;
+                            line-height: 1.15;
+                        }
+                        .signature-block {
+                            width: 250px;
+                            text-align: center;
+                            line-height: 1.15;
+                        }
+                        .signature-space {
+                            height: 65px;
+                            position: relative;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .signature-img {
+                            height: 60px;
+                            object-fit: contain;
+                            position: absolute;
+                        }
+                        ul {
+                            margin: 0;
+                            padding-left: 15px;
+                        }
+                    </style>
+                </head>
+                <body onload="window.print(); window.close();">
+                    <div class="kop-surat">
+                        <div class="kop-logo">${logoKiriHtml}</div>
+                        <div class="kop-text">
+                            <h3>PEMERINTAH KABUPATEN ${schoolProfile?.kabupaten?.toUpperCase() || "TUBAN"}</h3>
+                            <h4>DINAS PENDIDIKAN</h4>
+                            <h2>${schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
+                            <p>
+                                ${schoolProfile?.address ? `Alamat: ${schoolProfile.address}` : ''}
+                                ${schoolProfile?.address && schoolProfile?.postalCode ? ' • ' : ''}
+                                ${schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : ''}
+                            </p>
+                        </div>
+                        <div class="kop-logo">${logoKananHtml}</div>
+                    </div>
+
+                    <div class="doc-title-block">
+                        <h2>${docTitle} KELAS ${classId}</h2>
+                        <p>TAHUN AJARAN ${schoolProfile?.year || "2024/2025"} - SEMESTER ${schoolProfile?.semester || "1"}</p>
+                    </div>
+
+                    <div class="main-content">
+                        ${contentHtml}
+                    </div>
+
+                    <div class="signature-section">
+                        <div class="signature-block">
+                            <p>Mengetahui,</p>
+                            <p style="font-weight: bold;">Kepala ${schoolProfile?.name || "Sekolah"}</p>
+                            <div class="signature-space">
+                                ${schoolProfile?.headmasterSignature ? `<img src="${schoolProfile.headmasterSignature}" class="signature-img" />` : ''}
+                            </div>
+                            <p style="text-decoration: underline; font-weight: bold; margin: 0;">${schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 8.5pt;">NIP. ${schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
+                        </div>
+                        <div class="signature-block">
+                            <p>
+                                ${schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                            </p>
+                            <p style="font-weight: bold;">Guru Kelas ${classId}</p>
+                            <div class="signature-space">
+                                ${teacherProfile?.signature ? `<img src="${teacherProfile.signature}" class="signature-img" />` : ''}
+                            </div>
+                            <p style="text-decoration: underline; font-weight: bold; margin: 0;">${teacherProfile?.name || "[Nama Guru]"}</p>
+                            <p style="margin: 2px 0 0 0; font-size: 8.5pt;">NIP. ${teacherProfile?.nip || "[NIP Guru]"}</p>
+                        </div>
+                    </div>
+                </body>
+            </html>
+        `;
+
+        printWindow.document.write(htmlContent);
+        printWindow.document.close();
+    };
 
     const currentSemesterInfo = useMemo(() => {
         const now = new Date();
@@ -239,7 +676,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 no-print-report">
                 <div className="bg-white p-4 rounded-lg shadow-sm border col-span-1 lg:col-span-2">
-                    <h3 className="font-bold text-gray-700 flex items-center mb-2"><Calendar size={16} className="mr-2 text-indigo-500" /> Daftar Umur Siswa Menurut Bulan Lahir</h3>
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
+                        <h3 className="font-bold text-gray-700 flex items-center"><Calendar size={16} className="mr-2 text-indigo-500" /> Daftar Umur Siswa Menurut Bulan Lahir</h3>
+                        <button 
+                            onClick={() => handlePrintCard('bulan-lahir')}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border shadow-sm"
+                            title="Cetak Laporan"
+                        >
+                            <Printer size={14} />
+                            <span>Cetak</span>
+                        </button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-xs text-center border-collapse">
                             <thead className="bg-gray-50 font-semibold">
@@ -267,7 +714,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
                     </div>
                 </div>
                 <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <h3 className="font-bold text-gray-700 flex items-center mb-2"><Users size={16} className="mr-2 text-indigo-500" /> Daftar Jumlah Siswa Menurut Tahun Lahir</h3>
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
+                        <h3 className="font-bold text-gray-700 flex items-center"><Users size={16} className="mr-2 text-indigo-500" /> Daftar Jumlah Siswa Menurut Tahun Lahir</h3>
+                        <button 
+                            onClick={() => handlePrintCard('tahun-lahir')}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border shadow-sm"
+                            title="Cetak Laporan"
+                        >
+                            <Printer size={14} />
+                            <span>Cetak</span>
+                        </button>
+                    </div>
                     <div className="max-h-64 overflow-y-auto">
                         <table className="w-full text-xs text-center border-collapse">
                             <thead className="bg-gray-50 font-semibold sticky top-0">
@@ -371,7 +828,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
 
                 {/* Health Dashboard */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <h3 className="font-bold text-gray-700 flex items-center mb-2"><Heart size={16} className="mr-2 text-red-500" /> Tabel Data Kesehatan</h3>
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
+                        <h3 className="font-bold text-gray-700 flex items-center"><Heart size={16} className="mr-2 text-red-500" /> Tabel Data Kesehatan</h3>
+                        <button 
+                            onClick={() => handlePrintCard('kesehatan')}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border shadow-sm"
+                            title="Cetak Laporan"
+                        >
+                            <Printer size={14} />
+                            <span>Cetak</span>
+                        </button>
+                    </div>
                     <div className="max-h-[250px] overflow-y-auto">
                         <table className="w-full text-xs text-left border-collapse">
                             <thead className="bg-gray-50 font-semibold sticky top-0">
@@ -400,7 +867,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
 
                 {/* Talents Dashboard */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <h3 className="font-bold text-gray-700 flex items-center mb-4"><Sparkles size={16} className="mr-2 text-yellow-500" /> Peta Minat & Bakat</h3>
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
+                        <h3 className="font-bold text-gray-700 flex items-center"><Sparkles size={16} className="mr-2 text-yellow-500" /> Peta Minat & Bakat</h3>
+                        <button 
+                            onClick={() => handlePrintCard('minat-bakat')}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border shadow-sm"
+                            title="Cetak Laporan"
+                        >
+                            <Printer size={14} />
+                            <span>Cetak</span>
+                        </button>
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <h4 className="font-semibold text-sm mb-2 text-center">Top 5 Hobi</h4>
@@ -443,7 +920,17 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
 
                 {/* Records Dashboard */}
                 <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <h3 className="font-bold text-gray-700 flex items-center mb-2"><BarChart2 size={16} className="mr-2 text-blue-500" /> Catatan Prestasi & Pelanggaran</h3>
+                    <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-3">
+                        <h3 className="font-bold text-gray-700 flex items-center"><BarChart2 size={16} className="mr-2 text-blue-500" /> Catatan Prestasi & Pelanggaran</h3>
+                        <button 
+                            onClick={() => handlePrintCard('prestasi-pelanggaran')}
+                            className="p-1.5 text-gray-500 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center gap-1.5 text-xs font-semibold border shadow-sm"
+                            title="Cetak Laporan"
+                        >
+                            <Printer size={14} />
+                            <span>Cetak</span>
+                        </button>
+                    </div>
                      <div style={{width: '100%', height: 250}}>
                         <ResponsiveContainer>
                             <RechartsBarChart data={recordsData} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>

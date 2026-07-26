@@ -849,7 +849,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
     if (!printContent) return;
 
     const htmlContent = `
-      <div style="font-family: 'Inter', sans-serif; background-color: white; padding: 20px; color: #000; width: 100%;">
+      <div style="font-family: Arial, Helvetica, sans-serif; background-color: white; padding: 20px; color: #000; width: 100%;">
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
           
@@ -1411,7 +1411,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                 </div>
 
                 {/* PRINT FOOTER */}
-                <div className="print-footer hidden print:block mt-10 text-black font-serif text-sm px-10">
+                <div style={{ lineHeight: '1.15' }} className="print-footer hidden print:block mt-10 text-black font-serif text-sm px-10 leading-[1.15]">
 
                   <div className="flex justify-between items-start">
 
@@ -1621,7 +1621,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                  </div>
 
                  {/* PRINT FOOTER */}
-                 <div className="print-footer hidden print:block mt-10 text-black font-serif text-sm px-10">
+                 <div style={{ lineHeight: '1.15' }} className="print-footer hidden print:block mt-10 text-black font-serif text-sm px-10 leading-[1.15]">
 
                    <div className="flex justify-between items-start">
                      <div className="w-[30%]"></div>

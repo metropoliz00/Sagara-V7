@@ -1961,7 +1961,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     <div className="p-6 max-w-7xl mx-auto space-y-6 select-none font-sans print:p-0">
       {/* Printable Area & Preview Wrapper */}
       {printPlan && (
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="w-full max-w-[210mm] mx-auto space-y-4">
           {/* Action Toolbar on Screen */}
           <div className="no-print flex flex-wrap items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 shadow-sm gap-3">
             <button 
@@ -1972,7 +1972,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </button>
             <div className="flex items-center gap-2">
               <span className="hidden sm:inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
-                A4 Portrait
+                A4 Portrait (210 × 297 mm)
               </span>
               <button 
                 onClick={triggerPrintAction}
@@ -1983,7 +1983,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 w-full overflow-hidden" id="print-area">
+          <div className="bg-white p-[8mm] sm:p-[12mm] rounded-sm shadow-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:m-0 w-full max-w-[210mm] min-h-[297mm] mx-auto overflow-hidden box-border" id="print-area">
             <style>{`
               @media print {
                 @page {

@@ -2441,7 +2441,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       )}
 
       {/* Screen view content */}
-      <div className="space-y-6 print:hidden">
+      {!printPlan && (
+        <div className="space-y-6 print:hidden">
         {/* Banner with action button */}
         <div className="bg-gradient-to-r from-[#5AB2FF] to-[#A0DEFF] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-[#5AB2FF]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
@@ -3728,6 +3729,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
           </form>
         )}
       </div>
+      )}
     </div>
   );
 };

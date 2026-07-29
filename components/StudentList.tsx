@@ -107,225 +107,538 @@ const StudentList: React.FC<StudentListProps> = ({
   const isPhotoError = (url?: string) => url && (url.startsWith('ERROR') || url.startsWith('error'));
 
   const handlePrint = () => {
-    let title = "DAFTAR SISWA";
-    let headers = "";
-    let rows = "";
+    const logoKiri = schoolProfile?.regencyLogo || '';
+    const logoKanan = schoolProfile?.schoolLogo || '';
+    const kabupaten = schoolProfile?.kabupaten?.toUpperCase() || 'TUBAN';
+    const namaSekolah = schoolProfile?.name?.toUpperCase() || 'UPTD SATUAN PENDIDIKAN SDN REMEN';
+    const alamatSekolah = schoolProfile?.address || '';
+    const kodePos = schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : '';
+    const emailSekolah = schoolProfile?.email ? `Email: ${schoolProfile.email}` : '';
+    const tahunAjaran = schoolProfile?.year || '2025/2026';
+    const semester = schoolProfile?.semester || '1';
+    const desa = schoolProfile?.desa || 'Remen';
+    const tanggalCetak = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    if (viewType === 'health-data') {
-      title = "DATA KESEHATAN";
-      headers = `
-        <tr>
-          <th>No</th>
-          <th>NIS</th>
-          <th>Nama</th>
-          <th>Berat (kg)</th>
-          <th>Tinggi (cm)</th>
-          <th>Riwayat Penyakit</th>
-        </tr>
+    // Kop Surat HTML Template
+    const kopSuratHtml = `
+      <div class="kop">
+        <div class="logo-box">
+          ${logoKiri ? `<img src="${logoKiri}" alt="Logo Daerah" />` : '<div class="no-logo">LOGO</div>'}
+        </div>
+        <div class="kop-text">
+          <h3>PEMERINTAH KABUPATEN ${kabupaten}</h3>
+          <h4>DINAS PENDIDIKAN</h4>
+          <h2>${namaSekolah}</h2>
+          <p>${alamatSekolah}${alamatSekolah && kodePos ? ' • ' : ''}${kodePos}</p>
+          ${emailSekolah ? `<p>${emailSekolah}</p>` : ''}
+        </div>
+        <div class="logo-box">
+          ${logoKanan ? `<img src="${logoKanan}" alt="Logo Sekolah" />` : '<div style="width: 55px;"></div>'}
+        </div>
+      </div>
+    `;
+
+    // Tanda Tangan HTML Template
+    const signatureHtml = `
+      <div class="signature-section">
+        <div class="sig-box">
+          <p>Mengetahui,</p>
+          <p style="font-weight: bold;">Kepala ${schoolProfile?.name || 'Sekolah'}</p>
+          <div class="sig-space"></div>
+          <p style="text-decoration: underline; font-weight: bold;">${schoolProfile?.headmaster || '...................................'}</p>
+          <p>NIP. ${schoolProfile?.headmasterNip || '...................................'}</p>
+        </div>
+        <div class="sig-box">
+          <p>${desa}, ${tanggalCetak}</p>
+          <p style="font-weight: bold;">Guru Kelas ${classId}</p>
+          <div class="sig-space"></div>
+          <p style="text-decoration: underline; font-weight: bold;">${teacherProfile?.name || '...................................'}</p>
+          <p>NIP. ${teacherProfile?.nip || '...................................'}</p>
+        </div>
+      </div>
+    `;
+
+    // CSS Styling for precise table print
+    const baseCss = `
+      @page {
+        size: ${selectedStudent ? 'A4 portrait' : 'A4 landscape'};
+        margin: 8mm;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 8pt;
+        color: #000;
+        background: #fff;
+        margin: 0;
+        padding: 8px;
+        line-height: 1.2;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .kop {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-bottom: 3px double #000;
+        padding-bottom: 6px;
+        margin-bottom: 10px;
+      }
+      .logo-box {
+        width: 55px;
+        height: 55px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+      }
+      .logo-box img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+      }
+      .no-logo {
+        width: 45px;
+        height: 45px;
+        border: 1px solid #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 8px;
+        font-weight: bold;
+      }
+      .kop-text {
+        text-align: center;
+        flex: 1;
+        padding: 0 10px;
+      }
+      .kop-text h3 {
+        margin: 0;
+        font-size: 10pt;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+      }
+      .kop-text h4 {
+        margin: 2px 0 0 0;
+        font-size: 9.5pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        line-height: 1.2;
+      }
+      .kop-text h2 {
+        margin: 2px 0 0 0;
+        font-size: 11pt;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        line-height: 1.2;
+      }
+      .kop-text p {
+        margin: 2px 0 0 0;
+        font-size: 7.5pt;
+        line-height: 1.2;
+        color: #111;
+      }
+      .doc-header {
+        text-align: center;
+        margin-bottom: 12px;
+      }
+      .doc-header h2 {
+        margin: 0;
+        font-size: 11pt;
+        font-weight: bold;
+        text-transform: uppercase;
+        text-decoration: underline;
+        letter-spacing: 0.5px;
+        line-height: 1.2;
+      }
+      .doc-header p {
+        margin: 3px 0 0 0;
+        font-size: 8.5pt;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      /* Print Table Styling */
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 12px;
+        table-layout: fixed;
+        font-size: 8pt;
+        line-height: 1.25;
+      }
+      th, td {
+        border: 1px solid #000;
+        padding: 4px 5px;
+        vertical-align: middle;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
+      }
+      th {
+        background-color: #f2f2f2 !important;
+        text-align: center !important;
+        vertical-align: middle !important;
+        font-weight: bold;
+        font-size: 8pt;
+        text-transform: uppercase;
+        -webkit-print-color-adjust: exact;
+      }
+      .text-center { text-align: center !important; }
+      .text-left { text-align: left !important; }
+      .text-right { text-align: right !important; }
+
+      /* Signature Styles */
+      .signature-section {
+        margin-top: 20px;
+        display: flex;
+        justify-content: space-between;
+        font-size: 8.5pt;
+        line-height: 1.2;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      }
+      .sig-box {
+        width: 250px;
+        text-align: center;
+      }
+      .sig-space {
+        height: 50px;
+      }
+
+      /* Single Biodata Card Styles */
+      .biodata-grid {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 12px;
+      }
+      .photo-box {
+        width: 110px;
+        height: 140px;
+        border: 1px solid #000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        overflow: hidden;
+      }
+      .photo-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .section-title {
+        font-weight: bold;
+        background-color: #e2e8f0;
+        padding: 3px 6px;
+        border: 1px solid #000;
+        font-size: 8.5pt;
+        text-transform: uppercase;
+        margin-top: 10px;
+        margin-bottom: 4px;
+      }
+    `;
+
+    let title = "DAFTAR SISWA";
+    let tableHtml = "";
+
+    // CASE 1: Individual Student Biodata Print
+    if (selectedStudent) {
+      title = "LEMBAR BIODATA SISWA";
+      const s = selectedStudent;
+      const photoSrc = s.photo && !isPhotoError(s.photo) ? s.photo : '';
+
+      tableHtml = `
+        <div class="biodata-grid">
+          <div class="photo-box">
+            ${photoSrc ? `<img src="${photoSrc}" alt="Foto Siswa" />` : '<div style="text-align:center; font-size:8px; color:#555;">FOTO SISWA<br/>3 x 4</div>'}
+          </div>
+          <div style="flex: 1;">
+            <table>
+              <tr>
+                <td style="width: 25%; font-weight: bold; background-color:#f8fafc;">NAMA LENGKAP</td>
+                <td style="width: 75%; font-weight: bold; text-transform: uppercase;">${s.name.toUpperCase()}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; background-color:#f8fafc;">NIS / NISN</td>
+                <td>${s.nis} / ${s.nisn || '-'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; background-color:#f8fafc;">KELAS</td>
+                <td>KELAS ${classId}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; background-color:#f8fafc;">JENIS KELAMIN</td>
+                <td>${s.gender === 'L' ? 'LAKI-LAKI (L)' : 'PEREMPUAN (P)'}</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+
+        <div class="section-title">I. DATA PRIBADI SISWA</div>
+        <table>
+          <tr>
+            <td style="width: 25%; font-weight: bold;">NIK / No. KTP</td>
+            <td style="width: 75%;">${s.nik || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Tempat, Tanggal Lahir</td>
+            <td>${s.birthPlace || '-'}, ${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Agama</td>
+            <td>${s.religion || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Alamat Tempat Tinggal</td>
+            <td>${s.address || '-'}</td>
+          </tr>
+        </table>
+
+        <div class="section-title">II. DATA ORANG TUA / WALI</div>
+        <table>
+          <tr>
+            <th style="width: 25%;">Keterangan</th>
+            <th style="width: 37.5%;">Ayah Kandung</th>
+            <th style="width: 37.5%;">Ibu Kandung</th>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Nama Lengkap</td>
+            <td style="text-transform: uppercase;">${s.fatherName ? s.fatherName.toUpperCase() : '-'}</td>
+            <td style="text-transform: uppercase;">${s.motherName ? s.motherName.toUpperCase() : '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Pendidikan Terakhir</td>
+            <td>${s.fatherEducation || '-'}</td>
+            <td>${s.motherEducation || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Pekerjaan Utama</td>
+            <td>${s.fatherJob || '-'}</td>
+            <td>${s.motherJob || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Nama Wali / Kontak HP</td>
+            <td colspan="2">${s.parentName || '-'} (${s.parentPhone || '-'})</td>
+          </tr>
+        </table>
+
+        <div class="section-title">III. DATA FISIK, KESEHATAN & LAINNYA</div>
+        <table>
+          <tr>
+            <td style="width: 25%; font-weight: bold;">Tinggi & Berat Badan</td>
+            <td style="width: 25%;">${s.height ? `${s.height} cm` : '-'} / ${s.weight ? `${s.weight} kg` : '-'}</td>
+            <td style="width: 25%; font-weight: bold;">Golongan Darah</td>
+            <td style="width: 25%;">${s.bloodType || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Riwayat Penyakit</td>
+            <td colspan="3">${s.healthNotes || '-'}</td>
+          </tr>
+          <tr>
+            <td style="font-weight: bold;">Hobi & Cita-cita</td>
+            <td colspan="3">${s.hobbies ? `Hobi: ${s.hobbies}` : '-'} | ${s.ambition ? `Cita-cita: ${s.ambition}` : '-'}</td>
+          </tr>
+        </table>
       `;
-      rows = filteredStudents.map((s, index) => `
-        <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : '#ffffff'};">
-          <td style="text-align: center;">${index + 1}</td>
-          <td style="text-align: center;">${s.nis}</td>
-          <td>${s.name.toUpperCase()}</td>
-          <td style="text-align: center;">${s.weight || '-'}</td>
-          <td style="text-align: center;">${s.height || '-'}</td>
-          <td>${s.healthNotes || '-'}</td>
-        </tr>
-      `).join('');
-    } else if (viewType === 'parent-data') {
-      title = "DATA ORANG TUA";
-      headers = `
-        <tr>
-          <th>No</th>
-          <th>NIS</th>
-          <th>Nama</th>
-          <th>Nama Ayah</th>
-          <th>Pendidikan Ayah</th>
-          <th>Pekerjaan Ayah</th>
-          <th>Nama Ibu</th>
-          <th>Pendidikan Ibu</th>
-          <th>Pekerjaan Ibu</th>
-          <th>Alamat</th>
-        </tr>
+    } 
+    // CASE 2: Health Data Table
+    else if (viewType === 'health-data') {
+      title = "DATA KESEHATAN SISWA";
+      tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 4%;">No</th>
+              <th style="width: 10%;">NIS</th>
+              <th style="width: 24%;">Nama Siswa</th>
+              <th style="width: 5%;">L/P</th>
+              <th style="width: 8%;">BB (kg)</th>
+              <th style="width: 8%;">TB (cm)</th>
+              <th style="width: 7%;">Gol. Darah</th>
+              <th style="width: 34%;">Riwayat Penyakit / Catatan Kesehatan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredStudents.map((s, idx) => `
+              <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                <td class="text-center">${idx + 1}</td>
+                <td class="text-center">${s.nis}</td>
+                <td class="text-left" style="font-weight: bold; text-transform: uppercase;">${s.name.toUpperCase()}</td>
+                <td class="text-center">${s.gender}</td>
+                <td class="text-center">${s.weight || '-'}</td>
+                <td class="text-center">${s.height || '-'}</td>
+                <td class="text-center">${s.bloodType || '-'}</td>
+                <td class="text-left">${s.healthNotes || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       `;
-      rows = filteredStudents.map((s, index) => `
-        <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : '#ffffff'};">
-          <td style="text-align: center;">${index + 1}</td>
-          <td style="text-align: center;">${s.nis}</td>
-          <td>${s.name.toUpperCase()}</td>
-          <td>${(s.fatherName || '-').toUpperCase()}</td>
-          <td>${(s.fatherEducation || '-').toUpperCase()}</td>
-          <td>${(s.fatherJob || '-').toUpperCase()}</td>
-          <td>${(s.motherName || '-').toUpperCase()}</td>
-          <td>${(s.motherEducation || '-').toUpperCase()}</td>
-          <td>${(s.motherJob || '-').toUpperCase()}</td>
-          <td>${s.address}</td>
-        </tr>
-      `).join('');
-    } else if (viewType === 'talents-data') {
-      title = "DATA BAKAT MINAT";
-      headers = `
-        <tr>
-          <th>No</th>
-          <th>NIS</th>
-          <th>NISN</th>
-          <th>Nama</th>
-          <th>Tempat Lahir</th>
-          <th>Tanggal Lahir</th>
-          <th>NIK</th>
-          <th>Hobi</th>
-          <th>Cita-cita</th>
-        </tr>
+    } 
+    // CASE 3: Parent Data Table
+    else if (viewType === 'parent-data') {
+      title = "DATA ORANG TUA SISWA";
+      tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 3%;">No</th>
+              <th style="width: 7%;">NIS</th>
+              <th style="width: 14%;">Nama Siswa</th>
+              <th style="width: 11%;">Nama Ayah</th>
+              <th style="width: 7%;">Pend. Ayah</th>
+              <th style="width: 10%;">Pekerjaan Ayah</th>
+              <th style="width: 11%;">Nama Ibu</th>
+              <th style="width: 7%;">Pend. Ibu</th>
+              <th style="width: 10%;">Pekerjaan Ibu</th>
+              <th style="width: 8%;">No. HP</th>
+              <th style="width: 12%;">Alamat</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredStudents.map((s, idx) => `
+              <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                <td class="text-center">${idx + 1}</td>
+                <td class="text-center">${s.nis}</td>
+                <td class="text-left" style="font-weight: bold; text-transform: uppercase;">${s.name.toUpperCase()}</td>
+                <td class="text-left" style="text-transform: uppercase;">${s.fatherName ? s.fatherName.toUpperCase() : '-'}</td>
+                <td class="text-center">${s.fatherEducation || '-'}</td>
+                <td class="text-left">${s.fatherJob || '-'}</td>
+                <td class="text-left" style="text-transform: uppercase;">${s.motherName ? s.motherName.toUpperCase() : '-'}</td>
+                <td class="text-center">${s.motherEducation || '-'}</td>
+                <td class="text-left">${s.motherJob || '-'}</td>
+                <td class="text-center">${s.parentPhone || '-'}</td>
+                <td class="text-left">${s.address || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       `;
-      rows = filteredStudents.map((s, index) => `
-        <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : '#ffffff'};">
-          <td style="text-align: center;">${index + 1}</td>
-          <td style="text-align: center;">${s.nis}</td>
-          <td style="text-align: center;">${s.nisn || '-'}</td>
-          <td>${s.name.toUpperCase()}</td>
-          <td>${s.birthPlace || '-'}</td>
-          <td style="text-align: center;">${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
-          <td style="text-align: center;">${s.nik || '-'}</td>
-          <td>${s.hobbies || '-'}</td>
-          <td>${s.ambition || '-'}</td>
-        </tr>
-      `).join('');
-    } else {
-      // Default list view
-      headers = `
-        <tr>
-          <th>No</th>
-          <th>Nama</th>
-          <th>NIS</th>
-          <th>NISN</th>
-          <th>L/P</th>
-          <th>Tempat Lahir</th>
-          <th>Tanggal Lahir</th>
-          <th>NIK</th>
-          <th>Agama</th>
-          <th>Nama Ayah</th>
-          <th>Nama Ibu</th>
-          <th>Alamat</th>
-        </tr>
+    } 
+    // CASE 4: Talents Data Table
+    else if (viewType === 'talents-data') {
+      title = "DATA BAKAT DAN MINAT SISWA";
+      tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 4%;">No</th>
+              <th style="width: 8%;">NIS</th>
+              <th style="width: 9%;">NISN</th>
+              <th style="width: 18%;">Nama Siswa</th>
+              <th style="width: 10%;">Tempat Lahir</th>
+              <th style="width: 9%;">Tgl Lahir</th>
+              <th style="width: 11%;">NIK</th>
+              <th style="width: 15%;">Hobi</th>
+              <th style="width: 16%;">Cita-cita</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredStudents.map((s, idx) => `
+              <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                <td class="text-center">${idx + 1}</td>
+                <td class="text-center">${s.nis}</td>
+                <td class="text-center">${s.nisn || '-'}</td>
+                <td class="text-left" style="font-weight: bold; text-transform: uppercase;">${s.name.toUpperCase()}</td>
+                <td class="text-left">${s.birthPlace || '-'}</td>
+                <td class="text-center">${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+                <td class="text-center">${s.nik || '-'}</td>
+                <td class="text-left">${s.hobbies || '-'}</td>
+                <td class="text-left">${s.ambition || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       `;
-      rows = filteredStudents.map((s, index) => `
-        <tr style="background-color: ${index % 2 === 0 ? '#f8f9fa' : '#ffffff'};">
-          <td style="text-align: center;">${index + 1}</td>
-          <td>${s.name.toUpperCase()}</td>
-          <td>${s.nis}</td>
-          <td>${s.nisn || '-'}</td>
-          <td style="text-align: center;">${s.gender}</td>
-          <td>${s.birthPlace || '-'}</td>
-          <td>${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
-          <td>${s.nik || '-'}</td>
-          <td>${s.religion || '-'}</td>
-          <td>${(s.fatherName || '-').toUpperCase()}</td>
-          <td>${(s.motherName || '-').toUpperCase()}</td>
-          <td>${s.address}</td>
-        </tr>
-      `).join('');
+    } 
+    // CASE 5: Main List Table View (Default)
+    else {
+      title = "DAFTAR SISWA";
+      tableHtml = `
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 3%;">No</th>
+              <th style="width: 13%;">Nama Siswa</th>
+              <th style="width: 7%;">NIS</th>
+              <th style="width: 8%;">NISN</th>
+              <th style="width: 4%;">L/P</th>
+              <th style="width: 9%;">Tempat Lahir</th>
+              <th style="width: 8%;">Tgl Lahir</th>
+              <th style="width: 10%;">NIK</th>
+              <th style="width: 6%;">Agama</th>
+              <th style="width: 11%;">Nama Ayah</th>
+              <th style="width: 11%;">Nama Ibu</th>
+              <th style="width: 10%;">Alamat</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredStudents.map((s, idx) => `
+              <tr style="background-color: ${idx % 2 === 0 ? '#ffffff' : '#f9fafb'};">
+                <td class="text-center">${idx + 1}</td>
+                <td class="text-left" style="font-weight: bold; text-transform: uppercase;">${s.name.toUpperCase()}</td>
+                <td class="text-center">${s.nis}</td>
+                <td class="text-center">${s.nisn || '-'}</td>
+                <td class="text-center">${s.gender}</td>
+                <td class="text-left">${s.birthPlace || '-'}</td>
+                <td class="text-center">${s.birthDate ? formatDateID(s.birthDate) : '-'}</td>
+                <td class="text-center">${s.nik || '-'}</td>
+                <td class="text-center">${s.religion || '-'}</td>
+                <td class="text-left" style="text-transform: uppercase;">${s.fatherName ? s.fatherName.toUpperCase() : '-'}</td>
+                <td class="text-left" style="text-transform: uppercase;">${s.motherName ? s.motherName.toUpperCase() : '-'}</td>
+                <td class="text-left">${s.address || '-'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
     }
 
-    const printContent = `
-      <div style="text-align: center; margin-bottom: 20px; line-height: 1;">
-        <h2 style="margin: 0; text-transform: uppercase;">${title}</h2>
-        <h3 style="margin: 5px 0 0 0;">KELAS: ${classId}</h3>
-        <h4 style="margin: 5px 0 0 0;">TAHUN AJARAN: ${schoolProfile?.year || new Date().getFullYear()}</h4>
-      </div>
-      <table>
-        <thead style="background-color: #e9ecef;">
-          ${headers}
-        </thead>
-        <tbody>
-          ${rows}
-        </tbody>
-      </table>
-      <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 12px; line-height: 1;">
-        <div style="text-align: center;">
-          <p>Mengetahui,</p>
-          <p>Kepala ${schoolProfile?.name || 'Sekolah'}</p>
-          <br/><br/><br/>
-          <p style="text-decoration: underline; font-weight: bold;">${schoolProfile?.headmaster || '.........................'}</p>
-          <p>NIP. ${schoolProfile?.headmasterNip || '.........................'}</p>
-        </div>
-        <div style="text-align: center;">
-          <p>Remen, ${new Date().toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-          <p>Guru Kelas ${classId}</p>
-          <br/><br/><br/>
-          <p style="text-decoration: underline; font-weight: bold;">${teacherProfile?.name || '.........................'}</p>
-          <p>NIP. ${teacherProfile?.nip || '.........................'}</p>
-        </div>
-      </div>
+    const htmlDocument = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${title} KELAS ${classId}</title>
+          <style>
+            ${baseCss}
+          </style>
+        </head>
+        <body>
+          ${kopSuratHtml}
+          
+          <div class="doc-header">
+            <h2>${title} KELAS ${classId}</h2>
+            <p>TAHUN AJARAN ${tahunAjaran} - SEMESTER ${semester}</p>
+          </div>
+
+          ${tableHtml}
+
+          ${signatureHtml}
+        </body>
+      </html>
     `;
 
-    const htmlContent = `
-      <div style="font-family: Arial, Helvetica, sans-serif; line-height: 1.2; padding: 20px; font-size: 10pt; color: #000; background: #fff; width: 100%;">
-        <style>
-          table { width: 100%; border-collapse: collapse; font-size: 9pt; margin-bottom: 20px; table-layout: fixed; page-break-inside: avoid; break-inside: avoid; }
-          th, td { border: 1px solid black; padding: 4px; text-align: left; word-wrap: break-word; }
-          th { text-align: center; background-color: #f2f2f2 !important; -webkit-print-color-adjust: exact; font-weight: bold; }
-          tr { page-break-inside: avoid; break-inside: avoid; }
-          @page { size: A4 landscape; margin: 10mm; }
-          @media print {
-            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            table, tr, td, th { page-break-inside: avoid !important; break-inside: avoid !important; }
-          }
-        </style>
-        ${printContent}
-      </div>
-    `;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      onShowNotification('Gagal membuka jendela cetak. Izinkan popup di browser Anda.', 'error');
+      return;
+    }
 
-    onShowNotification('Sedang menyiapkan dokumen PDF...', 'warning');
-    
-    const element = document.createElement('div');
-    element.innerHTML = htmlContent;
-    
-    const opt = {
-      margin: 10,
-      filename: `${title.replace(/\s+/g, '_')}_Kelas_${classId}_${new Date().getTime()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { 
-          scale: 2, 
-          useCORS: true,
-          logging: false,
-          letterRendering: true,
-          windowWidth: 1122
-      },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' as const },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], avoid: ['table', 'tr', '.print-header', '.print-footer', '.signature-box'] }
-    };
+    printWindow.document.write(htmlDocument);
+    printWindow.document.close();
+    printWindow.focus();
 
-    html2pdf().set(opt).from(element).save().then(() => {
-        onShowNotification('PDF berhasil diunduh', 'success');
-    }).catch((err: any) => {
-        console.error('PDF generation error:', err);
-        onShowNotification('Gagal mengunduh PDF, mencoba membuka jendela cetak browser...', 'error');
-        
-        const newWindow = window.open("", "", "width=1200,height=800");
-        if (!newWindow) {
-            window.print();
-            return;
-        }
-        if (newWindow) {
-            newWindow.document.write(`
-              <html>
-                <head>
-                  <title>${title} Kelas ${classId}</title>
-                </head>
-                <body>
-                  ${htmlContent}
-                </body>
-              </html>
-            `);
-            newWindow.document.close();
-            setTimeout(() => {
-                newWindow.focus();
-                newWindow.print();
-                newWindow.close();
-            }, 500);
-        }
-    });
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const handleDeleteClick = (id: string) => {

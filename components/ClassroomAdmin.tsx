@@ -634,101 +634,35 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                       classId={classId}
                       isReadOnly={true}
                       schoolYear={schoolProfile?.year}
+                      schoolProfile={schoolProfile}
+                      teacherProfile={teacherProfile}
                   />
               )}
               {activeTab === 'inventory' && <InventoryTab inventory={inventory} onSave={async () => {}} onDelete={() => {}} onShowNotification={() => {}} classId={classId} />}
               {activeTab === 'guestbook' && <GuestBookTab guests={guests} onSave={async () => {}} onDelete={() => {}} onShowNotification={() => {}} classId={classId} />}
             </div>
 
-            {/* Calendar Legend & Rekapitulasi (If Applicable) */}
-            {activeTab === 'calendar' && (
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-12 gap-4 page-break-inside-avoid text-left text-black font-sans">
-                {/* Sisi Kiri (Col-span 7): Keterangan Kode Kalender */}
-                <div className="md:col-span-7 border border-gray-400 p-3 rounded bg-white">
-                  <h3 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-800 border-b border-gray-300 pb-1 flex items-center gap-1.5 font-bold">
-                    Keterangan Kode Kalender
-                  </h3>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[9px]">
-                    {Object.entries(CALENDAR_CODES).map(([code, value]: any) => (
-                      <div key={code} className="flex items-center gap-1.5 border-b border-gray-100 pb-0.5">
-                        <span className={`font-bold text-[8px] px-1.5 py-0.5 rounded uppercase text-center min-w-[32px] ${value.color || 'bg-gray-100 text-gray-800'}`}>
-                          {code}
-                        </span>
-                        <span className="text-gray-700 font-medium truncate">: {value.label}</span>
-                      </div>
-                    ))}
-                  </div>
+            {/* Official Signatures Section (For non-calendar tabs) */}
+            {activeTab !== 'calendar' && (
+              <div className="mt-4 print:mt-2 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
+                <div className="text-center w-[40%]">
+                  <p className="leading-tight">Mengetahui,</p>
+                  <p className="font-semibold leading-tight">Kepala {schoolProfile?.name || "Sekolah"}</p>
+                  <div className="h-12 print:h-10"></div>
+                  <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
+                  <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
                 </div>
-
-                {/* Sisi Kanan (Col-span 5): Rekapitulasi Hari Efektif */}
-                <div className="md:col-span-5 border border-gray-400 p-3 rounded bg-white">
-                  <h3 className="text-xs font-bold uppercase tracking-wider mb-2 text-gray-800 border-b border-gray-300 pb-1 flex items-center gap-1.5 font-bold">
-                    Rekapitulasi Hari Efektif
-                  </h3>
-                  <div className="space-y-1.5 text-[9px] text-gray-750 font-semibold">
-                    <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
-                      <span>Hari Efektif Semester Ganjil</span>
-                      <div className="flex items-center gap-1 font-bold">
-                        <span>:</span>
-                        <span className="text-indigo-600 text-xs font-black">{calendarMetrics.ganjilKbm}</span>
-                        <span className="text-[8px] text-gray-500 font-normal">hari</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
-                      <span>Hari Efektif Semester Genap</span>
-                      <div className="flex items-center gap-1 font-bold">
-                        <span>:</span>
-                        <span className="text-indigo-600 text-xs font-black">{calendarMetrics.genapKbm}</span>
-                        <span className="text-[8px] text-gray-500 font-normal">hari</span>
-                      </div>
-                    </div>
-                    {calendarMetrics.ktsCount > 0 && (
-                      <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
-                        <span>KTS (Kegiatan Tengah Semester)</span>
-                        <div className="flex items-center gap-1 font-bold">
-                          <span>:</span>
-                          <span className="text-purple-600 text-xs font-black">{calendarMetrics.ktsCount}</span>
-                          <span className="text-[8px] text-gray-500 font-normal">hari</span>
-                        </div>
-                      </div>
-                    )}
-                    {calendarMetrics.mplsCount > 0 && (
-                      <div className="flex items-center justify-between border-b border-dashed border-gray-200 pb-1">
-                        <span>MPLS</span>
-                        <div className="flex items-center gap-1 font-bold">
-                          <span>:</span>
-                          <span className="text-teal-600 text-xs font-black">{calendarMetrics.mplsCount}</span>
-                          <span className="text-[8px] text-gray-500 font-normal">hari</span>
-                        </div>
-                      </div>
-                    )}
-                    <div className="text-[8px] text-gray-500 italic mt-1 font-normal">
-                      * Hari libur Minggu ditandai dengan kode <span className="font-bold text-red-500">LU</span>
-                    </div>
-                  </div>
+                <div className="text-center w-[40%]">
+                  <p className="leading-tight">
+                    {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </p>
+                  <p className="font-semibold leading-tight">Guru Kelas {classId}</p>
+                  <div className="h-12 print:h-10"></div>
+                  <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
+                  <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
                 </div>
               </div>
             )}
-
-            {/* Official Signatures Section */}
-            <div className="mt-4 print:mt-2 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
-              <div className="text-center w-[40%]">
-                <p className="leading-tight">Mengetahui,</p>
-                <p className="font-semibold leading-tight">Kepala {schoolProfile?.name || "Sekolah"}</p>
-                <div className="h-12 print:h-10"></div>
-                <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
-                <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
-              </div>
-              <div className="text-center w-[40%]">
-                <p className="leading-tight">
-                  {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
-                <p className="font-semibold leading-tight">Guru Kelas {classId}</p>
-                <div className="h-12 print:h-10"></div>
-                <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
-                <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
-              </div>
-            </div>
           </PrintPreview>
         </div>
       </div>
@@ -865,6 +799,8 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
                 classId={classId}
                 isReadOnly={userRole !== 'admin'} // ONLY ADMIN CAN EDIT CALENDAR
                 schoolYear={schoolProfile?.year}
+                schoolProfile={schoolProfile}
+                teacherProfile={teacherProfile}
             />
         )}
         {activeTab === 'inventory' && <InventoryTab inventory={inventory} onSave={handleSaveInventory} onDelete={handleDeleteInventory} onShowNotification={onShowNotification} classId={classId} />}

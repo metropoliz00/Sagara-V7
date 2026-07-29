@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { AcademicCalendarData, Holiday } from '../../types';
+import { AcademicCalendarData, Holiday, SchoolProfileData, TeacherProfileData } from '../../types';
 import { Calendar, Save, Loader2, RefreshCw, AlertTriangle, X, Lock, Edit2, FileDown, FileUp, ClipboardList, Zap, Info, Share2 } from 'lucide-react';
 import { CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIPTIONS_2025_2026 } from '../../constants';
 import * as XLSX from 'xlsx';
@@ -12,13 +12,15 @@ interface AcademicCalendarTabProps {
   classId: string;
   isReadOnly?: boolean; // NEW PROP
   schoolYear?: string; // NEW PROP
+  schoolProfile?: SchoolProfileData;
+  teacherProfile?: TeacherProfileData;
 }
 
 const HOLIDAY_CODES = ['LHB', 'LU', 'LS1', 'LS2', 'CB', 'LHR'];
 
 // ... (Holiday Descriptions and Prefilled Data remain the same)
 
-const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, onSave, onAddHoliday, onShowNotification, classId, isReadOnly = false, schoolYear }) => {
+const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, onSave, onAddHoliday, onShowNotification, classId, isReadOnly = false, schoolYear, schoolProfile, teacherProfile }) => {
   const getStartYearFromProp = () => {
     if (schoolYear && schoolYear.includes('/')) {
         return Number(schoolYear.split('/')[0]);
@@ -1046,43 +1048,63 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                 </tbody>
             </table>
 
-            {/* Rekapitulasi Hari Efektif & Keterangan Tambahan */}
-            <div className="mt-6 border-t border-gray-150 pt-5 font-sans no-print">
-                <div className="flex flex-col lg:flex-row gap-6 justify-between items-stretch">
-                    {/* Sisi Kiri: Rekapitulasi Hari Efektif sesuai Gambar */}
-                    <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm max-w-md w-full flex flex-col justify-between">
+            {/* Keterangan Kode Kalender, Rekapitulasi Hari Efektif & Tanda Tangan */}
+            <div className="mt-6 border-t border-gray-200 pt-5 font-sans">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 page-break-inside-avoid text-left">
+                    {/* Sisi Kiri (Col-span 7): Keterangan Kode Kalender */}
+                    <div className="md:col-span-7 bg-white p-4 rounded-xl border border-gray-300 shadow-sm flex flex-col justify-between">
                         <div>
-                            <h4 className="text-sm font-bold text-slate-850 mb-3.5 flex items-center gap-2 uppercase tracking-wide">
-                                <Info size={16} className="text-indigo-500" />
+                            <h4 className="text-xs font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
+                                <Info size={16} className="text-indigo-600 no-print" />
+                                Keterangan Kode Kalender
+                            </h4>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                                {Object.entries(CALENDAR_CODES).map(([code, value]) => (
+                                    <div key={code} className="flex items-center gap-2 border-b border-gray-100 pb-1">
+                                        <span className={`font-bold text-[9px] px-2 py-0.5 rounded uppercase text-center min-w-[36px] ${value.color || 'bg-gray-100 text-gray-800'}`}>
+                                            {code}
+                                        </span>
+                                        <span className="text-gray-700 font-medium truncate text-[11px]">: {value.label}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sisi Kanan (Col-span 5): Rekapitulasi Hari Efektif */}
+                    <div className="md:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
+                                <Info size={16} className="text-indigo-500 no-print" />
                                 Rekapitulasi Hari Efektif
                             </h4>
-                            <div className="space-y-3 text-xs text-slate-700 font-medium">
-                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-2">
+                            <div className="space-y-2.5 text-xs text-slate-700 font-medium">
+                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
                                     <span>Hari efektif Semester Ganjil</span>
                                     <div className="flex items-center gap-1">
                                         <span className="font-bold text-slate-400">:</span>
-                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-24 justify-end">
+                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
                                             <span className="text-indigo-600 text-sm font-black">{calendarMetrics.ganjilKbm}</span>
                                             <span className="text-[10px] text-slate-500 font-normal">hari</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-2">
+                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
                                     <span>Hari efektif Semester Genap</span>
                                     <div className="flex items-center gap-1">
                                         <span className="font-bold text-slate-400">:</span>
-                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-24 justify-end">
+                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
                                             <span className="text-indigo-600 text-sm font-black">{calendarMetrics.genapKbm}</span>
                                             <span className="text-[10px] text-slate-500 font-normal">hari</span>
                                         </div>
                                     </div>
                                 </div>
                                 {calendarMetrics.ktsCount > 0 && (
-                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-2">
+                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
                                         <span>KTS</span>
                                         <div className="flex items-center gap-1">
                                             <span className="font-bold text-slate-400">:</span>
-                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-24 justify-end">
+                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
                                                 <span className="text-purple-600 text-sm font-black">{calendarMetrics.ktsCount}</span>
                                                 <span className="text-[10px] text-slate-500 font-normal">hari</span>
                                             </div>
@@ -1090,11 +1112,11 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                                     </div>
                                 )}
                                 {calendarMetrics.mplsCount > 0 && (
-                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-2">
+                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
                                         <span>MPLS</span>
                                         <div className="flex items-center gap-1">
                                             <span className="font-bold text-slate-400">:</span>
-                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-24 justify-end">
+                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
                                                 <span className="text-teal-600 text-sm font-black">{calendarMetrics.mplsCount}</span>
                                                 <span className="text-[10px] text-slate-500 font-normal">hari</span>
                                             </div>
@@ -1103,40 +1125,29 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                                 )}
                             </div>
                         </div>
-                        <div className="text-xs text-slate-600 font-bold italic mt-4 pt-1.5 flex items-start gap-1">
-                            <span>* Libur Semester untuk murid</span>
+                        <div className="text-[10px] text-slate-500 italic mt-3 pt-1">
+                            * Libur Semester untuk murid & Hari libur Minggu (<span className="font-bold text-red-500">LU</span>)
                         </div>
                     </div>
-                    
-                    {/* Sisi Kanan: Agenda List untuk Kemudahan Peninjauan */}
-                    <div className="flex-1 bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-between">
-                        <div>
-                            <h4 className="text-xs font-bold text-gray-450 mb-3 uppercase tracking-wider">Rincian Hari Libur & Cuti Bersama Terdaftar</h4>
-                            {holidayDates.length > 0 ? (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 max-h-40 overflow-y-auto pr-1">
-                                    {holidayDates.slice(0, 14).map(({ date, code, defaultDesc, customDesc }) => {
-                                        const d = new Date(date);
-                                        const formattedDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-                                        const desc = customDesc || defaultDesc;
-                                        const codeColor = CALENDAR_CODES[code]?.color || 'bg-gray-100 text-gray-700';
-                                        return (
-                                            <div key={date} className="flex items-center gap-2 text-[11px] border-b border-gray-50 pb-1">
-                                                <span className={`px-1 rounded text-[9px] font-extrabold shrink-0 ${codeColor}`}>{code}</span>
-                                                <span className="text-gray-400 font-mono shrink-0">{formattedDate}</span>
-                                                <span className="text-gray-700 truncate font-semibold" title={desc}>{desc}</span>
-                                            </div>
-                                        );
-                                    })}
-                                    {holidayDates.length > 14 && (
-                                        <div className="text-[10px] text-gray-400 italic col-span-2 pt-1 text-right">
-                                            + {holidayDates.length - 14} hari libur lainnya terdaftar di tahun ajaran ini
-                                        </div>
-                                    )}
-                                </div>
-                            ) : (
-                                <p className="text-xs text-gray-400 italic">Belum ada hari libur nasional atau cuti bersama yang dimasukkan.</p>
-                            )}
-                        </div>
+                </div>
+
+                {/* Tanda Tangan Kepala Sekolah & Guru Kelas */}
+                <div className="mt-8 print:mt-6 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
+                    <div className="text-center w-[40%]">
+                        <p className="leading-tight">Mengetahui,</p>
+                        <p className="font-semibold leading-tight">Kepala {schoolProfile?.name || "Sekolah"}</p>
+                        <div className="h-14 print:h-10"></div>
+                        <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
+                        <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
+                    </div>
+                    <div className="text-center w-[40%]">
+                        <p className="leading-tight">
+                            {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </p>
+                        <p className="font-semibold leading-tight">Guru Kelas {classId}</p>
+                        <div className="h-14 print:h-10"></div>
+                        <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
+                        <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
                     </div>
                 </div>
             </div>

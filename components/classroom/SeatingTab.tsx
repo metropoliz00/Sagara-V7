@@ -25,7 +25,7 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
   const classTeacher = useMemo(() => {
     if (users && users.length > 0 && classId) {
       const foundTeacher = users.find(u => 
-        u.role === 'guru' && 
+        (u.role === 'guru' || u.role === 'admin' || u.role === 'Kepala Sekolah') && 
         u.classId && 
         String(u.classId).toLowerCase() === String(classId).toLowerCase()
       );
@@ -33,7 +33,7 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
       if (foundTeacher) {
         return {
           name: foundTeacher.fullName,
-          photo: foundTeacher.photo,
+          photo: foundTeacher.photo || (foundTeacher as any).avatar || teacherProfile?.photo,
         };
       }
     }
@@ -392,9 +392,16 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
               <div className="mb-8 print:mb-2 relative w-full flex justify-center px-10">
                 <div className="w-80 max-w-full h-24 print:h-12 bg-amber-800 rounded-lg shadow-md flex items-center gap-3 px-4 border border-amber-900 print:bg-white print:border-2 print:border-black">
                     {/* Visual Foto Guru */}
-                    <div className="w-14 h-14 print:w-8 print:h-8 rounded-full bg-amber-200 border-2 border-white overflow-hidden shrink-0 print:border-black">
-                      {classTeacher?.photo ? (
-                          <img src={classTeacher.photo} alt="Guru" className="w-full h-full object-cover object-top" />
+                    <div className="w-14 h-14 print:w-8 print:h-8 rounded-full bg-amber-200 border-2 border-white overflow-hidden shrink-0 print:border-black flex items-center justify-center">
+                      {classTeacher?.photo && !classTeacher.photo.startsWith('ERROR') ? (
+                          <img 
+                            src={classTeacher.photo} 
+                            alt="Guru" 
+                            className="w-full h-full object-cover object-top rounded-full"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
                       ) : (
                           <div className="w-full h-full flex items-center justify-center text-amber-800"><UserCircle size={28}/></div>
                       )}

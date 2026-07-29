@@ -69,10 +69,10 @@ const menuGroups: MenuGroup[] = [
         id: 'mutasi',
         label: 'Mutasi Siswa',
         icon: UsersRound,
-        roles: ['admin', 'guru', 'supervisor'],
+        roles: ['admin', 'supervisor'],
         subItems: [
-          { id: 'mutasi-masuk', label: 'Mutasi Masuk', icon: UserPlus, roles: ['admin', 'guru', 'supervisor'] },
-          { id: 'mutasi-keluar', label: 'Mutasi Keluar', icon: UserMinus, roles: ['admin', 'guru', 'supervisor'] },
+          { id: 'mutasi-masuk', label: 'Mutasi Masuk', icon: UserPlus, roles: ['admin', 'supervisor'] },
+          { id: 'mutasi-keluar', label: 'Mutasi Keluar', icon: UserMinus, roles: ['admin', 'supervisor'] },
         ]
       },
     ]

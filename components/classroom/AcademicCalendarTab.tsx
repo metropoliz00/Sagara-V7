@@ -1049,22 +1049,22 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
             </table>
 
             {/* Keterangan Kode Kalender, Rekapitulasi Hari Efektif & Tanda Tangan */}
-            <div className="mt-6 border-t border-gray-200 pt-5 font-sans">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-5 page-break-inside-avoid text-left">
+            <div className="mt-4 print:mt-3 border-t border-gray-200 pt-3 print:pt-2 font-sans">
+                <div className="grid grid-cols-12 gap-3 print:gap-2 page-break-inside-avoid text-left">
                     {/* Sisi Kiri (Col-span 7): Keterangan Kode Kalender */}
-                    <div className="md:col-span-7 bg-white p-4 rounded-xl border border-gray-300 shadow-sm flex flex-col justify-between">
+                    <div className="col-span-7 bg-white p-3 print:p-2.5 rounded-xl border border-gray-300 shadow-sm flex flex-col justify-between">
                         <div>
-                            <h4 className="text-xs font-bold text-gray-800 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b pb-2">
-                                <Info size={16} className="text-indigo-600 no-print" />
+                            <h4 className="text-xs print:text-[10px] font-bold text-gray-800 mb-2 uppercase tracking-wider flex items-center gap-1.5 border-b pb-1.5">
+                                <Info size={14} className="text-indigo-600 no-print" />
                                 Keterangan Kode Kalender
                             </h4>
-                            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                            <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs print:text-[9px]">
                                 {Object.entries(CALENDAR_CODES).map(([code, value]) => (
-                                    <div key={code} className="flex items-center gap-2 border-b border-gray-100 pb-1">
-                                        <span className={`font-bold text-[9px] px-2 py-0.5 rounded uppercase text-center min-w-[36px] ${value.color || 'bg-gray-100 text-gray-800'}`}>
+                                    <div key={code} className="flex items-center gap-1.5 border-b border-gray-100 pb-0.5">
+                                        <span className={`font-bold text-[9px] print:text-[8px] px-1.5 py-0.5 rounded uppercase text-center min-w-[32px] ${value.color || 'bg-gray-100 text-gray-800'}`}>
                                             {code}
                                         </span>
-                                        <span className="text-gray-700 font-medium truncate text-[11px]">: {value.label}</span>
+                                        <span className="text-gray-700 font-medium truncate text-[10px] print:text-[8.5px]">: {value.label}</span>
                                     </div>
                                 ))}
                             </div>
@@ -1072,71 +1072,71 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                     </div>
 
                     {/* Sisi Kanan (Col-span 5): Rekapitulasi Hari Efektif */}
-                    <div className="md:col-span-5 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <div className="col-span-5 bg-slate-50 p-3 print:p-2.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
                         <div>
-                            <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-2">
-                                <Info size={16} className="text-indigo-500 no-print" />
+                            <h4 className="text-xs print:text-[10px] font-bold text-slate-800 mb-2 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-200 pb-1.5">
+                                <Info size={14} className="text-indigo-500 no-print" />
                                 Rekapitulasi Hari Efektif
                             </h4>
-                            <div className="space-y-2.5 text-xs text-slate-700 font-medium">
-                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
+                            <div className="space-y-1.5 text-xs print:text-[9.5px] text-slate-700 font-medium">
+                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1">
                                     <span>Hari efektif Semester Ganjil</span>
                                     <div className="flex items-center gap-1">
                                         <span className="font-bold text-slate-400">:</span>
-                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
-                                            <span className="text-indigo-600 text-sm font-black">{calendarMetrics.ganjilKbm}</span>
-                                            <span className="text-[10px] text-slate-500 font-normal">hari</span>
+                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-16 justify-end">
+                                            <span className="text-indigo-600 text-xs print:text-[11px] font-black">{calendarMetrics.ganjilKbm}</span>
+                                            <span className="text-[9px] text-slate-500 font-normal">hari</span>
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
+                                <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1">
                                     <span>Hari efektif Semester Genap</span>
                                     <div className="flex items-center gap-1">
                                         <span className="font-bold text-slate-400">:</span>
-                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
-                                            <span className="text-indigo-600 text-sm font-black">{calendarMetrics.genapKbm}</span>
-                                            <span className="text-[10px] text-slate-500 font-normal">hari</span>
+                                        <div className="flex items-baseline gap-1 font-bold text-slate-900 w-16 justify-end">
+                                            <span className="text-indigo-600 text-xs print:text-[11px] font-black">{calendarMetrics.genapKbm}</span>
+                                            <span className="text-[9px] text-slate-500 font-normal">hari</span>
                                         </div>
                                     </div>
                                 </div>
                                 {calendarMetrics.ktsCount > 0 && (
-                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
+                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1">
                                         <span>KTS</span>
                                         <div className="flex items-center gap-1">
                                             <span className="font-bold text-slate-400">:</span>
-                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
-                                                <span className="text-purple-600 text-sm font-black">{calendarMetrics.ktsCount}</span>
-                                                <span className="text-[10px] text-slate-500 font-normal">hari</span>
+                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-16 justify-end">
+                                                <span className="text-purple-600 text-xs print:text-[11px] font-black">{calendarMetrics.ktsCount}</span>
+                                                <span className="text-[9px] text-slate-500 font-normal">hari</span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                                 {calendarMetrics.mplsCount > 0 && (
-                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1.5">
+                                    <div className="flex items-center justify-between border-b border-dashed border-slate-300 pb-1">
                                         <span>MPLS</span>
                                         <div className="flex items-center gap-1">
                                             <span className="font-bold text-slate-400">:</span>
-                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-20 justify-end">
-                                                <span className="text-teal-600 text-sm font-black">{calendarMetrics.mplsCount}</span>
-                                                <span className="text-[10px] text-slate-500 font-normal">hari</span>
+                                            <div className="flex items-baseline gap-1 font-bold text-slate-900 w-16 justify-end">
+                                                <span className="text-teal-600 text-xs print:text-[11px] font-black">{calendarMetrics.mplsCount}</span>
+                                                <span className="text-[9px] text-slate-500 font-normal">hari</span>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
                         </div>
-                        <div className="text-[10px] text-slate-500 italic mt-3 pt-1">
+                        <div className="text-[9px] text-slate-500 italic mt-2 pt-0.5">
                             * Libur Semester untuk murid & Hari libur Minggu (<span className="font-bold text-red-500">LU</span>)
                         </div>
                     </div>
                 </div>
 
                 {/* Tanda Tangan Kepala Sekolah & Guru Kelas */}
-                <div className="mt-8 print:mt-6 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
+                <div className="mt-5 print:mt-3 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
                     <div className="text-center w-[40%]">
                         <p className="leading-tight">Mengetahui,</p>
                         <p className="font-semibold leading-tight">Kepala {schoolProfile?.name || "Sekolah"}</p>
-                        <div className="h-14 print:h-10"></div>
+                        <div className="h-11 print:h-8"></div>
                         <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
                         <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
                     </div>
@@ -1145,7 +1145,7 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                             {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </p>
                         <p className="font-semibold leading-tight">Guru Kelas {classId}</p>
-                        <div className="h-14 print:h-10"></div>
+                        <div className="h-11 print:h-8"></div>
                         <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
                         <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
                     </div>

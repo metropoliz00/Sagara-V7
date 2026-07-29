@@ -42,7 +42,7 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({
       styleTag.id = 'sagara-dynamic-print-style';
       document.head.appendChild(styleTag);
     }
-    styleTag.innerHTML = `@media print { @page { size: A4 ${currentOrientation}; margin: 10mm; } }`;
+    styleTag.innerHTML = `@media print { @page { size: A4 ${currentOrientation}; margin: 5mm 8mm; } }`;
 
     // Target the A4 sheet element inside PrintPreview
     const sheetElement = document.querySelector('.sagara-a4-sheet') || document.getElementById('print-area');

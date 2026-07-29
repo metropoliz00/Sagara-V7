@@ -280,13 +280,13 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
                                             onDragOver={(e) => handleDragOver(e, day, time)}
                                             onDrop={(e) => handleDrop(e, day, time)}
                                             onDragLeave={() => setDragOverCell(null)}
-                                            className={`p-1 border align-top h-20 transition-colors ${isDragOver ? 'bg-indigo-100 border-2 border-dashed border-indigo-400' : ''}`}
+                                            className={`p-1 print:p-0.5 border align-top h-20 print:h-auto transition-colors ${isDragOver ? 'bg-indigo-100 border-2 border-dashed border-indigo-400' : ''}`}
                                         >
                                             {item && (
                                                 <div 
                                                   draggable
                                                   onDragStart={(e) => handleDragStart(e, {subject: item.subject, isBreak}, {day, time})}
-                                                  className={`relative group p-2 rounded-lg h-full flex flex-col justify-center text-center font-bold text-xs cursor-grab active:cursor-grabbing shadow-sm
+                                                  className={`relative group p-2 print:p-1 rounded-lg h-full flex flex-col justify-center text-center font-bold text-xs print:text-[10px] cursor-grab active:cursor-grabbing shadow-sm
                                                     ${isBreak ? 'bg-slate-600 text-white' : getSubjectColor(item.subject)}`}
                                                 >
                                                   {isBreak && <Coffee size={14} className="mx-auto mb-1"/>}

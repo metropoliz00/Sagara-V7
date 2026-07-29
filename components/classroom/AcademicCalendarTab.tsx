@@ -995,11 +995,11 @@ const AcademicCalendarTab: React.FC<AcademicCalendarTabProps> = ({ initialData, 
                                     }
 
                                     return (
-                                        <td key={day} className={`p-0 border relative group h-6 sm:h-7 ${isDisabled ? 'bg-gray-200' : ''}`} title={tooltipText}>
+                                        <td key={day} className={`p-0 border relative group h-6 sm:h-7 print:h-4 ${isDisabled ? 'bg-gray-200' : ''}`} title={tooltipText}>
                                             {!isDisabled && (
                                                 <>
                                                     {isReadOnly ? (
-                                                        <div className={`w-full h-full min-h-[24px] flex items-center justify-center text-center font-bold text-[9px] ${codeInfo ? codeInfo.color : 'bg-white text-gray-700'}`}>
+                                                        <div className={`w-full h-full min-h-[24px] print:min-h-0 flex items-center justify-center text-center font-bold text-[9px] print:text-[8px] ${codeInfo ? codeInfo.color : 'bg-white text-gray-700'}`}>
                                                             {content}
                                                         </div>
                                                     ) : (

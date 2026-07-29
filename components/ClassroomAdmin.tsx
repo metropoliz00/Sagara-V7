@@ -449,7 +449,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
       <div className="fixed inset-0 z-[200] bg-gradient-to-br from-indigo-50/90 via-white to-purple-50/90 overflow-y-auto p-4 md:p-6 flex flex-col space-y-4 text-left">
         <style>{`
           .sagara-a4-sheet {
-            padding: 15mm !important;
+            padding: 10mm 12mm !important;
             color: #000000 !important;
           }
           .sagara-a4-sheet .no-print,
@@ -496,6 +496,46 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
             width: auto !important;
             pointer-events: none !important;
           }
+          @media print {
+            @page {
+              size: A4 ${activeTab === 'schedule' || activeTab === 'calendar' || activeTab === 'seating' ? 'landscape' : 'portrait'};
+              margin: 4mm 6mm !important;
+            }
+            html, body {
+              height: 100% !important;
+              max-height: 100vh !important;
+              overflow: hidden !important;
+            }
+            .sagara-a4-sheet,
+            #sagara-cloned-print-content,
+            .sagara-print-content {
+              padding: 0 !important;
+              margin: 0 !important;
+              box-shadow: none !important;
+              border: none !important;
+              width: 100% !important;
+              max-height: 100% !important;
+              box-sizing: border-box !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              break-after: avoid !important;
+              overflow: hidden !important;
+            }
+            /* Table & cell compacting */
+            .sagara-a4-sheet table, .sagara-print-content table {
+              font-size: 9px !important;
+            }
+            .sagara-a4-sheet th, .sagara-a4-sheet td,
+            .sagara-print-content th, .sagara-print-content td {
+              padding: 2px 3px !important;
+            }
+            .sagara-a4-sheet td.h-20, .sagara-print-content td.h-20 {
+              height: auto !important;
+              padding: 2px !important;
+            }
+          }
         `}</style>
 
         <div className="flex items-center justify-between no-print max-w-7xl mx-auto w-full pt-2">
@@ -524,48 +564,48 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
             orientation={activeTab === 'schedule' || activeTab === 'calendar' || activeTab === 'seating' ? 'landscape' : 'portrait'}
           >
             {/* Kop Surat (Indonesian Official Header) */}
-            <div className="flex items-center justify-between border-b-4 border-double border-black pb-3 mb-6 text-center text-black font-sans">
-              <div className="w-16 h-16 shrink-0 flex items-center justify-center">
+            <div className="flex items-center justify-between border-b-4 border-double border-black pb-2 mb-3 print:pb-1 print:mb-2 text-center text-black font-sans">
+              <div className="w-12 h-12 print:w-10 print:h-10 shrink-0 flex items-center justify-center">
                 {schoolProfile?.regencyLogo ? (
                   <img src={schoolProfile.regencyLogo} alt="Logo Daerah" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-12 h-12 rounded-full border border-black flex items-center justify-center font-bold text-xs uppercase">LOGO</div>
+                  <div className="w-10 h-10 rounded-full border border-black flex items-center justify-center font-bold text-[10px] uppercase">LOGO</div>
                 )}
               </div>
               
-              <div className="flex-1 text-center px-4 font-sans">
-                <h3 className="text-sm font-semibold uppercase tracking-wider leading-tight">PEMERINTAH KABUPATEN {schoolProfile?.kabupaten?.toUpperCase() || "TUBAN"}</h3>
-                <h4 className="text-xs font-bold uppercase tracking-wider leading-tight mt-0.5">DINAS PENDIDIKAN</h4>
-                <h2 className="text-sm font-black uppercase tracking-widest leading-normal mt-0.5">{schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
+              <div className="flex-1 text-center px-2 font-sans">
+                <h3 className="text-xs print:text-[11px] font-semibold uppercase tracking-wider leading-tight">PEMERINTAH KABUPATEN {schoolProfile?.kabupaten?.toUpperCase() || "TUBAN"}</h3>
+                <h4 className="text-[11px] print:text-[10px] font-bold uppercase tracking-wider leading-tight mt-0.5">DINAS PENDIDIKAN</h4>
+                <h2 className="text-xs print:text-[11px] font-black uppercase tracking-widest leading-normal mt-0.5">{schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
                 {(schoolProfile?.address || schoolProfile?.postalCode) ? (
-                  <p className="text-[10px] font-medium leading-relaxed mt-0.5 font-sans text-gray-700">
+                  <p className="text-[9px] print:text-[8px] font-medium leading-tight mt-0.5 font-sans text-gray-700">
                     {schoolProfile?.address ? `Alamat: ${schoolProfile.address}` : ''}
                     {schoolProfile?.address && schoolProfile?.postalCode ? ' • ' : ''}
                     {schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : ''}
                   </p>
                 ) : null}
                 {schoolProfile?.email ? (
-                  <p className="text-[9px] font-sans text-gray-500">
+                  <p className="text-[9px] print:text-[8px] font-sans text-gray-500">
                     Email: {schoolProfile.email}
                   </p>
                 ) : null}
               </div>
               
-              <div className="w-16 h-16 shrink-0 flex items-center justify-center font-sans">
+              <div className="w-12 h-12 print:w-10 print:h-10 shrink-0 flex items-center justify-center font-sans">
                 {schoolProfile?.schoolLogo ? (
                   <img src={schoolProfile.schoolLogo} alt="Logo Sekolah" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-16 h-16 invisible"></div>
+                  <div className="w-10 h-10 invisible"></div>
                 )}
               </div>
             </div>
 
             {/* Document Title Block */}
-            <div className="text-center mb-6 text-black font-sans">
-              <h2 className="text-base font-bold uppercase tracking-wider underline leading-none">
+            <div className="text-center mb-3 print:mb-2 text-black font-sans">
+              <h2 className="text-sm print:text-xs font-bold uppercase tracking-wider underline leading-none">
                 {docTitle} KELAS {classId}
               </h2>
-              <p className="text-xs font-semibold tracking-wide mt-1.5 uppercase">
+              <p className="text-[11px] print:text-[10px] font-semibold tracking-wide mt-1 uppercase">
                 TAHUN AJARAN {schoolProfile?.year || "2025/2026"} - SEMESTER {schoolProfile?.semester || "1"}
               </p>
             </div>
@@ -671,22 +711,22 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
             )}
 
             {/* Official Signatures Section */}
-            <div className="mt-10 flex justify-between text-xs text-black font-sans page-break-inside-avoid">
+            <div className="mt-4 print:mt-2 flex justify-between text-xs print:text-[10px] text-black font-sans page-break-inside-avoid">
               <div className="text-center w-[40%]">
-                <p className="leading-normal">Mengetahui,</p>
-                <p className="font-semibold leading-normal">Kepala {schoolProfile?.name || "Sekolah"}</p>
-                <div className="h-20"></div>
+                <p className="leading-tight">Mengetahui,</p>
+                <p className="font-semibold leading-tight">Kepala {schoolProfile?.name || "Sekolah"}</p>
+                <div className="h-12 print:h-10"></div>
                 <p className="font-bold underline leading-none">{schoolProfile?.headmaster || "[Nama Kepala Sekolah]"}</p>
-                <p className="mt-1 leading-none text-[10px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
+                <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {schoolProfile?.headmasterNip || "[NIP Kepala Sekolah]"}</p>
               </div>
               <div className="text-center w-[40%]">
-                <p className="leading-normal">
+                <p className="leading-tight">
                   {schoolProfile?.desa ? `${schoolProfile.desa}, ` : ""}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
-                <p className="font-semibold leading-normal">Guru Kelas {classId}</p>
-                <div className="h-20"></div>
+                <p className="font-semibold leading-tight">Guru Kelas {classId}</p>
+                <div className="h-12 print:h-10"></div>
                 <p className="font-bold underline leading-none">{teacherProfile?.name || "[Nama Guru]"}</p>
-                <p className="mt-1 leading-none text-[10px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
+                <p className="mt-1 leading-none text-[10px] print:text-[8px]">NIP. {teacherProfile?.nip || "[NIP Guru]"}</p>
               </div>
             </div>
           </PrintPreview>

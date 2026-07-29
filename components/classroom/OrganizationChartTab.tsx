@@ -240,24 +240,24 @@ const OrganizationChartTab: React.FC<OrganizationChartTabProps> = ({ students, t
                         <Save size={16} /> {isSaving ? 'Menyimpan...' : 'Simpan Struktur'}
                     </button>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm min-h-[600px] text-center overflow-x-auto custom-scrollbar">
-                    <div className="min-w-[800px] md:min-w-0">
+                <div className="bg-white p-6 print:p-0 rounded-xl border border-gray-200 print:border-0 shadow-sm print:shadow-none min-h-[600px] print:min-h-0 text-center overflow-x-auto custom-scrollbar">
+                    <div className="min-w-[800px] md:min-w-0 print:min-w-0">
                         <h3 className="font-bold text-xl uppercase mb-8 no-print">STRUKTUR ORGANISASI KELAS {classId}</h3>
                     
                     {/* Level 1: Guru */}
-                    <div className="flex justify-center mb-4">
+                    <div className="flex justify-center mb-4 print:mb-1">
                         <div className="flex flex-col items-center">
-                            <span className="text-xs font-bold text-gray-400 uppercase">Guru Kelas {classId}</span>
-                            <div className="w-80 max-w-full min-h-[6rem] h-auto mt-1 rounded-lg flex items-center justify-center p-4 text-center bg-amber-100 border-2 border-amber-200 shadow-lg">
+                            <span className="text-xs print:text-[10px] font-bold text-gray-400 uppercase">Guru Kelas {classId}</span>
+                            <div className="w-80 max-w-full min-h-[6rem] print:min-h-0 h-auto mt-1 rounded-lg flex items-center justify-center p-4 print:p-1.5 text-center bg-amber-100 border-2 border-amber-200 shadow-lg print:shadow-none">
                                 <div className="flex flex-col items-center" title={classTeacher?.name || 'Belum ada guru'}>
                                     {classTeacher?.photo ? (
-                                        <img src={classTeacher.photo} alt={classTeacher.name} className="w-12 h-12 rounded-full object-cover object-top mb-1.5 shadow-sm border border-white"/>
+                                        <img src={classTeacher.photo} alt={classTeacher.name} className="w-12 h-12 print:w-8 print:h-8 rounded-full object-cover object-top mb-1.5 print:mb-0.5 shadow-sm border border-white"/>
                                     ) : (
-                                        <div className="w-12 h-12 rounded-full bg-amber-300 flex items-center justify-center text-amber-700 mb-1.5 shadow-sm">
+                                        <div className="w-12 h-12 print:w-8 print:h-8 rounded-full bg-amber-300 flex items-center justify-center text-amber-700 mb-1.5 print:mb-0.5 shadow-sm">
                                             <UserIcon size={24} />
                                         </div>
                                     )}
-                                    <p className="text-xs md:text-sm font-bold text-gray-800 leading-tight break-words px-2">
+                                    <p className="text-xs md:text-sm print:text-xs font-bold text-gray-800 leading-tight break-words px-2">
                                         {classTeacher?.name || 'Wali Kelas Belum Diatur'}
                                     </p>
                                 </div>
@@ -265,23 +265,23 @@ const OrganizationChartTab: React.FC<OrganizationChartTabProps> = ({ students, t
                         </div>
                     </div>
                     {/* Connecting Line */}
-                    <div className="w-px h-8 bg-gray-300 mx-auto"></div>
+                    <div className="w-px h-8 print:h-2 bg-gray-300 mx-auto"></div>
                     
                     {/* Level 2: Ketua Kelas */}
-                    <div className="flex justify-center mb-4">
+                    <div className="flex justify-center mb-4 print:mb-1">
                         <RoleBox roleId="president" label="Ketua Kelas" />
                     </div>
 
                     {/* Connecting Line */}
-                    <div className="w-px h-8 bg-gray-300 mx-auto"></div>
+                    <div className="w-px h-8 print:h-2 bg-gray-300 mx-auto"></div>
 
                     {/* Level 3: Wakil Ketua Kelas */}
-                    <div className="flex justify-center mb-4">
+                    <div className="flex justify-center mb-4 print:mb-1">
                         <RoleBox roleId="vicePresident" label="Wakil Ketua" />
                     </div>
                     
                     {/* Connecting Lines */}
-                    <div className="w-1/2 h-8 border-l border-r border-t border-gray-300 mx-auto"></div>
+                    <div className="w-1/2 h-8 print:h-2 border-l border-r border-t border-gray-300 mx-auto"></div>
                     
                     {/* Level 4: Sekretaris & Bendahara */}
                     <div className="grid grid-cols-2 gap-4 mb-8">

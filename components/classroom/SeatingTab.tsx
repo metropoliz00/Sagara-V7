@@ -366,7 +366,7 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
        )}
 
        {/* Main: Classroom Layout */}
-       <div className="flex-1 bg-slate-100 p-6 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-start md:items-center min-h-[700px] print:bg-white print:border-2 print:border-black print:w-full print:p-0 relative overflow-auto">
+       <div className="flex-1 bg-slate-100 p-6 rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-start md:items-center min-h-[700px] print:min-h-0 print:bg-white print:border-0 print:w-full print:p-0 relative overflow-auto">
           
           {/* Layout Controls & Show Panel Button */}
           <div className="absolute top-4 left-6 right-4 flex justify-between items-center no-print z-20">
@@ -382,17 +382,17 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
               </div>
           </div>
 
-          <div className="w-full min-w-[800px] py-4 pt-16 md:pt-4">
+          <div className="w-full min-w-[800px] print:min-w-0 py-4 pt-16 md:pt-4 print:py-0 print:pt-0">
               {/* Papan Tulis */}
-              <div className="w-1/2 h-8 bg-slate-700 rounded-b-lg shadow-lg mb-8 flex items-center justify-center border-b-4 border-slate-800 print:bg-white print:border-2 print:border-black print:text-black print:border-t-0 mx-auto">
+              <div className="w-1/2 h-8 print:h-6 bg-slate-700 rounded-b-lg shadow-lg mb-8 print:mb-2 flex items-center justify-center border-b-4 border-slate-800 print:bg-white print:border-2 print:border-black print:text-black print:border-t-0 mx-auto">
                 <span className="text-white font-bold tracking-[0.5em] text-xs print:text-black">PAPAN TULIS</span>
               </div>
 
               {/* Meja Guru (CENTERED & VISUAL UPDATE) */}
-              <div className="mb-8 relative w-full flex justify-center px-10">
-                <div className="w-80 max-w-full h-24 bg-amber-800 rounded-lg shadow-md flex items-center gap-3 px-4 border border-amber-900 print:bg-white print:border-2 print:border-black">
+              <div className="mb-8 print:mb-2 relative w-full flex justify-center px-10">
+                <div className="w-80 max-w-full h-24 print:h-12 bg-amber-800 rounded-lg shadow-md flex items-center gap-3 px-4 border border-amber-900 print:bg-white print:border-2 print:border-black">
                     {/* Visual Foto Guru */}
-                    <div className="w-14 h-14 rounded-full bg-amber-200 border-2 border-white overflow-hidden shrink-0 print:border-black">
+                    <div className="w-14 h-14 print:w-8 print:h-8 rounded-full bg-amber-200 border-2 border-white overflow-hidden shrink-0 print:border-black">
                       {classTeacher?.photo ? (
                           <img src={classTeacher.photo} alt="Guru" className="w-full h-full object-cover object-top" />
                       ) : (
@@ -400,8 +400,8 @@ const SeatingTab: React.FC<SeatingTabProps> = ({ seatingLayouts, setSeatingLayou
                       )}
                     </div>
                     <div className="flex flex-col overflow-hidden text-left">
-                        <span className="text-amber-100 font-bold text-[10px] uppercase tracking-wider print:text-black">MEJA GURU</span>
-                        <span className="text-white font-semibold text-xs leading-tight print:text-black break-words md:text-sm">
+                        <span className="text-amber-100 font-bold text-[10px] print:text-[8px] uppercase tracking-wider print:text-black">MEJA GURU</span>
+                        <span className="text-white font-semibold text-xs print:text-[10px] leading-tight print:text-black break-words md:text-sm">
                           {classTeacher?.name || 'Wali Kelas'}
                         </span>
                     </div>

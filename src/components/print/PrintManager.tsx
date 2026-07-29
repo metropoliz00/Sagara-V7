@@ -68,6 +68,24 @@ export const PrintManager: React.FC<PrintManagerProps> = ({
     // Locate target content inside containerRef or #print-area
     const printArea = containerRef.current?.querySelector('#print-area') || containerRef.current;
     if (printArea && standaloneContainer) {
+      // Sync form input values to attributes before cloning
+      printArea.querySelectorAll('input, select, textarea').forEach((el) => {
+        if (el instanceof HTMLInputElement) {
+          el.setAttribute('value', el.value);
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            if (el.checked) el.setAttribute('checked', 'checked');
+            else el.removeAttribute('checked');
+          }
+        } else if (el instanceof HTMLTextAreaElement) {
+          el.textContent = el.value;
+        } else if (el instanceof HTMLSelectElement) {
+          const selectedOption = el.options[el.selectedIndex];
+          if (selectedOption) {
+            selectedOption.setAttribute('selected', 'selected');
+          }
+        }
+      });
+
       standaloneContainer.innerHTML = '';
       const clonedContent = printArea.cloneNode(true) as HTMLElement;
       clonedContent.id = 'sagara-cloned-print-content';
@@ -75,6 +93,7 @@ export const PrintManager: React.FC<PrintManagerProps> = ({
         orientation === 'landscape' ? 'print-landscape' : 'print-portrait'
       }`;
       standaloneContainer.appendChild(clonedContent);
+      document.body.classList.add('has-standalone-print');
     }
 
     if (onPrint) {
@@ -90,6 +109,7 @@ export const PrintManager: React.FC<PrintManagerProps> = ({
         document.title = originalTitle;
       }
       document.body.classList.remove('print-orientation-landscape');
+      document.body.classList.remove('has-standalone-print');
       const containerToRemove = document.getElementById('sagara-standalone-print-container');
       if (containerToRemove) {
         containerToRemove.innerHTML = '';

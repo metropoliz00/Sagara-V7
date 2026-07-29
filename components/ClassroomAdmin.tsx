@@ -454,9 +454,15 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
           }
           .sagara-a4-sheet .no-print,
           .sagara-a4-sheet button:not(.print-button),
-          .sagara-a4-sheet select,
           .sagara-a4-sheet .no-print-preview {
             display: none !important;
+          }
+          .sagara-a4-sheet select {
+            border: none !important;
+            background: transparent !important;
+            appearance: none !important;
+            -webkit-appearance: none !important;
+            pointer-events: none !important;
           }
           .sagara-a4-sheet .print-only,
           .sagara-a4-sheet .print-only-inline,

@@ -32,8 +32,8 @@
     print-color-adjust: exact !important;
   }
 
-  /* Hide main React App root on print when standalone print container exists */
-  #root {
+  /* Hide main React App root on print ONLY when standalone print container exists */
+  body.has-standalone-print #root {
     display: none !important;
   }
 

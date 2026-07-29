@@ -59,6 +59,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
       }
 
       standaloneContainer.innerHTML = printElement.outerHTML;
+      document.body.classList.add('has-standalone-print');
 
       let styleTag = document.getElementById('sagara-dynamic-print-style');
       if (!styleTag) {
@@ -77,6 +78,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
       const cleanup = () => {
         document.title = originalTitle;
+        document.body.classList.remove('has-standalone-print');
         if (standaloneContainer) {
           standaloneContainer.innerHTML = '';
         }

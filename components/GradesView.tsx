@@ -797,6 +797,7 @@ const GradesView: React.FC<GradesViewProps> = ({
         document.body.appendChild(standaloneContainer);
       }
       standaloneContainer.innerHTML = htmlContent;
+      document.body.classList.add('has-standalone-print');
 
       // 2. Add dynamic print orientation style
       let styleTag = document.getElementById('sagara-dynamic-print-style');
@@ -820,6 +821,7 @@ const GradesView: React.FC<GradesViewProps> = ({
       // 5. Cleanup after print dialog finishes
       const cleanup = () => {
         document.title = originalTitle;
+        document.body.classList.remove('has-standalone-print');
         if (standaloneContainer) {
           standaloneContainer.innerHTML = '';
         }

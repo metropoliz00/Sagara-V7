@@ -43,6 +43,24 @@ export const usePrint = (options?: UsePrintOptions) => {
       // Mobile-Safe Print Engine Isolation: clone target directly to document.body
       const printTarget = document.getElementById(activeTargetId) || document.querySelector('.sagara-print-content');
       if (printTarget) {
+        // Sync form input values to attributes before cloning
+        printTarget.querySelectorAll('input, select, textarea').forEach((el) => {
+          if (el instanceof HTMLInputElement) {
+            el.setAttribute('value', el.value);
+            if (el.type === 'checkbox' || el.type === 'radio') {
+              if (el.checked) el.setAttribute('checked', 'checked');
+              else el.removeAttribute('checked');
+            }
+          } else if (el instanceof HTMLTextAreaElement) {
+            el.textContent = el.value;
+          } else if (el instanceof HTMLSelectElement) {
+            const selectedOption = el.options[el.selectedIndex];
+            if (selectedOption) {
+              selectedOption.setAttribute('selected', 'selected');
+            }
+          }
+        });
+
         let standaloneContainer = document.getElementById('sagara-standalone-print-container');
         if (!standaloneContainer) {
           standaloneContainer = document.createElement('div');
@@ -56,6 +74,7 @@ export const usePrint = (options?: UsePrintOptions) => {
           activeOrientation === 'landscape' ? 'print-landscape' : 'print-portrait'
         }`;
         standaloneContainer.appendChild(clonedContent);
+        document.body.classList.add('has-standalone-print');
       }
 
       // Trigger standard browser print window
@@ -67,6 +86,7 @@ export const usePrint = (options?: UsePrintOptions) => {
           document.title = originalTitle;
         }
         document.body.classList.remove('print-orientation-landscape');
+        document.body.classList.remove('has-standalone-print');
         const containerToRemove = document.getElementById('sagara-standalone-print-container');
         if (containerToRemove) {
           containerToRemove.innerHTML = '';

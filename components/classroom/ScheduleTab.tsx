@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Save, X, Coffee, GripVertical, Flag, BookOpen, BrainCircuit, Users, Plus, Trash2 } from 'lucide-react';
+import { Clock, Save, X, Coffee, GripVertical, Flag, BookOpen, BrainCircuit, Users, Plus, Trash2, Video } from 'lucide-react';
 import { WEEKDAYS, MOCK_SUBJECTS } from '../../constants';
 import { ScheduleItem } from '../../types';
 
@@ -49,6 +49,36 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
   const [isSaving, setIsSaving] = useState(false);
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [dragOverCell, setDragOverCell] = useState<{ day: string, time: string } | null>(null);
+
+  // States for virtual class links
+  const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
+  const [meetUrlInput, setMeetUrlInput] = useState('');
+  const [zoomUrlInput, setZoomUrlInput] = useState('');
+
+  const openEditLinks = (item: ScheduleItem) => {
+    setEditingItem(item);
+    setMeetUrlInput(item.meetUrl || '');
+    setZoomUrlInput(item.zoomUrl || '');
+  };
+
+  const handleSaveLinks = () => {
+    if (!editingItem) return;
+
+    const updatedSchedule = localSchedule.map(item => {
+      if (item.id === editingItem.id) {
+        return {
+          ...item,
+          meetUrl: meetUrlInput.trim() || undefined,
+          zoomUrl: zoomUrlInput.trim() || undefined
+        };
+      }
+      return item;
+    });
+
+    setLocalSchedule(updatedSchedule);
+    setEditingItem(null);
+    onShowNotification(`Link kelas virtual berhasil diperbarui untuk mata pelajaran ${editingItem.subject}`, 'success');
+  };
 
   useEffect(() => {
     setLocalSchedule(schedule);
@@ -183,7 +213,8 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
   };
   
   return (
-    <div className="flex flex-col lg:flex-row gap-6">
+    <>
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* Left: Palette */}
         <div className="lg:w-64 shrink-0 space-y-4 no-print">
             <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
@@ -297,6 +328,28 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
                                                   >
                                                     <X size={10}/>
                                                   </button>
+                                                  {!isBreak && (
+                                                    <button 
+                                                      onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        openEditLinks(item);
+                                                      }}
+                                                      className="absolute bottom-1 right-1 w-5 h-5 bg-black/20 hover:bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity no-print"
+                                                      title="Atur Link Meet/Zoom"
+                                                    >
+                                                      <Video size={10}/>
+                                                    </button>
+                                                  )}
+                                                  {!isBreak && (item.meetUrl || item.zoomUrl) && (
+                                                    <div className="absolute bottom-1 left-1 flex gap-0.5 no-print">
+                                                      {item.meetUrl && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-green-500" title="Google Meet Tersedia" />
+                                                      )}
+                                                      {item.zoomUrl && (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500" title="Zoom Tersedia" />
+                                                      )}
+                                                    </div>
+                                                  )}
                                                 </div>
                                             )}
                                         </td>
@@ -309,6 +362,89 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
             </div>
         </div>
     </div>
+
+      {/* Meet & Zoom Links Editing Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 max-w-md w-full animate-scale-up">
+            <div className="flex justify-between items-center mb-6 pb-4 border-b">
+              <div>
+                <h3 className="font-bold text-gray-800 text-lg">Penyematan Link Virtual</h3>
+                <p className="text-xs text-indigo-600 font-semibold mt-0.5">Mata Pelajaran: {editingItem.subject}</p>
+              </div>
+              <button 
+                onClick={() => setEditingItem(null)} 
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1 bg-gray-50 rounded-xl"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
+                  Link Google Meet
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-500">
+                    <Video size={16} />
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://meet.google.com/..."
+                    value={meetUrlInput}
+                    onChange={(e) => setMeetUrlInput(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium text-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
+                  Link Zoom Meeting
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-sky-500">
+                    <Video size={16} />
+                  </div>
+                  <input
+                    type="url"
+                    placeholder="https://us02web.zoom.us/j/..."
+                    value={zoomUrlInput}
+                    onChange={(e) => setZoomUrlInput(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium text-gray-700"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-amber-50/70 rounded-2xl p-3 border border-amber-100 flex items-start gap-2.5">
+                <span className="text-amber-600 text-sm font-bold mt-0.5">⚠️</span>
+                <p className="text-[10.5px] text-amber-800 leading-relaxed font-semibold">
+                  Siswa akan dapat mengklik langsung link ini dari portal belajar mereka untuk bergabung ke kelas virtual. Pastikan link yang Anda masukkan aktif dan valid.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 mt-6 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setEditingItem(null)}
+                className="flex-1 px-4 py-2.5 border border-gray-200 text-gray-600 font-bold rounded-xl text-xs hover:bg-gray-50 transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveLinks}
+                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-colors"
+              >
+                Simpan Tautan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 

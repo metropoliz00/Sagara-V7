@@ -10,7 +10,7 @@ import {
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
   Edit, Save, Loader2, PlusCircle, History, MessageSquare,
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
-  Camera, ChevronLeft, ChevronRight, Link2, Download,
+  Camera, ChevronLeft, ChevronRight, Link2, Download, Video,
   Sun, Moon, CloudSun, Sunset, Coffee, Youtube, Printer, ExternalLink,
   Calculator, Globe, Compass, Music, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
@@ -2941,6 +2941,32 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                            <Clock size={12} className="mr-1.5 opacity-60" />
                                                            <span className="text-xs font-bold opacity-80">{item.time}</span>
                                                       </div>
+                                                      {!isBreak && (item.meetUrl || item.zoomUrl) && (
+                                                          <div className="flex flex-wrap gap-1.5 mt-2">
+                                                              {item.meetUrl && (
+                                                                  <a 
+                                                                      href={item.meetUrl.startsWith('http') ? item.meetUrl : `https://${item.meetUrl}`}
+                                                                      target="_blank"
+                                                                      rel="noopener noreferrer"
+                                                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                  >
+                                                                      <Video size={11} />
+                                                                      <span>Meet</span>
+                                                                  </a>
+                                                              )}
+                                                              {item.zoomUrl && (
+                                                                  <a 
+                                                                      href={item.zoomUrl.startsWith('http') ? item.zoomUrl : `https://${item.zoomUrl}`}
+                                                                      target="_blank"
+                                                                      rel="noopener noreferrer"
+                                                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                  >
+                                                                      <Video size={11} />
+                                                                      <span>Zoom</span>
+                                                                  </a>
+                                                              )}
+                                                          </div>
+                                                      )}
                                                       {isTeacherPresent && teacherName && (
                                                           <div className="flex items-center mt-2 bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-md w-fit">
                                                               <CheckCircle size={12} className="mr-1.5" />

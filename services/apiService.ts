@@ -2060,7 +2060,14 @@ export const apiService = {
         const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
         return cached || [];
       }
-      return data.map((s: any) => ({ id: s.id, day: s.day, time: s.time, subject: s.subject }));
+      return data.map((s: any) => ({ 
+        id: s.id, 
+        day: s.day, 
+        time: s.time, 
+        subject: s.subject,
+        meetUrl: s.meet_url || s.meetUrl || undefined,
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined
+      }));
     } catch (err) {
       console.warn("getSchedule failed, using local fallback:", err);
       const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
@@ -2092,7 +2099,15 @@ export const apiService = {
         console.error('Error fetching all schedules:', error);
         return [];
       }
-      return data.map((s: any) => ({ id: s.id, day: s.day, time: s.time, subject: s.subject, classId: s.class_id }));
+      return data.map((s: any) => ({ 
+        id: s.id, 
+        day: s.day, 
+        time: s.time, 
+        subject: s.subject, 
+        classId: s.class_id,
+        meetUrl: s.meet_url || s.meetUrl || undefined,
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined
+      }));
     } catch (err) {
       console.warn("getScheduleAll failed:", err);
       return [];
@@ -2117,18 +2132,30 @@ export const apiService = {
 
       if (schedule.length === 0) return;
 
-      // Then insert new schedule
+      // Then insert new schedule (try with virtual class links first)
       const dbSchedule = schedule.map(s => ({
         class_id: classId,
         day: s.day,
         time: s.time,
-        subject: s.subject
+        subject: s.subject,
+        meet_url: s.meetUrl || null,
+        zoom_url: s.zoomUrl || null
       }));
 
       const { error: insertError } = await supabase.from('schedule').insert(dbSchedule);
       if (insertError) {
-        console.error('Error saving schedule:', insertError);
-        throw insertError;
+        console.warn('Error saving schedule with links, attempting fallback without link columns:', insertError);
+        const dbScheduleStandard = schedule.map(s => ({
+          class_id: classId,
+          day: s.day,
+          time: s.time,
+          subject: s.subject
+        }));
+        const { error: insertError2 } = await supabase.from('schedule').insert(dbScheduleStandard);
+        if (insertError2) {
+          console.error('Fallback save schedule failed:', insertError2);
+          throw insertError2;
+        }
       }
     } catch (err) {
       console.warn("saveSchedule database failed:", err);

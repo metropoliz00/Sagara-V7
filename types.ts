@@ -109,6 +109,8 @@ export interface ScheduleItem {
   day: string;
   time: string;
   subject: string;
+  meetUrl?: string;
+  zoomUrl?: string;
 }
 
 export interface PiketGroup {

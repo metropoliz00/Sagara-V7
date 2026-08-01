@@ -701,7 +701,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
            </div>
 
            {/* Mobile Dropdown */}
-           <div className="md:hidden w-full relative z-[150]">
+           <div className="md:hidden w-full relative z-[40]">
              <button 
                type="button"
                onClick={() => setIsDropdownOpen(!isDropdownOpen)}

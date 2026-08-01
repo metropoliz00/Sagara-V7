@@ -2346,7 +2346,7 @@ const AppContent: React.FC = () => {
               className="w-full h-full object-contain drop-shadow-xl"
             />
          </div>
-         <h2 className="text-xl font-bold text-slate-700 mb-2">Menyiapkan Data Kelas...</h2>
+         <h2 className="text-xl font-bold text-slate-700 mb-2">Proses sinkronisasi data...</h2>
          <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-[#5AB2FF] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
             <div className="w-2 h-2 bg-[#5AB2FF] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>

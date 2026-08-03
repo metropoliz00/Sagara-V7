@@ -597,7 +597,7 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 no-print">
                   <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-3 flex items-center justify-between">
                     <div>
-                      <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Sudah Mengisi Today</p>
+                      <p className="text-[11px] font-bold text-indigo-600 uppercase tracking-wider">Sudah Mengisi Hari Ini</p>
                       <p className="text-xl font-extrabold text-indigo-900 mt-0.5">
                         {totalFilledToday} <span className="text-xs font-normal text-indigo-600">/ {totalStudents} Siswa</span>
                       </p>

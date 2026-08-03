@@ -673,13 +673,8 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                           return (
                             <tr key={st.id} className="hover:bg-gray-50/80 transition-colors">
                               <td className="p-2 border text-center font-bold text-gray-500">{idx + 1}</td>
-                              <td className="p-2 border font-bold text-gray-800 uppercase">
+                              <td className="p-2 border font-bold text-gray-800 uppercase text-[11px] sm:text-xs">
                                 {st.name}
-                                {!filled && (
-                                  <span className="ml-2 inline-block px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[10px] font-semibold no-print">
-                                    Belum isi
-                                  </span>
-                                )}
                               </td>
 
                               {/* Habit Columns */}
@@ -712,9 +707,16 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                                 );
                               })}
 
-                              {/* Score */}
+                              {/* Score & Status */}
                               <td className="p-2 border text-center font-black bg-indigo-50 text-indigo-700 text-sm">
-                                {score} / 7
+                                <div className="flex flex-col items-center justify-center gap-0.5">
+                                  <span>{score} / 7</span>
+                                  {!filled && (
+                                    <span className="px-1.5 py-0.5 bg-red-100 text-red-700 rounded text-[9px] font-bold no-print whitespace-nowrap">
+                                      Belum isi
+                                    </span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Student Reflection */}

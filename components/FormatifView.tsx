@@ -72,17 +72,17 @@ const FormatifView: React.FC<FormatifViewProps> = ({
   const [materiInput, setMateriInput] = useState<string>('');
   const [tujuanInput, setTujuanInput] = useState<string>('');
   const [formatifRecords, setFormatifRecords] = useState<Record<string, { score: number; catatan?: string }>>({});
-  const [savedTopics, setSavedTopics] = useState<{ id: string; subjectId: string; materi: string; tujuan: string; assessmentType: string; date: string }[]>([]);
+  const [savedTopics, setSavedTopics] = useState<{ id: string; subjectId: string; materi: string; tujuan: string; date: string }[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
 
-  // Load saved topics for active class and selected subject (synchronized with shared learning topics / sumatif)
+  // Load saved Materi topics for active class and selected subject (synchronized with shared learning topics / sumatif)
   useEffect(() => {
     const sharedKey = `shared_learning_topics_${activeClassId}`;
-    let cachedTopics = cacheService.get<{ id: string; subjectId: string; materi: string; tujuan: string; assessmentType: string; date: string }[]>(sharedKey);
+    let cachedTopics = cacheService.get<{ id: string; subjectId: string; materi: string; tujuan: string; date: string }[]>(sharedKey);
     
     if (!cachedTopics) {
       const legacyFormatif = cacheService.get<any[]>(`formatif_topics_${activeClassId}`) || [];
@@ -94,7 +94,6 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           subjectId: s.subjectId,
           materi: s.title || 'Materi Pembelajaran',
           tujuan: s.title || 'Tujuan Pembelajaran',
-          assessmentType: 'Kuis Singkat',
           date: s.date || new Date().toISOString().split('T')[0]
         }));
       cachedTopics = [...legacyFormatif, ...sumatifTopics];
@@ -104,27 +103,30 @@ const FormatifView: React.FC<FormatifViewProps> = ({
     setSavedTopics(cachedTopics);
     
     const subjectTopics = cachedTopics.filter(t => t.subjectId === selectedSubjectId);
-    if (subjectTopics.length > 0 && !selectedTopicId) {
-      setSelectedTopicId(subjectTopics[0].id);
-      setMateriInput(subjectTopics[0].materi || '');
-      setTujuanInput(subjectTopics[0].tujuan || '');
-      setAssessmentType(subjectTopics[0].assessmentType || 'Observasi');
-    } else if (subjectTopics.length === 0) {
+    if (subjectTopics.length > 0) {
+      const exists = subjectTopics.some(t => t.id === selectedTopicId);
+      if (!exists || !selectedTopicId) {
+        setSelectedTopicId(subjectTopics[0].id);
+        setMateriInput(subjectTopics[0].materi || '');
+        setTujuanInput(subjectTopics[0].tujuan || '');
+      }
+    } else {
       setSelectedTopicId('');
       setMateriInput('');
       setTujuanInput('');
     }
   }, [activeClassId, selectedSubjectId]);
 
-  // Load student scores when topic changes
+  // Load student scores when topic OR assessmentType changes (independent per assessment type)
   useEffect(() => {
     if (selectedTopicId) {
-      const allScores = cacheService.get<Record<string, { score: number; catatan?: string }>>(`formatif_scores_${selectedTopicId}`) || {};
+      const scoreKey = `formatif_scores_${selectedTopicId}_${assessmentType}`;
+      const allScores = cacheService.get<Record<string, { score: number; catatan?: string }>>(scoreKey) || {};
       setFormatifRecords(allScores);
     } else {
       setFormatifRecords({});
     }
-  }, [selectedTopicId]);
+  }, [selectedTopicId, assessmentType]);
 
   const handleScoreChange = (studentId: string, value: number) => {
     const val = Math.min(100, Math.max(0, value));
@@ -169,7 +171,6 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           subjectId: selectedSubjectId,
           materi: materiInput.trim(),
           tujuan: tujuanInput.trim(),
-          assessmentType,
           date: new Date().toISOString().split('T')[0]
         };
         currentTopics.push(newTopic);
@@ -178,16 +179,16 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         currentTopics = currentTopics.map(t => t.id === topicId ? { 
           ...t, 
           materi: materiInput.trim(), 
-          tujuan: tujuanInput.trim(), 
-          assessmentType 
+          tujuan: tujuanInput.trim()
         } : t);
       }
 
       setSavedTopics(currentTopics);
       const sharedKey = `shared_learning_topics_${activeClassId}`;
       cacheService.set(sharedKey, currentTopics);
-      cacheService.set(`formatif_topics_${activeClassId}`, currentTopics);
-      cacheService.set(`formatif_scores_${topicId}`, formatifRecords);
+      
+      const scoreKey = `formatif_scores_${topicId}_${assessmentType}`;
+      cacheService.set(scoreKey, formatifRecords);
 
       // Also synchronize with Sumatifs if matching or create sumatif skeleton
       const allSumatifs = cacheService.get<any[]>('sumatifs') || [];
@@ -197,7 +198,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         cacheService.set('sumatifs', allSumatifs);
       }
 
-      onShowNotification('Penilaian formatif berhasil disimpan & disinkronkan!', 'success');
+      onShowNotification(`Penilaian ${assessmentType} berhasil disimpan untuk Materi ini!`, 'success');
     } catch (e) {
       onShowNotification('Gagal menyimpan penilaian formatif.', 'error');
     } finally {
@@ -217,8 +218,11 @@ const FormatifView: React.FC<FormatifViewProps> = ({
     setSavedTopics(updatedTopics);
     const sharedKey = `shared_learning_topics_${activeClassId}`;
     cacheService.set(sharedKey, updatedTopics);
-    cacheService.set(`formatif_topics_${activeClassId}`, updatedTopics);
-    cacheService.remove(`formatif_scores_${topicId}`);
+    
+    // Clear scores for all assessment types of this topic
+    ASSESSMENT_TYPES.forEach(at => {
+      cacheService.remove(`formatif_scores_${topicId}_${at.id}`);
+    });
     
     if (selectedTopicId === topicId) {
       handleCreateNewTopic();
@@ -288,7 +292,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             <span className="text-xs font-black uppercase tracking-wider">Asesmen Kurikulum Merdeka</span>
           </div>
           <h2 className="text-2xl font-black text-slate-800">PENILAIAN FORMATIF</h2>
-          <p className="text-slate-500 text-sm">Materi mandiri & Tujuan Pembelajaran tersinkronasi dengan Sumatif</p>
+          <p className="text-slate-500 text-sm">Materi tersinkronasi dengan Sumatif; Jenis dan Nilai Formatif berdiri sendiri</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -324,7 +328,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Pilih Jenis Formatif (Dropdown)</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Pilih Jenis Formatif (Independen)</label>
           <select
             value={assessmentType}
             onChange={(e) => setAssessmentType(e.target.value)}
@@ -337,25 +341,29 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Pilih / Muat Materi & Tujuan</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Pilih / Muat Materi (Sinkron Sumatif)</label>
           <div className="flex gap-2">
             <select
               value={selectedTopicId}
               onChange={(e) => {
                 const topId = e.target.value;
                 setSelectedTopicId(topId);
-                const found = savedTopics.find(t => t.id === topId);
-                if (found) {
-                  setMateriInput(found.materi || '');
-                  setTujuanInput(found.tujuan || '');
-                  if (found.assessmentType) setAssessmentType(found.assessmentType);
+                if (!topId) {
+                  setMateriInput('');
+                  setTujuanInput('');
+                } else {
+                  const found = savedTopics.find(t => t.id === topId);
+                  if (found) {
+                    setMateriInput(found.materi || '');
+                    setTujuanInput(found.tujuan || '');
+                  }
                 }
               }}
               className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] font-semibold text-slate-700 bg-slate-50"
             >
               <option value="">-- Buat Materi Baru --</option>
               {currentSubjectTopics.map(t => (
-                <option key={t.id} value={t.id}>{t.materi} ({t.assessmentType})</option>
+                <option key={t.id} value={t.id}>{t.materi}</option>
               ))}
             </select>
             {selectedTopicId && (
@@ -409,7 +417,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             <Sparkles size={20} />
           </div>
           <div>
-            <h4 className="font-bold text-slate-800 text-sm">Jenis Formatif: {selectedAssessmentObj.label}</h4>
+            <h4 className="font-bold text-slate-800 text-sm">Jenis Formatif Aktif: {selectedAssessmentObj.label}</h4>
             <p className="text-xs text-slate-500">{selectedAssessmentObj.description}</p>
           </div>
         </div>
@@ -434,7 +442,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-2.5 bg-[#5AB2FF] text-white rounded-xl hover:bg-[#4A9FE6] transition-all shadow-md font-bold text-sm"
           >
             <Save size={18} />
-            <span>{isSaving ? 'Menyimpan...' : 'Simpan Penilaian Formatif'}</span>
+            <span>{isSaving ? 'Menyimpan...' : `Simpan Penilaian ${assessmentType}`}</span>
           </button>
         )}
       </div>

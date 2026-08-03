@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import CustomModal from './CustomModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { GtkRecord, User } from '../types';
 import { Save, Plus, Trash2, Edit2, Download, Search, X, Camera, Upload } from 'lucide-react';
@@ -57,6 +58,17 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<GtkRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
@@ -346,20 +358,26 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus data GTK ini?")) {
-      try {
-        if (onDeleteGtk) {
-          await onDeleteGtk(id);
-        } else {
-          const newData = data.filter(d => d.id !== id);
-          await onSaveGtk(newData);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Data GTK',
+      message: 'Apakah Anda yakin ingin menghapus data GTK ini?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          if (onDeleteGtk) {
+            await onDeleteGtk(id);
+          } else {
+            const newData = data.filter(d => d.id !== id);
+            await onSaveGtk(newData);
+          }
+          setData(data.filter(d => d.id !== id));
+          onShowNotification("Data GTK berhasil dihapus", "success");
+        } catch (e) {
+          onShowNotification("Gagal menghapus data GTK", "error");
         }
-        setData(data.filter(d => d.id !== id));
-        onShowNotification("Data GTK berhasil dihapus", "success");
-      } catch (e) {
-        onShowNotification("Gagal menghapus data GTK", "error");
       }
-    }
+    });
   };
 
   const handleExport = () => {
@@ -722,6 +740,14 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
         </div>
       )}
 
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type="confirm"
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

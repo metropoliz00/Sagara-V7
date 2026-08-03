@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import CustomModal from './CustomModal';
 import { 
   ClipboardList, 
   User, 
@@ -94,6 +95,18 @@ const PerformanceAssessmentView: React.FC<PerformanceAssessmentViewProps> = ({
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [activeSubTab, setActiveSubTab] = useState<'daftar-guru' | 'rekap-penilaian'>('daftar-guru');
   const [editingAssessmentId, setEditingAssessmentId] = useState<string | null>(null);
+
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: ''
+  });
 
   const isPrincipalOrAdmin = currentUser?.role === 'Kepala Sekolah' || currentUser?.role === 'admin';
 
@@ -202,7 +215,12 @@ const PerformanceAssessmentView: React.FC<PerformanceAssessmentViewProps> = ({
     // Check if all indicators are scored
     const scoredCount = Object.keys(scores).length;
     if (scoredCount < PERFORMANCE_INDICATORS.length) {
-      alert(`Mohon isi semua indikator (${scoredCount}/${PERFORMANCE_INDICATORS.length})`);
+      setModalConfig({
+        isOpen: true,
+        type: 'alert',
+        title: 'Kelengkapan Indikator',
+        message: `Mohon isi semua indikator (${scoredCount}/${PERFORMANCE_INDICATORS.length}) sebelum menyimpan.`
+      });
       return;
     }
 
@@ -226,7 +244,12 @@ const PerformanceAssessmentView: React.FC<PerformanceAssessmentViewProps> = ({
       };
 
       if (!teacherUserId || !isUuid(teacherUserId)) {
-        alert("Guru ini belum memiliki akun pengguna yang terhubung atau ID Akun tidak valid. Hubungi Admin untuk membuat/menghubungkan akun pengguna untuk guru ini terlebih dahulu agar penilaian dapat disimpan.");
+        setModalConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Akun Pengguna Tidak Terhubung',
+          message: 'Guru ini belum memiliki akun pengguna yang terhubung atau ID Akun tidak valid. Hubungi Admin untuk membuat/menghubungkan akun pengguna untuk guru ini terlebih dahulu agar penilaian dapat disimpan.'
+        });
         setIsSaving(false);
         return;
       }
@@ -993,6 +1016,15 @@ const PerformanceAssessmentView: React.FC<PerformanceAssessmentViewProps> = ({
       )}
 
       {renderDetailModal()}
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

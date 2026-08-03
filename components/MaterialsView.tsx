@@ -189,6 +189,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     setZoomScale(1);
     setPan({ x: 0, y: 0 });
@@ -519,10 +533,17 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus materi ini?')) {
-      onDeleteMaterial(id);
-      onShowNotification('Materi berhasil dihapus', 'success');
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Hapus Materi Pelajaran',
+      message: 'Apakah Anda yakin ingin menghapus materi pelajaran ini?',
+      onConfirm: () => {
+        onDeleteMaterial(id);
+        onShowNotification('Materi berhasil dihapus', 'success');
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   return (
@@ -1483,6 +1504,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Confirmation & Alert Custom Modal */}
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type={confirmModal.type}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

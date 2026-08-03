@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import CustomModal from './CustomModal';
 import html2pdf from 'html2pdf.js';
 import { 
   FileText, CheckCircle, Clock, XCircle, Plus, Search, Filter,
@@ -154,6 +155,17 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [alasan, setAlasan] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   
   // Permissions - Admin, Superadmin, and Kepala Sekolah can approve/manage all leave requests
   const isPrincipalOrAdmin = 
@@ -313,15 +325,22 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus pengajuan ini?')) return;
-    try {
-      await apiService.deleteStaffLeaveRequest(id);
-      setRequests(requests.filter(r => r.id !== id));
-      onShowNotification('Pengajuan berhasil dihapus.', 'success');
-    } catch (e) {
-      console.error(e);
-      onShowNotification('Gagal menghapus pengajuan.', 'error');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Pengajuan Izin',
+      message: 'Apakah Anda yakin ingin menghapus pengajuan izin ini?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await apiService.deleteStaffLeaveRequest(id);
+          setRequests(requests.filter(r => r.id !== id));
+          onShowNotification('Pengajuan berhasil dihapus.', 'success');
+        } catch (e) {
+          console.error(e);
+          onShowNotification('Gagal menghapus pengajuan.', 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -1338,6 +1357,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         </div>
       )}
 
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type="confirm"
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

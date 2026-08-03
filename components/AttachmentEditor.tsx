@@ -3,6 +3,7 @@ import { Attachment, LearningPlan } from '../types';
 import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, Edit2, X, Image, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Table, Link2, Eye, PenTool, AlignLeft, AlignCenter, AlignRight, AlignJustify, Sparkles } from 'lucide-react';
 import { parseRichText, markdownToHtml, htmlToMarkdown } from '../utils/textParser';
 import { ContentModal } from './ContentModal';
+import CustomModal from './CustomModal';
 
 
 interface AttachmentEditorProps {
@@ -42,6 +43,17 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
   const [selectedType, setSelectedType] = useState<Attachment['type']>('Ringkasan Materi');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: ''
+  });
 
   // Rich text editor states
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -363,7 +375,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
 
   const handleAddNew = () => {
     if (availableTypes.length === 0) {
-      alert('Semua kategori lampiran sudah ditambahkan.');
+      setModalConfig({
+        isOpen: true,
+        type: 'alert',
+        title: 'Informasi Kategori',
+        message: 'Semua kategori lampiran sudah ditambahkan.'
+      });
       return;
     }
     setEditingId(null);
@@ -899,6 +916,15 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
           </div>
         )}
       </div>
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

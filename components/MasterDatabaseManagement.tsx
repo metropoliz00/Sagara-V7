@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import CustomModal from './CustomModal';
 import { masterSupabase } from '../services/supabaseClient';
 import { Loader2, Plus, Trash2, Edit2, Save, X, School, CheckCircle2, XCircle } from 'lucide-react';
 
@@ -18,6 +19,17 @@ export const MasterDatabaseManagement: React.FC = () => {
   
   const [isEditing, setIsEditing] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<SchoolDatabase>>({});
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const [isAdding, setIsAdding] = useState(false);
 
   useEffect(() => {
@@ -88,19 +100,26 @@ export const MasterDatabaseManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Yakin ingin menghapus data sekolah ini?')) return;
-    try {
-      setLoading(true);
-      const { error: delErr } = await masterSupabase
-        .from('school_databases')
-        .delete()
-        .eq('id', id);
-      if (delErr) throw delErr;
-      await fetchSchools();
-    } catch (err: any) {
-      setError(err.message);
-      setLoading(false);
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Database Sekolah',
+      message: 'Apakah Anda yakin ingin menghapus data sekolah ini?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          setLoading(true);
+          const { error: delErr } = await masterSupabase
+            .from('school_databases')
+            .delete()
+            .eq('id', id);
+          if (delErr) throw delErr;
+          await fetchSchools();
+        } catch (err: any) {
+          setError(err.message);
+          setLoading(false);
+        }
+      }
+    });
   };
 
   const toggleActive = async (school: SchoolDatabase) => {
@@ -250,6 +269,15 @@ export const MasterDatabaseManagement: React.FC = () => {
           </tbody>
         </table>
       </div>
+
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type="confirm"
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

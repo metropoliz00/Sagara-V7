@@ -1018,6 +1018,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 1.5 * 1024 * 1024) {
+                                onShowNotification('Ukuran gambar maksimal 1.5MB.', 'error');
+                                return;
+                              }
                               try {
                                 const base64 = await compressImageToBase64(file);
                                 setFormData({...formData, infographic: base64});
@@ -1125,6 +1129,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                onShowNotification('Ukuran file maksimal 2MB.', 'error');
+                                return;
+                              }
                               try {
                                 const base64 = await readTaskFileToBase64(file);
                                 setFormData({...formData, taskFile: base64});

@@ -500,12 +500,7 @@ const GradesView: React.FC<GradesViewProps> = ({
   }, [students, grades]);
 
   const activeSubjectsForRecap = useMemo(() => {
-      return MOCK_SUBJECTS.filter(subj => {
-          return recapData.some(s => {
-              const score = s.scores[subj.id];
-              return typeof score === 'number' && !isNaN(score) && score > 0;
-          });
-      });
+      return MOCK_SUBJECTS;
   }, [recapData]);
 
   const handleKktpChange = (newVal: number) => {
@@ -528,7 +523,28 @@ const GradesView: React.FC<GradesViewProps> = ({
 
   const getStudentGrade = (studentId: string): GradeData => {
     const record = grades.find(g => g.studentId === studentId);
-    return record?.subjects[selectedSubject] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
+    const baseGrade = record?.subjects[selectedSubject] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
+    
+    const formatifData: any = {};
+    if (formatifTopics.length > 0) {
+      const ASSESSMENT_TYPES = ['Observasi', 'Tanya Jawab Lisan', 'Refleksi Diri', 'Kuis Singkat'];
+      formatifTopics.forEach((topic: any, index: number) => {
+        let total = 0;
+        let count = 0;
+        ASSESSMENT_TYPES.forEach(at => {
+          const scoreKey = `formatif_scores_${topic.id}_${at}`;
+          const allScores = cacheService.get<Record<string, { score: number }>>(scoreKey) || {};
+          const s = allScores[studentId]?.score;
+          if (s && s > 0) {
+            total += s;
+            count++;
+          }
+        });
+        formatifData[`tp${index + 1}`] = count > 0 ? Math.round(total / count) : 0;
+      });
+    }
+
+    return { ...baseGrade, ...formatifData };
   };
 
   const updateLocalGrade = (studentId: string, field: string, value: number) => {
@@ -1284,11 +1300,11 @@ const GradesView: React.FC<GradesViewProps> = ({
        <div className="flex flex-col xl:flex-row justify-between gap-4 no-print">
           <div>
              <h2 className="text-2xl font-bold text-gray-800 flex items-center">
-                {viewMode === 'input' ? (isReadOnly ? 'Lihat Nilai Saya' : `Input Nilai ${activeSubject?.name}`) : (viewMode === 'recap' ? 'Rekap Nilai Rapor & Peringkat' : (viewMode === 'tka_recap' ? 'Rekap Hasil Nilai TKA' : 'Riwayat Nilai Siswa'))}
+                {viewMode === 'input' ? (isReadOnly ? 'Lihat Nilai Saya' : `Input Nilai ${activeSubject?.name}`) : (viewMode === 'recap' ? 'Rekap Nilai Rapor & Peringkat' : (viewMode === 'tka_recap' ? 'Rekap Hasil Nilai TKA' : (viewMode === 'formatif_recap' ? `Rekap Formatif ${activeSubject?.name}` : 'Riwayat Nilai Siswa')))}
                 {!isSubjectEditable && !isReadOnly && viewMode === 'input' && <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-500 text-xs rounded border border-gray-200 flex items-center"><Lock size={12} className="mr-1"/> Read Only</span>}
              </h2>
              <p className="text-gray-500 text-sm">
-                {viewMode === 'input' ? `Kelola nilai sumatif & formatif. Ambang batas (KKTP): ${currentKktp}.` : (viewMode === 'recap' ? 'Ringkasan nilai akhir semua mapel dan kalkulasi peringkat siswa.' : (viewMode === 'tka_recap' ? 'Rekapitulasi hasil Tes Kemampuan Akademik (TKA) Mata Pelajaran Matematika, Bahasa Indonesia, dan IPA.' : 'Kumpulan data nilai siswa dari semester atau tahun ajaran sebelumnya.'))}
+                {viewMode === 'input' ? `Kelola nilai sumatif & formatif. Ambang batas (KKTP): ${currentKktp}.` : (viewMode === 'recap' ? 'Ringkasan nilai akhir semua mapel dan kalkulasi peringkat siswa.' : (viewMode === 'tka_recap' ? 'Rekapitulasi hasil Tes Kemampuan Akademik (TKA) Mata Pelajaran Matematika, Bahasa Indonesia, dan IPA.' : (viewMode === 'formatif_recap' ? 'Ringkasan nilai formatif per Tujuan Pembelajaran.' : 'Kumpulan data nilai siswa dari semester atau tahun ajaran sebelumnya.')))}
              </p>
           </div>
           
@@ -1569,7 +1585,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                        <th className="p-4 w-28 text-center border-r sticky left-0 md:left-36 bg-slate-50 print:bg-white z-20">NISN</th>
                        <th className="p-4 sticky left-0 md:left-64 bg-slate-50 print:bg-white min-w-[150px] md:min-w-[220px] border-r z-20">Nama Siswa</th>
                        {tpKeys.map((f: string, i: number) => (
-                           <th key={f} className="p-2 w-16 text-center border-r">TP {i+1}</th>
+                           <th key={f} className="p-2 w-16 text-center border-r" title={formatifTopics[i]?.tujuan || formatifTopics[i]?.materi || `Tujuan Pembelajaran ${i+1}`}>TP {i+1}</th>
                        ))}
                        <th className="p-4 min-w-[300px] border-r">Deskripsi Ketercapaian</th>
                        {isSubjectEditable && <th className="p-2 w-16 text-center no-print">Aksi</th>}

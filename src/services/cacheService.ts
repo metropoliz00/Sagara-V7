@@ -20,7 +20,7 @@ export const cacheService = {
     }
   },
 
-  set<T>(key: string, value: T, ttl: number = 24 * 60 * 60 * 1000): void { // Default TTL: 24 hours
+  set<T>(key: string, value: T, ttl: number = 24 * 60 * 60 * 1000): boolean { // Default TTL: 24 hours
     try {
       const expiry = new Date().getTime() + ttl;
       const item = {
@@ -28,8 +28,13 @@ export const cacheService = {
         expiry,
       };
       localStorage.setItem(key, JSON.stringify(item));
-    } catch (error) {
+      return true;
+    } catch (error: any) {
       console.error(`Error setting item ${key} in localStorage`, error);
+      if (error && (error.name === 'QuotaExceededError' || error.message?.includes('exceeded the quota'))) {
+         alert(`Penyimpanan lokal browser penuh (Quota Exceeded).\nData tidak dapat disimpan. Harap hapus beberapa file dokumen/gambar, atau bersihkan cache browser Anda.`);
+      }
+      return false;
     }
   },
 

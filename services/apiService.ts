@@ -4,7 +4,7 @@ import { cacheService } from '../src/services/cacheService';
 import { 
   Student, AgendaItem, GradeRecord, GradeData, BehaviorLog, Extracurricular, 
   TeacherProfileData, SchoolProfileData, User, Holiday, InventoryItem, Guest, 
-  ScheduleItem, PiketGroup, SikapAssessment, KarakterAssessment, SeatingLayouts, 
+  ScheduleItem, PiketGroup, SikapAssessment, KarakterAssessment, DailyKAIHJournal, SeatingLayouts, 
   AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
   LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
   BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Graduate, Material,
@@ -1290,6 +1290,128 @@ export const apiService = {
       console.error("Error saving karakter assessment:", error);
       throw error;
     }
+  },
+
+  // --- Jurnal Harian 7 KAIH ---
+  getDailyKAIHJournals: async (classId: string, date?: string, startDate?: string, endDate?: string): Promise<DailyKAIHJournal[]> => {
+    try {
+      let query = supabase.from('jurnal_kaih_harian').select('*').eq('class_id', classId);
+      if (date) {
+        query = query.eq('date', date);
+      }
+      if (startDate) {
+        query = query.gte('date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('date', endDate);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          studentId: d.student_id,
+          classId: d.class_id,
+          date: d.date,
+          bangunPagi: d.bangun_pagi || 'Belum Terbiasa',
+          beribadah: d.beribadah || 'Belum Terbiasa',
+          berolahraga: d.berolahraga || 'Belum Terbiasa',
+          makanSehat: d.makan_sehat || 'Belum Terbiasa',
+          gemarBelajar: d.gemar_belajar || 'Belum Terbiasa',
+          bermasyarakat: d.bermasyarakat || 'Belum Terbiasa',
+          tidurAwal: d.tidur_awal || 'Belum Terbiasa',
+          catatan: d.catatan || '',
+          catatanGuru: d.catatan_guru || '',
+          updatedAt: d.updated_at
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase query for jurnal_kaih_harian failed, reading local storage.", e);
+    }
+
+    // Local Storage Fallback
+    const localJournalsStr = localStorage.getItem(`kaih_journals_${classId}`);
+    if (localJournalsStr) {
+      try {
+        let journals: DailyKAIHJournal[] = JSON.parse(localJournalsStr);
+        if (date) {
+          journals = journals.filter(j => j.date === date);
+        }
+        if (startDate) {
+          journals = journals.filter(j => j.date >= startDate);
+        }
+        if (endDate) {
+          journals = journals.filter(j => j.date <= endDate);
+        }
+        return journals;
+      } catch (err) {}
+    }
+    return [];
+  },
+
+  saveDailyKAIHJournal: async (journal: DailyKAIHJournal): Promise<DailyKAIHJournal> => {
+    const dbPayload = {
+      student_id: journal.studentId,
+      class_id: journal.classId,
+      date: journal.date,
+      bangun_pagi: journal.bangunPagi || 'Belum Terbiasa',
+      beribadah: journal.beribadah || 'Belum Terbiasa',
+      berolahraga: journal.berolahraga || 'Belum Terbiasa',
+      makan_sehat: journal.makanSehat || 'Belum Terbiasa',
+      gemar_belajar: journal.gemarBelajar || 'Belum Terbiasa',
+      bermasyarakat: journal.bermasyarakat || 'Belum Terbiasa',
+      tidur_awal: journal.tidurAwal || 'Belum Terbiasa',
+      catatan: journal.catatan || '',
+      catatan_guru: journal.catatanGuru || '',
+      updated_at: new Date().toISOString()
+    };
+
+    let savedResult: DailyKAIHJournal = { ...journal, updatedAt: dbPayload.updated_at };
+
+    try {
+      const { data, error } = await supabase
+        .from('jurnal_kaih_harian')
+        .upsert(dbPayload, { onConflict: 'student_id,date' })
+        .select()
+        .single();
+      if (!error && data) {
+        savedResult = {
+          id: data.id,
+          studentId: data.student_id,
+          classId: data.class_id,
+          date: data.date,
+          bangunPagi: data.bangun_pagi,
+          beribadah: data.beribadah,
+          berolahraga: data.berolahraga,
+          makanSehat: data.makan_sehat,
+          gemarBelajar: data.gemar_belajar,
+          bermasyarakat: data.bermasyarakat,
+          tidurAwal: data.tidur_awal,
+          catatan: data.catatan,
+          catatanGuru: data.catatan_guru,
+          updatedAt: data.updated_at
+        };
+      }
+    } catch (e) {
+      console.warn("Supabase upsert for jurnal_kaih_harian failed, saving to local storage.", e);
+    }
+
+    // Save to local storage backup
+    try {
+      const key = `kaih_journals_${journal.classId}`;
+      const existingStr = localStorage.getItem(key);
+      let existing: DailyKAIHJournal[] = existingStr ? JSON.parse(existingStr) : [];
+      const index = existing.findIndex(j => j.studentId === journal.studentId && j.date === journal.date);
+      if (index >= 0) {
+        existing[index] = savedResult;
+      } else {
+        existing.push(savedResult);
+      }
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch (err) {
+      console.error("Failed to update local storage for KAIH journal", err);
+    }
+
+    return savedResult;
   },
 
   // --- Employment Links ---

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
+import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, DailyKAIHJournal, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
 import { MOCK_SUBJECTS, CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIPTIONS_2025_2026, WEEKDAYS } from '../constants';
 import { 
   Search, Filter, User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
@@ -713,6 +713,26 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [karakterForm, setKarakterForm] = useState<Partial<KarakterAssessment>>({});
   const [isSavingKarakter, setIsSavingKarakter] = useState(false);
 
+  // Daily 7 KAIH Journal State
+  const [selectedJournalDate, setSelectedJournalDate] = useState<string>(getLocalISODate());
+  const [dailyJournalForm, setDailyJournalForm] = useState<DailyKAIHJournal>({
+    studentId: student.id,
+    classId: student.classId || '',
+    date: getLocalISODate(),
+    bangunPagi: '',
+    beribadah: '',
+    berolahraga: '',
+    makanSehat: '',
+    gemarBelajar: '',
+    bermasyarakat: '',
+    tidurAwal: '',
+    catatan: '',
+    catatanGuru: ''
+  });
+  const [studentJournalHistory, setStudentJournalHistory] = useState<DailyKAIHJournal[]>([]);
+  const [isLoadingJournal, setIsLoadingJournal] = useState(false);
+  const [isSavingJournal, setIsSavingJournal] = useState(false);
+
   // Graduation data
   const [graduationData, setGraduationData] = useState<Graduate | null>(null);
   const [isLoadingGraduation, setIsLoadingGraduation] = useState(false);
@@ -1007,8 +1027,81 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       }
   };
 
-  const handleKarakterChange = (key: KarakterIndicatorKey, value: string) => {
-      setKarakterForm(prev => ({ ...prev, [key]: value }));
+  const loadStudentDailyJournals = async (dateStr: string) => {
+    if (!student.id || !student.classId) return;
+    setIsLoadingJournal(true);
+    try {
+      const classJournals = await apiService.getDailyKAIHJournals(student.classId);
+      const myJournals = classJournals.filter(j => j.studentId === student.id);
+      setStudentJournalHistory(myJournals);
+
+      const entry = myJournals.find(j => j.date === dateStr);
+      if (entry) {
+        setDailyJournalForm(entry);
+      } else {
+        setDailyJournalForm({
+          studentId: student.id,
+          classId: student.classId,
+          date: dateStr,
+          bangunPagi: '',
+          beribadah: '',
+          berolahraga: '',
+          makanSehat: '',
+          gemarBelajar: '',
+          bermasyarakat: '',
+          tidurAwal: '',
+          catatan: '',
+          catatanGuru: ''
+        });
+      }
+    } catch (err) {
+      console.error("Failed loading daily KAIH journal:", err);
+    } finally {
+      setIsLoadingJournal(false);
+    }
+  };
+
+  useEffect(() => {
+    if (student.id) {
+      loadStudentDailyJournals(selectedJournalDate);
+    }
+  }, [selectedJournalDate, student.id, student.classId]);
+
+  const handleSaveDailyJournal = async () => {
+    setIsSavingJournal(true);
+    try {
+      const payload: DailyKAIHJournal = {
+        ...dailyJournalForm,
+        studentId: student.id,
+        classId: student.classId || '',
+        date: selectedJournalDate
+      };
+      const saved = await apiService.saveDailyKAIHJournal(payload);
+      setDailyJournalForm(saved);
+      await loadStudentDailyJournals(selectedJournalDate);
+
+      if (onSaveKarakter) {
+        await onSaveKarakter(student.id, {
+          bangunPagi: saved.bangunPagi,
+          beribadah: saved.beribadah,
+          berolahraga: saved.berolahraga,
+          makanSehat: saved.makanSehat,
+          gemarBelajar: saved.gemarBelajar,
+          bermasyarakat: saved.bermasyarakat,
+          tidurAwal: saved.tidurAwal,
+          catatan: saved.catatan
+        });
+      }
+      showAlert("Jurnal 7 KAIH Hari Ini Berhasil Disimpan! 🎉", "success");
+    } catch (err) {
+      showAlert("Gagal menyimpan jurnal.", "error");
+    } finally {
+      setIsSavingJournal(false);
+    }
+  };
+
+  const handleDailyHabitToggle = (key: keyof DailyKAIHJournal, value: string) => {
+    setDailyJournalForm(prev => ({ ...prev, [key]: value }));
   };
 
   const goToPreviousSlide = () => setCarouselIndex((prev) => (prev - 1 + imagesForCarousel.length) % imagesForCarousel.length);
@@ -2775,82 +2868,249 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
               </div>
           )}
 
-          {/* --- CHARACTER TAB (Separated with Toggle Buttons) --- */}
+          {/* --- CHARACTER TAB: JURNAL HARIAN 7 KAIH --- */}
           {activeTab === 'character' && (
-              <div className="space-y-6">
-                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-gray-800 flex items-center text-lg">
-                              <HeartHandshake size={20} className="mr-2 text-pink-500"/> 7 Kebiasaan Anak Indonesia Hebat
-                          </h3>
-                          <button 
-                            onClick={handleSaveKarakterLocal}
-                            disabled={isSavingKarakter}
-                            className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow hover:bg-emerald-600 transition-colors flex items-center disabled:opacity-70"
-                          >
-                              {isSavingKarakter ? <Loader2 size={16} className="animate-spin mr-1"/> : <Save size={16} className="mr-2"/>}
-                              Simpan Penilaian
-                          </button>
-                      </div>
+              <div className="space-y-6 animate-fade-in">
+                  {/* Top Bar & Date Picker */}
+                  <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                       
-                      {/* NEW: Attractive Toggle List Layout */}
-                      <div className="grid grid-cols-1 gap-4">
-                          {(Object.keys(KARAKTER_INDICATORS) as KarakterIndicatorKey[]).map((key) => {
-                              const value = karakterForm[key];
-                              return (
-                                  <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 transition-all hover:border-blue-200 hover:shadow-sm">
-                                      <span className="font-bold text-gray-700 text-sm mb-3 sm:mb-0 flex items-center">
-                                          <div className="w-2 h-2 rounded-full bg-blue-400 mr-3"></div>
-                                          {KARAKTER_INDICATORS[key]}
-                                      </span>
-                                      
-                                      <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm w-full sm:w-auto">
-                                          <button
-                                              onClick={() => handleKarakterChange(key, 'Terbiasa')}
-                                              className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-xs font-bold transition-all ${
-                                                  value === 'Terbiasa'
-                                                  ? 'bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-600'
-                                                  : 'text-gray-500 hover:bg-gray-50'
-                                              }`}
-                                          >
-                                              <CheckCircle size={14} className={`mr-1.5 ${value === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/> 
-                                              Terbiasa
-                                          </button>
-                                          <button
-                                              onClick={() => handleKarakterChange(key, 'Belum Terbiasa')}
-                                              className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-xs font-bold transition-all ml-1 ${
-                                                  value === 'Belum Terbiasa'
-                                                  ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-600'
-                                                  : 'text-gray-500 hover:bg-gray-50'
-                                              }`}
-                                          >
-                                              <XCircle size={14} className={`mr-1.5 ${value === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/> 
-                                              Belum
-                                          </button>
-                                      </div>
-                                  </div>
-                              );
-                          })}
-                      </div>
-                      
-                      <div className="mt-6">
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Catatan Tambahan (Opsional)</label>
-                          <textarea
-                              rows={2}
-                              value={karakterForm.catatan || ''}
-                              onChange={(e) => setKarakterForm({...karakterForm, catatan: e.target.value})}
-                              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none bg-gray-50 focus:bg-white transition-colors"
-                              placeholder="Tulis catatan refleksi..."
-                          />
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
+                          <div>
+                              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
+                                  <HeartHandshake size={14} className="mr-1.5 text-pink-300"/> Jurnal Pembiasaan Karakter
+                              </span>
+                              <h3 className="text-2xl font-black tracking-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
+                              <p className="text-indigo-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
+                          </div>
+
+                          {/* Date Selector */}
+                          <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex items-center gap-2">
+                              <Calendar size={18} className="text-pink-200 ml-1" />
+                              <input 
+                                type="date" 
+                                value={selectedJournalDate}
+                                onChange={(e) => setSelectedJournalDate(e.target.value)}
+                                className="bg-white text-gray-800 font-bold text-xs px-3 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-pink-300"
+                              />
+                              <button 
+                                onClick={() => setSelectedJournalDate(getLocalISODate())}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                  selectedJournalDate === getLocalISODate() 
+                                    ? 'bg-white text-indigo-700 shadow-md' 
+                                    : 'bg-white/20 text-white hover:bg-white/30'
+                                }`}
+                              >
+                                Hari Ini
+                              </button>
+                          </div>
                       </div>
 
-                      {karakterForm.catatan && (
-                          <div className="mt-4 p-3 bg-yellow-50 rounded-xl border border-yellow-100 text-sm text-yellow-800 flex items-start">
-                              <Sparkles size={16} className="mr-2 mt-0.5 text-yellow-600"/>
-                              <div>
-                                  <strong>Catatan Guru:</strong> {karakterForm.catatan}
-                              </div>
+                      {/* Daily Score Summary Card */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/20 relative z-10">
+                          {(() => {
+                            const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as (keyof DailyKAIHJournal)[];
+                            const score = habits.filter(h => dailyJournalForm[h] === 'Terbiasa').length;
+                            const pct = Math.round((score / 7) * 100);
+
+                            return (
+                              <>
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Capaian Hari Ini</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{score} <span className="text-xs font-medium text-indigo-200">/ 7 Kebiasaan</span></p>
+                                  </div>
+                                  <div className="w-10 h-10 rounded-xl bg-white text-indigo-700 flex items-center justify-center font-black text-xs shadow-md">
+                                    {pct}%
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Status Jurnal</p>
+                                    <p className="text-sm font-bold text-white mt-1">
+                                      {score === 7 ? '🎉 Sempurna 7/7' : score > 0 ? '👍 Terisi Sebagian' : '⚠️ Belum Diisi'}
+                                    </p>
+                                  </div>
+                                  <div className="p-2 bg-emerald-400 text-indigo-950 rounded-xl shadow-md">
+                                    <Sparkles size={18} />
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Total Jurnal Semester</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{studentJournalHistory.length} <span className="text-xs font-medium text-indigo-200">Hari</span></p>
+                                  </div>
+                                  <div className="p-2 bg-pink-400 text-indigo-950 rounded-xl shadow-md">
+                                    <Trophy size={18} />
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()}
+                      </div>
+                  </div>
+
+                  {/* 7 Habit Interactive List */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                          <div>
+                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center">
+                              <CheckSquare size={20} className="mr-2 text-indigo-600" />
+                              Daftar Pembiasaan 7 KAIH ({selectedJournalDate})
+                            </h4>
+                            <p className="text-xs text-gray-500">Pilih "Terbiasa" jika kamu sudah melaksanakannya hari ini.</p>
                           </div>
+
+                          <button 
+                            onClick={handleSaveDailyJournal}
+                            disabled={isSavingJournal}
+                            className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-xs font-extrabold shadow-md hover:bg-emerald-700 transition-all flex items-center disabled:opacity-70 transform active:scale-95"
+                          >
+                            {isSavingJournal ? <Loader2 size={16} className="animate-spin mr-2"/> : <Save size={16} className="mr-2"/>}
+                            Simpan Jurnal Hari Ini
+                          </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3">
+                        {[
+                          { key: 'bangunPagi', label: '1. Bangun Pagi', desc: 'Bangun tepat waktu sebelum Subuh / pkl 05:00 pagi.', icon: '⏰' },
+                          { key: 'beribadah', label: '2. Beribadah', desc: 'Melaksanakan ibadah / sholat 5 waktu tepat waktu.', icon: '🕌' },
+                          { key: 'berolahraga', label: '3. Berolahraga', desc: 'Olahraga, senam, atau aktif bergerak minimal 15-30 menit.', icon: '🏃' },
+                          { key: 'makanSehat', label: '4. Makan Sehat & Bergizi', desc: 'Makan makanan sehat, bergizi seimbang, makan buah & sayur.', icon: '🍎' },
+                          { key: 'gemarBelajar', label: '5. Gemar Belajar / Membaca', desc: 'Membaca buku cerita/pengetahuan atau belajar mandiri.', icon: '📚' },
+                          { key: 'bermasyarakat', label: '6. Bermasyarakat', desc: 'Membantu orang tua di rumah, bersikap sopan & gotong royong.', icon: '🤝' },
+                          { key: 'tidurAwal', label: '7. Tidur Lebih Awal', desc: 'Tidur malam tepat waktu (sebelum pkl 21:30) agar tubuh fit.', icon: '🌙' },
+                        ].map((item) => {
+                          const hKey = item.key as keyof DailyKAIHJournal;
+                          const val = dailyJournalForm[hKey];
+
+                          return (
+                            <div key={item.key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 rounded-2xl border border-slate-200/80 hover:bg-white hover:border-indigo-200 transition-all hover:shadow-sm gap-3">
+                              <div className="flex items-start gap-3">
+                                <span className="text-2xl p-2 bg-white rounded-xl shadow-xs border border-slate-100">{item.icon}</span>
+                                <div>
+                                  <h5 className="font-bold text-gray-800 text-sm">{item.label}</h5>
+                                  <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex bg-white rounded-xl p-1 border border-gray-200 shadow-xs w-full sm:w-auto min-w-[200px]">
+                                <button
+                                  onClick={() => handleDailyHabitToggle(hKey, 'Terbiasa')}
+                                  className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                    val === 'Terbiasa'
+                                      ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                                      : 'text-gray-500 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <CheckCircle size={14} className={`mr-1.5 ${val === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/>
+                                  Terbiasa
+                                </button>
+                                
+                                <button
+                                  onClick={() => handleDailyHabitToggle(hKey, 'Belum Terbiasa')}
+                                  className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ml-1 ${
+                                    val === 'Belum Terbiasa'
+                                      ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300'
+                                      : 'text-gray-500 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <XCircle size={14} className={`mr-1.5 ${val === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/>
+                                  Belum
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Daily Student Reflection */}
+                      <div className="mt-6 pt-6 border-t border-gray-100">
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5">
+                          <MessageSquare size={14} className="text-indigo-600" />
+                          Catatan Refleksi Diri Hari Ini (Opsional)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={dailyJournalForm.catatan || ''}
+                          onChange={(e) => setDailyJournalForm({ ...dailyJournalForm, catatan: e.target.value })}
+                          className="w-full border border-gray-200 rounded-2xl p-3 text-xs text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/50 focus:bg-white transition-all resize-none"
+                          placeholder="Tuliskan pengalaman atau kebaikan yang kamu lakukan hari ini..."
+                        />
+                      </div>
+
+                      {/* Teacher Feedback Display */}
+                      {dailyJournalForm.catatanGuru && (
+                        <div className="mt-4 p-4 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-xs text-amber-900 flex items-start gap-3">
+                          <Sparkles size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="font-bold text-amber-800 uppercase block mb-0.5">Catatan & Umpan Balik Guru:</span>
+                            <p className="italic">"{dailyJournalForm.catatanGuru}"</p>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Journal History Log */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <h4 className="font-extrabold text-gray-800 text-md mb-4 flex items-center">
+                        <History size={18} className="mr-2 text-indigo-600" />
+                        Riwayat Jurnal 7 KAIH Saya Semester Ini
+                      </h4>
+
+                      {studentJournalHistory.length === 0 ? (
+                        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-gray-400 text-xs">
+                          Belum ada riwayat jurnal yang disimpan. Silakan isi jurnal hari ini di atas!
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+                          <table className="w-full text-xs text-left border-collapse">
+                            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-gray-200">
+                              <tr>
+                                <th className="p-3 w-28">Tanggal</th>
+                                <th className="p-3 text-center w-24">Skor KAIH</th>
+                                <th className="p-3">Kebiasaan Terlaksana</th>
+                                <th className="p-3">Catatan Siswa</th>
+                                <th className="p-3">Umpan Balik Guru</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {studentJournalHistory
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                .slice(0, 15)
+                                .map((j) => {
+                                  const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as (keyof DailyKAIHJournal)[];
+                                  const score = habits.filter(h => j[h] === 'Terbiasa').length;
+
+                                  return (
+                                    <tr key={j.date} className="hover:bg-slate-50 transition-colors">
+                                      <td className="p-3 font-bold text-gray-800">{j.date}</td>
+                                      <td className="p-3 text-center">
+                                        <span className="px-2 py-1 bg-indigo-100 text-indigo-800 font-extrabold rounded-lg">
+                                          {score} / 7
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-gray-600">
+                                        <div className="flex gap-1 flex-wrap">
+                                          {j.bangunPagi === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Bangun Pagi</span>}
+                                          {j.beribadah === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Beribadah</span>}
+                                          {j.berolahraga === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Olahraga</span>}
+                                          {j.makanSehat === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Makan Sehat</span>}
+                                          {j.gemarBelajar === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Gemar Belajar</span>}
+                                          {j.bermasyarakat === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Bermasyarakat</span>}
+                                          {j.tidurAwal === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Tidur Awal</span>}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-gray-600 italic">{j.catatan || '-'}</td>
+                                      <td className="p-3 text-amber-800 font-semibold">{j.catatanGuru || '-'}</td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                   </div>
               </div>

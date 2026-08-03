@@ -234,6 +234,26 @@ CREATE TABLE IF NOT EXISTS penilaian_karakter (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 15b. Jurnal Harian 7 KAIH table
+CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id TEXT NOT NULL,
+  class_id TEXT NOT NULL,
+  date DATE NOT NULL,
+  bangun_pagi TEXT DEFAULT 'Belum Terbiasa',
+  beribadah TEXT DEFAULT 'Belum Terbiasa',
+  berolahraga TEXT DEFAULT 'Belum Terbiasa',
+  makan_sehat TEXT DEFAULT 'Belum Terbiasa',
+  gemar_belajar TEXT DEFAULT 'Belum Terbiasa',
+  bermasyarakat TEXT DEFAULT 'Belum Terbiasa',
+  tidur_awal TEXT DEFAULT 'Belum Terbiasa',
+  catatan TEXT,
+  catatan_guru TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_student_kaih_date UNIQUE (student_id, date)
+);
+
 -- 16. Employment Links table
 CREATE TABLE IF NOT EXISTS employment_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

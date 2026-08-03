@@ -413,6 +413,24 @@ export interface KarakterAssessment {
   afirmasi?: string;
 }
 
+export interface DailyKAIHJournal {
+  id?: string;
+  studentId: string;
+  studentName?: string;
+  classId: string;
+  date: string; // YYYY-MM-DD
+  bangunPagi: string; // 'Terbiasa' | 'Belum Terbiasa' | ''
+  beribadah: string;
+  berolahraga: string;
+  makanSehat: string;
+  gemarBelajar: string;
+  bermasyarakat: string;
+  tidurAwal: string;
+  catatan?: string; // Catatan / Refleksi Siswa
+  catatanGuru?: string; // Catatan / Umpan Balik Guru
+  updatedAt?: string;
+}
+
 export interface Graduate {
   id: string;
   nis?: string;

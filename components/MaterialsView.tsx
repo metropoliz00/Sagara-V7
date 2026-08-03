@@ -298,36 +298,48 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   };
 
   const handleExportExcel = () => {
-    const activeMaterials = materials.filter(item => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSubject = selectedSubject === 'all' || item.subjectId === selectedSubject;
-      return matchesSearch && matchesSubject;
-    });
-
-    if (activeMaterials.length === 0) {
+    if (!filteredMaterials || filteredMaterials.length === 0) {
       onShowNotification("Tidak ada data materi untuk diekspor.", "warning");
       return;
     }
 
-    const exportData = activeMaterials.map((item, idx) => {
+    const exportData = filteredMaterials.map((item, idx) => {
       const sub = subjects.find(s => s.id === item.subjectId);
+      
+      let tipeMateri = 'Materi';
+      if (item.taskTitle || item.taskLink || item.taskFile) {
+        tipeMateri = 'Tugas';
+      }
+
       return {
         'NO': idx + 1,
         'MATA PELAJARAN': sub ? sub.name : 'Lainnya',
-        'JUDUL MATERI': item.title,
+        'TIPE': tipeMateri,
+        'JUDUL MATERI': item.title || '-',
         'DESKRIPSI': item.description || '-',
-        'LINK TAUTAN': item.link || '-',
+        'LINK UTAMA': item.link || '-',
+        'LINK VIDEO': item.videoLink || '-',
+        'INFOGRAFIS/GAMBAR': item.infographic ? 'Ada' : '-',
+        'JUDUL TUGAS': item.taskTitle || '-',
+        'LINK TUGAS': item.taskLink || '-',
+        'FILE TUGAS': item.taskFile ? 'Ada File' : '-',
         'TAMPILKAN': item.isVisible ? 'Ya' : 'Tidak',
-        'TANGGAL BUAT': item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-'
+        'TANGGAL BUAT': item.createdAt && !isNaN(new Date(item.createdAt).getTime())
+          ? new Date(item.createdAt).toLocaleDateString('id-ID')
+          : '-'
       };
     });
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
-    XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
-    onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
+    try {
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
+      XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
+      onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
+    } catch (error) {
+      console.error("Gagal mengekspor excel:", error);
+      onShowNotification("Gagal mengekspor data ke Excel.", "error");
+    }
   };
 
   const getYoutubeEmbedUrl = (url: string) => {
@@ -448,6 +460,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     }
 
     return matchesSearch && matchesSubject && isVisibleToStudent && matchesTab;
+  }).sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {

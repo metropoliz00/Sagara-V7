@@ -26,6 +26,18 @@ const LiaisonBookView: React.FC<LiaisonBookViewProps> = ({ logs, students, onRep
   const [newMessage, setNewMessage] = useState({ studentId: '', category: 'Informasi', message: '' });
   const [isSubmittingNew, setIsSubmittingNew] = useState(false);
 
+  // Filter & sort student list for teacher according to classId and name sorting
+  const classStudents = useMemo(() => {
+    return students
+      .filter(s => {
+        if (!classId || classId.toUpperCase() === 'ALL' || classId.toUpperCase() === 'SEMUA') {
+          return true;
+        }
+        return String(s.classId || '').trim().toLowerCase() === String(classId || '').trim().toLowerCase();
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'id'));
+  }, [students, classId]);
+
   // Enrich logs with student names
   const enrichedLogs = useMemo(() => {
     return logs.map(log => {
@@ -178,7 +190,7 @@ const LiaisonBookView: React.FC<LiaisonBookViewProps> = ({ logs, students, onRep
                         required
                     >
                         <option value="">-- Pilih Siswa --</option>
-                        {students.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        {classStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                   <div>

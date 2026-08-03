@@ -3008,7 +3008,7 @@ const AppContent: React.FC = () => {
                     isStudentRole ? <Navigate to="/buku-penghubung-siswa" replace /> :
                     <LiaisonBookView
                         logs={filteredLiaison}
-                        students={students} 
+                        students={filteredStudents} 
                         onReply={handleSaveLiaison}
                         onUpdateStatus={handleUpdateLiaisonStatus}
                         classId={activeClassId}

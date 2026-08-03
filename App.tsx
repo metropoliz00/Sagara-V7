@@ -57,6 +57,7 @@ import GraduatesView from './components/GraduatesView';
 import AgendaView from './components/AgendaView';
 import MaterialsView from './components/MaterialsView';
 import SumatifView from './components/SumatifView';
+import FormatifView from './components/FormatifView';
 import PerformanceAssessmentView from './components/PerformanceAssessmentView';
 import MailManagementView from './components/MailManagementView';
 import StaffLeaveView from './components/StaffLeaveView';
@@ -3139,6 +3140,14 @@ const AppContent: React.FC = () => {
                         onShowNotification={handleShowNotification}
                         isAdminOrSuperadmin={currentUser.role === 'superadmin'}
                         userRole={currentUser.role}
+                    />
+                } />
+                <Route path="/formatif" element={
+                    <FormatifView 
+                        currentUser={currentUser} 
+                        activeClassId={activeClassId} 
+                        students={filteredStudents} 
+                        onShowNotification={handleShowNotification} 
                     />
                 } />
                 <Route path="/sumatif" element={

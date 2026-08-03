@@ -581,6 +581,28 @@ CREATE TABLE IF NOT EXISTS staff_leave_requests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 39. Formatif Topics table
+CREATE TABLE IF NOT EXISTS formatif_topics (
+  id TEXT PRIMARY KEY,
+  class_id TEXT NOT NULL,
+  subject_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 40. Formatif Scores table
+CREATE TABLE IF NOT EXISTS formatif_scores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic_id TEXT REFERENCES formatif_topics(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL,
+  observasi NUMERIC DEFAULT 0,
+  tanya_jawab NUMERIC DEFAULT 0,
+  refleksi NUMERIC DEFAULT 0,
+  kuis NUMERIC DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- DISABLE RLS for all tables
 DO $$
 DECLARE

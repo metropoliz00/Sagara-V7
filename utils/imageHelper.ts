@@ -12,6 +12,10 @@
  */
 export const compressImage = (file: File, maxWidth = 300, quality = 0.7): Promise<string> => {
   return new Promise((resolve, reject) => {
+    if (file.size > 500 * 1024) {
+      reject(new Error("Ukuran file melebihi batas maksimum 500 KB."));
+      return;
+    }
     const reader = new FileReader();
     reader.readAsDataURL(file);
     

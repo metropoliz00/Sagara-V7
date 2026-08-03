@@ -203,6 +203,12 @@ const AccountManagement: React.FC<AccountManagementProps> = ({ users, students, 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const bstr = evt.target?.result;

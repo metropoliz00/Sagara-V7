@@ -173,6 +173,10 @@ const BookLoanView: React.FC<BookLoanViewProps> = ({
     const file = e.target.files?.[0];
     const bookId = uploadingBookId;
     if (file && bookId) {
+      if (file.size > 500 * 1024) {
+        onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
       try {
         setLoadingInventory(true);
         // Compress image before saving to avoid Google Sheets 50k char limit

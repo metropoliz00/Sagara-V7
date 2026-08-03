@@ -49,6 +49,11 @@ const BackupRestore: React.FC<BackupRestoreProps> = ({ data: initialData, onRest
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 500 * 1024) {
+      showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {

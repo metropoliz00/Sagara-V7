@@ -780,13 +780,14 @@ const GradesView: React.FC<GradesViewProps> = ({
                          let desc = '-';
                          if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
                              const predikatMax = getPredicate(maxScore);
-                             const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || \`TP \${maxTpIndex + 1}\`;
-                             const tujuanMin = formatifTopics[minTpIndex]?.tujuan || \`TP \${minTpIndex + 1}\`;
-                             desc = \`Murid sudah \${predikatMax} pada Tujuan Pembelajaran \${tujuanMax}, dan murid butuh bimbingan pada \${tujuanMin}\`;
+                             const predikatMin = getPredicate(minScore);
+                             const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                             const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
+                             desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
                          } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
                              const predikatMax = getPredicate(maxScore);
-                             const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || \`TP \${maxTpIndex + 1}\`;
-                             desc = \`Murid sudah \${predikatMax} pada Tujuan Pembelajaran \${tujuanMax}\`;
+                             const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                             desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
                          }
 
                          return \`
@@ -974,13 +975,14 @@ const GradesView: React.FC<GradesViewProps> = ({
              let desc = '-';
              if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
                  const predikatMax = getPredicate(maxScore);
-                 const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
-                 const tujuanMin = formatifTopics[minTpIndex]?.tujuan || `TP ${minTpIndex + 1}`;
-                 desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}, dan murid butuh bimbingan pada ${tujuanMin}`;
+                 const predikatMin = getPredicate(minScore);
+                 const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                 const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
+                 desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
              } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
                  const predikatMax = getPredicate(maxScore);
-                 const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
-                 desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}`;
+                 const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                 desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
              }
 
              return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, ...tpKeys.map((k: string) => g[k] || '-'), desc];
@@ -1009,6 +1011,12 @@ const GradesView: React.FC<GradesViewProps> = ({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { 
       const file = e.target.files?.[0];
       if (!file) return;
+
+      if (file.size > 500 * 1024) {
+        onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = (evt) => {
         const bstr = evt.target?.result;
@@ -1252,6 +1260,12 @@ const GradesView: React.FC<GradesViewProps> = ({
   const handleFileChangeHistory = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = async (evt) => {
         const bstr = evt.target?.result;
@@ -1607,17 +1621,17 @@ const GradesView: React.FC<GradesViewProps> = ({
                                if (score < minScore) { minScore = score; minTpIndex = kIdx; }
                            }
                        });
-                       
-                       let desc = '-';
+                       let desc = "-";
                        if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
                            const predikatMax = getPredicate(maxScore);
-                           const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
-                           const tujuanMin = formatifTopics[minTpIndex]?.tujuan || `TP ${minTpIndex + 1}`;
-                           desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}, dan murid butuh bimbingan pada ${tujuanMin}`;
+                           const predikatMin = getPredicate(minScore);
+                           const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                           const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
+                           desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
                        } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
                            const predikatMax = getPredicate(maxScore);
-                           const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
-                           desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}`;
+                           const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
+                           desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
                        }
 
                        return (

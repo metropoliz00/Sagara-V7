@@ -22,6 +22,9 @@ export const cacheService = {
 
   set<T>(key: string, value: T, ttl: number = 24 * 60 * 60 * 1000): boolean { // Default TTL: 24 hours
     try {
+      // Skip caching materials to avoid QuotaExceededError
+      if (key === 'materials') return true;
+
       const expiry = new Date().getTime() + ttl;
       const item = {
         value,

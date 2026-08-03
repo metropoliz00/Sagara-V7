@@ -394,6 +394,12 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      if (onShowNotification) onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       const data = new Uint8Array(evt.target?.result as ArrayBuffer);

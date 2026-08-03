@@ -2,6 +2,7 @@
 import React from 'react';
 import { SchoolProfileData } from '../../types';
 import { compressImage } from '../../utils/imageHelper';
+import { useModal } from '../../context/ModalContext';
 import { Code, Image as ImageIcon, MessageSquare, Edit } from 'lucide-react';
 
 interface DeveloperInfoTabProps {
@@ -22,6 +23,7 @@ const DEV_SOCIALS = {
 };
 
 const DeveloperInfoTab: React.FC<DeveloperInfoTabProps> = ({ school, setSchool, isReadOnly }) => {
+    const { showAlert } = useModal();
     const devInfo = school.developerInfo || { 
         name: PERMANENT_DEV_NAME, 
         moto: '', 
@@ -43,6 +45,10 @@ const DeveloperInfoTab: React.FC<DeveloperInfoTabProps> = ({ school, setSchool, 
         if (isReadOnly) return;
         const file = e.target.files?.[0];
         if (file) {
+            if (file.size > 500 * 1024) {
+                showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+                return;
+            }
             try {
                 const base64 = await compressImage(file, 200, 0.7);
                 setSchool(prev => ({

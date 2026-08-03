@@ -29,6 +29,11 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
     const input = event.target; // Simpan referensi untuk reset
 
     if (file) {
+      if (file.size > 500 * 1024) {
+        showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        if (input) input.value = '';
+        return;
+      }
       // Set loading state
       if (type === 'regency') setUploadingRegency(true);
       else setUploadingSchool(true);
@@ -59,6 +64,10 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
     if (isReadOnly) return;
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
       try {
         const resizedBase64 = await compressImage(file, 300, 0.6);
         setSchool({ ...school, headmasterSignature: resizedBase64 });

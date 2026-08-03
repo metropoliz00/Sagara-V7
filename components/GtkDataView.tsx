@@ -109,6 +109,10 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -625,8 +629,8 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              if (file.size > 1024 * 1024) {
-                                onShowNotification("Ukuran file maksimal 1MB", "error");
+                              if (file.size > 500 * 1024) {
+                                onShowNotification("Ukuran file maksimal 500 KB", "error");
                                 return;
                               }
                               try {

@@ -289,6 +289,10 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      if (onShowNotification) onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {

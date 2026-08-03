@@ -257,6 +257,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -1018,8 +1022,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              if (file.size > 1.5 * 1024 * 1024) {
-                                onShowNotification('Ukuran gambar maksimal 1.5MB.', 'error');
+                              if (file.size > 500 * 1024) {
+                                onShowNotification('Ukuran file maksimal 500 KB.', 'error');
                                 return;
                               }
                               try {
@@ -1129,8 +1133,8 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              if (file.size > 2 * 1024 * 1024) {
-                                onShowNotification('Ukuran file maksimal 2MB.', 'error');
+                              if (file.size > 500 * 1024) {
+                                onShowNotification('Ukuran file maksimal 500 KB.', 'error');
                                 return;
                               }
                               try {

@@ -970,6 +970,11 @@ const StudentList: React.FC<StudentListProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       try {
@@ -1110,6 +1115,10 @@ const StudentList: React.FC<StudentListProps> = ({
     if (isReadOnly) return;
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        onShowNotification("Ukuran file maksimal 500 KB.", 'error');
+        return;
+      }
       try {
         const resizedBase64 = await compressImage(file, 300, 0.6);
         if (isNew) { setNewStudent(prev => ({ ...prev, photo: resizedBase64 })); } else if (selectedStudent) { handleChange('photo', resizedBase64); }

@@ -10,7 +10,7 @@ import {
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
   Edit, Save, Loader2, PlusCircle, History, MessageSquare,
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
-  Camera, ChevronLeft, ChevronRight, Link2, Download, Video,
+  Camera, ChevronLeft, ChevronRight, Link2, Download, Video, Paperclip,
   Sun, Moon, CloudSun, Sunset, Coffee, Youtube, Printer, ExternalLink,
   Calculator, Globe, Compass, Music, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
@@ -1364,11 +1364,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [schedule, scheduleDayName]);
 
+  const hasEmbeddedMaterialsNotification = useMemo(() => {
+    if (!schedule) return false;
+    return schedule.some(item => (item.attachedMaterialIds && item.attachedMaterialIds.length > 0) || item.attachedNotes);
+  }, [schedule]);
+
   const TABS = [
     { id: 'dashboard', label: 'Ringkasan', icon: LayoutDashboard },
     { id: 'profile', label: 'Profil Siswa', icon: User },
     { id: 'attendance', label: 'Izin & Absensi', icon: Calendar },
-    { id: 'schedule', label: 'Jadwal Pelajaran', icon: Calendar },
+    { id: 'schedule', label: 'Jadwal Pelajaran', icon: Calendar, badge: hasEmbeddedMaterialsNotification },
     { id: 'materi', label: 'Materi', icon: BookOpen },
     { id: 'sumatif', label: 'Sumatif', icon: FileText },
     { id: 'liaison', label: 'Buku Penghubung', icon: MessageSquare },
@@ -1499,7 +1504,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                             : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'
                         }`}
                     >
-                        <Icon size={16} className="mr-2"/> {tab.label}
+                        <Icon size={16} className="mr-2"/> 
+                        <span>{tab.label}</span>
+                        {tab.badge && (
+                            <span className="ml-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        )}
                     </button>
                 )
             })}
@@ -2891,6 +2900,26 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           </div>
                       </div>
 
+                      {/* NOTIFICATION BANNER FOR EMBEDDED MATERIALS */}
+                      {hasEmbeddedMaterialsNotification && (
+                          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl shadow-sm flex items-start gap-3.5">
+                              <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shrink-0">
+                                  <Bell size={20} className="animate-bounce" />
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                      <h4 className="font-black text-amber-900 text-sm flex items-center gap-1.5">
+                                          <span>Notifikasi Materi & Tugas Disematkan Guru</span>
+                                          <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] uppercase font-bold">Baru</span>
+                                      </h4>
+                                  </div>
+                                  <p className="text-xs text-amber-800 font-medium leading-relaxed mt-1">
+                                      Bapak/Ibu Guru telah menyematkan materi pelajaran, tugas, atau instruksi khusus pada jadwal pelajaran. Periksa kartu mata pelajaran di bawah untuk langsung membuka materi!
+                                  </p>
+                              </div>
+                          </div>
+                      )}
+
                       {isLoadingSchedule ? (
                           <div className="flex flex-col items-center justify-center p-24 bg-gray-50/30 rounded-3xl border border-dashed border-gray-200">
                               <Loader2 className="animate-spin text-indigo-300 mb-4" size={40} />
@@ -2919,70 +2948,172 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   );
                                   const isTeacherPresent = journalEntry?.isTeacherPresent;
                                   const teacherName = journalEntry?.teacherName;
+
+                                  // Match attached materials
+                                  const attachedMats = (item.attachedMaterialIds || [])
+                                      .map(id => materials.find(m => m.id === id))
+                                      .filter(Boolean) as Material[];
                                   
                                   return (
                                       <div key={item.id || idx} className="relative group">
                                           {/* Timeline Point */}
                                           <div className={`absolute -left-[33px] sm:-left-[41px] top-6 w-4 h-4 rounded-full border-2 border-white shadow-sm z-10 transition-transform group-hover:scale-125 ${
-                                              isBreak ? 'bg-slate-400' : 'bg-indigo-500'
+                                              isBreak ? 'bg-slate-400' : (attachedMats.length > 0 || item.attachedNotes ? 'bg-amber-500 animate-pulse' : 'bg-indigo-500')
                                           }`}></div>
                                           
                                           {/* Card Item */}
-                                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md hover:translate-x-1 ${colorClass}`}>
-                                              <div className="flex items-center gap-4 mb-3 sm:mb-0">
-                                                  <div className={`p-3 rounded-xl shadow-sm bg-white/40 shrink-0`}>
-                                                      {isBreak ? <Coffee size={24} className="text-slate-600" /> : <BookOpen size={24} className="text-indigo-600" />}
-                                                  </div>
-                                                  <div className="min-w-0">
-                                                      <h4 className={`text-lg font-black leading-tight ${isBreak ? 'italic' : ''}`}>
-                                                          {item.subject}
-                                                      </h4>
-                                                      <div className="flex items-center mt-1">
-                                                           <Clock size={12} className="mr-1.5 opacity-60" />
-                                                           <span className="text-xs font-bold opacity-80">{item.time}</span>
+                                          <div className={`flex flex-col p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md ${colorClass}`}>
+                                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                  <div className="flex items-center gap-4">
+                                                      <div className={`p-3 rounded-xl shadow-sm bg-white/40 shrink-0`}>
+                                                          {isBreak ? <Coffee size={24} className="text-slate-600" /> : <BookOpen size={24} className="text-indigo-600" />}
                                                       </div>
-                                                      {!isBreak && (item.meetUrl || item.zoomUrl) && (
-                                                          <div className="flex flex-wrap gap-1.5 mt-2">
-                                                              {item.meetUrl && (
-                                                                  <a 
-                                                                      href={item.meetUrl.startsWith('http') ? item.meetUrl : `https://${item.meetUrl}`}
-                                                                      target="_blank"
-                                                                      rel="noopener noreferrer"
-                                                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
-                                                                  >
-                                                                      <Video size={11} />
-                                                                      <span>Meet</span>
-                                                                  </a>
-                                                              )}
-                                                              {item.zoomUrl && (
-                                                                  <a 
-                                                                      href={item.zoomUrl.startsWith('http') ? item.zoomUrl : `https://${item.zoomUrl}`}
-                                                                      target="_blank"
-                                                                      rel="noopener noreferrer"
-                                                                      className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
-                                                                  >
-                                                                      <Video size={11} />
-                                                                      <span>Zoom</span>
-                                                                  </a>
+                                                      <div className="min-w-0">
+                                                          <div className="flex items-center gap-2 flex-wrap">
+                                                              <h4 className={`text-lg font-black leading-tight ${isBreak ? 'italic' : ''}`}>
+                                                                  {item.subject}
+                                                              </h4>
+                                                              {attachedMats.length > 0 && (
+                                                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-sm animate-pulse">
+                                                                      <Paperclip size={11} />
+                                                                      <span>{attachedMats.length} Materi/Tugas</span>
+                                                                  </span>
                                                               )}
                                                           </div>
-                                                      )}
-                                                      {isTeacherPresent && teacherName && (
-                                                          <div className="flex items-center mt-2 bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-md w-fit">
-                                                              <CheckCircle size={12} className="mr-1.5" />
-                                                              <span className="text-[10px] font-black tracking-tight">Diajar oleh: {teacherName}</span>
+                                                          <div className="flex items-center mt-1">
+                                                               <Clock size={12} className="mr-1.5 opacity-60" />
+                                                               <span className="text-xs font-bold opacity-80">{item.time}</span>
                                                           </div>
+                                                          {!isBreak && (item.meetUrl || item.zoomUrl) && (
+                                                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                                                  {item.meetUrl && (
+                                                                      <a 
+                                                                          href={item.meetUrl.startsWith('http') ? item.meetUrl : `https://${item.meetUrl}`}
+                                                                          target="_blank"
+                                                                          rel="noopener noreferrer"
+                                                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                      >
+                                                                          <Video size={11} />
+                                                                          <span>Meet</span>
+                                                                      </a>
+                                                                  )}
+                                                                  {item.zoomUrl && (
+                                                                      <a 
+                                                                          href={item.zoomUrl.startsWith('http') ? item.zoomUrl : `https://${item.zoomUrl}`}
+                                                                          target="_blank"
+                                                                          rel="noopener noreferrer"
+                                                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                      >
+                                                                          <Video size={11} />
+                                                                          <span>Zoom</span>
+                                                                      </a>
+                                                                  )}
+                                                              </div>
+                                                          )}
+                                                          {isTeacherPresent && teacherName && (
+                                                              <div className="flex items-center mt-2 bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-md w-fit">
+                                                                  <CheckCircle size={12} className="mr-1.5" />
+                                                                  <span className="text-[10px] font-black tracking-tight">Diajar oleh: {teacherName}</span>
+                                                              </div>
+                                                          )}
+                                                      </div>
+                                                  </div>
+                                                  
+                                                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                                                      {isBreak ? (
+                                                           <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Waktu Istirahat</span>
+                                                      ) : (
+                                                           <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Jam Pembelajaran</span>
                                                       )}
                                                   </div>
                                               </div>
-                                              
-                                              <div className="flex items-center gap-2">
-                                                  {isBreak ? (
-                                                       <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Waktu Istirahat</span>
-                                                  ) : (
-                                                       <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Jam Pembelajaran</span>
-                                                  )}
-                                              </div>
+
+                                              {/* TEACHER INSTRUCTIONS / NOTES */}
+                                              {item.attachedNotes && (
+                                                  <div className="mt-4 p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-900 text-xs font-medium flex items-start gap-2.5 shadow-sm">
+                                                      <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                                      <div className="min-w-0">
+                                                          <span className="font-extrabold text-[10px] uppercase tracking-wider text-amber-800 block">Catatan & Instruksi Guru:</span>
+                                                          <p className="leading-relaxed text-xs mt-0.5 whitespace-pre-wrap">{item.attachedNotes}</p>
+                                                      </div>
+                                                  </div>
+                                              )}
+
+                                              {/* ATTACHED MATERIALS & TASKS */}
+                                              {attachedMats.length > 0 && (
+                                                  <div className="mt-4 pt-3 border-t border-black/5 space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                          <span className="text-xs font-black text-gray-800 flex items-center gap-1.5">
+                                                              <Paperclip size={14} className="text-indigo-600" />
+                                                              Materi & Tugas Disematkan ({attachedMats.length})
+                                                          </span>
+                                                      </div>
+                                                      <div className="grid grid-cols-1 gap-2">
+                                                          {attachedMats.map(mat => (
+                                                              <div key={mat.id} className="p-3 bg-white/90 backdrop-blur-sm rounded-xl border border-indigo-100/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:border-indigo-300 transition-all">
+                                                                  <div className="min-w-0">
+                                                                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                                                          <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase border border-indigo-100">
+                                                                              {mat.subjectId || 'Materi'}
+                                                                          </span>
+                                                                          {(mat.taskLink || mat.taskFile || mat.taskTitle) && (
+                                                                              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase border border-amber-200">
+                                                                                  Ada Tugas
+                                                                              </span>
+                                                                          )}
+                                                                      </div>
+                                                                      <p className="font-bold text-xs text-gray-800 line-clamp-1">{mat.title}</p>
+                                                                      {mat.description && (
+                                                                          <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">{mat.description}</p>
+                                                                      )}
+                                                                  </div>
+                                                                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                                                                      {mat.videoLink && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => handleOpenVideo(mat.videoLink!)}
+                                                                              className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <Youtube size={12} /> Video
+                                                                          </button>
+                                                                      )}
+                                                                      {(mat.taskLink || mat.taskFile || mat.taskTitle) && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => setViewingTask(mat)}
+                                                                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <ClipboardList size={12} /> Tugas
+                                                                          </button>
+                                                                      )}
+                                                                      {mat.infographic && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => setViewingPoster(mat)}
+                                                                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <ImageIcon size={12} /> Poster
+                                                                          </button>
+                                                                      )}
+                                                                      <button 
+                                                                          type="button"
+                                                                          onClick={() => {
+                                                                              if (mat.link) {
+                                                                                  setViewingMaterialLink(mat.link);
+                                                                              } else {
+                                                                                  setActiveTab('materi');
+                                                                              }
+                                                                          }}
+                                                                          className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-indigo-200 transition-all"
+                                                                      >
+                                                                          <BookOpen size={12} /> Materi
+                                                                      </button>
+                                                                  </div>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  </div>
+                                              )}
                                           </div>
                                       </div>
                                   );

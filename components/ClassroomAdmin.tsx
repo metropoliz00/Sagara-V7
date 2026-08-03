@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { getLocalISODate } from '../utils/dateUtils';
-import { Student, InventoryItem, Guest, ScheduleItem, PiketGroup, TeacherProfileData, SeatingLayouts, AcademicCalendarData, Holiday, OrganizationStructure, User, SchoolProfileData } from '../types';
+import { Student, InventoryItem, Guest, ScheduleItem, PiketGroup, TeacherProfileData, SeatingLayouts, AcademicCalendarData, Holiday, OrganizationStructure, User, SchoolProfileData, Material } from '../types';
 import { DEFAULT_TIME_SLOTS, CALENDAR_CODES } from '../constants';
 
 // Import Sub-Components
@@ -53,6 +53,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
   const [guests, setGuests] = useState<Guest[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [piketGroups, setPiketGroups] = useState<PiketGroup[]>([]);
   const [seatingLayouts, setSeatingLayouts] = useState<SeatingLayouts>({ classical: [], groups: [], ushape: [] });
   const [academicCalendar, setAcademicCalendar] = useState<AcademicCalendarData>({});
@@ -158,15 +159,17 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
     if (!classId) return;
     setIsLoading(true);
     try {
-        const [invData, guestData, configData, calendarData, scheduleData] = await Promise.all([
+        const [invData, guestData, configData, calendarData, scheduleData, matData] = await Promise.all([
             apiService.getInventory(classId),
             apiService.getGuests(classId),
             apiService.getClassConfig(classId),
             apiService.getAcademicCalendar('global'),
-            apiService.getSchedule(classId)
+            apiService.getSchedule(classId),
+            apiService.getMaterials(classId)
         ]);
         setInventory(invData);
         setGuests(guestData.sort((a,b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time)));
+        setMaterials(matData || []);
         
         // Use schedule from dedicated table if available, otherwise fallback to config
         if (scheduleData && scheduleData.length > 0) {
@@ -777,7 +780,7 @@ const ClassroomAdmin: React.FC<ClassroomAdminProps> = ({
 
       {/* --- CONTENT RENDERER --- */}
       <div id="print-area" className="w-full">
-        {activeTab === 'schedule' && <ScheduleTab schedule={schedule} timeSlots={timeSlots} onSave={handleSaveScheduleAndTimes} onShowNotification={onShowNotification} />}
+        {activeTab === 'schedule' && <ScheduleTab schedule={schedule} timeSlots={timeSlots} materials={materials} onSave={handleSaveScheduleAndTimes} onShowNotification={onShowNotification} />}
         {activeTab === 'piket' && <PiketTab piketGroups={piketGroups} students={students} onSave={handleSavePiket} onShowNotification={onShowNotification} />}
         {activeTab === 'seating' && <SeatingTab seatingLayouts={seatingLayouts} setSeatingLayouts={setSeatingLayouts} students={students} onSave={handleSaveSeating} teacherProfile={teacherProfile} users={users} classId={classId} />}
         {activeTab === 'organization' && (

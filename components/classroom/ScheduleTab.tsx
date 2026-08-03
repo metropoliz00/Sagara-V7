@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Save, X, Coffee, GripVertical, Flag, BookOpen, BrainCircuit, Users, Plus, Trash2, Video } from 'lucide-react';
+import { Clock, Save, X, Coffee, GripVertical, Flag, BookOpen, BrainCircuit, Users, Plus, Trash2, Video, Paperclip, FileText, Check, Search, AlertCircle, Sparkles } from 'lucide-react';
 import { WEEKDAYS, MOCK_SUBJECTS } from '../../constants';
-import { ScheduleItem } from '../../types';
+import { ScheduleItem, Material } from '../../types';
 
 interface ScheduleTabProps {
   schedule: ScheduleItem[];
   timeSlots: string[];
+  materials?: Material[];
   onSave: (schedule: ScheduleItem[], timeSlots: string[]) => Promise<void>;
   onShowNotification: (message: string, type: 'success' | 'error') => void;
 }
@@ -43,22 +44,34 @@ const ACTIVITY_PALETTE_ITEMS = [
     { subject: 'Istirahat', icon: Coffee, color: 'bg-slate-600 text-white' }
 ];
 
-const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, onShowNotification }) => {
+const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, materials = [], onSave, onShowNotification }) => {
   const [localSchedule, setLocalSchedule] = useState<ScheduleItem[]>(schedule);
   const [localTimeSlots, setLocalTimeSlots] = useState<string[]>(timeSlots);
   const [isSaving, setIsSaving] = useState(false);
   const [draggedItem, setDraggedItem] = useState<any>(null);
   const [dragOverCell, setDragOverCell] = useState<{ day: string, time: string } | null>(null);
 
-  // States for virtual class links
+  // States for modal: virtual links & attached materials
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
   const [meetUrlInput, setMeetUrlInput] = useState('');
   const [zoomUrlInput, setZoomUrlInput] = useState('');
+  const [selectedMaterialIds, setSelectedMaterialIds] = useState<string[]>([]);
+  const [attachedNotesInput, setAttachedNotesInput] = useState('');
+  const [materialSearchQuery, setMaterialSearchQuery] = useState('');
 
   const openEditLinks = (item: ScheduleItem) => {
     setEditingItem(item);
     setMeetUrlInput(item.meetUrl || '');
     setZoomUrlInput(item.zoomUrl || '');
+    setSelectedMaterialIds(item.attachedMaterialIds || []);
+    setAttachedNotesInput(item.attachedNotes || '');
+    setMaterialSearchQuery('');
+  };
+
+  const handleToggleMaterial = (matId: string) => {
+    setSelectedMaterialIds(prev => 
+      prev.includes(matId) ? prev.filter(id => id !== matId) : [...prev, matId]
+    );
   };
 
   const handleSaveLinks = () => {
@@ -69,7 +82,9 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
         return {
           ...item,
           meetUrl: meetUrlInput.trim() || undefined,
-          zoomUrl: zoomUrlInput.trim() || undefined
+          zoomUrl: zoomUrlInput.trim() || undefined,
+          attachedMaterialIds: selectedMaterialIds.length > 0 ? selectedMaterialIds : undefined,
+          attachedNotes: attachedNotesInput.trim() || undefined
         };
       }
       return item;
@@ -77,7 +92,7 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
 
     setLocalSchedule(updatedSchedule);
     setEditingItem(null);
-    onShowNotification(`Link kelas virtual berhasil diperbarui untuk mata pelajaran ${editingItem.subject}`, 'success');
+    onShowNotification(`Sematkan materi & link berhasil disimpan untuk ${editingItem.subject}`, 'success');
   };
 
   useEffect(() => {
@@ -335,18 +350,23 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
                                                         openEditLinks(item);
                                                       }}
                                                       className="absolute bottom-1 right-1 w-5 h-5 bg-black/20 hover:bg-black/40 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity no-print"
-                                                      title="Atur Link Meet/Zoom"
+                                                      title="Sematkan Materi / Link Virtual"
                                                     >
-                                                      <Video size={10}/>
+                                                      <Paperclip size={10}/>
                                                     </button>
                                                   )}
-                                                  {!isBreak && (item.meetUrl || item.zoomUrl) && (
-                                                    <div className="absolute bottom-1 left-1 flex gap-0.5 no-print">
+                                                  {!isBreak && ((item.meetUrl || item.zoomUrl) || (item.attachedMaterialIds && item.attachedMaterialIds.length > 0)) && (
+                                                    <div className="absolute bottom-1 left-1 flex items-center gap-1 no-print">
                                                       {item.meetUrl && (
                                                         <span className="w-1.5 h-1.5 rounded-full bg-green-500" title="Google Meet Tersedia" />
                                                       )}
                                                       {item.zoomUrl && (
                                                         <span className="w-1.5 h-1.5 rounded-full bg-sky-500" title="Zoom Tersedia" />
+                                                      )}
+                                                      {item.attachedMaterialIds && item.attachedMaterialIds.length > 0 && (
+                                                        <span className="px-1 py-0.5 rounded bg-amber-500 text-white font-black text-[8px] flex items-center gap-0.5" title={`${item.attachedMaterialIds.length} Materi Disematkan`}>
+                                                          <Paperclip size={8}/>{item.attachedMaterialIds.length}
+                                                        </span>
                                                       )}
                                                     </div>
                                                   )}
@@ -363,64 +383,173 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
         </div>
     </div>
 
-      {/* Meet & Zoom Links Editing Modal */}
+      {/* Meet, Zoom Links & Embedded Materials Modal */}
       {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 max-w-md w-full animate-scale-up">
-            <div className="flex justify-between items-center mb-6 pb-4 border-b">
+          <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100 max-w-lg w-full max-h-[90vh] overflow-y-auto animate-scale-up">
+            <div className="flex justify-between items-center mb-5 pb-3 border-b">
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">Penyematan Link Virtual</h3>
-                <p className="text-xs text-indigo-600 font-semibold mt-0.5">Mata Pelajaran: {editingItem.subject}</p>
+                <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
+                  <Paperclip className="text-indigo-600" size={20}/>
+                  Sematkan Materi & Tautan Jadwal
+                </h3>
+                <p className="text-xs text-indigo-600 font-semibold mt-0.5">
+                  {editingItem.day} • Jam {editingItem.time} — {editingItem.subject}
+                </p>
               </div>
               <button 
                 onClick={() => setEditingItem(null)} 
-                className="text-gray-400 hover:text-gray-600 transition-colors p-1 bg-gray-50 rounded-xl"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 bg-gray-50 rounded-xl"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="space-y-5">
-              <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                  Link Google Meet
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-500">
-                    <Video size={16} />
+            <div className="space-y-6">
+              {/* Section 1: Embed Materials */}
+              <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-indigo-900 uppercase tracking-wider flex items-center gap-1.5">
+                    <BookOpen size={15} className="text-indigo-600"/>
+                    Sematkan Materi Pelajaran / Tugas
+                  </label>
+                  <span className="text-[11px] font-bold bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">
+                    {selectedMaterialIds.length} Terpilih
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mb-3">
+                  Pilih materi/tugas yang berhubungan dengan jadwal mata pelajaran ini. Siswa akan mendapatkan notifikasi badge khusus pada portal student.
+                </p>
+
+                {materials.length === 0 ? (
+                  <div className="p-3 bg-white rounded-xl border border-dashed border-indigo-200 text-center">
+                    <p className="text-xs text-slate-500">Belum ada data materi pelajaran yang dibuat.</p>
+                    <p className="text-[11px] text-indigo-600 font-semibold mt-1">
+                      Anda dapat membuat materi di tab "Materi Belajar" terlebih dahulu.
+                    </p>
                   </div>
-                  <input
-                    type="url"
-                    placeholder="https://meet.google.com/..."
-                    value={meetUrlInput}
-                    onChange={(e) => setMeetUrlInput(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-medium text-gray-700"
-                  />
+                ) : (
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 text-gray-400" size={14} />
+                      <input 
+                        type="text"
+                        placeholder="Cari materi berdasarkan judul/deskripsi..."
+                        value={materialSearchQuery}
+                        onChange={(e) => setMaterialSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 bg-white border border-indigo-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+
+                    <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                      {materials
+                        .filter(m => {
+                          if (!materialSearchQuery) return true;
+                          const q = materialSearchQuery.toLowerCase();
+                          return m.title.toLowerCase().includes(q) || (m.description && m.description.toLowerCase().includes(q));
+                        })
+                        .map(mat => {
+                          const isSelected = selectedMaterialIds.includes(mat.id);
+                          return (
+                            <div 
+                              key={mat.id}
+                              onClick={() => handleToggleMaterial(mat.id)}
+                              className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                                isSelected 
+                                  ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                                  : 'bg-white hover:bg-indigo-50/50 text-gray-700 border-gray-200'
+                              }`}
+                            >
+                              <div className="flex-1 pr-2">
+                                <div className="flex items-center gap-1.5">
+                                  <p className="text-xs font-bold leading-tight line-clamp-1">{mat.title}</p>
+                                </div>
+                                {mat.description && (
+                                  <p className={`text-[10px] line-clamp-1 mt-0.5 ${isSelected ? 'text-indigo-100' : 'text-gray-500'}`}>
+                                    {mat.description}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-1 mt-1">
+                                  {mat.videoLink && (
+                                    <span className={`text-[9px] px-1.5 py-0.2 rounded ${isSelected ? 'bg-indigo-500 text-white' : 'bg-red-100 text-red-700'}`}>
+                                      Video
+                                    </span>
+                                  )}
+                                  {mat.taskLink || mat.taskFile ? (
+                                    <span className={`text-[9px] px-1.5 py-0.2 rounded ${isSelected ? 'bg-indigo-500 text-white' : 'bg-emerald-100 text-emerald-700'}`}>
+                                      Ada Tugas
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                              <div className={`w-5 h-5 rounded-lg flex items-center justify-center border transition-all shrink-0 ${
+                                isSelected ? 'bg-white text-indigo-600 border-white' : 'bg-gray-50 text-transparent border-gray-300'
+                              }`}>
+                                <Check size={12} strokeWidth={3} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Section 2: Virtual Meeting Links */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider">
+                  Link Kelas Virtual (Opsional)
+                </label>
+                <div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-green-500">
+                      <Video size={16} />
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="Google Meet (https://meet.google.com/...)"
+                      value={meetUrlInput}
+                      onChange={(e) => setMeetUrlInput(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-green-500/20 focus:border-green-500 font-medium text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-sky-500">
+                      <Video size={16} />
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="Zoom Meeting (https://us02web.zoom.us/j/...)"
+                      value={zoomUrlInput}
+                      onChange={(e) => setZoomUrlInput(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 font-medium text-gray-700"
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Section 3: Extra Notes for Students */}
               <div>
-                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                  Link Zoom Meeting
+                <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                  <FileText size={14} className="text-amber-500"/>
+                  Catatan Instruksi Guru (Opsional)
                 </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-sky-500">
-                    <Video size={16} />
-                  </div>
-                  <input
-                    type="url"
-                    placeholder="https://us02web.zoom.us/j/..."
-                    value={zoomUrlInput}
-                    onChange={(e) => setZoomUrlInput(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none focus:bg-white focus:ring-2 focus:ring-sky-500/20 focus:border-sky-500 transition-all font-medium text-gray-700"
-                  />
-                </div>
+                <textarea
+                  rows={2}
+                  placeholder="Contoh: Baca bab 3 dan siapkan buku catatan sebelum pembelajaran dimulai..."
+                  value={attachedNotesInput}
+                  onChange={(e) => setAttachedNotesInput(e.target.value)}
+                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs outline-none focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 font-medium text-gray-700 resize-none"
+                />
               </div>
 
-              <div className="bg-amber-50/70 rounded-2xl p-3 border border-amber-100 flex items-start gap-2.5">
-                <span className="text-amber-600 text-sm font-bold mt-0.5">⚠️</span>
-                <p className="text-[10.5px] text-amber-800 leading-relaxed font-semibold">
-                  Siswa akan dapat mengklik langsung link ini dari portal belajar mereka untuk bergabung ke kelas virtual. Pastikan link yang Anda masukkan aktif dan valid.
+              <div className="bg-amber-50/80 rounded-2xl p-3 border border-amber-100 flex items-start gap-2.5">
+                <Sparkles className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                <p className="text-[11px] text-amber-900 leading-relaxed font-semibold">
+                  Materi dan instruksi ini akan otomatis disematkan pada jadwal pelajaran portal student. Siswa akan mendapatkan badge notifikasi langsung saat membuka jadwal!
                 </p>
               </div>
             </div>
@@ -436,9 +565,10 @@ const ScheduleTab: React.FC<ScheduleTabProps> = ({ schedule, timeSlots, onSave, 
               <button
                 type="button"
                 onClick={handleSaveLinks}
-                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-colors"
+                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-xs hover:bg-indigo-700 shadow-md shadow-indigo-100 transition-colors flex items-center justify-center gap-1.5"
               >
-                Simpan Tautan
+                <Check size={16} />
+                Simpan Sematan
               </button>
             </div>
           </div>

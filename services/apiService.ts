@@ -2066,7 +2066,9 @@ export const apiService = {
         time: s.time, 
         subject: s.subject,
         meetUrl: s.meet_url || s.meetUrl || undefined,
-        zoomUrl: s.zoom_url || s.zoomUrl || undefined
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined,
+        attachedMaterialIds: s.attached_material_ids || s.attachedMaterialIds || undefined,
+        attachedNotes: s.attached_notes || s.attachedNotes || undefined
       }));
     } catch (err) {
       console.warn("getSchedule failed, using local fallback:", err);
@@ -2106,7 +2108,9 @@ export const apiService = {
         subject: s.subject, 
         classId: s.class_id,
         meetUrl: s.meet_url || s.meetUrl || undefined,
-        zoomUrl: s.zoom_url || s.zoomUrl || undefined
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined,
+        attachedMaterialIds: s.attached_material_ids || s.attachedMaterialIds || undefined,
+        attachedNotes: s.attached_notes || s.attachedNotes || undefined
       }));
     } catch (err) {
       console.warn("getScheduleAll failed:", err);
@@ -2132,29 +2136,39 @@ export const apiService = {
 
       if (schedule.length === 0) return;
 
-      // Then insert new schedule (try with virtual class links first)
+      // Then insert new schedule (try with virtual class links & attached materials first)
       const dbSchedule = schedule.map(s => ({
         class_id: classId,
         day: s.day,
         time: s.time,
         subject: s.subject,
         meet_url: s.meetUrl || null,
-        zoom_url: s.zoomUrl || null
+        zoom_url: s.zoomUrl || null,
+        attached_material_ids: s.attachedMaterialIds || null,
+        attached_notes: s.attachedNotes || null
       }));
 
       const { error: insertError } = await supabase.from('schedule').insert(dbSchedule);
       if (insertError) {
-        console.warn('Error saving schedule with links, attempting fallback without link columns:', insertError);
+        console.warn('Error saving schedule with extended columns, attempting fallback:', insertError);
         const dbScheduleStandard = schedule.map(s => ({
           class_id: classId,
           day: s.day,
           time: s.time,
-          subject: s.subject
+          subject: s.subject,
+          meet_url: s.meetUrl || null,
+          zoom_url: s.zoomUrl || null
         }));
         const { error: insertError2 } = await supabase.from('schedule').insert(dbScheduleStandard);
         if (insertError2) {
-          console.error('Fallback save schedule failed:', insertError2);
-          throw insertError2;
+          console.warn('Fallback 1 failed, trying minimal schedule save:', insertError2);
+          const dbScheduleMinimal = schedule.map(s => ({
+            class_id: classId,
+            day: s.day,
+            time: s.time,
+            subject: s.subject
+          }));
+          await supabase.from('schedule').insert(dbScheduleMinimal);
         }
       }
     } catch (err) {

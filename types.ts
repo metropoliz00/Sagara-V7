@@ -111,6 +111,8 @@ export interface ScheduleItem {
   subject: string;
   meetUrl?: string;
   zoomUrl?: string;
+  attachedMaterialIds?: string[];
+  attachedNotes?: string;
 }
 
 export interface PiketGroup {

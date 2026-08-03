@@ -113,7 +113,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
     } else {
       setSelectedTopicId('');
       setMateriInput('');
-      setTujuanInput('');
+      setTujuanInput('TP 1: ');
     }
   }, [activeClassId, selectedSubjectId]);
 
@@ -222,7 +222,8 @@ const FormatifView: React.FC<FormatifViewProps> = ({
   const handleCreateNewTopic = () => {
     setSelectedTopicId('');
     setMateriInput('');
-    setTujuanInput('');
+    const currentSubjectTopics = savedTopics.filter(t => t.subjectId === selectedSubjectId);
+    setTujuanInput(`TP ${currentSubjectTopics.length + 1}: `);
     setFormatifRecords({});
   };
 
@@ -363,7 +364,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
                 setSelectedTopicId(topId);
                 if (!topId) {
                   setMateriInput('');
-                  setTujuanInput('');
+                  setTujuanInput(`TP ${currentSubjectTopics.length + 1}: `);
                 } else {
                   const found = savedTopics.find(t => t.id === topId);
                   if (found) {

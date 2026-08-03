@@ -26,7 +26,7 @@ const GradesView: React.FC<GradesViewProps> = ({
   isReadOnly = false, allowedSubjects = ['all'], schoolProfile, teacherProfile,
   currentUser
 }) => {
-  const [viewMode, setViewMode] = useState<'input' | 'recap' | 'history' | 'tka_recap'>('input');
+  const [viewMode, setViewMode] = useState<'input' | 'recap' | 'history' | 'tka_recap' | 'formatif_recap'>('input');
   const [selectedSubject, setSelectedSubject] = useState<string>(MOCK_SUBJECTS[0].id);
   const [grades, setGrades] = useState<GradeRecord[]>(initialGrades);
   const [isSavingAll, setIsSavingAll] = useState(false);
@@ -718,9 +718,45 @@ const GradesView: React.FC<GradesViewProps> = ({
                 </tbody>
             </table>
             ${signatureBlock}
-          `;
+          \`;
+       } else if (viewMode === 'formatif_recap') {
+           const subjectName = activeSubject?.name || selectedSubject;
+           content = \`
+             <div class="print-header">
+                 <h2>REKAP NILAI FORMATIF</h2>
+                 <p>KELAS \${classId}</p>
+                 <p>TAHUN AJARAN \${schoolProfile?.year || new Date().getFullYear()}</p>
+                 <p>MATA PELAJARAN: \${subjectName.toUpperCase()} (KKTP: \${currentKktp})</p>
+             </div>
+             <table>
+                 <thead>
+                     <tr>
+                         <th style="width: 5%">No</th>
+                         <th style="width: 25%">Nama Siswa</th>
+                         <th style="width: 10%">NIS</th>
+                         <th style="width: 10%">NISN</th>
+                         \${['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map((_, i) => \`<th style="width: 5%">TP \${i+1}</th>\`).join('')}
+                     </tr>
+                 </thead>
+                 <tbody>
+                     \${students.map((s, idx) => {
+                         const g = getStudentGrade(s.id);
+                         return \`
+                         <tr>
+                             <td style="text-align: center">\${idx + 1}</td>
+                             <td>\${s.name.toUpperCase()}</td>
+                             <td>\${s.nis}</td>
+                             <td>\${s.nisn || '-'}</td>
+                             \${['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map(tp => \`<td style="text-align: center">\${(g as any)[tp] || '-'}</td>\`).join('')}
+                         </tr>
+                         \`;
+                     }).join('')}
+                 </tbody>
+             </table>
+             \${signatureBlock}
+           \`;
        } else {
-          content = `
+          content = \`
             <div class="print-header">
                 <h2>REKAP NILAI RAPOR</h2>
                 <p>KELAS ${classId}</p>
@@ -869,6 +905,17 @@ const GradesView: React.FC<GradesViewProps> = ({
           const workbook = XLSX.utils.book_new();
           XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Rapor");
           XLSX.writeFile(workbook, `Dokumen_Rekap_Nilai_Rapor_Kelas_${classId}.xlsx`);
+      } else if (viewMode === 'formatif_recap') {
+          const subjectName = activeSubject?.name || selectedSubject;
+          const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "TP 1", "TP 2", "TP 3", "TP 4", "TP 5", "TP 6", "TP 7", "TP 8", "TP 9", "TP 10"];
+          const rows = students.map((s, idx) => {
+             const g = getStudentGrade(s.id);
+             return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, g.tp1, g.tp2, g.tp3, g.tp4, g.tp5, g.tp6, g.tp7, g.tp8, g.tp9, g.tp10];
+          });
+          const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, `Rekap Formatif ${selectedSubject}`);
+          XLSX.writeFile(workbook, `Dokumen_Rekap_Formatif_${selectedSubject}_Kelas_${classId}.xlsx`);
       } else {
           const subjectName = activeSubject?.name || selectedSubject;
           const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "SUM 1", "SUM 2", "SUM 3", "SUM 4", "SAS", "Nilai Akhir", "Status"];
@@ -1230,6 +1277,9 @@ const GradesView: React.FC<GradesViewProps> = ({
                          <Calculator size={14} className="mr-1.5"/> Rekap TKA
                      </button>
                   )}
+                  <button onClick={() => setViewMode('formatif_recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'formatif_recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                      <List size={14} className="mr-1.5"/> Rekap Formatif
+                  </button>
                   <button onClick={() => setViewMode('history')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'history' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
                       <History size={14} className="mr-1.5"/> Riwayat
                   </button>
@@ -1439,6 +1489,75 @@ const GradesView: React.FC<GradesViewProps> = ({
                                 );
                              })}
                              <td className={`p-2 text-center border-l font-black text-lg bg-indigo-50 text-indigo-700 print:bg-white print:text-black`}><span>{finalAvg > 0 ? finalAvg : '-'}</span></td>
+                             {isSubjectEditable && <td className="p-2 text-center no-print"><button onClick={()=>handleSaveRow(s.id)} className="text-gray-400 hover:text-emerald-600 transition-colors" title="Simpan Baris"><Save size={18}/></button></td>}
+                          </tr>
+                       );
+                    })}
+                 </tbody>
+              </table>
+           </div>
+       ) : viewMode === 'formatif_recap' ? (
+           <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-x-auto print-container">
+              <div className="hidden print-only text-center py-4 border-b"><h2 className="text-xl font-bold uppercase">REKAP NILAI FORMATIF</h2><p className="text-sm">Kelas {classId}</p></div>
+              <table className="w-full text-sm text-left border-collapse">
+                 <thead className="bg-slate-50 text-slate-700 font-bold print:bg-white print:border-b print:text-black">
+                    <tr className="border-b">
+                       <th className="p-4 sticky left-0 bg-slate-50 print:bg-white w-12 text-center border-r z-20 hidden md:table-cell">No</th>
+                       <th className="p-4 w-24 text-center border-r sticky left-0 md:left-12 bg-slate-50 print:bg-white z-20">NIS</th>
+                       <th className="p-4 w-28 text-center border-r sticky left-0 md:left-36 bg-slate-50 print:bg-white z-20">NISN</th>
+                       <th className="p-4 sticky left-0 md:left-64 bg-slate-50 print:bg-white min-w-[150px] md:min-w-[220px] border-r z-20">Nama Siswa</th>
+                       {['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map((f, i) => (
+                           <th key={f} className="p-2 w-16 text-center border-r">TP {i+1}</th>
+                       ))}
+                       {isSubjectEditable && <th className="p-2 w-16 text-center no-print">Aksi</th>}
+                    </tr>
+                 </thead>
+                 <tbody className="divide-y divide-gray-100 print:divide-gray-300">
+                    {students.map((s, idx) => {
+                       const g = getStudentGrade(s.id);
+                       return (
+                          <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors print:hover:bg-transparent border-b">
+                             <td className="p-4 sticky left-0 bg-white text-center border-r z-10 w-12 font-medium print:text-black hidden md:table-cell">
+                                 {idx + 1}
+                              </td>
+                             <td className="p-4 text-center border-r text-xs text-gray-500 sticky left-0 md:left-12 bg-white z-10">{s.nis}</td>
+                             <td className="p-4 text-center border-r text-xs text-gray-500 sticky left-0 md:left-36 bg-white z-10">{s.nisn || '-'}</td>
+                             <td className="p-4 sticky left-0 md:left-64 bg-white font-medium print:text-black border-r z-10 min-w-[150px] md:min-w-[220px]">
+                                <div className="flex flex-col truncate">
+                                     <span className="truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span>
+                                 </div>
+                             </td>
+                             {(['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10']).map(f => {
+                                const score = Number(g[f]) || 0;
+                                const colorClass = getInputColor(score);
+                                return (
+                                   <td key={String(f)} className={`p-1 border-r align-top`}>
+                                       {!isSubjectEditable ? (
+                                         <div>
+                                            <div className={`w-full text-center py-2 font-bold rounded-lg ${colorClass}`}>{score > 0 ? score : '-'}</div>
+                                            {score > 0 && <div className="text-center text-[9px] font-bold mt-1">{score < currentKktp ? <span className="text-rose-600">Remidi</span> : <span className="text-emerald-600">Pengayaan</span>}</div>}
+                                         </div>
+                                       ) : (
+                                        <div>
+                                            <input 
+                                               type="number" 
+                                               min="0" 
+                                               max="100" 
+                                               value={score === 0 ? '' : score} 
+                                               placeholder="0"
+                                               onChange={e => {
+                                                  const val = e.target.value;
+                                                  updateLocalGrade(s.id, f, val === '' ? 0 : Number(val));
+                                                }}
+                                               onBlur={() => handleAutoSaveRow(s.id)} 
+                                               className={`w-full text-center py-2 focus:bg-white focus:ring-1 focus:ring-indigo-500 outline-none rounded-lg print:border-none print:p-0 ${colorClass}`}
+                                            />
+                                            {score > 0 && <div className="text-center text-[9px] font-bold mt-1">{score < currentKktp ? <span className="text-rose-600">Remidi</span> : <span className="text-emerald-600">Pengayaan</span>}</div>}
+                                        </div>
+                                       )}
+                                    </td>
+                                );
+                             })}
                              {isSubjectEditable && <td className="p-2 text-center no-print"><button onClick={()=>handleSaveRow(s.id)} className="text-gray-400 hover:text-emerald-600 transition-colors" title="Simpan Baris"><Save size={18}/></button></td>}
                           </tr>
                        );

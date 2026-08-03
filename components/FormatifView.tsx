@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Student, User, Subject } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
-import { apiService } from '../services/apiService';
 import { cacheService } from '../src/services/cacheService';
 import { 
   ClipboardList, BookOpen, Search, Printer, Download, Save, 
-  CheckCircle, AlertCircle, Eye, EyeOff, Plus, Trash2, Award, 
-  HelpCircle, Sparkles, Check
+  Plus, Trash2, Award, Sparkles, Check
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -16,6 +14,29 @@ interface FormatifViewProps {
   students: Student[];
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
 }
+
+const ASSESSMENT_TYPES = [
+  {
+    id: 'Observasi',
+    label: 'Observasi',
+    description: 'Guru mengamati keaktifan dan sikap siswa di kelas.'
+  },
+  {
+    id: 'Tanya Jawab Lisan',
+    label: 'Tanya Jawab Lisan',
+    description: 'Mengajukan pertanyaan singkat di tengah pelajaran untuk cek pemahaman.'
+  },
+  {
+    id: 'Refleksi Diri',
+    label: 'Refleksi Diri',
+    description: 'Siswa menilai hasil kerja mereka sendiri atau teman sekelompok.'
+  },
+  {
+    id: 'Kuis Singkat',
+    label: 'Kuis Singkat',
+    description: 'Tes kecil tanpa bobot nilai besar di akhir sesi.'
+  }
+];
 
 const getPredicate = (score: number) => {
   if (score >= 90) return 'Sangat Baik';
@@ -47,30 +68,26 @@ const FormatifView: React.FC<FormatifViewProps> = ({
   onShowNotification
 }) => {
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(MOCK_SUBJECTS[0].id);
+  const [assessmentType, setAssessmentType] = useState<string>('Observasi');
   const [materiInput, setMateriInput] = useState<string>('');
-  const [formatifRecords, setFormatifRecords] = useState<Record<string, {
-    observasi: number;
-    tanyaJawab: number;
-    refleksi: number;
-    kuis: number;
-    catatan?: string;
-  }>>({});
-  const [savedTopics, setSavedTopics] = useState<{ id: string; subjectId: string; title: string; date: string }[]>([]);
+  const [formatifRecords, setFormatifRecords] = useState<Record<string, { score: number; catatan?: string }>>({});
+  const [savedTopics, setSavedTopics] = useState<{ id: string; subjectId: string; title: string; assessmentType: string; date: string }[]>([]);
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
   const isTeacher = currentUser?.role === 'guru' || currentUser?.role === 'admin';
 
-  // Load saved topics & records for active class and selected subject
+  // Load saved topics for active class and selected subject
   useEffect(() => {
-    const cachedTopics = cacheService.get<{ id: string; subjectId: string; title: string; date: string }[]>(`formatif_topics_${activeClassId}`) || [];
+    const cachedTopics = cacheService.get<{ id: string; subjectId: string; title: string; assessmentType: string; date: string }[]>(`formatif_topics_${activeClassId}`) || [];
     setSavedTopics(cachedTopics);
     
     const subjectTopics = cachedTopics.filter(t => t.subjectId === selectedSubjectId);
     if (subjectTopics.length > 0 && !selectedTopicId) {
       setSelectedTopicId(subjectTopics[0].id);
       setMateriInput(subjectTopics[0].title);
+      setAssessmentType(subjectTopics[0].assessmentType || 'Observasi');
     } else if (subjectTopics.length === 0) {
       setSelectedTopicId('');
       setMateriInput('');
@@ -80,20 +97,30 @@ const FormatifView: React.FC<FormatifViewProps> = ({
   // Load student scores when topic changes
   useEffect(() => {
     if (selectedTopicId) {
-      const allScores = cacheService.get<Record<string, any>>(`formatif_scores_${selectedTopicId}`) || {};
+      const allScores = cacheService.get<Record<string, { score: number; catatan?: string }>>(`formatif_scores_${selectedTopicId}`) || {};
       setFormatifRecords(allScores);
     } else {
       setFormatifRecords({});
     }
   }, [selectedTopicId]);
 
-  const handleScoreChange = (studentId: string, field: 'observasi' | 'tanyaJawab' | 'refleksi' | 'kuis', value: number) => {
+  const handleScoreChange = (studentId: string, value: number) => {
     const val = Math.min(100, Math.max(0, value));
     setFormatifRecords(prev => ({
       ...prev,
       [studentId]: {
-        ...(prev[studentId] || { observasi: 0, tanyaJawab: 0, refleksi: 0, kuis: 0 }),
-        [field]: val
+        ...(prev[studentId] || { score: 0 }),
+        score: val
+      }
+    }));
+  };
+
+  const handleNoteChange = (studentId: string, note: string) => {
+    setFormatifRecords(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || { score: 0 }),
+        catatan: note
       }
     }));
   };
@@ -115,12 +142,13 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           id: topicId,
           subjectId: selectedSubjectId,
           title: materiInput.trim(),
+          assessmentType,
           date: new Date().toISOString().split('T')[0]
         };
         currentTopics.push(newTopic);
         setSelectedTopicId(topicId);
       } else {
-        currentTopics = currentTopics.map(t => t.id === topicId ? { ...t, title: materiInput.trim() } : t);
+        currentTopics = currentTopics.map(t => t.id === topicId ? { ...t, title: materiInput.trim(), assessmentType } : t);
       }
 
       setSavedTopics(currentTopics);
@@ -162,45 +190,36 @@ const FormatifView: React.FC<FormatifViewProps> = ({
     return savedTopics.filter(t => t.subjectId === selectedSubjectId);
   }, [savedTopics, selectedSubjectId]);
 
+  const selectedAssessmentObj = ASSESSMENT_TYPES.find(a => a.id === assessmentType) || ASSESSMENT_TYPES[0];
+
   const handleExportExcel = () => {
     const headers = [
-      "No", "NIS", "Nama Siswa", "Materi / Topik", 
-      "Observasi (Score)", "Observasi (Predikat)", 
-      "Tanya Jawab Lisan (Score)", "Tanya Jawab Lisan (Predikat)", 
-      "Refleksi Diri (Score)", "Refleksi Diri (Predikat)", 
-      "Kuis Singkat (Score)", "Kuis Singkat (Predikat)", 
-      "Predikat Akhir"
+      "No", "NIS", "Nama Siswa", "Materi / Topik", "Jenis Formatif", 
+      "Nilai Angka", "Predikat", "Catatan / Keterangan"
     ];
 
     const subjectName = MOCK_SUBJECTS.find(s => s.id === selectedSubjectId)?.name || selectedSubjectId;
 
     const rows = students.map((s, idx) => {
-      const rec = formatifRecords[s.id] || { observasi: 0, tanyaJawab: 0, refleksi: 0, kuis: 0 };
-      const obsPred = getPredicate(rec.observasi);
-      const tjPred = getPredicate(rec.tanyaJawab);
-      const refPred = getPredicate(rec.refleksi);
-      const kuisPred = getPredicate(rec.kuis);
-      
-      const avg = Math.round((rec.observasi + rec.tanyaJawab + rec.refleksi + rec.kuis) / 4);
-      const finalPred = getPredicate(avg);
+      const rec = formatifRecords[s.id] || { score: 0, catatan: '' };
+      const pred = getPredicate(rec.score);
 
       return [
         idx + 1,
         s.nis,
         s.name.toUpperCase(),
         materiInput || '-',
-        rec.observasi, obsPred,
-        rec.tanyaJawab, tjPred,
-        rec.refleksi, refPred,
-        rec.kuis, kuisPred,
-        finalPred
+        assessmentType,
+        rec.score,
+        pred,
+        rec.catatan || '-'
       ];
     });
 
     const worksheet = XLSX.utils.aoa_to_sheet([[ `REKAP PENILAIAN FORMATIF - ${subjectName.toUpperCase()} (KELAS ${activeClassId})` ], [], headers, ...rows]);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Formatif");
-    XLSX.writeFile(workbook, `Rekap_Formatif_${subjectName}_Kelas_${activeClassId}.xlsx`);
+    XLSX.writeFile(workbook, `Rekap_Formatif_${subjectName}_${assessmentType}_Kelas_${activeClassId}.xlsx`);
     onShowNotification('Data formatif berhasil diekspor ke Excel!', 'success');
   };
 
@@ -218,7 +237,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             <span className="text-xs font-black uppercase tracking-wider">Asesmen Kurikulum Merdeka</span>
           </div>
           <h2 className="text-2xl font-black text-slate-800">PENILAIAN FORMATIF</h2>
-          <p className="text-slate-500 text-sm">Observasi, Tanya Jawab Lisan, Refleksi Diri, & Kuis Singkat per Mata Pelajaran</p>
+          <p className="text-slate-500 text-sm">Penilaian formatif per mata pelajaran dengan pilihan jenis asesmen fleksibel</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -238,10 +257,10 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         </div>
       </div>
 
-      {/* Subject & Topic Selector Card */}
+      {/* Subject, Assessment Type, & Topic Selector Card */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Mata Pelajaran</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">1. Pilih Mata Pelajaran</label>
           <select
             value={selectedSubjectId}
             onChange={(e) => setSelectedSubjectId(e.target.value)}
@@ -254,7 +273,20 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih / Muat Topik Tersimpan</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">2. Pilih Jenis Formatif (Dropdown)</label>
+          <select
+            value={assessmentType}
+            onChange={(e) => setAssessmentType(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] font-semibold text-slate-700 bg-slate-50"
+          >
+            {ASSESSMENT_TYPES.map(type => (
+              <option key={type.id} value={type.id}>{type.label}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Pilih / Muat Topik Tersimpan</label>
           <div className="flex gap-2">
             <select
               value={selectedTopicId}
@@ -262,13 +294,16 @@ const FormatifView: React.FC<FormatifViewProps> = ({
                 const topId = e.target.value;
                 setSelectedTopicId(topId);
                 const found = savedTopics.find(t => t.id === topId);
-                if (found) setMateriInput(found.title);
+                if (found) {
+                  setMateriInput(found.title);
+                  if (found.assessmentType) setAssessmentType(found.assessmentType);
+                }
               }}
               className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] font-semibold text-slate-700 bg-slate-50"
             >
               <option value="">-- Buat Topik Baru --</option>
               {currentSubjectTopics.map(t => (
-                <option key={t.id} value={t.id}>{t.title} ({t.date})</option>
+                <option key={t.id} value={t.id}>{t.title} ({t.assessmentType})</option>
               ))}
             </select>
             {selectedTopicId && (
@@ -289,50 +324,26 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             </button>
           </div>
         </div>
-
-        <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Materi / Tujuan Pembelajaran</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Contoh: Bilangan Cacah sampai 1.000"
-              value={materiInput}
-              onChange={(e) => setMateriInput(e.target.value)}
-              className="flex-1 px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] font-medium text-slate-800"
-            />
-          </div>
-        </div>
       </div>
 
-      {/* Info Banner on Formatif Assessment Types */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-sky-50 p-4 rounded-2xl border border-blue-100 shadow-xs">
+      {/* Topic Title Input & Description Banner */}
+      <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-6 rounded-3xl border border-blue-100 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex-1 w-full">
+          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Materi / Tujuan Pembelajaran yang Diajarkan</label>
+          <input
+            type="text"
+            placeholder="Contoh: Memahami Bilangan Cacah Sampai 1000"
+            value={materiInput}
+            onChange={(e) => setMateriInput(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl border border-blue-200 bg-white focus:ring-2 focus:ring-[#5AB2FF] font-medium text-slate-800 shadow-xs"
+          />
+        </div>
+        <div className="w-full md:w-auto bg-white/80 p-4 rounded-2xl border border-blue-100 min-w-[280px]">
           <div className="flex items-center space-x-2 text-blue-600 font-bold mb-1">
             <Sparkles size={16} />
-            <span className="text-xs uppercase">1. Observasi</span>
+            <span className="text-xs uppercase">{selectedAssessmentObj.label}</span>
           </div>
-          <p className="text-xs text-slate-600 leading-relaxed">Guru mengamati keaktifan dan sikap siswa di kelas.</p>
-        </div>
-        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-4 rounded-2xl border border-emerald-100 shadow-xs">
-          <div className="flex items-center space-x-2 text-emerald-600 font-bold mb-1">
-            <Sparkles size={16} />
-            <span className="text-xs uppercase">2. Tanya Jawab Lisan</span>
-          </div>
-          <p className="text-xs text-slate-600 leading-relaxed">Mengajukan pertanyaan singkat di tengah pelajaran untuk cek pemahaman.</p>
-        </div>
-        <div className="bg-gradient-to-br from-purple-50 to-fuchsia-500/10 p-4 rounded-2xl border border-purple-100 shadow-xs">
-          <div className="flex items-center space-x-2 text-purple-600 font-bold mb-1">
-            <Sparkles size={16} />
-            <span className="text-xs uppercase">3. Refleksi Diri</span>
-          </div>
-          <p className="text-xs text-slate-600 leading-relaxed">Siswa menilai hasil kerja mereka sendiri atau teman sekelompok.</p>
-        </div>
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-2xl border border-amber-100 shadow-xs">
-          <div className="flex items-center space-x-2 text-amber-600 font-bold mb-1">
-            <Sparkles size={16} />
-            <span className="text-xs uppercase">4. Kuis Singkat</span>
-          </div>
-          <p className="text-xs text-slate-600 leading-relaxed">Tes kecil tanpa bobot nilai besar di akhir sesi pembelajaran.</p>
+          <p className="text-xs text-slate-600">{selectedAssessmentObj.description}</p>
         </div>
       </div>
 
@@ -368,25 +379,22 @@ const FormatifView: React.FC<FormatifViewProps> = ({
               <tr className="bg-slate-50/80 border-b border-slate-100 text-slate-600 text-xs font-black uppercase tracking-wider">
                 <th className="py-4 px-4 text-center w-12">No</th>
                 <th className="py-4 px-4">Nama Siswa / NIS</th>
-                <th className="py-4 px-4 text-center w-36">1. Observasi</th>
-                <th className="py-4 px-4 text-center w-36">2. Tanya Jawab</th>
-                <th className="py-4 px-4 text-center w-36">3. Refleksi Diri</th>
-                <th className="py-4 px-4 text-center w-36">4. Kuis Singkat</th>
-                <th className="py-4 px-4 text-center w-40">Predikat Akhir</th>
+                <th className="py-4 px-4 text-center w-40">Nilai ({assessmentType})</th>
+                <th className="py-4 px-4 text-center w-48">Predikat</th>
+                <th className="py-4 px-4">Catatan / Keterangan</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
+                  <td colSpan={5} className="text-center py-12 text-slate-400">
                     Tidak ada siswa ditemukan.
                   </td>
                 </tr>
               ) : (
                 filteredStudents.map((student, idx) => {
-                  const rec = formatifRecords[student.id] || { observasi: 0, tanyaJawab: 0, refleksi: 0, kuis: 0 };
-                  const avg = Math.round((rec.observasi + rec.tanyaJawab + rec.refleksi + rec.kuis) / 4);
-                  const finalPred = getPredicate(avg);
+                  const rec = formatifRecords[student.id] || { score: 0, catatan: '' };
+                  const pred = getPredicate(rec.score);
 
                   return (
                     <tr key={student.id} className="hover:bg-slate-50/50 transition-colors">
@@ -396,76 +404,30 @@ const FormatifView: React.FC<FormatifViewProps> = ({
                         <div className="text-xs text-slate-400 font-mono">NIS: {student.nis}</div>
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            disabled={!isTeacher}
-                            value={rec.observasi || ''}
-                            onChange={(e) => handleScoreChange(student.id, 'observasi', Number(e.target.value))}
-                            className="w-20 px-2 py-1 text-center font-bold rounded-lg border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50"
-                          />
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getPredicateBadgeClass(getPredicate(rec.observasi))}`}>
-                            {getPredicate(rec.observasi)}
-                          </span>
-                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          disabled={!isTeacher}
+                          value={rec.score || ''}
+                          onChange={(e) => handleScoreChange(student.id, Number(e.target.value))}
+                          className="w-24 px-3 py-1.5 text-center font-bold text-base rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50"
+                        />
                       </td>
                       <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            disabled={!isTeacher}
-                            value={rec.tanyaJawab || ''}
-                            onChange={(e) => handleScoreChange(student.id, 'tanyaJawab', Number(e.target.value))}
-                            className="w-20 px-2 py-1 text-center font-bold rounded-lg border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50"
-                          />
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getPredicateBadgeClass(getPredicate(rec.tanyaJawab))}`}>
-                            {getPredicate(rec.tanyaJawab)}
-                          </span>
-                        </div>
+                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${getPredicateBadgeClass(pred)}`}>
+                          {pred}
+                        </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            disabled={!isTeacher}
-                            value={rec.refleksi || ''}
-                            onChange={(e) => handleScoreChange(student.id, 'refleksi', Number(e.target.value))}
-                            className="w-20 px-2 py-1 text-center font-bold rounded-lg border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50"
-                          />
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getPredicateBadgeClass(getPredicate(rec.refleksi))}`}>
-                            {getPredicate(rec.refleksi)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <input
-                            type="number"
-                            min="0"
-                            max="100"
-                            disabled={!isTeacher}
-                            value={rec.kuis || ''}
-                            onChange={(e) => handleScoreChange(student.id, 'kuis', Number(e.target.value))}
-                            className="w-20 px-2 py-1 text-center font-bold rounded-lg border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50"
-                          />
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${getPredicateBadgeClass(getPredicate(rec.kuis))}`}>
-                            {getPredicate(rec.kuis)}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex flex-col items-center gap-1">
-                          <span className="font-mono font-bold text-slate-700">{avg > 0 ? avg : '-'}</span>
-                          <span className={`text-xs font-black px-3 py-1 rounded-full ${getPredicateBadgeClass(finalPred)}`}>
-                            {finalPred}
-                          </span>
-                        </div>
+                      <td className="py-3 px-4">
+                        <input
+                          type="text"
+                          disabled={!isTeacher}
+                          placeholder="Catatan perkembangan..."
+                          value={rec.catatan || ''}
+                          onChange={(e) => handleNoteChange(student.id, e.target.value)}
+                          className="w-full px-3 py-1.5 text-sm rounded-xl border border-slate-200 focus:ring-2 focus:ring-[#5AB2FF] bg-slate-50 text-slate-700"
+                        />
                       </td>
                     </tr>
                   );

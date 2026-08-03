@@ -587,6 +587,7 @@ CREATE TABLE IF NOT EXISTS formatif_topics (
   class_id TEXT NOT NULL,
   subject_id TEXT NOT NULL,
   title TEXT NOT NULL,
+  assessment_type TEXT NOT NULL DEFAULT 'Observasi',
   date DATE NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -596,10 +597,8 @@ CREATE TABLE IF NOT EXISTS formatif_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   topic_id TEXT REFERENCES formatif_topics(id) ON DELETE CASCADE,
   student_id TEXT NOT NULL,
-  observasi NUMERIC DEFAULT 0,
-  tanya_jawab NUMERIC DEFAULT 0,
-  refleksi NUMERIC DEFAULT 0,
-  kuis NUMERIC DEFAULT 0,
+  score NUMERIC DEFAULT 0,
+  catatan TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

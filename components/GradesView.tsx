@@ -3,6 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Student, GradeRecord, GradeData, Subject, SchoolProfileData, TeacherProfileData, GradeHistoryRecord, User } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 import { apiService } from '../services/apiService';
+import { cacheService } from '../src/services/cacheService';
 import * as XLSX from 'xlsx';
 import html2pdf from 'html2pdf.js';
 import { Save, FileSpreadsheet, Printer, Upload, Download, Calculator, CheckCircle, AlertCircle, Settings2, Lock, ChevronDown, Trophy, List, Grid, Eye, EyeOff, Loader2, Plus, Minus, History, Trash2 } from 'lucide-react';
@@ -34,6 +35,13 @@ const GradesView: React.FC<GradesViewProps> = ({
   const [isSavingKktp, setIsSavingKktp] = useState(false);
   const { showConfirm } = useModal();
   
+  const formatifTopics = useMemo(() => {
+     const allTopics = cacheService.get<any[]>(`shared_learning_topics_${classId}`) || [];
+     return allTopics.filter((t: any) => t.subjectId === selectedSubject);
+  }, [classId, selectedSubject]);
+
+  const tpKeys = formatifTopics.length > 0 ? formatifTopics.map((_: any, i: number) => `tp${i + 1}`) : ['tp1'];
+
   // History States
   const [gradeHistory, setGradeHistory] = useState<GradeHistoryRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
@@ -735,19 +743,44 @@ const GradesView: React.FC<GradesViewProps> = ({
                          <th style="width: 25%">Nama Siswa</th>
                          <th style="width: 10%">NIS</th>
                          <th style="width: 10%">NISN</th>
-                         \${['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map((_, i) => \`<th style="width: 5%">TP \${i+1}</th>\`).join('')}
+                         \${tpKeys.map((_: any, i: number) => \`<th style="width: 5%">TP \${i+1}</th>\`).join('')}
+                         <th style="width: 20%">Deskripsi Ketercapaian</th>
                      </tr>
                  </thead>
                  <tbody>
                      \${students.map((s, idx) => {
                          const g = getStudentGrade(s.id);
+                         let maxScore = -1;
+                         let minScore = 101;
+                         let maxTpIndex = -1;
+                         let minTpIndex = -1;
+                         tpKeys.forEach((key: string, kIdx: number) => {
+                             const score = Number(g[key]);
+                             if (!isNaN(score) && score > 0) {
+                                 if (score > maxScore) { maxScore = score; maxTpIndex = kIdx; }
+                                 if (score < minScore) { minScore = score; minTpIndex = kIdx; }
+                             }
+                         });
+                         let desc = '-';
+                         if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
+                             const predikatMax = getPredicate(maxScore);
+                             const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || \`TP \${maxTpIndex + 1}\`;
+                             const tujuanMin = formatifTopics[minTpIndex]?.tujuan || \`TP \${minTpIndex + 1}\`;
+                             desc = \`Murid sudah \${predikatMax} pada Tujuan Pembelajaran \${tujuanMax}, dan murid butuh bimbingan pada \${tujuanMin}\`;
+                         } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
+                             const predikatMax = getPredicate(maxScore);
+                             const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || \`TP \${maxTpIndex + 1}\`;
+                             desc = \`Murid sudah \${predikatMax} pada Tujuan Pembelajaran \${tujuanMax}\`;
+                         }
+
                          return \`
                          <tr>
                              <td style="text-align: center">\${idx + 1}</td>
                              <td>\${s.name.toUpperCase()}</td>
                              <td>\${s.nis}</td>
                              <td>\${s.nisn || '-'}</td>
-                             \${['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map(tp => \`<td style="text-align: center">\${(g as any)[tp] || '-'}</td>\`).join('')}
+                             \${tpKeys.map((tp: string) => \`<td style="text-align: center">\${(g as any)[tp] || '-'}</td>\`).join('')}
+                             <td style="font-size: 10px; white-space: pre-wrap;">\${desc}</td>
                          </tr>
                          \`;
                      }).join('')}
@@ -907,10 +940,34 @@ const GradesView: React.FC<GradesViewProps> = ({
           XLSX.writeFile(workbook, `Dokumen_Rekap_Nilai_Rapor_Kelas_${classId}.xlsx`);
       } else if (viewMode === 'formatif_recap') {
           const subjectName = activeSubject?.name || selectedSubject;
-          const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", "TP 1", "TP 2", "TP 3", "TP 4", "TP 5", "TP 6", "TP 7", "TP 8", "TP 9", "TP 10"];
+          const headers = ["No", "NIS", "NISN", "Nama Siswa", "Mata Pelajaran", ...tpKeys.map((_: any, i: number) => `TP ${i+1}`), "Deskripsi Ketercapaian"];
           const rows = students.map((s, idx) => {
              const g = getStudentGrade(s.id);
-             return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, g.tp1, g.tp2, g.tp3, g.tp4, g.tp5, g.tp6, g.tp7, g.tp8, g.tp9, g.tp10];
+             
+             let maxScore = -1;
+             let minScore = 101;
+             let maxTpIndex = -1;
+             let minTpIndex = -1;
+             tpKeys.forEach((key: string, kIdx: number) => {
+                 const score = Number(g[key]);
+                 if (!isNaN(score) && score > 0) {
+                     if (score > maxScore) { maxScore = score; maxTpIndex = kIdx; }
+                     if (score < minScore) { minScore = score; minTpIndex = kIdx; }
+                 }
+             });
+             let desc = '-';
+             if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
+                 const predikatMax = getPredicate(maxScore);
+                 const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
+                 const tujuanMin = formatifTopics[minTpIndex]?.tujuan || `TP ${minTpIndex + 1}`;
+                 desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}, dan murid butuh bimbingan pada ${tujuanMin}`;
+             } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
+                 const predikatMax = getPredicate(maxScore);
+                 const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
+                 desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}`;
+             }
+
+             return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, ...tpKeys.map((k: string) => g[k] || '-'), desc];
           });
           const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
           const workbook = XLSX.utils.book_new();
@@ -1265,27 +1322,32 @@ const GradesView: React.FC<GradesViewProps> = ({
                   </button>
               )}
 
-              <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200">
-                  <button onClick={() => setViewMode('input')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'input' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                      <Grid size={14} className="mr-1.5"/> Per Mapel
-                  </button>
-                  <button onClick={() => setViewMode('recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                      <List size={14} className="mr-1.5"/> Rekap Rapor
-                  </button>
-                  {canAccessTKA && (
-                     <button onClick={() => setViewMode('tka_recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'tka_recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                         <Calculator size={14} className="mr-1.5"/> Rekap TKA
-                     </button>
-                  )}
-                  <button onClick={() => setViewMode('formatif_recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'formatif_recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                      <List size={14} className="mr-1.5"/> Rekap Formatif
-                  </button>
-                  <button onClick={() => setViewMode('history')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'history' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-                      <History size={14} className="mr-1.5"/> Riwayat
-                  </button>
+              <div className="flex flex-col sm:flex-row gap-2 max-w-full overflow-x-auto pb-1">
+                  <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 min-w-max">
+                      <button onClick={() => setViewMode('input')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'input' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                          <Grid size={14} className="mr-1.5"/> Nilai Sumatif
+                      </button>
+                      <button onClick={() => setViewMode('formatif_recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'formatif_recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                          <List size={14} className="mr-1.5"/> Rekap Formatif
+                      </button>
+                  </div>
+                  
+                  <div className="flex bg-gray-100 p-1 rounded-xl border border-gray-200 min-w-max">
+                      <button onClick={() => setViewMode('recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                          <List size={14} className="mr-1.5"/> Rekap Rapor
+                      </button>
+                      {canAccessTKA && (
+                         <button onClick={() => setViewMode('tka_recap')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'tka_recap' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                             <Calculator size={14} className="mr-1.5"/> Rekap TKA
+                         </button>
+                      )}
+                      <button onClick={() => setViewMode('history')} className={`flex items-center px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'history' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
+                          <History size={14} className="mr-1.5"/> Riwayat
+                      </button>
+                  </div>
               </div>
 
-              {viewMode === 'input' && (
+              {(viewMode === 'input' || viewMode === 'formatif_recap') && (
                   <>
                     <div className="flex items-center bg-white border border-indigo-100 p-1 rounded-xl shadow-sm">
                         <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600 mr-2"> <Settings2 size={16} /> </div>
@@ -1506,15 +1568,42 @@ const GradesView: React.FC<GradesViewProps> = ({
                        <th className="p-4 w-24 text-center border-r sticky left-0 md:left-12 bg-slate-50 print:bg-white z-20">NIS</th>
                        <th className="p-4 w-28 text-center border-r sticky left-0 md:left-36 bg-slate-50 print:bg-white z-20">NISN</th>
                        <th className="p-4 sticky left-0 md:left-64 bg-slate-50 print:bg-white min-w-[150px] md:min-w-[220px] border-r z-20">Nama Siswa</th>
-                       {['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10'].map((f, i) => (
+                       {tpKeys.map((f: string, i: number) => (
                            <th key={f} className="p-2 w-16 text-center border-r">TP {i+1}</th>
                        ))}
+                       <th className="p-4 min-w-[300px] border-r">Deskripsi Ketercapaian</th>
                        {isSubjectEditable && <th className="p-2 w-16 text-center no-print">Aksi</th>}
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-gray-100 print:divide-gray-300">
                     {students.map((s, idx) => {
                        const g = getStudentGrade(s.id);
+                       
+                       let maxScore = -1;
+                       let minScore = 101;
+                       let maxTpIndex = -1;
+                       let minTpIndex = -1;
+                       
+                       tpKeys.forEach((key: string, kIdx: number) => {
+                           const score = Number(g[key]);
+                           if (!isNaN(score) && score > 0) {
+                               if (score > maxScore) { maxScore = score; maxTpIndex = kIdx; }
+                               if (score < minScore) { minScore = score; minTpIndex = kIdx; }
+                           }
+                       });
+                       
+                       let desc = '-';
+                       if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
+                           const predikatMax = getPredicate(maxScore);
+                           const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
+                           const tujuanMin = formatifTopics[minTpIndex]?.tujuan || `TP ${minTpIndex + 1}`;
+                           desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}, dan murid butuh bimbingan pada ${tujuanMin}`;
+                       } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
+                           const predikatMax = getPredicate(maxScore);
+                           const tujuanMax = formatifTopics[maxTpIndex]?.tujuan || `TP ${maxTpIndex + 1}`;
+                           desc = `Murid sudah ${predikatMax} pada Tujuan Pembelajaran ${tujuanMax}`;
+                       }
+
                        return (
                           <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors print:hover:bg-transparent border-b">
                              <td className="p-4 sticky left-0 bg-white text-center border-r z-10 w-12 font-medium print:text-black hidden md:table-cell">
@@ -1527,7 +1616,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                      <span className="truncate text-xs md:text-sm" title={s.name.toUpperCase()}>{s.name.toUpperCase()}</span>
                                  </div>
                              </td>
-                             {(['tp1','tp2','tp3','tp4','tp5','tp6','tp7','tp8','tp9','tp10']).map(f => {
+                             {tpKeys.map((f: string) => {
                                 const score = Number(g[f]) || 0;
                                 const colorClass = getInputColor(score);
                                 return (
@@ -1558,6 +1647,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                     </td>
                                 );
                              })}
+                             <td className="p-2 border-r text-xs text-gray-700 whitespace-pre-wrap">{desc}</td>
                              {isSubjectEditable && <td className="p-2 text-center no-print"><button onClick={()=>handleSaveRow(s.id)} className="text-gray-400 hover:text-emerald-600 transition-colors" title="Simpan Baris"><Save size={18}/></button></td>}
                           </tr>
                        );

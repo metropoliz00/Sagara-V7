@@ -93,7 +93,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           id: s.id || `sumatif-topic-${s.subjectId}`,
           subjectId: s.subjectId,
           materi: s.title || 'Materi Pembelajaran',
-          tujuan: s.title || 'Tujuan Pembelajaran',
+          tujuan: s.tujuan || '',
           date: s.date || new Date().toISOString().split('T')[0]
         }));
       cachedTopics = [...legacyFormatif, ...sumatifTopics];
@@ -154,10 +154,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
       onShowNotification('Materi pembelajaran wajib diisi.', 'error');
       return;
     }
-    if (!tujuanInput.trim()) {
-      onShowNotification('Tujuan Pembelajaran wajib diisi.', 'error');
-      return;
-    }
+    // Tujuan pembelajaran is optional (can be left blank)
 
     setIsSaving(true);
     try {
@@ -170,7 +167,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           id: topicId,
           subjectId: selectedSubjectId,
           materi: materiInput.trim(),
-          tujuan: tujuanInput.trim(),
+          tujuan: tujuanInput.trim(), // can be empty string
           date: new Date().toISOString().split('T')[0]
         };
         currentTopics.push(newTopic);
@@ -179,7 +176,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         currentTopics = currentTopics.map(t => t.id === topicId ? { 
           ...t, 
           materi: materiInput.trim(), 
-          tujuan: tujuanInput.trim()
+          tujuan: tujuanInput.trim() 
         } : t);
       }
 
@@ -190,15 +187,31 @@ const FormatifView: React.FC<FormatifViewProps> = ({
       const scoreKey = `formatif_scores_${topicId}_${assessmentType}`;
       cacheService.set(scoreKey, formatifRecords);
 
-      // Also synchronize with Sumatifs if matching or create sumatif skeleton
+      // AUTOMATIC SYNCHRONIZATION WITH SUMATIF (Doing Formatif first populates/syncs in Sumatif!)
+      // Only MATERI is synchronized with Sumatif.
       const allSumatifs = cacheService.get<any[]>('sumatifs') || [];
-      const sumIndex = allSumatifs.findIndex(s => s.id === topicId || (s.subjectId === selectedSubjectId && s.classId === activeClassId));
+      const sumIndex = allSumatifs.findIndex(s => s.id === topicId || (s.subjectId === selectedSubjectId && s.classId === activeClassId && s.title === materiInput.trim()));
+      
       if (sumIndex !== -1) {
         allSumatifs[sumIndex].title = materiInput.trim();
-        cacheService.set('sumatifs', allSumatifs);
+      } else {
+        const newSumatif = {
+          id: topicId,
+          classId: activeClassId,
+          subjectId: selectedSubjectId,
+          title: materiInput.trim(),
+          type: 'sum1',
+          questions: [],
+          duration: 60,
+          isActive: true,
+          isVisible: true,
+          createdAt: new Date().toISOString()
+        };
+        allSumatifs.push(newSumatif);
       }
+      cacheService.set('sumatifs', allSumatifs);
 
-      onShowNotification(`Penilaian ${assessmentType} berhasil disimpan untuk Materi ini!`, 'success');
+      onShowNotification(`Penilaian ${assessmentType} berhasil disimpan & Materi tersinkron ke Sumatif!`, 'success');
     } catch (e) {
       onShowNotification('Gagal menyimpan penilaian formatif.', 'error');
     } finally {
@@ -227,7 +240,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
     if (selectedTopicId === topicId) {
       handleCreateNewTopic();
     }
-    onShowNotification('Materi & Tujuan Pembelajaran berhasil dihapus.', 'success');
+    onShowNotification('Materi berhasil dihapus.', 'success');
   };
 
   const filteredStudents = useMemo(() => {
@@ -292,7 +305,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
             <span className="text-xs font-black uppercase tracking-wider">Asesmen Kurikulum Merdeka</span>
           </div>
           <h2 className="text-2xl font-black text-slate-800">PENILAIAN FORMATIF</h2>
-          <p className="text-slate-500 text-sm">Materi tersinkronasi dengan Sumatif; Jenis dan Nilai Formatif berdiri sendiri</p>
+          <p className="text-slate-500 text-sm">Materi tersinkron otomatis ke Sumatif; Jenis dan Nilai Formatif independen</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -341,7 +354,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Pilih / Muat Materi (Sinkron Sumatif)</label>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">3. Pilih / Buat Materi (Sinkron ke Sumatif)</label>
           <div className="flex gap-2">
             <select
               value={selectedTopicId}
@@ -389,7 +402,7 @@ const FormatifView: React.FC<FormatifViewProps> = ({
       {/* Materi & Tujuan Pembelajaran Inputs */}
       <div className="bg-gradient-to-r from-blue-50 to-sky-50 p-6 rounded-3xl border border-blue-100 shadow-xs grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Materi (Tersinkronasi dengan Sumatif)</label>
+          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Materi *</label>
           <input
             type="text"
             placeholder="Contoh: Bilangan Cacah Sampai 1000"
@@ -399,10 +412,10 @@ const FormatifView: React.FC<FormatifViewProps> = ({
           />
         </div>
         <div>
-          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Tujuan Pembelajaran (Turunan Materi)</label>
+          <label className="block text-xs font-bold text-blue-800 uppercase tracking-wider mb-1">Tujuan Pembelajaran</label>
           <input
             type="text"
-            placeholder="Contoh: Peserta didik dapat membaca dan menulis bilangan cacah"
+            placeholder="Contoh: Peserta didik dapat membaca dan menulis bilangan cacah (Opsional)"
             value={tujuanInput}
             onChange={(e) => setTujuanInput(e.target.value)}
             className="w-full px-4 py-3 rounded-xl border border-blue-200 bg-white focus:ring-2 focus:ring-[#5AB2FF] font-medium text-slate-800 shadow-xs"

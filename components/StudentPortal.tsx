@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
-import { getLocalISODate } from '../utils/dateUtils';
+import { getLocalISODate, formatDateID } from '../utils/dateUtils';
 import SumatifView from './SumatifView';
 import ManualBookView from './ManualBookView';
 import MitigasiBencanaView from './MitigasiBencanaView';
@@ -2974,21 +2974,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                   {/* 7 Habit Interactive List */}
                   <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
-                          <div>
-                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2.5">
-                              <Logo7Kaih className="w-8 h-8" imgClassName="rounded-lg border border-gray-100 shadow-2xs" />
-                              Daftar Pembiasaan 7 KAIH
-                            </h4>
-                            <p className="text-xs font-bold text-sky-700 mt-0.5">
-                              {(() => {
-                                if (!selectedJournalDate) return '(dd-mm-yyyy)';
-                                const parts = selectedJournalDate.split('-');
-                                if (parts.length === 3) {
-                                  return `(${parts[2]}-${parts[1]}-${parts[0]})`;
-                                }
-                                return `(${selectedJournalDate})`;
-                              })()}
-                            </p>
+                          <div className="flex items-center gap-3">
+                            <Logo7Kaih className="w-9 h-9 shrink-0" imgClassName="rounded-lg border border-gray-100 shadow-2xs" />
+                            <div>
+                              <h4 className="font-extrabold text-gray-800 text-lg leading-tight">
+                                Daftar Pembiasaan 7 KAIH
+                              </h4>
+                              <p className="text-xs font-bold text-sky-700 mt-0.5">
+                                {formatDateID(selectedJournalDate)}
+                              </p>
+                            </div>
                           </div>
 
                           <button 

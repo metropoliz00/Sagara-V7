@@ -1625,7 +1625,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           { id: 'materi', label: 'Materi', icon: BookOpen, color: 'bg-orange-50 text-orange-600' },
                           { id: 'sumatif', label: 'Sumatif', icon: FileText, color: 'bg-blue-50 text-blue-600' },
                           { id: 'attendance', label: 'Izin', icon: Calendar, color: 'bg-green-50 text-green-600' },
-                          { id: 'character', label: '7KAIH', icon: HeartHandshake, color: 'bg-pink-50 text-pink-600' },
+                          { id: 'character', label: '7KAIH', icon: null, is7Kaih: true, color: 'bg-pink-50 text-pink-600' },
                           { id: 'liaison', label: 'Layanan', icon: Bell, color: 'bg-indigo-50 text-indigo-600' },
                           { id: 'schedule', label: 'Jadwal', icon: CalendarDays, color: 'bg-purple-50 text-purple-600' },
                           { id: 'manual_book', label: 'Panduan', icon: BookOpen, color: 'bg-slate-50 text-slate-600' },
@@ -1641,7 +1641,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   className="flex flex-col items-center justify-center space-y-1 active:scale-95 transition-transform"
                               >
                                   <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${item.color}`}>
-                                      <Icon size={24} />
+                                      {item.is7Kaih ? (
+                                        <Logo7Kaih className="w-8 h-8" imgClassName="w-8 h-8 object-contain rounded-lg" />
+                                      ) : (
+                                        Icon && <Icon size={24} />
+                                      )}
                                   </div>
                                   <span className="text-[10px] font-bold text-gray-600 truncate w-full text-center">{item.label}</span>
                               </button>
@@ -2877,35 +2881,37 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           {activeTab === 'character' && (
               <div className="space-y-6 animate-fade-in">
                   {/* Top Bar & Date Picker */}
-                  <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-800 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+                  <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-800 p-4 sm:p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
                       <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                       
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                          <div className="flex items-center gap-4">
-                              <div className="p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
-                                  <Logo7Kaih className="w-14 h-14 md:w-16 md:h-16" imgClassName="w-14 h-14 md:w-16 md:h-16 object-contain rounded-xl" />
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                          <div className="flex items-center gap-3 sm:gap-4">
+                              <div className="p-1.5 sm:p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
+                                  <Logo7Kaih className="w-12 h-12 sm:w-16 sm:h-16" imgClassName="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-xl" />
                               </div>
                               <div>
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
-                                      <HeartHandshake size={14} className="mr-1.5 text-sky-200"/> Jurnal Pembiasaan Karakter
+                                  <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-1 sm:mb-2">
+                                      <HeartHandshake size={14} className="mr-1.5 text-sky-200 shrink-0"/> Jurnal Pembiasaan Karakter
                                   </span>
-                                  <h3 className="text-2xl font-black tracking-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
-                                  <p className="text-sky-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
+                                  <h3 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
+                                  <p className="text-sky-100 text-[11px] sm:text-xs mt-0.5 sm:mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
                               </div>
                           </div>
 
                           {/* Date Selector */}
-                          <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex items-center gap-2">
-                              <Calendar size={18} className="text-sky-200 ml-1" />
-                              <input 
-                                type="date" 
-                                value={selectedJournalDate}
-                                onChange={(e) => setSelectedJournalDate(e.target.value)}
-                                className="bg-white text-gray-800 font-bold text-xs px-3 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-sky-300"
-                              />
+                          <div className="w-full sm:w-auto bg-white/10 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl border border-white/20 flex items-center justify-between sm:justify-start gap-2">
+                              <div className="flex items-center gap-2">
+                                  <Calendar size={18} className="text-sky-200 ml-1 shrink-0" />
+                                  <input 
+                                    type="date" 
+                                    value={selectedJournalDate}
+                                    onChange={(e) => setSelectedJournalDate(e.target.value)}
+                                    className="bg-white text-gray-800 font-bold text-xs px-2.5 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-sky-300"
+                                  />
+                              </div>
                               <button 
                                 onClick={() => setSelectedJournalDate(getLocalISODate())}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
                                   selectedJournalDate === getLocalISODate() 
                                     ? 'bg-white text-indigo-700 shadow-md' 
                                     : 'bg-white/20 text-white hover:bg-white/30'

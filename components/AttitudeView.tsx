@@ -516,14 +516,18 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     <div className="space-y-6 animate-fade-in page-landscape">
       {/* --- Top Header & Main Navigation --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <Heart className="text-rose-500 fill-rose-500" size={26} />
-            Rekapitutasi & Jurnal 7 KAIH
-          </h2>
-          <p className="text-gray-500 text-sm">
-            7 Kebiasaan Anak Indonesia Hebat & Dimensi Profil Lulusan (DPL).
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-1.5 bg-white border border-gray-200 rounded-xl shadow-2xs shrink-0 flex items-center justify-center">
+            <img src="/logo_7kaih.jpg" alt="Logo 7 KAIH" className="w-10 h-10 object-contain rounded-lg" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+              Rekapitutasi & Jurnal 7 KAIH
+            </h2>
+            <p className="text-gray-500 text-sm">
+              7 Kebiasaan Anak Indonesia Hebat & Dimensi Profil Lulusan (DPL).
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -592,9 +596,9 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
           <div>
             {/* Sub-Header Bar */}
             <div className="p-4 border-b bg-gradient-to-r from-indigo-50/80 via-purple-50/50 to-pink-50/80 no-print flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-indigo-600 text-white rounded-xl shadow-sm">
-                  <Sparkles size={20} />
+              <div className="flex items-center gap-3">
+                <div className="p-1 bg-white rounded-xl shadow-2xs border border-indigo-100 shrink-0 flex items-center justify-center">
+                  <img src="/logo_7kaih.jpg" alt="Logo 7 KAIH" className="w-9 h-9 object-contain rounded-lg" />
                 </div>
                 <div>
                   <h3 className="font-bold text-gray-800">Rekapitulasi 7 Kebiasaan Anak Indonesia Hebat</h3>
@@ -736,9 +740,12 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                 </div>
 
                 {/* Print Title Header */}
-                <div className="hidden print:block text-center mb-4">
-                  <h2 className="text-lg font-bold text-gray-900">REKAP HARIAN JURNAL 7 KEBIASAAN ANAK INDONESIA HEBAT (7 KAIH)</h2>
-                  <p className="text-xs text-gray-600">Tanggal: {formatDateID(selectedDate)} | Kelas: {classId}</p>
+                <div className="hidden print:flex items-center justify-center gap-3 mb-4 text-center">
+                  <img src="/logo_7kaih.jpg" alt="Logo 7 KAIH" className="w-12 h-12 object-contain" />
+                  <div>
+                    <h2 className="text-lg font-bold text-gray-900">REKAP HARIAN JURNAL 7 KEBIASAAN ANAK INDONESIA HEBAT (7 KAIH)</h2>
+                    <p className="text-xs text-gray-600">Tanggal: {formatDateID(selectedDate)} | Kelas: {classId}</p>
+                  </div>
                 </div>
 
                 {/* Matrix Table */}

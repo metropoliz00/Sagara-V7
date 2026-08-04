@@ -2880,12 +2880,21 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                       
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
-                          <div>
-                              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
-                                  <HeartHandshake size={14} className="mr-1.5 text-sky-200"/> Jurnal Pembiasaan Karakter
-                              </span>
-                              <h3 className="text-2xl font-black tracking-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
-                              <p className="text-sky-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
+                          <div className="flex items-center gap-4">
+                              <div className="p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
+                                  <img 
+                                    src="/logo_7kaih.jpg" 
+                                    alt="Logo 7 KAIH" 
+                                    className="w-14 h-14 md:w-16 md:h-16 object-contain rounded-xl"
+                                  />
+                              </div>
+                              <div>
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
+                                      <HeartHandshake size={14} className="mr-1.5 text-sky-200"/> Jurnal Pembiasaan Karakter
+                                  </span>
+                                  <h3 className="text-2xl font-black tracking-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
+                                  <p className="text-sky-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
+                              </div>
                           </div>
 
                           {/* Date Selector */}
@@ -2960,8 +2969,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                   <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
                           <div>
-                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2">
-                              <CheckSquare size={20} className="text-indigo-600" />
+                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2.5">
+                              <img src="/logo_7kaih.jpg" alt="Logo 7 KAIH" className="w-8 h-8 object-contain rounded-lg border border-gray-100 shadow-2xs" />
                               Daftar Pembiasaan 7 KAIH
                             </h4>
                             <p className="text-xs font-bold text-sky-700 mt-0.5">

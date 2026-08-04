@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import logoImg from '../src/assets/images/logo_7kaih.jpg';
 
+const LOGO_7KAIH_URL = 'https://www.image2url.com/r2/default/images/1785853373665-f297ec07-8cba-4b4a-85dc-da600daf3169.png';
+
 interface Logo7KaihProps {
   className?: string;
   imgClassName?: string;
@@ -12,15 +14,19 @@ export const Logo7Kaih: React.FC<Logo7KaihProps> = ({
   imgClassName = "",
   alt = "Logo 7 Kebiasaan Anak Indonesia Hebat",
 }) => {
-  const [useFallbackImg, setUseFallbackImg] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const [imgError, setImgError] = useState(false);
 
-  // Prioritize imported asset from Vite bundle for guaranteed loading
-  const currentSrc = useFallbackImg ? "/logo_7kaih.jpg" : logoImg;
+  // Use primary high-resolution CDN link first, then fallback to local assets if offline
+  const currentSrc = retryCount === 0 
+    ? LOGO_7KAIH_URL 
+    : retryCount === 1 
+      ? logoImg 
+      : "/logo_7kaih.jpg";
 
   const handleError = () => {
-    if (!useFallbackImg) {
-      setUseFallbackImg(true);
+    if (retryCount < 2) {
+      setRetryCount(prev => prev + 1);
     } else {
       setImgError(true);
     }

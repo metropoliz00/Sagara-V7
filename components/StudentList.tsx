@@ -425,7 +425,7 @@ const StudentList: React.FC<StudentListProps> = ({
           </tr>
           <tr>
             <td style="font-weight: bold;">Nama Wali / Kontak HP</td>
-            <td colspan="2">${s.parentName || '-'} (${s.parentPhone || '-'})</td>
+            <td colspan="2">${s.parentName || '-'} (${s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-'})</td>
           </tr>
         </table>
 
@@ -514,7 +514,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 <td class="text-left" style="text-transform: uppercase;">${s.motherName ? s.motherName.toUpperCase() : '-'}</td>
                 <td class="text-center">${s.motherEducation || '-'}</td>
                 <td class="text-left">${s.motherJob || '-'}</td>
-                <td class="text-center">${s.parentPhone || '-'}</td>
+                <td class="text-center">${s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-'}</td>
                 <td class="text-left">${s.address || '-'}</td>
               </tr>
             `).join('')}
@@ -924,7 +924,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const handleExport = () => {
     try {
       const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
-      const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone, s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
+      const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '', s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
       const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
@@ -1020,7 +1020,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 motherJob: String(row['Pekerjaan Ibu'] || '').trim(),
                 motherEducation: String(row['Pendidikan Ibu'] || '').trim(),
                 parentName: String(row['Nama Wali'] || row['Nama Ayah'] || row['Nama Ibu'] || '').trim().toUpperCase(),
-                parentPhone: String(row['No HP Wali'] || row['No HP'] || '').trim(),
+                parentPhone: String(row['No HP Wali'] || row['No HP'] || '').trim().replace(/^'/, ''),
                 parentJob: String(row['Pekerjaan Wali'] || '').trim(),
                 economyStatus: (row['Status Ekonomi'] as any) || 'Mampu',
                 height: Number(row['Tinggi (cm)'] || row['Tinggi']) || 0,
@@ -1071,7 +1071,7 @@ const StudentList: React.FC<StudentListProps> = ({
                 motherJob: row[14] ? String(row[14]).trim() : '',
                 motherEducation: row[15] ? String(row[15]).trim() : '',
                 parentName: row[16] ? String(row[16]).trim().toUpperCase() : (row[10] ? String(row[10]).trim().toUpperCase() : (row[13] ? String(row[13]).trim().toUpperCase() : '')),
-                parentPhone: row[17] ? String(row[17]).trim() : '',
+                parentPhone: row[17] ? String(row[17]).trim().replace(/^'/, '') : '',
                 parentJob: row[18] ? String(row[18]).trim() : '',
                 economyStatus: (row[19] as any) || 'Mampu',
                 height: Number(row[20]) || 0,

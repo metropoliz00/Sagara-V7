@@ -148,7 +148,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
       s.fatherJob || '-',
       s.motherName || '-',
       s.motherJob || '-',
-      s.parentPhone || '-',
+      s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-',
       s.economyStatus || '-'
     ]);
 
@@ -189,7 +189,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
       const nisLen = (s.nis || '').length;
       const bukuIndukLen = (s.bukuInduk || '').length;
       const nisnLen = (s.nisn || '').length;
-      const phoneLen = (s.parentPhone || '').length;
+      const phoneLen = String(s.parentPhone || '').replace(/^'/, '').length;
 
       if (nameLen > maxNameLen) maxNameLen = nameLen;
       if (birthLen > maxBirthLen) maxBirthLen = birthLen;
@@ -261,7 +261,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
           <div style="font-weight: bold; color: #111;">A: ${s.fatherName || '-'}</div>
           <div style="color: #444; margin-top: 2px;">I: ${s.motherName || '-'}</div>
         </td>
-        <td style="font-family: monospace; text-align: center; width: ${colPhoneWidth}px; max-width: ${colPhoneWidth}px;">${s.parentPhone || '-'}</td>
+        <td style="font-family: monospace; text-align: center; width: ${colPhoneWidth}px; max-width: ${colPhoneWidth}px;">${s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-'}</td>
       </tr>
     `).join('');
 
@@ -768,7 +768,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
                       {student.birthPlace || '-'}, {formatDate(student.birthDate)}
                     </td>
                     <td className="px-4 py-3 text-slate-600 font-semibold font-mono text-xs whitespace-nowrap">
-                      {student.parentPhone || '-'}
+                      {student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : '-'}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -924,7 +924,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
                     </div>
                     <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
                       <span className="font-medium text-slate-400">No. HP Orang Tua / Wali</span>
-                      <span className="font-bold text-[#5AB2FF] font-mono">{selectedStudent.parentPhone || '-'}</span>
+                      <span className="font-bold text-[#5AB2FF] font-mono">{selectedStudent.parentPhone ? String(selectedStudent.parentPhone).replace(/^'/, '') : '-'}</span>
                     </div>
                   </div>
                 </div>

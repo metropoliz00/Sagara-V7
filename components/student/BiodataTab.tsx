@@ -100,7 +100,7 @@ const BiodataTab: React.FC<BiodataTabProps> = ({ student, onChange }) => {
             </div>
             <div>
                 <label className="block text-sm font-medium mb-1">No. HP Wali</label>
-                <input type="text" value={student.parentPhone} onChange={(e) => onChange('parentPhone', e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
+                <input type="text" value={String(student.parentPhone || '').replace(/^'/, '')} onChange={(e) => onChange('parentPhone', e.target.value.replace(/^'/, ''))} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
             </div>
         </div>
     </div>

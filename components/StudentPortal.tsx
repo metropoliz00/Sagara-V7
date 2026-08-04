@@ -2808,7 +2808,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           title="Klik untuk chat WhatsApp Orang Tua"
                                       >
                                           <MessageCircle size={14} className="text-emerald-600 fill-emerald-100" />
-                                          <span>{student.parentPhone}</span>
+                                          <span>{String(student.parentPhone).replace(/^'/, '')}</span>
                                           <ExternalLink size={11} className="text-emerald-500 ml-0.5" />
                                       </a>
                                   ) : (

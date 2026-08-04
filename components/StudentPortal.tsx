@@ -3116,8 +3116,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                 {item.key === 'makanSehat' && (() => {
                                   const raw = dailyJournalForm.details?.['makanSehat'] || '';
                                   const getSubMenu = (label: string) => {
-                                    const match = raw.match(new RegExp(`${label}:\\s*\\[?([^\\]|]+)\\]?`));
-                                    return match ? match[1].trim() : '';
+                                    const match = raw.match(new RegExp(`${label}:\\s*(?:\\[([^\\]]+)\\]|([^|]+))`));
+                                    if (match) {
+                                      return (match[1] || match[2] || '').trim().replace(/^\[|\]$/g, '');
+                                    }
+                                    return '';
                                   };
 
                                   const pagi = getSubMenu('Pagi');
@@ -3126,43 +3129,47 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                   const updateMenu = (pagiVal: string, siangVal: string, malamVal: string) => {
                                     const parts = [];
-                                    if (pagiVal.trim()) parts.push(`Pagi: [${pagiVal.trim()}]`);
-                                    if (siangVal.trim()) parts.push(`Siang: [${siangVal.trim()}]`);
-                                    if (malamVal.trim()) parts.push(`Malam: [${malamVal.trim()}]`);
+                                    const cleanPagi = pagiVal.replace(/[\[\]]/g, '').trim();
+                                    const cleanSiang = siangVal.replace(/[\[\]]/g, '').trim();
+                                    const cleanMalam = malamVal.replace(/[\[\]]/g, '').trim();
+
+                                    if (cleanPagi) parts.push(`Pagi: ${cleanPagi}`);
+                                    if (cleanSiang) parts.push(`Siang: ${cleanSiang}`);
+                                    if (cleanMalam) parts.push(`Malam: ${cleanMalam}`);
                                     const newDetails = { ...(dailyJournalForm.details || {}), makanSehat: parts.join(' | ') };
                                     setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
                                   };
 
                                   return (
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Pagi]:</span>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 w-full">
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Pagi:</span>
                                         <input
                                           type="text"
                                           value={pagi}
                                           onChange={(e) => updateMenu(e.target.value, siang, malam)}
                                           placeholder="Menu sarapan..."
-                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                         />
                                       </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Siang]:</span>
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Siang:</span>
                                         <input
                                           type="text"
                                           value={siang}
                                           onChange={(e) => updateMenu(pagi, e.target.value, malam)}
                                           placeholder="Menu makan siang..."
-                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                         />
                                       </div>
-                                      <div className="flex items-center gap-1.5">
-                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Malam]:</span>
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Malam:</span>
                                         <input
                                           type="text"
                                           value={malam}
                                           onChange={(e) => updateMenu(pagi, siang, e.target.value)}
                                           placeholder="Menu makan malam..."
-                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
                                         />
                                       </div>
                                     </div>

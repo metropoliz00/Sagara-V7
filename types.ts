@@ -428,6 +428,7 @@ export interface DailyKAIHJournal {
   tidurAwal: string;
   catatan?: string; // Catatan / Refleksi Siswa
   catatanGuru?: string; // Catatan / Umpan Balik Guru
+  details?: Record<string, string>; // Keterangan kegiatan per kebiasaan
   updatedAt?: string;
 }
 

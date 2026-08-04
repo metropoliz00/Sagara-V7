@@ -1321,6 +1321,7 @@ export const apiService = {
           tidurAwal: d.tidur_awal || 'Belum Terbiasa',
           catatan: d.catatan || '',
           catatanGuru: d.catatan_guru || '',
+          details: d.details || (d.catatan_kegiatan ? JSON.parse(d.catatan_kegiatan) : {}),
           updatedAt: d.updated_at
         }));
       }
@@ -1362,6 +1363,7 @@ export const apiService = {
       tidur_awal: journal.tidurAwal || 'Belum Terbiasa',
       catatan: journal.catatan || '',
       catatan_guru: journal.catatanGuru || '',
+      details: journal.details || {},
       updated_at: new Date().toISOString()
     };
 
@@ -1388,6 +1390,7 @@ export const apiService = {
           tidurAwal: data.tidur_awal,
           catatan: data.catatan,
           catatanGuru: data.catatan_guru,
+          details: data.details || journal.details || {},
           updatedAt: data.updated_at
         };
       }

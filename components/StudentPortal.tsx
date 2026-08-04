@@ -1037,7 +1037,10 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
       const entry = myJournals.find(j => j.date === dateStr);
       if (entry) {
-        setDailyJournalForm(entry);
+        setDailyJournalForm({
+          ...entry,
+          details: entry.details || {}
+        });
       } else {
         setDailyJournalForm({
           studentId: student.id,
@@ -1051,7 +1054,8 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           bermasyarakat: '',
           tidurAwal: '',
           catatan: '',
-          catatanGuru: ''
+          catatanGuru: '',
+          details: {}
         });
       }
     } catch (err) {
@@ -2872,26 +2876,26 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           {activeTab === 'character' && (
               <div className="space-y-6 animate-fade-in">
                   {/* Top Bar & Date Picker */}
-                  <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+                  <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-800 p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
                       <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                       
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                           <div>
                               <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
-                                  <HeartHandshake size={14} className="mr-1.5 text-pink-300"/> Jurnal Pembiasaan Karakter
+                                  <HeartHandshake size={14} className="mr-1.5 text-sky-200"/> Jurnal Pembiasaan Karakter
                               </span>
                               <h3 className="text-2xl font-black tracking-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
-                              <p className="text-indigo-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
+                              <p className="text-sky-100 text-xs mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
                           </div>
 
                           {/* Date Selector */}
                           <div className="bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 flex items-center gap-2">
-                              <Calendar size={18} className="text-pink-200 ml-1" />
+                              <Calendar size={18} className="text-sky-200 ml-1" />
                               <input 
                                 type="date" 
                                 value={selectedJournalDate}
                                 onChange={(e) => setSelectedJournalDate(e.target.value)}
-                                className="bg-white text-gray-800 font-bold text-xs px-3 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-pink-300"
+                                className="bg-white text-gray-800 font-bold text-xs px-3 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-sky-300"
                               />
                               <button 
                                 onClick={() => setSelectedJournalDate(getLocalISODate())}
@@ -2909,16 +2913,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       {/* Daily Score Summary Card */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/20 relative z-10">
                           {(() => {
-                            const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as (keyof DailyKAIHJournal)[];
-                            const score = habits.filter(h => dailyJournalForm[h] === 'Terbiasa').length;
+                            const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as const;
+                            const score = habits.filter(h => (dailyJournalForm[h] as string) === 'Terbiasa').length;
                             const pct = Math.round((score / 7) * 100);
 
                             return (
                               <>
                                 <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
                                   <div>
-                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Capaian Hari Ini</p>
-                                    <p className="text-xl font-black text-white mt-0.5">{score} <span className="text-xs font-medium text-indigo-200">/ 7 Kebiasaan</span></p>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Capaian Hari Ini</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{score} <span className="text-xs font-medium text-sky-200">/ 7 Kebiasaan</span></p>
                                   </div>
                                   <div className="w-10 h-10 rounded-xl bg-white text-indigo-700 flex items-center justify-center font-black text-xs shadow-md">
                                     {pct}%
@@ -2927,7 +2931,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                 <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
                                   <div>
-                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Status Jurnal</p>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Status Jurnal</p>
                                     <p className="text-sm font-bold text-white mt-1">
                                       {score === 7 ? '🎉 Sempurna 7/7' : score > 0 ? '👍 Terisi Sebagian' : '⚠️ Belum Diisi'}
                                     </p>
@@ -2939,10 +2943,10 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                                 <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
                                   <div>
-                                    <p className="text-[10px] font-bold text-indigo-200 uppercase">Total Jurnal Semester</p>
-                                    <p className="text-xl font-black text-white mt-0.5">{studentJournalHistory.length} <span className="text-xs font-medium text-indigo-200">Hari</span></p>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Total Jurnal Semester</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{studentJournalHistory.length} <span className="text-xs font-medium text-sky-200">Hari</span></p>
                                   </div>
-                                  <div className="p-2 bg-pink-400 text-indigo-950 rounded-xl shadow-md">
+                                  <div className="p-2 bg-sky-300 text-indigo-950 rounded-xl shadow-md">
                                     <Trophy size={18} />
                                   </div>
                                 </div>
@@ -2954,13 +2958,22 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
 
                   {/* 7 Habit Interactive List */}
                   <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
                           <div>
-                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center">
-                              <CheckSquare size={20} className="mr-2 text-indigo-600" />
-                              Daftar Pembiasaan 7 KAIH ({selectedJournalDate})
+                            <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2">
+                              <CheckSquare size={20} className="text-indigo-600" />
+                              Daftar Pembiasaan 7 KAIH
                             </h4>
-                            <p className="text-xs text-gray-500">Pilih "Terbiasa" jika kamu sudah melaksanakannya hari ini.</p>
+                            <p className="text-xs font-bold text-sky-700 mt-0.5">
+                              {(() => {
+                                if (!selectedJournalDate) return '(dd-mm-yyyy)';
+                                const parts = selectedJournalDate.split('-');
+                                if (parts.length === 3) {
+                                  return `(${parts[2]}-${parts[1]}-${parts[0]})`;
+                                }
+                                return `(${selectedJournalDate})`;
+                              })()}
+                            </p>
                           </div>
 
                           <button 
@@ -2969,7 +2982,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                             className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-xs font-extrabold shadow-md hover:bg-emerald-700 transition-all flex items-center disabled:opacity-70 transform active:scale-95"
                           >
                             {isSavingJournal ? <Loader2 size={16} className="animate-spin mr-2"/> : <Save size={16} className="mr-2"/>}
-                            Simpan Jurnal Hari Ini
+                            Simpan Jurnal
                           </button>
                       </div>
 
@@ -2983,43 +2996,60 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           { key: 'bermasyarakat', label: '6. Bermasyarakat', desc: 'Membantu orang tua di rumah, bersikap sopan & gotong royong.', icon: '🤝' },
                           { key: 'tidurAwal', label: '7. Tidur Lebih Awal', desc: 'Tidur malam tepat waktu (sebelum pkl 21:30) agar tubuh fit.', icon: '🌙' },
                         ].map((item) => {
-                          const hKey = item.key as keyof DailyKAIHJournal;
-                          const val = dailyJournalForm[hKey];
+                          const hKey = item.key as 'bangunPagi' | 'beribadah' | 'berolahraga' | 'makanSehat' | 'gemarBelajar' | 'bermasyarakat' | 'tidurAwal';
+                          const val = (dailyJournalForm[hKey] || '') as string;
 
                           return (
-                            <div key={item.key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-slate-50/70 rounded-2xl border border-slate-200/80 hover:bg-white hover:border-indigo-200 transition-all hover:shadow-sm gap-3">
-                              <div className="flex items-start gap-3">
-                                <span className="text-2xl p-2 bg-white rounded-xl shadow-xs border border-slate-100">{item.icon}</span>
-                                <div>
-                                  <h5 className="font-bold text-gray-800 text-sm">{item.label}</h5>
-                                  <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                            <div key={item.key} className="flex flex-col p-4 bg-slate-50/70 rounded-2xl border border-slate-200/80 hover:bg-white hover:border-indigo-200 transition-all hover:shadow-sm gap-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <span className="text-2xl p-2 bg-white rounded-xl shadow-xs border border-slate-100">{item.icon}</span>
+                                  <div>
+                                    <h5 className="font-bold text-gray-800 text-sm">{item.label}</h5>
+                                    <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex bg-white rounded-xl p-1 border border-gray-200 shadow-xs w-full sm:w-auto min-w-[200px] shrink-0">
+                                  <button
+                                    onClick={() => handleDailyHabitToggle(hKey, 'Terbiasa')}
+                                    className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                      val === 'Terbiasa'
+                                        ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <CheckCircle size={14} className={`mr-1.5 ${val === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/>
+                                    Terbiasa
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleDailyHabitToggle(hKey, 'Belum Terbiasa')}
+                                    className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ml-1 ${
+                                      val === 'Belum Terbiasa'
+                                        ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <XCircle size={14} className={`mr-1.5 ${val === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/>
+                                    Belum
+                                  </button>
                                 </div>
                               </div>
 
-                              <div className="flex bg-white rounded-xl p-1 border border-gray-200 shadow-xs w-full sm:w-auto min-w-[200px]">
-                                <button
-                                  onClick={() => handleDailyHabitToggle(hKey, 'Terbiasa')}
-                                  className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                                    val === 'Terbiasa'
-                                      ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
-                                      : 'text-gray-500 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <CheckCircle size={14} className={`mr-1.5 ${val === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/>
-                                  Terbiasa
-                                </button>
-                                
-                                <button
-                                  onClick={() => handleDailyHabitToggle(hKey, 'Belum Terbiasa')}
-                                  className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ml-1 ${
-                                    val === 'Belum Terbiasa'
-                                      ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300'
-                                      : 'text-gray-500 hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <XCircle size={14} className={`mr-1.5 ${val === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/>
-                                  Belum
-                                </button>
+                              {/* Input Keterangan Kegiatan */}
+                              <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center gap-2">
+                                <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap shrink-0">Keterangan Kegiatan:</span>
+                                <input
+                                  type="text"
+                                  value={dailyJournalForm.details?.[item.key] || ''}
+                                  onChange={(e) => {
+                                    const newDetails = { ...(dailyJournalForm.details || {}), [item.key]: e.target.value };
+                                    setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                  }}
+                                  placeholder={`Rincian kegiatan ${item.label.replace(/^\d+\.\s*/, '').toLowerCase()}...`}
+                                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                />
                               </div>
                             </div>
                           );

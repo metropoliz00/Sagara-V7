@@ -42,8 +42,8 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
   // DPL Per Mapel & TP State
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>(MOCK_SUBJECTS[0]?.id || 'pai');
   const [selectedTopicId, setSelectedTopicId] = useState<string>('');
-  const [materiInput, setMateriInput] = useState<string>('Observasi Sikap DPL');
-  const [tujuanInput, setTujuanInput] = useState<string>('TP 1: Capaian Dimensi Profil Lulusan');
+  const [materiInput, setMateriInput] = useState<string>('');
+  const [tujuanInput, setTujuanInput] = useState<string>('');
   const [savedTopics, setSavedTopics] = useState<any[]>([]);
   
   // KAIH State
@@ -94,13 +94,13 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     if (subjectTopics.length > 0) {
       if (!selectedTopicId || !subjectTopics.some(t => t.id === selectedTopicId)) {
         setSelectedTopicId(subjectTopics[0].id);
-        setMateriInput(subjectTopics[0].materi || 'Observasi Sikap DPL');
-        setTujuanInput(subjectTopics[0].tujuan || 'TP 1: Capaian Dimensi Profil Lulusan');
+        setMateriInput(subjectTopics[0].materi || '');
+        setTujuanInput(subjectTopics[0].tujuan || '');
       }
     } else {
       setSelectedTopicId('');
-      setMateriInput('Observasi Sikap DPL');
-      setTujuanInput('TP 1: Capaian Dimensi Profil Lulusan');
+      setMateriInput('');
+      setTujuanInput('');
     }
   }, [classId, selectedSubjectId]);
 
@@ -114,8 +114,8 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
         setTujuanInput(found.tujuan || '');
       }
     } else {
-      setMateriInput('Observasi Sikap DPL');
-      setTujuanInput(`TP ${savedTopics.filter(t => t.subjectId === selectedSubjectId).length + 1}: Capaian Dimensi Profil Lulusan`);
+      setMateriInput('');
+      setTujuanInput('');
     }
   };
 
@@ -135,8 +135,8 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     const topicData = {
       id: topicId,
       subjectId: selectedSubjectId,
-      materi: materiInput || 'Observasi Sikap DPL',
-      tujuan: tujuanInput || 'TP 1: Capaian Dimensi Profil Lulusan',
+      materi: materiInput || 'Observasi DPL',
+      tujuan: tujuanInput || 'Observasi DPL',
       date: getLocalISODate()
     };
 
@@ -781,12 +781,13 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                               </td>
 
                               {/* Habit Columns */}
-                              {(['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as (keyof DailyKAIHJournal)[]).map((hKey) => {
-                                const val = journal[hKey];
+                              {(['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as const).map((hKey) => {
+                                const val = (journal[hKey] || '') as string;
+                                const habitDetail = journal.details?.[hKey];
                                 return (
-                                  <td key={hKey} className="p-1 border text-center">
+                                  <td key={hKey} className="p-1 border text-center align-top">
                                     <select
-                                      value={val || ''}
+                                      value={val}
                                       onChange={(e) => {
                                         if (!isReadOnly) {
                                           handleUpdateDailyJournal(st.id, hKey, e.target.value);
@@ -806,6 +807,12 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                                       <option value="Terbiasa">Terbiasa</option>
                                       <option value="Belum Terbiasa">Belum</option>
                                     </select>
+                                    {habitDetail && (
+                                      <div className="mt-1 p-1 bg-sky-50 border border-sky-200 rounded text-[10px] text-sky-900 font-normal leading-tight text-left max-w-[120px] mx-auto break-words" title={habitDetail}>
+                                        <span className="font-semibold block text-[9px] text-sky-700">Ket:</span>
+                                        {habitDetail}
+                                      </div>
+                                    )}
                                   </td>
                                 );
                               })}
@@ -1093,7 +1100,7 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                     value={materiInput}
                     onChange={(e) => setMateriInput(e.target.value)}
                     onBlur={() => syncDplToFormatif()}
-                    placeholder="Contoh: Observasi Sikap DPL"
+                    placeholder="Masukkan materi pembelajaran..."
                     className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
@@ -1107,7 +1114,7 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                     value={tujuanInput}
                     onChange={(e) => setTujuanInput(e.target.value)}
                     onBlur={() => syncDplToFormatif()}
-                    placeholder="Contoh: TP 1: Observasi Sikap Dimensi Profil"
+                    placeholder="Masukkan tujuan pembelajaran (TP)..."
                     className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>

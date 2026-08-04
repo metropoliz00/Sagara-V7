@@ -84,19 +84,37 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     }
   }, [classId]);
 
+  // Helper to validate whether a topic has actual materi / tujuan (excluding dummy 'Observasi DPL')
+  const isValidTopic = (t: any) => {
+    if (!t) return false;
+    const m = (t.materi || '').trim();
+    const tj = (t.tujuan || '').trim();
+    const isDummyMateri = !m || m === 'Observasi DPL';
+    const isDummyTujuan = !tj || tj === 'Observasi DPL';
+    return !isDummyMateri || !isDummyTujuan;
+  };
+
   // Load shared learning topics for DPL mapel selection
   useEffect(() => {
     if (!classId) return;
     const sharedKey = `shared_learning_topics_${classId}`;
     const cachedTopics = cacheService.get<any[]>(sharedKey) || [];
-    setSavedTopics(cachedTopics);
+    
+    // Filter out dummy/empty "Observasi DPL" entries to keep dropdown clean
+    const cleanedTopics = cachedTopics.filter(isValidTopic);
+    if (cleanedTopics.length !== cachedTopics.length) {
+      cacheService.set(sharedKey, cleanedTopics);
+    }
+    setSavedTopics(cleanedTopics);
 
-    const subjectTopics = cachedTopics.filter(t => t.subjectId === selectedSubjectId);
+    const subjectTopics = cleanedTopics.filter(t => t.subjectId === selectedSubjectId);
     if (subjectTopics.length > 0) {
       if (!selectedTopicId || !subjectTopics.some(t => t.id === selectedTopicId)) {
         setSelectedTopicId(subjectTopics[0].id);
-        setMateriInput(subjectTopics[0].materi || '');
-        setTujuanInput(subjectTopics[0].tujuan || '');
+        const m = subjectTopics[0].materi;
+        const tj = subjectTopics[0].tujuan;
+        setMateriInput((m && m !== 'Observasi DPL') ? m : '');
+        setTujuanInput((tj && tj !== 'Observasi DPL') ? tj : '');
       }
     } else {
       setSelectedTopicId('');
@@ -111,8 +129,10 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     if (topicId) {
       const found = savedTopics.find(t => t.id === topicId);
       if (found) {
-        setMateriInput(found.materi || '');
-        setTujuanInput(found.tujuan || '');
+        const m = found.materi;
+        const tj = found.tujuan;
+        setMateriInput((m && m !== 'Observasi DPL') ? m : '');
+        setTujuanInput((tj && tj !== 'Observasi DPL') ? tj : '');
       }
     } else {
       setMateriInput('');
@@ -127,28 +147,44 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     const sharedKey = `shared_learning_topics_${classId}`;
     const allTopics = cacheService.get<any[]>(sharedKey) || [];
 
+    const materi = materiInput.trim();
+    const tujuan = tujuanInput.trim();
+    const hasTopicDetails = (materi && materi !== 'Observasi DPL') || (tujuan && tujuan !== 'Observasi DPL');
+
     let topicId = selectedTopicId;
-    if (!topicId) {
-      topicId = `dpl-topic-${selectedSubjectId}-${Date.now()}`;
-      setSelectedTopicId(topicId);
-    }
 
-    const topicData = {
-      id: topicId,
-      subjectId: selectedSubjectId,
-      materi: materiInput || 'Observasi DPL',
-      tujuan: tujuanInput || 'Observasi DPL',
-      date: getLocalISODate()
-    };
+    if (hasTopicDetails) {
+      if (!topicId) {
+        topicId = `dpl-topic-${selectedSubjectId}-${Date.now()}`;
+        setSelectedTopicId(topicId);
+      }
 
-    const existingIdx = allTopics.findIndex(t => t.id === topicId);
-    if (existingIdx !== -1) {
-      allTopics[existingIdx] = topicData;
+      const topicData = {
+        id: topicId,
+        subjectId: selectedSubjectId,
+        materi: materi,
+        tujuan: tujuan,
+        date: getLocalISODate()
+      };
+
+      const existingIdx = allTopics.findIndex(t => t.id === topicId);
+      if (existingIdx !== -1) {
+        allTopics[existingIdx] = topicData;
+      } else {
+        allTopics.push(topicData);
+      }
+      const cleanedTopics = allTopics.filter(isValidTopic);
+      cacheService.set(sharedKey, cleanedTopics);
+      setSavedTopics(cleanedTopics);
     } else {
-      allTopics.push(topicData);
+      // If materi & tujuan are empty, clean up any dummy entries
+      const cleanedTopics = allTopics.filter(isValidTopic);
+      cacheService.set(sharedKey, cleanedTopics);
+      setSavedTopics(cleanedTopics);
+      if (!topicId) {
+        topicId = `dpl-general-${selectedSubjectId}`;
+      }
     }
-    cacheService.set(sharedKey, allTopics);
-    setSavedTopics(allTopics);
 
     // Save formatted scores for Formatif Observasi
     const scoreKey = `formatif_scores_${topicId}_Observasi`;
@@ -1088,14 +1124,19 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                     onChange={(e) => handleSelectTopic(e.target.value)}
                     className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   >
-                    <option value="">+ Buat TP / Topik Baru...</option>
+                    <option value="">+ Buat TP / Topik Baru (Opsional)...</option>
                     {savedTopics
-                      .filter(t => t.subjectId === selectedSubjectId)
-                      .map((topic) => (
-                        <option key={topic.id} value={topic.id}>
-                          {topic.tujuan || topic.materi || topic.id}
-                        </option>
-                      ))}
+                      .filter(t => t.subjectId === selectedSubjectId && isValidTopic(t))
+                      .map((topic) => {
+                        const m = topic.materi && topic.materi !== 'Observasi DPL' ? topic.materi : '';
+                        const tj = topic.tujuan && topic.tujuan !== 'Observasi DPL' ? topic.tujuan : '';
+                        const label = m && tj ? `${m} (${tj})` : (tj || m || topic.id);
+                        return (
+                          <option key={topic.id} value={topic.id}>
+                            {label}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
 

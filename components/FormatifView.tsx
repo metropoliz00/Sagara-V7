@@ -254,7 +254,14 @@ const FormatifView: React.FC<FormatifViewProps> = ({
   }, [students, searchQuery]);
 
   const currentSubjectTopics = useMemo(() => {
-    return savedTopics.filter(t => t.subjectId === selectedSubjectId);
+    return savedTopics.filter(t => {
+      if (t.subjectId !== selectedSubjectId) return false;
+      const m = (t.materi || '').trim();
+      const tj = (t.tujuan || '').trim();
+      const isDummyMateri = !m || m === 'Observasi DPL';
+      const isDummyTujuan = !tj || tj === 'Observasi DPL';
+      return !isDummyMateri || !isDummyTujuan;
+    });
   }, [savedTopics, selectedSubjectId]);
 
   const selectedAssessmentObj = ASSESSMENT_TYPES.find(a => a.id === assessmentType) || ASSESSMENT_TYPES[0];

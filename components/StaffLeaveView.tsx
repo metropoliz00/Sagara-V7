@@ -523,7 +523,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <Calendar size={12} className="mr-1.5 shrink-0 text-gray-400" />
                         <span>{new Date(req.tanggalMulai).toLocaleDateString('id-ID')} - {new Date(req.tanggalSelesai).toLocaleDateString('id-ID')}</span>
                       </div>
-                      <p className="text-xs text-gray-500 italic truncate" title={req.alasan}>"{req.alasan}"</p>
+                      <p className="text-xs text-gray-500 italic whitespace-normal break-words" title={req.alasan}>"{req.alasan}"</p>
                     </div>
                     <div className="md:col-span-3 flex flex-col md:items-end justify-center gap-2">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block text-center ${

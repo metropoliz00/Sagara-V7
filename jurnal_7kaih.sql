@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
   student_id TEXT NOT NULL,
   class_id TEXT NOT NULL,
   date DATE NOT NULL,
+  habits JSONB DEFAULT '{}'::jsonb,
   bangun_pagi TEXT DEFAULT '',
   beribadah TEXT DEFAULT '',
   berolahraga TEXT DEFAULT '',
@@ -25,6 +26,7 @@ CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
 );
 
 -- 2. Migrasi/Aplikasi Kolom Baru & Penyesuaian Default jika Tabel Sudah Ada
+ALTER TABLE jurnal_kaih_harian ADD COLUMN IF NOT EXISTS habits JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE jurnal_kaih_harian ADD COLUMN IF NOT EXISTS details JSONB DEFAULT '{}'::jsonb;
 ALTER TABLE jurnal_kaih_harian ALTER COLUMN bangun_pagi SET DEFAULT '';
 ALTER TABLE jurnal_kaih_harian ALTER COLUMN beribadah SET DEFAULT '';

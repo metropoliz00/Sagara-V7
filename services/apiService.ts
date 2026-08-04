@@ -3844,22 +3844,25 @@ export const apiService = {
         jabatan: leaveRequest.jabatan,
         pangkat: leaveRequest.pangkat,
         kategori_ijin: leaveRequest.kategoriIjin,
-        tanggal_mulai: leaveRequest.tanggalMulai,
-        tanggal_selesai: leaveRequest.tanggalSelesai,
+        tanggal_mulai: leaveRequest.tanggalMulai ? new Date(leaveRequest.tanggalMulai).toISOString() : null,
+        tanggal_selesai: leaveRequest.tanggalSelesai ? new Date(leaveRequest.tanggalSelesai).toISOString() : null,
         alasan: leaveRequest.alasan,
         status: leaveRequest.status,
         rejection_reason: leaveRequest.rejectionReason || null,
-        file_url: leaveRequest.fileUrl
+        file_url: leaveRequest.fileUrl || null
       };
 
-      const { data: existing } = await supabase.from('staff_leave_requests').select('id').eq('id', leaveRequest.id).single();
-      if (existing) {
-        await supabase.from('staff_leave_requests').update(dbItem).eq('id', leaveRequest.id);
-      } else {
-        await supabase.from('staff_leave_requests').insert([dbItem]);
+      const { error } = await supabase
+        .from('staff_leave_requests')
+        .upsert(dbItem, { onConflict: 'id' });
+
+      if (error) {
+        console.error("Error saving staff leave request to database:", error);
+        throw error;
       }
     } catch (err) {
-      console.warn("saveStaffLeaveRequest DB error (fallback to local cache):", err);
+      console.error("saveStaffLeaveRequest DB error:", err);
+      throw err;
     }
   },
   deleteStaffLeaveRequest: async (id: string): Promise<{ status: string; message?: string }> => {
@@ -3872,10 +3875,11 @@ export const apiService = {
     if (!isApiConfigured()) return { status: 'success' };
 
     try {
-      await supabase.from('staff_leave_requests').delete().eq('id', id);
+      const { error } = await supabase.from('staff_leave_requests').delete().eq('id', id);
+      if (error) throw error;
       return { status: 'success' };
     } catch (err: any) {
-      console.warn("deleteStaffLeaveRequest DB error:", err);
+      console.error("deleteStaffLeaveRequest DB error:", err);
       return { status: 'error', message: err?.message };
     }
   },

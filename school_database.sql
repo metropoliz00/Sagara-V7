@@ -577,9 +577,12 @@ CREATE TABLE IF NOT EXISTS staff_leave_requests (
   tanggal_selesai TIMESTAMP WITH TIME ZONE NOT NULL,
   alasan TEXT NOT NULL,
   status TEXT DEFAULT 'Menunggu',
+  rejection_reason TEXT,
   file_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE staff_leave_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 -- 39. Formatif Topics table
 CREATE TABLE IF NOT EXISTS formatif_topics (

@@ -20,6 +20,7 @@ import { getLocalISODate } from '../utils/dateUtils';
 import SumatifView from './SumatifView';
 import ManualBookView from './ManualBookView';
 import MitigasiBencanaView from './MitigasiBencanaView';
+import Logo7Kaih from './Logo7Kaih';
 import { ContentModal } from './ContentModal';
 import { pdfjs, Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -2882,11 +2883,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative z-10">
                           <div className="flex items-center gap-4">
                               <div className="p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
-                                  <img 
-                                    src="/logo_7kaih.jpg" 
-                                    alt="Logo 7 KAIH" 
-                                    className="w-14 h-14 md:w-16 md:h-16 object-contain rounded-xl"
-                                  />
+                                  <Logo7Kaih className="w-14 h-14 md:w-16 md:h-16" imgClassName="w-14 h-14 md:w-16 md:h-16 object-contain rounded-xl" />
                               </div>
                               <div>
                                   <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-2">
@@ -2970,7 +2967,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
                           <div>
                             <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2.5">
-                              <img src="/logo_7kaih.jpg" alt="Logo 7 KAIH" className="w-8 h-8 object-contain rounded-lg border border-gray-100 shadow-2xs" />
+                              <Logo7Kaih className="w-8 h-8" imgClassName="w-8 h-8 object-contain rounded-lg border border-gray-100 shadow-2xs" />
                               Daftar Pembiasaan 7 KAIH
                             </h4>
                             <p className="text-xs font-bold text-sky-700 mt-0.5">

@@ -3037,19 +3037,185 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                 </div>
                               </div>
 
-                              {/* Input Keterangan Kegiatan */}
-                              <div className="pt-2 border-t border-slate-200/60 flex flex-col sm:flex-row sm:items-center gap-2">
-                                <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap shrink-0">Keterangan Kegiatan:</span>
-                                <input
-                                  type="text"
-                                  value={dailyJournalForm.details?.[item.key] || ''}
-                                  onChange={(e) => {
-                                    const newDetails = { ...(dailyJournalForm.details || {}), [item.key]: e.target.value };
+                              {/* Input Keterangan Kegiatan Spesifik per Kebiasaan */}
+                              <div className="pt-2 border-t border-slate-200/60">
+                                {item.key === 'bangunPagi' && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">Pukul:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['bangunPagi'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), bangunPagi: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Pukul (contoh: 04.30 WIB)..."
+                                      className="w-full sm:max-w-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'beribadah' && (() => {
+                                  const allPrayers = ['Subuh', 'Dhuhur', 'Asyar', 'Magrib', 'Isya'];
+                                  const currentDetail = dailyJournalForm.details?.['beribadah'] || '';
+                                  const selectedPrayers = currentDetail ? currentDetail.split(', ').map(s => s.trim()) : [];
+
+                                  const togglePrayer = (prayer: string) => {
+                                    let next: string[];
+                                    if (selectedPrayers.includes(prayer)) {
+                                      next = selectedPrayers.filter(p => p !== prayer);
+                                    } else {
+                                      next = [...selectedPrayers, prayer];
+                                    }
+                                    const sorted = allPrayers.filter(p => next.includes(p));
+                                    const newDetails = { ...(dailyJournalForm.details || {}), beribadah: sorted.join(', ') };
                                     setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
-                                  }}
-                                  placeholder={`Rincian kegiatan ${item.label.replace(/^\d+\.\s*/, '').toLowerCase()}...`}
-                                  className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
-                                />
+                                  };
+
+                                  return (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap mr-1">Sholat 5 Waktu:</span>
+                                      {allPrayers.map((prayer) => {
+                                        const isChecked = selectedPrayers.includes(prayer);
+                                        return (
+                                          <button
+                                            key={prayer}
+                                            type="button"
+                                            onClick={() => togglePrayer(prayer)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 select-none ${
+                                              isChecked
+                                                ? 'bg-sky-500 text-white border-sky-600 shadow-2xs'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                          >
+                                            <span>{isChecked ? '✓' : '○'}</span>
+                                            <span>{prayer}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+
+                                {item.key === 'berolahraga' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Jenis Olahraga:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['berolahraga'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), berolahraga: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Masukkan jenis olahraga (contoh: Senam pagi, Bulutangkis, Jogging)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'makanSehat' && (() => {
+                                  const raw = dailyJournalForm.details?.['makanSehat'] || '';
+                                  const getSubMenu = (label: string) => {
+                                    const match = raw.match(new RegExp(`${label}:\\s*\\[?([^\\]|]+)\\]?`));
+                                    return match ? match[1].trim() : '';
+                                  };
+
+                                  const pagi = getSubMenu('Pagi');
+                                  const siang = getSubMenu('Siang');
+                                  const malam = getSubMenu('Malam');
+
+                                  const updateMenu = (pagiVal: string, siangVal: string, malamVal: string) => {
+                                    const parts = [];
+                                    if (pagiVal.trim()) parts.push(`Pagi: [${pagiVal.trim()}]`);
+                                    if (siangVal.trim()) parts.push(`Siang: [${siangVal.trim()}]`);
+                                    if (malamVal.trim()) parts.push(`Malam: [${malamVal.trim()}]`);
+                                    const newDetails = { ...(dailyJournalForm.details || {}), makanSehat: parts.join(' | ') };
+                                    setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                  };
+
+                                  return (
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Pagi]:</span>
+                                        <input
+                                          type="text"
+                                          value={pagi}
+                                          onChange={(e) => updateMenu(e.target.value, siang, malam)}
+                                          placeholder="Menu sarapan..."
+                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Siang]:</span>
+                                        <input
+                                          type="text"
+                                          value={siang}
+                                          onChange={(e) => updateMenu(pagi, e.target.value, malam)}
+                                          placeholder="Menu makan siang..."
+                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap">[Menu Malam]:</span>
+                                        <input
+                                          type="text"
+                                          value={malam}
+                                          onChange={(e) => updateMenu(pagi, siang, e.target.value)}
+                                          placeholder="Menu makan malam..."
+                                          className="w-full bg-white border border-gray-200 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {item.key === 'gemarBelajar' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Mapel yang Dipelajari:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['gemarBelajar'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), gemarBelajar: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Mata pelajaran yang dipelajari (contoh: Matematika, IPA)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'bermasyarakat' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Kegiatan di Lingkungan:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['bermasyarakat'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), bermasyarakat: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Kegiatan di lingkungan (contoh: Membantu warga, Kerja bakti)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'tidurAwal' && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">Pukul:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['tidurAwal'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), tidurAwal: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Pukul (contoh: 20.30 WIB)..."
+                                      className="w-full sm:max-w-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );

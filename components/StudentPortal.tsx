@@ -1106,7 +1106,10 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   };
 
   const handleDailyHabitToggle = (key: keyof DailyKAIHJournal, value: string) => {
-    setDailyJournalForm(prev => ({ ...prev, [key]: value }));
+    setDailyJournalForm(prev => ({
+      ...prev,
+      [key]: prev[key] === value ? '' : value
+    }));
   };
 
   const goToPreviousSlide = () => setCarouselIndex((prev) => (prev - 1 + imagesForCarousel.length) % imagesForCarousel.length);
@@ -1640,9 +1643,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   onClick={() => handleTabChange(item.id as PortalTab)}
                                   className="flex flex-col items-center justify-center space-y-1 active:scale-95 transition-transform"
                               >
-                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${item.color}`}>
+                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${item.is7Kaih ? 'bg-white border border-pink-100' : item.color}`}>
                                       {item.is7Kaih ? (
-                                        <Logo7Kaih className="w-8 h-8" imgClassName="w-8 h-8 object-contain rounded-lg" />
+                                        <Logo7Kaih className="w-8 h-8" imgClassName="rounded-lg" />
                                       ) : (
                                         Icon && <Icon size={24} />
                                       )}
@@ -2887,7 +2890,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
                           <div className="flex items-center gap-3 sm:gap-4">
                               <div className="p-1.5 sm:p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
-                                  <Logo7Kaih className="w-12 h-12 sm:w-16 sm:h-16" imgClassName="w-12 h-12 sm:w-16 sm:h-16 object-contain rounded-xl" />
+                                  <Logo7Kaih className="w-12 h-12 sm:w-16 sm:h-16" imgClassName="rounded-xl" />
                               </div>
                               <div>
                                   <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-1 sm:mb-2">
@@ -2973,7 +2976,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
                           <div>
                             <h4 className="font-extrabold text-gray-800 text-lg flex items-center gap-2.5">
-                              <Logo7Kaih className="w-8 h-8" imgClassName="w-8 h-8 object-contain rounded-lg border border-gray-100 shadow-2xs" />
+                              <Logo7Kaih className="w-8 h-8" imgClassName="rounded-lg border border-gray-100 shadow-2xs" />
                               Daftar Pembiasaan 7 KAIH
                             </h4>
                             <p className="text-xs font-bold text-sky-700 mt-0.5">

@@ -9,11 +9,22 @@ interface Logo7KaihProps {
 
 export const Logo7Kaih: React.FC<Logo7KaihProps> = ({
   className = "w-12 h-12",
-  imgClassName = "w-full h-full object-contain rounded-xl",
+  imgClassName = "",
   alt = "Logo 7 Kebiasaan Anak Indonesia Hebat",
 }) => {
   const [useFallbackImg, setUseFallbackImg] = useState(false);
   const [imgError, setImgError] = useState(false);
+
+  // Prioritize imported asset from Vite bundle for guaranteed loading
+  const currentSrc = useFallbackImg ? "/logo_7kaih.jpg" : logoImg;
+
+  const handleError = () => {
+    if (!useFallbackImg) {
+      setUseFallbackImg(true);
+    } else {
+      setImgError(true);
+    }
+  };
 
   if (imgError) {
     // Vector SVG Fallback that matches 7 KAIH branding perfectly
@@ -40,24 +51,14 @@ export const Logo7Kaih: React.FC<Logo7KaihProps> = ({
     );
   }
 
-  const currentSrc = useFallbackImg ? logoImg : "/logo_7kaih.jpg";
-
-  const handleError = () => {
-    if (!useFallbackImg) {
-      setUseFallbackImg(true);
-    } else {
-      setImgError(true);
-    }
-  };
-
   return (
-    <div className={`relative shrink-0 flex items-center justify-center ${className}`}>
+    <div className={`relative shrink-0 flex items-center justify-center overflow-hidden ${className}`}>
       <img
         src={currentSrc}
         alt={alt}
         referrerPolicy="no-referrer"
         onError={handleError}
-        className={imgClassName}
+        className={`w-full h-full object-contain ${imgClassName}`}
       />
     </div>
   );

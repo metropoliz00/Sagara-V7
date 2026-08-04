@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Student, SikapAssessment, KarakterAssessment, DailyKAIHJournal, SIKAP_INDICATORS, KARAKTER_INDICATORS, SikapIndicatorKey, KarakterIndicatorKey } from '../types';
+import { MOCK_SUBJECTS } from '../constants';
+import { cacheService } from '../src/services/cacheService';
 import * as XLSX from 'xlsx';
 import { apiService } from '../services/apiService';
 import { getLocalISODate, formatDateID } from '../utils/dateUtils';
 import { 
   Save, FileSpreadsheet, Printer, Smile, Heart, Loader2, Settings,
-  Calendar, CheckCircle2, XCircle, AlertCircle, BarChart3, Filter, Award, Sparkles, RefreshCw, ChevronLeft, ChevronRight, MessageSquare
+  Calendar, CheckCircle2, XCircle, AlertCircle, BarChart3, Filter, Award, Sparkles, RefreshCw, ChevronLeft, ChevronRight, MessageSquare, BookOpen, Layers
 } from 'lucide-react';
 
 interface AttitudeViewProps {
@@ -36,6 +38,13 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
   const [sikapData, setSikapData] = useState<SikapAssessment[]>(initialSikap);
   const [selectedIndicators, setSelectedIndicators] = useState<SikapIndicatorKey[]>(Object.keys(SIKAP_INDICATORS) as SikapIndicatorKey[]);
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+  
+  // DPL Per Mapel & TP State
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>(MOCK_SUBJECTS[0]?.id || 'pai');
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
+  const [materiInput, setMateriInput] = useState<string>('Observasi Sikap DPL');
+  const [tujuanInput, setTujuanInput] = useState<string>('TP 1: Capaian Dimensi Profil Lulusan');
+  const [savedTopics, setSavedTopics] = useState<any[]>([]);
   
   // KAIH State
   const [selectedDate, setSelectedDate] = useState<string>(getLocalISODate());
@@ -73,6 +82,94 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
       loadIndicators();
     }
   }, [classId]);
+
+  // Load shared learning topics for DPL mapel selection
+  useEffect(() => {
+    if (!classId) return;
+    const sharedKey = `shared_learning_topics_${classId}`;
+    const cachedTopics = cacheService.get<any[]>(sharedKey) || [];
+    setSavedTopics(cachedTopics);
+
+    const subjectTopics = cachedTopics.filter(t => t.subjectId === selectedSubjectId);
+    if (subjectTopics.length > 0) {
+      if (!selectedTopicId || !subjectTopics.some(t => t.id === selectedTopicId)) {
+        setSelectedTopicId(subjectTopics[0].id);
+        setMateriInput(subjectTopics[0].materi || 'Observasi Sikap DPL');
+        setTujuanInput(subjectTopics[0].tujuan || 'TP 1: Capaian Dimensi Profil Lulusan');
+      }
+    } else {
+      setSelectedTopicId('');
+      setMateriInput('Observasi Sikap DPL');
+      setTujuanInput('TP 1: Capaian Dimensi Profil Lulusan');
+    }
+  }, [classId, selectedSubjectId]);
+
+  // Handle selecting a topic
+  const handleSelectTopic = (topicId: string) => {
+    setSelectedTopicId(topicId);
+    if (topicId) {
+      const found = savedTopics.find(t => t.id === topicId);
+      if (found) {
+        setMateriInput(found.materi || '');
+        setTujuanInput(found.tujuan || '');
+      }
+    } else {
+      setMateriInput('Observasi Sikap DPL');
+      setTujuanInput(`TP ${savedTopics.filter(t => t.subjectId === selectedSubjectId).length + 1}: Capaian Dimensi Profil Lulusan`);
+    }
+  };
+
+  // Helper to sync DPL scores to Formatif Observasi & shared_learning_topics
+  const syncDplToFormatif = (updatedSikapList?: SikapAssessment[]) => {
+    if (!classId || !selectedSubjectId) return null;
+    const currentSikapData = updatedSikapList || sikapData;
+    const sharedKey = `shared_learning_topics_${classId}`;
+    const allTopics = cacheService.get<any[]>(sharedKey) || [];
+
+    let topicId = selectedTopicId;
+    if (!topicId) {
+      topicId = `dpl-topic-${selectedSubjectId}-${Date.now()}`;
+      setSelectedTopicId(topicId);
+    }
+
+    const topicData = {
+      id: topicId,
+      subjectId: selectedSubjectId,
+      materi: materiInput || 'Observasi Sikap DPL',
+      tujuan: tujuanInput || 'TP 1: Capaian Dimensi Profil Lulusan',
+      date: getLocalISODate()
+    };
+
+    const existingIdx = allTopics.findIndex(t => t.id === topicId);
+    if (existingIdx !== -1) {
+      allTopics[existingIdx] = topicData;
+    } else {
+      allTopics.push(topicData);
+    }
+    cacheService.set(sharedKey, allTopics);
+    setSavedTopics(allTopics);
+
+    // Save formatted scores for Formatif Observasi
+    const scoreKey = `formatif_scores_${topicId}_Observasi`;
+    const scoreRecords: Record<string, { score: number; catatan?: string }> = {};
+
+    students.forEach(st => {
+      const assessment = currentSikapData.find(s => s.studentId === st.id) || {
+        studentId: st.id, classId, keimanan: 0, kewargaan: 0, penalaranKritis: 0, kreativitas: 0, kolaborasi: 0, kemandirian: 0, kesehatan: 0, komunikasi: 0
+      };
+      const avg = calculateSikapAverage(assessment);
+      const scaledScore = avg > 0 ? Math.round(avg * 25) : 0;
+      const pred = getSikapPredicate(avg);
+      
+      scoreRecords[st.id] = {
+        score: scaledScore,
+        catatan: `DPL Observasi (${selectedSubjectId.toUpperCase()}): ${pred.text}`
+      };
+    });
+
+    cacheService.set(scoreKey, scoreRecords);
+    return topicId;
+  };
 
   // Load Daily KAIH Journals
   const loadDailyJournals = async () => {
@@ -142,11 +239,15 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
 
   const updateSikap = (studentId: string, indicator: SikapIndicatorKey, value: number) => {
     setSikapData(prev => {
+      let nextList: SikapAssessment[] = [];
       const existing = prev.find(s => s.studentId === studentId);
       if (existing) {
-        return prev.map(s => s.studentId === studentId ? { ...s, [indicator]: value } : s);
+        nextList = prev.map(s => s.studentId === studentId ? { ...s, [indicator]: value } : s);
+      } else {
+        nextList = [...prev, { studentId, classId, keimanan: 0, kewargaan: 0, penalaranKritis: 0, kreativitas: 0, kolaborasi: 0, kemandirian: 0, kesehatan: 0, komunikasi: 0, [indicator]: value }];
       }
-      return [...prev, { studentId, classId, keimanan: 0, kewargaan: 0, penalaranKritis: 0, kreativitas: 0, kolaborasi: 0, kemandirian: 0, kesehatan: 0, komunikasi: 0, [indicator]: value }];
+      syncDplToFormatif(nextList);
+      return nextList;
     });
   };
 
@@ -297,10 +398,12 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
     setIsSavingAll(true);
     try {
       if (activeTab === 'sikap') {
+        syncDplToFormatif();
         for (const assessment of sikapData) {
           const { studentId, classId, ...dataToSave } = assessment;
           await onSaveSikap(studentId, dataToSave);
         }
+        onShowNotification('Semua data DPL berhasil disimpan & tersinkron ke Penilaian Formatif (Observasi) dan Rekap Formatif!', 'success');
       } else {
         if (subTabKaih === 'harian') {
           for (const student of students) {
@@ -308,8 +411,8 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
             await apiService.saveDailyKAIHJournal(journal);
           }
         }
+        onShowNotification('Semua data berhasil disimpan!', 'success');
       }
-      onShowNotification('Semua data berhasil disimpan!', 'success');
     } catch (e) {
       onShowNotification('Terjadi kesalahan saat menyimpan.', 'error');
     } finally {
@@ -895,34 +998,119 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
         {/* ==================== DPL SECTION ==================== */}
         {activeTab === 'sikap' && (
           <>
-            <div className="p-4 border-b bg-gray-50 no-print flex justify-between items-center">
-              <h3 className="font-bold text-gray-700">Dimensi 8 Profil Lulusan (DPL)</h3>
-              <div className="relative">
-                <button 
-                  onClick={() => setIsSelectorOpen(!isSelectorOpen)} 
-                  className="flex items-center space-x-2 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm"
-                >
-                  <Settings size={14}/> <span>Pilih Indikator</span>
-                </button>
-                
-                {isSelectorOpen && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-20 p-3 animate-fade-in-up">
-                    <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Pilih Indikator Penilaian</h4>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {(Object.keys(SIKAP_INDICATORS) as SikapIndicatorKey[]).map((key) => (
-                        <label key={key} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
-                          <input 
-                            type="checkbox" 
-                            checked={selectedIndicators.includes(key)} 
-                            onChange={() => toggleIndicator(key)}
-                            className="rounded text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <span>{SIKAP_INDICATORS[key]}</span>
-                        </label>
-                      ))}
-                    </div>
+            {/* Top Bar for Mapel, TP, & Synchronization */}
+            <div className="p-4 border-b bg-indigo-50/50 no-print space-y-4">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                <div>
+                  <h3 className="font-bold text-gray-800 flex items-center gap-2">
+                    <Smile className="text-indigo-600" size={20} />
+                    Dimensi Profil Lulusan (DPL) per Mata Pelajaran
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    Nilai DPL yang diinput otomatis tersinkron ke Penilaian Formatif (jenis Observasi) & Rekap Formatif.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold flex items-center gap-1.5 border border-emerald-200 shadow-sm">
+                    <CheckCircle2 size={14} className="text-emerald-600" />
+                    Tersinkron ke Formatif (Observasi) & Rekap Formatif
+                  </span>
+
+                  <div className="relative">
+                    <button 
+                      onClick={() => setIsSelectorOpen(!isSelectorOpen)} 
+                      className="flex items-center space-x-2 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors shadow-sm text-sm font-medium"
+                    >
+                      <Settings size={14}/> <span>Pilih Indikator</span>
+                    </button>
+                    
+                    {isSelectorOpen && (
+                      <div className="absolute right-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-20 p-3 animate-fade-in-up">
+                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">Pilih Indikator Penilaian</h4>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {(Object.keys(SIKAP_INDICATORS) as SikapIndicatorKey[]).map((key) => (
+                            <label key={key} className="flex items-center space-x-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                              <input 
+                                type="checkbox" 
+                                checked={selectedIndicators.includes(key)} 
+                                onChange={() => toggleIndicator(key)}
+                                className="rounded text-indigo-600 focus:ring-indigo-500"
+                              />
+                              <span>{SIKAP_INDICATORS[key]}</span>
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
+              </div>
+
+              {/* Mapel & TP Selection Controls */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 bg-white p-3 rounded-xl border border-indigo-100 shadow-sm">
+                <div>
+                  <label className="block text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider mb-1">
+                    Mata Pelajaran:
+                  </label>
+                  <select 
+                    value={selectedSubjectId} 
+                    onChange={(e) => setSelectedSubjectId(e.target.value)}
+                    className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    {MOCK_SUBJECTS.map((sub) => (
+                      <option key={sub.id} value={sub.id}>{sub.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider mb-1">
+                    Pilih TP / Topik Tersimpan:
+                  </label>
+                  <select 
+                    value={selectedTopicId} 
+                    onChange={(e) => handleSelectTopic(e.target.value)}
+                    className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-bold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  >
+                    <option value="">+ Buat TP / Topik Baru...</option>
+                    {savedTopics
+                      .filter(t => t.subjectId === selectedSubjectId)
+                      .map((topic) => (
+                        <option key={topic.id} value={topic.id}>
+                          {topic.tujuan || topic.materi || topic.id}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider mb-1">
+                    Materi Pembelajaran:
+                  </label>
+                  <input 
+                    type="text"
+                    value={materiInput}
+                    onChange={(e) => setMateriInput(e.target.value)}
+                    onBlur={() => syncDplToFormatif()}
+                    placeholder="Contoh: Observasi Sikap DPL"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold text-indigo-900 uppercase tracking-wider mb-1">
+                    Tujuan Pembelajaran (TP):
+                  </label>
+                  <input 
+                    type="text"
+                    value={tujuanInput}
+                    onChange={(e) => setTujuanInput(e.target.value)}
+                    onBlur={() => syncDplToFormatif()}
+                    placeholder="Contoh: TP 1: Observasi Sikap Dimensi Profil"
+                    className="w-full bg-slate-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-gray-800 outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -937,6 +1125,7 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                     ))}
                     <th className="p-2 border text-center bg-indigo-50 w-20">Rata-rata</th>
                     <th className="p-2 border text-center bg-indigo-50 w-24">Predikat</th>
+                    <th className="p-2 border text-center bg-emerald-50 text-emerald-900 w-28">Formatif (Observasi)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -944,6 +1133,7 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                     const assessment = getStudentSikap(student.id);
                     const avg = calculateSikapAverage(assessment);
                     const predicate = getSikapPredicate(avg);
+                    const convertedScore = avg > 0 ? Math.round(avg * 25) : 0;
                     
                     return (
                       <tr key={student.id} className="hover:bg-gray-50">
@@ -971,6 +1161,14 @@ const AttitudeView: React.FC<AttitudeViewProps> = ({
                         <td className="p-2 border text-center font-bold bg-indigo-50 text-indigo-700">{avg > 0 ? avg : '-'}</td>
                         <td className="p-2 border text-center font-bold bg-indigo-50">
                           <span className={`px-2 py-0.5 rounded text-[10px] ${predicate.color}`}>{predicate.text}</span>
+                        </td>
+                        <td className="p-2 border text-center font-bold bg-emerald-50/70 text-emerald-800">
+                          {convertedScore > 0 ? (
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-black text-emerald-700">{convertedScore}</span>
+                              <span className="text-[9px] font-semibold text-emerald-600">Tersinkron</span>
+                            </div>
+                          ) : '-'}
                         </td>
                       </tr>
                     );

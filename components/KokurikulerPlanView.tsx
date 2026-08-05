@@ -1515,7 +1515,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                 </div>
                 <div className="text-center px-4">
                   <p className="font-medium">
-                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {
+                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}, {
                       selectedPlan.identitas.tanggalPengesahan 
                         ? new Date(selectedPlan.identitas.tanggalPengesahan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                         : new Date(selectedPlan.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })

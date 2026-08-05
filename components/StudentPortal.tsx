@@ -3728,7 +3728,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   
                                   <div className="hidden print:block mb-8 border-b-4 border-black pb-4 text-black text-center">
                                       <h1 className="text-2xl font-black">{schoolProfile?.name?.toUpperCase() || 'SEKOLAH KAMI'}</h1>
-                                      <p className="text-sm">{schoolProfile?.address || 'Alamat Sekolah'}</p>
+                                      <p className="text-sm">{schoolProfile?.jalan || schoolProfile?.address || 'Alamat Sekolah'}</p>
                                   </div>
                                   
                                   <div className="space-y-1">

@@ -543,7 +543,7 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
       {/* PRINT HEADER FOR PAPER VIEW */}
       <div className="hidden print:block mb-6 text-center border-b pb-4">
         <h2 className="text-xl font-bold uppercase">{schoolProfile?.name || 'AGENDA SURAT MENYURAT SEKOLAH'}</h2>
-        <p className="text-sm font-medium text-gray-600">{schoolProfile?.address || 'Buku Agenda Digital Surat Masuk dan Surat Keluar'}</p>
+        <p className="text-sm font-medium text-gray-600">{schoolProfile?.jalan || schoolProfile?.address || 'Buku Agenda Digital Surat Masuk dan Surat Keluar'}</p>
         <p className="text-xs font-semibold mt-1">Dicetak pada: {new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 

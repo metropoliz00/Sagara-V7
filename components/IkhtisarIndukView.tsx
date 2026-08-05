@@ -423,8 +423,8 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
               <h4>DINAS PENDIDIKAN</h4>
               <h2>${schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
               <p>
-                ${schoolProfile?.address ? `Alamat: ${schoolProfile.address}` : ''}
-                ${schoolProfile?.address && schoolProfile?.postalCode ? ' • ' : ''}
+                ${(schoolProfile?.jalan || schoolProfile?.address) ? `Alamat: ${schoolProfile?.jalan || schoolProfile?.address}` : ''}
+                ${(schoolProfile?.jalan || schoolProfile?.address) && schoolProfile?.postalCode ? ' • ' : ''}
                 ${schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : ''}
               </p>
             </div>

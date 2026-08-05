@@ -217,7 +217,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         <p className="font-bold uppercase">DINAS PENDIDIKAN</p>
         <p className="font-bold uppercase text-lg">{schoolProfile?.name || 'UPT SD NEGERI ...'}</p>
         <p className="font-bold uppercase">KECAMATAN {schoolProfile?.kecamatan?.toUpperCase() || '...'}</p>
-        <p className="text-xs">Jln. {schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
+        <p className="text-xs">Jln. {schoolProfile?.jalan || schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
         <p className="text-xs">Pos-el : {schoolProfile?.email || '...'}</p>
       </div>
       <div className="w-20 h-20 flex-shrink-0 opacity-0 pointer-events-none"></div>

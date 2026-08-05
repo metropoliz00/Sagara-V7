@@ -189,7 +189,11 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
             onShowNotification('Anda tidak memiliki akses untuk mengubah data ini.', 'error');
             return;
         }
-        await onSave('school', school);
+        const updatedSchool = {
+          ...school,
+          address: school.jalan || school.address || ''
+        };
+        await onSave('school', updatedSchool);
         localStorage.removeItem('school_profile_draft');
       }
       onShowNotification('Data berhasil disimpan!', 'success');
@@ -353,7 +357,7 @@ const TeacherProfile: React.FC<TeacherProfileProps> = ({ initialTeacher, initial
 
                 <div>
                     <h2 className="text-2xl font-bold uppercase text-black">{school.name || 'NAMA SEKOLAH'}</h2>
-                    <p className="text-md uppercase max-w-xl mx-auto leading-relaxed font-bold text-black">{school.address || 'ALAMAT SEKOLAH'}</p>
+                    <p className="text-md uppercase max-w-xl mx-auto leading-relaxed font-bold text-black">{school.jalan || school.address || 'ALAMAT SEKOLAH'}</p>
                 </div>
             </div>
 

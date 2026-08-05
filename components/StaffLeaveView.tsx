@@ -1043,13 +1043,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   ? ['Surat Dispensasi']
                   : isCuti
                   ? ['Permohonan Cuti', 'Izin Cuti', 'Pengantar']
-                  : ['Surat Izin', 'Permohonan Izin', 'Pengantar'];
+                  : ['Surat Izin']; // Menampilkan Surat Izin saja jika kategori izin
 
                 const activeType = isDispensasi ? 'Surat Dispensasi' : letterType;
+                const hasLetterNumber = ['Surat Izin', 'Izin Cuti', 'Pengantar'].includes(activeType);
 
                 return (
                   <>
-                    {!isDispensasi && (
+                    {!isDispensasi && availableLetterTypes.length > 1 && (
                       <div className="flex gap-2 mb-4 overflow-x-auto">
                         {availableLetterTypes.map(type => (
                           <button
@@ -1063,13 +1064,30 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       </div>
                     )}
 
-                    <div className="flex gap-2 mb-2">
-                      <button
-                        onClick={() => setIsLetterNumberModalOpen(true)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors"
-                      >
-                        <Printer size={16} className="mr-2" /> Cetak {activeType}
-                      </button>
+                    <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-2">
+                      {hasLetterNumber ? (
+                        <div className="flex items-center gap-2 flex-1 max-w-md">
+                          <span className="text-xs font-bold text-gray-700 whitespace-nowrap">Nomor Surat:</span>
+                          <input
+                            type="text"
+                            value={manualLetterNumber}
+                            onChange={(e) => setManualLetterNumber(e.target.value)}
+                            placeholder="Contoh: 800.1.11.2/043/414.101.319/2026"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1"></div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleExecutePrint}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+                        >
+                          <Printer size={16} className="mr-2" /> Cetak {activeType}
+                        </button>
+                      </div>
                     </div>
                   </>
                 );

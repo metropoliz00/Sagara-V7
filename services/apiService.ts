@@ -54,66 +54,146 @@ export const apiService = {
   // --- Auth & Users ---
 
   login: async (username: string, password?: string): Promise<User | null> => {
-    // If logging in as superadmin, always query the master central database
-    const client = (username.toLowerCase() === 'superadmin' && masterSupabase) ? masterSupabase : supabase;
+    const cleanUsername = (username || '').trim();
+    const cleanPassword = (password || '').trim();
+    if (!cleanUsername) return null;
+
+    // Determine target Supabase client
+    const isSuperadminAttempt = cleanUsername.toLowerCase() === 'superadmin';
+    const primaryClient = (isSuperadminAttempt && masterSupabase) ? masterSupabase : supabase;
     
-    const { data, error } = await client
-      .from('users')
-      .select('id, username, password, full_name, role, class_id, student_id, is_active, permissions, birth_info, address, phone, avatar')
-      .eq('username', username)
-      .eq('password', password)
-      .single();
-    
-    if (error || !data) return null;
+    // Helper to query user from a client
+    const queryUser = async (client: any) => {
+      if (!client) return null;
+      try {
+        // 1. Try exact match username + password
+        let query = client.from('users').select('*');
+        if (cleanPassword) {
+          query = query.eq('password', cleanPassword);
+        }
+        
+        const { data: exactData, error: exactErr } = await query.eq('username', cleanUsername).maybeSingle();
+        if (!exactErr && exactData) return exactData;
+
+        // 2. If not found, try case-insensitive username match
+        let ciQuery = client.from('users').select('*');
+        if (cleanPassword) {
+          ciQuery = ciQuery.eq('password', cleanPassword);
+        }
+        const { data: ciData, error: ciErr } = await ciQuery.ilike('username', cleanUsername).maybeSingle();
+        if (!ciErr && ciData) return ciData;
+      } catch (err) {
+        console.error("Error querying user:", err);
+      }
+      return null;
+    };
+
+    let data = await queryUser(primaryClient);
+
+    // Fallback: If not found in primary client and masterSupabase exists, check fallback client
+    if (!data && masterSupabase && primaryClient !== masterSupabase) {
+      data = await queryUser(masterSupabase);
+    } else if (!data && supabase && primaryClient !== supabase) {
+      data = await queryUser(supabase);
+    }
+
+    if (!data) return null;
+
     let bPlace = '';
     let bDate = '';
     try {
-      if (data.birth_info && data.birth_info.startsWith('{')) {
+      if (data.birth_info && typeof data.birth_info === 'string' && data.birth_info.startsWith('{')) {
         const parsed = JSON.parse(data.birth_info);
         bPlace = parsed.place || '';
         bDate = parsed.date || '';
       } else {
-        bPlace = data.birth_info || '';
+        bPlace = data.birth_info || data.birthPlace || data.birth_place || '';
+        bDate = data.birthDate || data.birth_date || '';
       }
     } catch (e) {}
 
     return {
       ...data,
-      fullName: data.full_name,
+      id: data.id,
+      username: data.username,
+      fullName: data.full_name || data.fullName || data.name || data.username,
+      role: (data.role || 'guru').toLowerCase(),
       birthPlace: bPlace,
       birthDate: bDate,
-      classId: data.class_id,
-      studentId: data.student_id
+      classId: data.class_id || data.classId || '',
+      studentId: data.student_id || data.studentId || '',
+      photo: data.photo || data.avatar || '',
+      signature: data.signature || '',
+      nip: data.nip || '',
+      nuptk: data.nuptk || '',
+      education: data.education || '',
+      position: data.position || '',
+      rank: data.rank || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      address: data.address || ''
     } as User;
   },
 
   loginWithGoogle: async (email: string): Promise<User | null> => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, username, email, full_name, role, class_id, student_id, is_active, permissions, birth_info, address, phone, avatar')
-      .eq('email', email)
-      .single();
-    
-    if (error || !data) return null;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) return null;
+
+    const queryGoogleUser = async (client: any) => {
+      if (!client) return null;
+      try {
+        const { data, error } = await client
+          .from('users')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (err) {
+        console.error("Error during google login query:", err);
+      }
+      return null;
+    };
+
+    let data = await queryGoogleUser(supabase);
+    if (!data && masterSupabase && masterSupabase !== supabase) {
+      data = await queryGoogleUser(masterSupabase);
+    }
+
+    if (!data) return null;
+
     let bPlace = '';
     let bDate = '';
     try {
-      if (data.birth_info && data.birth_info.startsWith('{')) {
+      if (data.birth_info && typeof data.birth_info === 'string' && data.birth_info.startsWith('{')) {
         const parsed = JSON.parse(data.birth_info);
         bPlace = parsed.place || '';
         bDate = parsed.date || '';
       } else {
-        bPlace = data.birth_info || '';
+        bPlace = data.birth_info || data.birthPlace || data.birth_place || '';
+        bDate = data.birthDate || data.birth_date || '';
       }
     } catch (e) {}
 
     return {
       ...data,
-      fullName: data.full_name,
+      id: data.id,
+      username: data.username,
+      fullName: data.full_name || data.fullName || data.name || data.username,
+      role: (data.role || 'guru').toLowerCase(),
       birthPlace: bPlace,
       birthDate: bDate,
-      classId: data.class_id,
-      studentId: data.student_id
+      classId: data.class_id || data.classId || '',
+      studentId: data.student_id || data.studentId || '',
+      photo: data.photo || data.avatar || '',
+      signature: data.signature || '',
+      nip: data.nip || '',
+      nuptk: data.nuptk || '',
+      education: data.education || '',
+      position: data.position || '',
+      rank: data.rank || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      address: data.address || ''
     } as User;
   },
 

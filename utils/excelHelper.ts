@@ -1,6 +1,12 @@
 import * as XLSX from 'xlsx';
 import { formatDateID, getTimeWithZone } from './dateUtils';
 
+export interface GroupHeaderConfig {
+  title: string;
+  startIndex: number;
+  endIndex: number;
+}
+
 export interface ExcelExportOptions {
   title: string;
   subtitle?: string | string[];
@@ -12,6 +18,7 @@ export interface ExcelExportOptions {
   isTemplate?: boolean;
   notes?: string;
   columnWidths?: number[];
+  groupHeaders?: GroupHeaderConfig[];
 }
 
 /**
@@ -48,21 +55,13 @@ export const getCurrentUserInfo = (user?: { fullName?: string; username?: string
 export const calculateAutoColumnWidths = (
   headers: string[],
   rows: (string | number | boolean | null | undefined)[][],
-  defaultMinWidth = 12,
-  padding = 4
+  defaultMinWidth = 6,
+  padding = 3
 ): { wch: number }[] => {
   const numCols = headers.length;
-  const colWidths: number[] = new Array(numCols);
-  const isNumColFlags: boolean[] = new Array(numCols);
+  const colWidths: number[] = new Array(numCols).fill(0);
 
   for (let colIdx = 0; colIdx < numCols; colIdx++) {
-    const h = headers[colIdx] ? String(headers[colIdx]).toLowerCase().trim() : '';
-    const isNumberCol = h === 'no' || h === 'no.' || h === 'nomor' || h === '#' || h === 'no urut';
-    isNumColFlags[colIdx] = isNumberCol;
-    const colMinWidth = isNumberCol ? 5 : defaultMinWidth;
-    colWidths[colIdx] = colMinWidth;
-
-    // 1. Periksa panjang header
     const len = headers[colIdx] ? String(headers[colIdx]).length : 0;
     if (len > colWidths[colIdx]) {
       colWidths[colIdx] = len;
@@ -88,11 +87,9 @@ export const calculateAutoColumnWidths = (
   });
 
   // 3. Tambahkan padding dan batasi batas maksimum
-  return colWidths.map((w, colIdx) => {
-    const isNumberCol = isNumColFlags[colIdx];
-    const colMinWidth = isNumberCol ? 5 : defaultMinWidth;
+  return colWidths.map((w) => {
     const calculated = w + padding;
-    return { wch: Math.max(colMinWidth, Math.min(calculated, 80)) };
+    return { wch: Math.max(4, Math.min(calculated, 80)) };
   });
 };
 
@@ -139,45 +136,178 @@ export const exportToExcelWithHeader = (options: ExcelExportOptions): void => {
 
   // Baris 1: Judul Utama
   const mainTitle = isTemplate ? `TEMPLATE: ${title.toUpperCase()}` : title.toUpperCase();
-  aoa.push([mainTitle]);
+  const titleRow = new Array(headers.length).fill('');
+  titleRow[0] = mainTitle; // Mulai di kolom A (indeks 0)
+  aoa.push(titleRow);
 
   // Baris 2: Metadata Pengunduhan (Tanggal, Jam, dan Nama Pengunduh)
   const metaText = `Diunduh pada: ${dateStr}, Pukul: ${timeStr} | Oleh: ${userInfo.name} (${userInfo.role.toUpperCase()})`;
-  aoa.push([metaText]);
+  const metaRow = new Array(headers.length).fill('');
+  metaRow[0] = metaText; // Mulai di kolom A (indeks 0)
+  aoa.push(metaRow);
 
   // Baris 3: Subtitle atau Informasi Tambahan jika ada
+  let subtitleRowIndex = -1;
   if (subtitle) {
-    if (Array.isArray(subtitle)) {
-      aoa.push([subtitle.join(' | ')]);
-    } else {
-      aoa.push([subtitle]);
-    }
+    subtitleRowIndex = aoa.length;
+    const subRow = new Array(headers.length).fill('');
+    subRow[0] = Array.isArray(subtitle) ? subtitle.join(' | ') : subtitle;
+    aoa.push(subRow);
   }
 
   // Baris Catatan / Catatan Pengisian Template jika ada
   if (notes) {
-    aoa.push([`Catatan: ${notes}`]);
+    const notesRow = new Array(headers.length).fill('');
+    notesRow[0] = `Catatan: ${notes}`;
+    aoa.push(notesRow);
   }
 
   // Baris Kosong sebagai pemisah sebelum tabel
   aoa.push([]);
 
-  // Baris Header Tabel
-  aoa.push(headers);
+  const headerStartRow = aoa.length;
+  const { groupHeaders } = options;
 
-  // Baris Data / Contoh
-  rowsArray.forEach(row => {
-    aoa.push(row);
-  });
+  let worksheet: XLSX.WorkSheet;
 
-  // Buat worksheet dan workbook
-  const worksheet = XLSX.utils.aoa_to_sheet(aoa);
+  if (groupHeaders && groupHeaders.length > 0) {
+    const row1Headers = new Array(headers.length).fill('');
+    const row2Headers = new Array(headers.length).fill('');
+    const merges: XLSX.Range[] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } }
+    ];
+    if (subtitle) {
+      merges.push({ s: { r: subtitleRowIndex, c: 0 }, e: { r: subtitleRowIndex, c: headers.length - 1 } });
+    }
+    if (notes) {
+      const notesIdx = subtitleRowIndex !== -1 ? subtitleRowIndex + 1 : 2;
+      merges.push({ s: { r: notesIdx, c: 0 }, e: { r: notesIdx, c: headers.length - 1 } });
+    }
+
+    headers.forEach((h, idx) => {
+      const group = groupHeaders.find(g => idx >= g.startIndex && idx <= g.endIndex);
+      if (group) {
+        if (idx === group.startIndex) {
+          row1Headers[idx] = group.title;
+        } else {
+          row1Headers[idx] = '';
+        }
+        let sub = h;
+        if (h.includes(' - ')) {
+          sub = h.split(' - ').slice(1).join(' - ');
+        }
+        row2Headers[idx] = sub;
+      } else {
+        row1Headers[idx] = h;
+        row2Headers[idx] = '';
+        merges.push({
+          s: { r: headerStartRow, c: idx },
+          e: { r: headerStartRow + 1, c: idx }
+        });
+      }
+    });
+
+    groupHeaders.forEach(group => {
+      merges.push({
+        s: { r: headerStartRow, c: group.startIndex },
+        e: { r: headerStartRow, c: group.endIndex }
+      });
+    });
+
+    aoa.push(row1Headers);
+    aoa.push(row2Headers);
+
+    rowsArray.forEach(row => {
+      aoa.push(row);
+    });
+
+    worksheet = XLSX.utils.aoa_to_sheet(aoa);
+    worksheet['!merges'] = merges;
+  } else {
+    // Baris Header Tabel Standar (1 baris)
+    aoa.push(headers);
+    rowsArray.forEach(row => {
+      aoa.push(row);
+    });
+    worksheet = XLSX.utils.aoa_to_sheet(aoa);
+    const merges: XLSX.Range[] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: headers.length - 1 } },
+      { s: { r: 1, c: 0 }, e: { r: 1, c: headers.length - 1 } }
+    ];
+    if (subtitle) {
+      merges.push({ s: { r: subtitleRowIndex, c: 0 }, e: { r: subtitleRowIndex, c: headers.length - 1 } });
+    }
+    if (notes) {
+      const notesIdx = subtitleRowIndex !== -1 ? subtitleRowIndex + 1 : 2;
+      merges.push({ s: { r: notesIdx, c: 0 }, e: { r: notesIdx, c: headers.length - 1 } });
+    }
+    worksheet['!merges'] = merges;
+  }
 
   // Terapkan lebar kolom otomatis
   if (customWidths && customWidths.length === headers.length) {
     worksheet['!cols'] = customWidths.map(w => ({ wch: w }));
   } else {
     worksheet['!cols'] = calculateAutoColumnWidths(headers, rowsArray);
+  }
+
+  // Styling 셀 (Cell styles) menggunakan xlsx cell styling properties
+  const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+  
+  const borderStyle = {
+    top: { style: 'thin', color: { rgb: '000000' } },
+    bottom: { style: 'thin', color: { rgb: '000000' } },
+    left: { style: 'thin', color: { rgb: '000000' } },
+    right: { style: 'thin', color: { rgb: '000000' } }
+  };
+
+  for (let R = range.s.r; R <= range.e.r; ++R) {
+    for (let C = range.s.c; C <= range.e.c; ++C) {
+      const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+      if (!worksheet[cellAddress]) continue;
+
+      if (!worksheet[cellAddress].s) {
+        worksheet[cellAddress].s = {};
+      }
+
+      // 1. Judul Utama (Baris 0)
+      if (R === 0) {
+        worksheet[cellAddress].s = {
+          font: { bold: true, sz: 14, color: { rgb: '1F2937' } },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+      // 2. Info Pengunduh / Metadata (Baris 1)
+      else if (R === 1) {
+        worksheet[cellAddress].s = {
+          font: { bold: true, sz: 10, color: { rgb: '4B5563' } },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+      // 3. Subtitle / Notes jika ada
+      else if (R === subtitleRowIndex || (notes && R === subtitleRowIndex + 1)) {
+        worksheet[cellAddress].s = {
+          font: { italic: true, sz: 10, color: { rgb: '4B5563' } },
+          alignment: { horizontal: 'center', vertical: 'center' }
+        };
+      }
+      // 4. Header Tabel (Header Start Row ke bawah sampai akhir header rows)
+      else if (R >= headerStartRow && R <= (groupHeaders && groupHeaders.length > 0 ? headerStartRow + 1 : headerStartRow)) {
+        worksheet[cellAddress].s = {
+          font: { bold: true, sz: 11, color: { rgb: '000000' } },
+          alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+          fill: { fgColor: { rgb: 'E5E7EB' } },
+          border: borderStyle
+        };
+      }
+      // 5. Baris Data (Data rows) - tanpa styling bold khusus, hanya border
+      else if (R > (groupHeaders && groupHeaders.length > 0 ? headerStartRow + 1 : headerStartRow)) {
+        worksheet[cellAddress].s = {
+          border: borderStyle
+        };
+      }
+    }
   }
 
   const workbook = XLSX.utils.book_new();
@@ -221,7 +351,6 @@ export const parseExcelWithHeaders = (
       }
     }
   } else {
-    // Jika tidak ada kata kunci khusus, cari baris pertama yang memiliki lebih dari 1 kolom teks
     for (let i = 0; i < Math.min(rawRows.length, 6); i++) {
       const row = rawRows[i];
       if (Array.isArray(row) && row.filter(c => c !== null && c !== undefined && String(c).trim() !== '').length > 1) {
@@ -231,8 +360,38 @@ export const parseExcelWithHeaders = (
     }
   }
 
-  const headerRow = (rawRows[headerRowIndex] || []).map(cell => String(cell || '').trim());
-  const dataRows = rawRows.slice(headerRowIndex + 1);
+  let actualHeaderRow = (rawRows[headerRowIndex] || []).map(cell => String(cell || '').trim());
+  let dataStartIndex = headerRowIndex + 1;
+
+  // Cek apakah ada baris group header tepat di atas headerRowIndex (2-row grouped headers)
+  if (headerRowIndex > 0) {
+    const prevRow = rawRows[headerRowIndex - 1];
+    if (Array.isArray(prevRow)) {
+      const hasGroupHeader = prevRow.some(c => {
+        const s = String(c || '').toLowerCase();
+        return s.includes('data ayah') || s.includes('data ibu') || s.includes('data wali');
+      });
+      if (hasGroupHeader) {
+        let currentGroup = '';
+        actualHeaderRow = actualHeaderRow.map((subHeader, colIdx) => {
+          for (let c = colIdx; c >= 0; c--) {
+            const val = prevRow[c] ? String(prevRow[c]).trim() : '';
+            if (val && (val.toLowerCase().includes('data ayah') || val.toLowerCase().includes('data ibu') || val.toLowerCase().includes('data wali'))) {
+              currentGroup = val;
+              break;
+            }
+          }
+          if (currentGroup && subHeader && !subHeader.toLowerCase().includes('data ayah') && !subHeader.toLowerCase().includes('data ibu') && !subHeader.toLowerCase().includes('data wali')) {
+            return `${currentGroup} - ${subHeader}`;
+          }
+          return subHeader;
+        });
+      }
+    }
+  }
+
+  const headerRow = actualHeaderRow;
+  const dataRows = rawRows.slice(dataStartIndex);
 
   const resultRows: Record<string, any>[] = [];
   dataRows.forEach(row => {

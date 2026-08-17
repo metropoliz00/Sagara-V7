@@ -1047,17 +1047,24 @@ const StudentList: React.FC<StudentListProps> = ({
         "0.5"
       ];
 
+      const groupHeaders = [
+        { title: "Data Ayah", startIndex: 24, endIndex: 29 },
+        { title: "Data Ibu", startIndex: 30, endIndex: 35 },
+        { title: "Data Wali", startIndex: 36, endIndex: 41 }
+      ];
+
       exportToExcelWithHeader({
-        title: "Template Input Data Siswa Dapodik",
+        title: "Template Input Data Siswa Sagara",
         subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
-        filename: "template_input_siswa_dapodik.xlsx",
+        filename: "template_input_siswa_sagara.xlsx",
         sheetName: "Template Siswa",
         headers,
         data: [example],
         isTemplate: true,
-        notes: "Isi data siswa mulai baris setelah judul tabel. Kolom wajib: Nama, NISN/NIS, JK, Tanggal Lahir (YYYY-MM-DD)."
+        notes: "Isi data siswa mulai baris setelah judul tabel. Kolom wajib: Nama, NISN/NIS, JK, Tanggal Lahir (YYYY-MM-DD).",
+        groupHeaders
       });
-      onShowNotification("Template Excel Dapodik berhasil diunduh!", "success");
+      onShowNotification("Template Excel Sagara berhasil diunduh!", "success");
     } catch (err: any) {
       console.error("Gagal mengunduh template:", err);
       onShowNotification("Gagal mengunduh template Excel.", "error");
@@ -1204,13 +1211,20 @@ const StudentList: React.FC<StudentListProps> = ({
         s.jarakRumahKm || 0
       ]);
 
+      const groupHeaders = [
+        { title: "Data Ayah", startIndex: 24, endIndex: 29 },
+        { title: "Data Ibu", startIndex: 30, endIndex: 35 },
+        { title: "Data Wali", startIndex: 36, endIndex: 41 }
+      ];
+
       exportToExcelWithHeader({
-        title: "Laporan Data Siswa Dapodik",
+        title: "Laporan Data Siswa Sagara",
         subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Siswa: ${students.length}`,
-        filename: `data_siswa_dapodik_${classId || 'semua'}.xlsx`,
+        filename: `data_siswa_sagara_${classId || 'semua'}.xlsx`,
         sheetName: "Data Siswa",
         headers,
-        data: rows
+        data: rows,
+        groupHeaders
       });
       onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
     } catch (err: any) {

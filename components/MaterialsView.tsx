@@ -799,13 +799,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     </div>
                   </div>
                   
-                  {/* Thumbnail */}
+                  {/* Thumbnail (Portrait) */}
                   {material.infographic && (
-                    <div className="w-32 shrink-0 self-start mt-1">
+                    <div className="w-28 sm:w-32 aspect-[3/4] shrink-0 self-start mt-1 overflow-hidden rounded-lg shadow-sm border border-slate-100 bg-slate-900">
                       <img 
                         src={material.infographic} 
                         alt="Poster" 
-                        className="w-full h-auto rounded-lg object-cover shadow-sm border border-slate-100" 
+                        className="w-full h-full object-cover" 
                       />
                     </div>
                   )}

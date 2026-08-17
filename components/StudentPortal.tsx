@@ -2592,11 +2592,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                            )}
                                                       </div>
 
-                                                      {/* Poster Thumbnail inside Card */}
+                                                      {/* Poster Thumbnail inside Card (Portrait - 50% width) */}
                                                       {material.infographic && (
                                                         <div 
                                                           onClick={() => setViewingPoster(material)}
-                                                          className="mb-4 rounded-xl overflow-hidden border border-gray-150/80 aspect-video relative group/poster bg-slate-900 cursor-pointer shadow-md"
+                                                          className="mb-4 w-1/2 mx-auto rounded-xl overflow-hidden border border-gray-150/80 aspect-[3/4] relative group/poster bg-slate-900 cursor-pointer shadow-md"
                                                         >
                                                           <img 
                                                             src={material.infographic} 

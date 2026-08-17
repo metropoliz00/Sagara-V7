@@ -908,13 +908,149 @@ const StudentList: React.FC<StudentListProps> = ({
 
   const handleDownloadTemplate = () => {
     try {
-      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran"];
-      const example = ["1A", "2024001", "0012345678", "1234567890123456", "Ahmad Santoso", "L", "Surabaya", "2015-05-20", "Islam", "Jl. Merpati No. 10", "Budi Santoso", "Wiraswasta", "SMA", "Siti Aminah", "Ibu Rumah Tangga", "SMP", "Budi Santoso", "081234567890", "Wiraswasta", "Mampu", "145", "38", "O", "Tidak ada", "Sepak Bola", "Polisi", "Juara 1 Lari", "-"];
+      const headers = [
+        "No",
+        "Nama",
+        "NIS",
+        "JK",
+        "NISN",
+        "Tempat Lahir",
+        "Tanggal Lahir",
+        "NIK",
+        "Agama",
+        "Alamat",
+        "RT",
+        "RW",
+        "Dusun",
+        "Kelurahan",
+        "Kecamatan",
+        "Kode Pos",
+        "Jenis Tinggal",
+        "Alat Transportasi",
+        "Telepon",
+        "HP",
+        "E-Mail",
+        "SKHUN",
+        "Penerima KPS",
+        "No. KPS",
+        "Data Ayah - Nama",
+        "Data Ayah - Tahun Lahir",
+        "Data Ayah - Jenjang Pendidikan",
+        "Data Ayah - Pekerjaan",
+        "Data Ayah - Penghasilan",
+        "Data Ayah - NIK",
+        "Data Ibu - Nama",
+        "Data Ibu - Tahun Lahir",
+        "Data Ibu - Jenjang Pendidikan",
+        "Data Ibu - Pekerjaan",
+        "Data Ibu - Penghasilan",
+        "Data Ibu - NIK",
+        "Data Wali - Nama",
+        "Data Wali - Tahun Lahir",
+        "Data Wali - Jenjang Pendidikan",
+        "Data Wali - Pekerjaan",
+        "Data Wali - Penghasilan",
+        "Data Wali - NIK",
+        "Rombel Saat Ini",
+        "No. Peserta Ujian Nasional",
+        "No. Seri Ijazah",
+        "Penerima KIP",
+        "Nomor KIP",
+        "Nama di KIP",
+        "Nomor KKS",
+        "No. Registrasi Akta Lahir",
+        "Bank",
+        "Nomor Rekening Bank",
+        "Rekening Atas Nama",
+        "Layak PIP (Usulan dari Sekolah)",
+        "Alasan Layak PIP",
+        "Kebutuhan Khusus",
+        "Sekolah Asal",
+        "Anak ke-berapa",
+        "Lintang",
+        "Bujur",
+        "No. KK",
+        "Berat Badan",
+        "Tinggi Badan",
+        "Lingkar Kepala",
+        "Jml. Saudara Kandung",
+        "Jarak Rumah ke Sekolah (KM)"
+      ];
+
+      const example = [
+        1,
+        "AHMAD SANTOSO",
+        "2024001",
+        "L",
+        "0012345678",
+        "Tuban",
+        "2015-05-20",
+        "3523010101150001",
+        "Islam",
+        "Jl. Merpati No. 10",
+        "001",
+        "002",
+        "Dusun Krajan",
+        "Remen",
+        "Jenu",
+        "62356",
+        "Bersama orang tua",
+        "Jalan kaki",
+        "-",
+        "081234567890",
+        "ahmad@gmail.com",
+        "-",
+        "Tidak",
+        "-",
+        "BUDI SANTOSO",
+        "1980",
+        "SMA",
+        "Wiraswasta",
+        "Rp 2.000.000 - Rp 3.000.000",
+        "3523010101800001",
+        "SITI AMINAH",
+        "1985",
+        "SMP",
+        "Ibu Rumah Tangga",
+        "Tidak Berpenghasilan",
+        "3523010101850002",
+        "-",
+        "-",
+        "-",
+        "-",
+        "-",
+        "-",
+        classId || "1",
+        "-",
+        "-",
+        "Tidak",
+        "-",
+        "-",
+        "-",
+        "AHU-00123.456",
+        "BRI",
+        "123401000123530",
+        "AHMAD SANTOSO",
+        "Tidak",
+        "-",
+        "Tidak ada",
+        "TK Dharma Wanita Remen",
+        "1",
+        "-6.891234",
+        "112.056789",
+        "3523010101100001",
+        "38",
+        "145",
+        "52",
+        "2",
+        "0.5"
+      ];
+
       const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Input Siswa");
-      XLSX.writeFile(workbook, "template_input_siswa.xlsx");
-      onShowNotification("Template Excel berhasil diunduh!", "success");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Siswa Dapodik");
+      XLSX.writeFile(workbook, "template_input_siswa_dapodik.xlsx");
+      onShowNotification("Template Excel Dapodik berhasil diunduh!", "success");
     } catch (err: any) {
       console.error("Gagal mengunduh template:", err);
       onShowNotification("Gagal mengunduh template Excel.", "error");
@@ -923,12 +1059,148 @@ const StudentList: React.FC<StudentListProps> = ({
 
   const handleExport = () => {
     try {
-      const headers = ["Class ID", "NIS", "NISN", "NIK", "Nama Lengkap", "Gender (L/P)", "Tempat Lahir", "Tanggal Lahir (YYYY-MM-DD)", "Agama", "Alamat", "Nama Ayah", "Pekerjaan Ayah", "Pendidikan Ayah", "Nama Ibu", "Pekerjaan Ibu", "Pendidikan Ibu", "Nama Wali", "No HP Wali", "Pekerjaan Wali", "Status Ekonomi", "Tinggi (cm)", "Berat (kg)", "Gol Darah", "Riwayat Penyakit", "Hobi", "Cita-cita", "Prestasi", "Pelanggaran", "Kelengkapan Data (%)"];
-      const rows = students.map(s => [s.classId, s.nis, s.nisn || '-', s.nik || '-', s.name, s.gender, s.birthPlace || '-', s.birthDate, s.religion || '-', s.address, s.fatherName, s.fatherJob || '-', s.fatherEducation || '-', s.motherName, s.motherJob || '-', s.motherEducation || '-', s.parentName, s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '', s.parentJob || '-', s.economyStatus || 'Mampu', s.height || 0, s.weight || 0, s.bloodType || '-', s.healthNotes || '-', s.hobbies || '-', s.ambition || '-', s.achievements?.join(', ') || '-', s.violations?.join(', ') || '-', calculateCompleteness(s) + '%']);
+      const headers = [
+        "No",
+        "Nama",
+        "NIS",
+        "JK",
+        "NISN",
+        "Tempat Lahir",
+        "Tanggal Lahir",
+        "NIK",
+        "Agama",
+        "Alamat",
+        "RT",
+        "RW",
+        "Dusun",
+        "Kelurahan",
+        "Kecamatan",
+        "Kode Pos",
+        "Jenis Tinggal",
+        "Alat Transportasi",
+        "Telepon",
+        "HP",
+        "E-Mail",
+        "SKHUN",
+        "Penerima KPS",
+        "No. KPS",
+        "Data Ayah - Nama",
+        "Data Ayah - Tahun Lahir",
+        "Data Ayah - Jenjang Pendidikan",
+        "Data Ayah - Pekerjaan",
+        "Data Ayah - Penghasilan",
+        "Data Ayah - NIK",
+        "Data Ibu - Nama",
+        "Data Ibu - Tahun Lahir",
+        "Data Ibu - Jenjang Pendidikan",
+        "Data Ibu - Pekerjaan",
+        "Data Ibu - Penghasilan",
+        "Data Ibu - NIK",
+        "Data Wali - Nama",
+        "Data Wali - Tahun Lahir",
+        "Data Wali - Jenjang Pendidikan",
+        "Data Wali - Pekerjaan",
+        "Data Wali - Penghasilan",
+        "Data Wali - NIK",
+        "Rombel Saat Ini",
+        "No. Peserta Ujian Nasional",
+        "No. Seri Ijazah",
+        "Penerima KIP",
+        "Nomor KIP",
+        "Nama di KIP",
+        "Nomor KKS",
+        "No. Registrasi Akta Lahir",
+        "Bank",
+        "Nomor Rekening Bank",
+        "Rekening Atas Nama",
+        "Layak PIP (Usulan dari Sekolah)",
+        "Alasan Layak PIP",
+        "Kebutuhan Khusus",
+        "Sekolah Asal",
+        "Anak ke-berapa",
+        "Lintang",
+        "Bujur",
+        "No. KK",
+        "Berat Badan",
+        "Tinggi Badan",
+        "Lingkar Kepala",
+        "Jml. Saudara Kandung",
+        "Jarak Rumah ke Sekolah (KM)"
+      ];
+
+      const rows = students.map((s, idx) => [
+        idx + 1,
+        s.name ? s.name.toUpperCase() : '',
+        s.nis || '',
+        s.gender || 'L',
+        s.nisn || '',
+        s.birthPlace || '',
+        s.birthDate || '',
+        s.nik || '',
+        s.religion || 'Islam',
+        s.address || '',
+        s.rt || '',
+        s.rw || '',
+        s.dusun || '',
+        s.kelurahan || '',
+        s.kecamatan || '',
+        s.kodePos || '',
+        s.jenisTinggal || '',
+        s.alatTransportasi || '',
+        s.telepon || '',
+        s.hp ? String(s.hp).replace(/^'/, '') : (s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : ''),
+        s.email || '',
+        s.skhun || '',
+        s.penerimaKps || 'Tidak',
+        s.noKps || '',
+        s.fatherName ? s.fatherName.toUpperCase() : '',
+        s.fatherBirthYear || '',
+        s.fatherEducation || '',
+        s.fatherJob || '',
+        s.fatherIncome || '',
+        s.fatherNik || '',
+        s.motherName ? s.motherName.toUpperCase() : '',
+        s.motherBirthYear || '',
+        s.motherEducation || '',
+        s.motherJob || '',
+        s.motherIncome || '',
+        s.motherNik || '',
+        s.parentName ? s.parentName.toUpperCase() : '',
+        s.guardianBirthYear || '',
+        s.guardianEducation || '',
+        s.parentJob || '',
+        s.guardianIncome || '',
+        s.guardianNik || '',
+        s.rombel || s.classId || '',
+        s.noUjianNasional || '',
+        s.noSeriIjazah || '',
+        s.penerimaKip || 'Tidak',
+        s.nomorKip || '',
+        s.namaDiKip || '',
+        s.nomorKks || '',
+        s.noRegistrasiAktaLahir || '',
+        s.bank || '',
+        s.nomorRekeningBank || '',
+        s.rekeningAtasNama || '',
+        s.layakPip || 'Tidak',
+        s.alasanLayakPip || '',
+        s.kebutuhanKhusus || '',
+        s.sekolahAsal || '',
+        s.anakKe || '',
+        s.lintang || '',
+        s.bujur || '',
+        s.noKk || '',
+        s.weight || 0,
+        s.height || 0,
+        s.lingkarKepala || 0,
+        s.jmlSaudaraKandung || 0,
+        s.jarakRumahKm || 0
+      ]);
+
       const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Lengkap");
-      XLSX.writeFile(workbook, "data_siswa_lengkap.xlsx");
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Dapodik");
+      XLSX.writeFile(workbook, `data_siswa_dapodik_${classId || 'semua'}.xlsx`);
       onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
     } catch (err: any) {
       console.error("Gagal melakukan ekspor:", err);
@@ -970,8 +1242,8 @@ const StudentList: React.FC<StudentListProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 500 * 1024) {
-      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+    if (file.size > 2 * 1024 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 2 MB.", "error");
       return;
     }
 
@@ -988,49 +1260,113 @@ const StudentList: React.FC<StudentListProps> = ({
 
         const newStudentsBatch: Omit<Student, 'id'>[] = [];
 
+        // Helper to get field from json object case-insensitively
+        const getVal = (row: Record<string, any>, ...keys: string[]): any => {
+          for (const key of keys) {
+            if (row[key] !== undefined && row[key] !== null) return row[key];
+            const lowerKey = key.toLowerCase();
+            const matchedKey = Object.keys(row).find(k => k.toLowerCase() === lowerKey || k.toLowerCase().replace(/[^a-z0-9]/g, '') === lowerKey.replace(/[^a-z0-9]/g, ''));
+            if (matchedKey && row[matchedKey] !== undefined && row[matchedKey] !== null) return row[matchedKey];
+          }
+          return undefined;
+        };
+
         if (jsonObjects.length > 0 && typeof jsonObjects[0] === 'object' && !Array.isArray(jsonObjects[0])) {
           jsonObjects.forEach((row) => {
-            const classIdInput = String(row['Class ID'] || row['Kelas'] || row['classId'] || classId || '').trim();
-            const nis = String(row['NIS'] || row['nis'] || '').trim();
-            const nisn = String(row['NISN'] || row['nisn'] || '').trim();
-            const nik = String(row['NIK'] || row['nik'] || '').trim();
-            const name = String(row['Nama Lengkap'] || row['Nama'] || row['name'] || '').trim().toUpperCase();
+            const name = String(getVal(row, 'Nama', 'Nama Lengkap', 'name') || '').trim().toUpperCase();
+            const nis = String(getVal(row, 'NIS', 'nis') || '').trim();
+            const nisn = String(getVal(row, 'NISN', 'nisn') || '').trim();
+            const nik = String(getVal(row, 'NIK', 'nik') || '').trim();
+            const rombel = String(getVal(row, 'Rombel Saat Ini', 'Rombel', 'Class ID', 'Kelas', 'classId') || classId || '').trim();
 
-            if (nis && name) {
-              const genderRaw = String(row['Gender (L/P)'] || row['Gender'] || row['Jenis Kelamin'] || 'L').trim().toUpperCase();
+            if (name) {
+              const genderRaw = String(getVal(row, 'JK', 'Gender (L/P)', 'Gender', 'Jenis Kelamin') || 'L').trim().toUpperCase();
               const gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN') || genderRaw.includes('WANITA')) ? 'P' : 'L';
+              const rawBirthDate = getVal(row, 'Tanggal Lahir', 'Tanggal Lahir (YYYY-MM-DD)', 'Tanggal Lahir (YYYY-MM-DD)*');
 
-              const rawBirthDate = row['Tanggal Lahir (YYYY-MM-DD)'] || row['Tanggal Lahir'] || row['Tanggal Lahir (YYYY-MM-DD)*'];
+              const hpVal = String(getVal(row, 'HP', 'No HP', 'No. HP', 'No HP Wali') || '').trim().replace(/^'/, '');
+              const parentPhone = hpVal;
 
               const newStudent: Omit<Student, 'id'> = {
-                classId: classIdInput || classId,
-                nis,
+                classId: rombel || classId,
+                rombel: rombel || classId,
+                nis: nis || (nisn ? nisn.slice(-6) : `NIS-${Math.floor(1000 + Math.random() * 9000)}`),
                 nisn,
                 nik,
                 name,
                 gender,
-                birthPlace: String(row['Tempat Lahir'] || '').trim(),
+                birthPlace: String(getVal(row, 'Tempat Lahir') || '').trim(),
                 birthDate: parseExcelDate(rawBirthDate),
-                religion: String(row['Agama'] || 'Islam').trim(),
-                address: String(row['Alamat'] || '').trim(),
-                fatherName: String(row['Nama Ayah'] || '').trim().toUpperCase(),
-                fatherJob: String(row['Pekerjaan Ayah'] || '').trim(),
-                fatherEducation: String(row['Pendidikan Ayah'] || '').trim(),
-                motherName: String(row['Nama Ibu'] || '').trim().toUpperCase(),
-                motherJob: String(row['Pekerjaan Ibu'] || '').trim(),
-                motherEducation: String(row['Pendidikan Ibu'] || '').trim(),
-                parentName: String(row['Nama Wali'] || row['Nama Ayah'] || row['Nama Ibu'] || '').trim().toUpperCase(),
-                parentPhone: String(row['No HP Wali'] || row['No HP'] || '').trim().replace(/^'/, ''),
-                parentJob: String(row['Pekerjaan Wali'] || '').trim(),
-                economyStatus: (row['Status Ekonomi'] as any) || 'Mampu',
-                height: Number(row['Tinggi (cm)'] || row['Tinggi']) || 0,
-                weight: Number(row['Berat (kg)'] || row['Berat']) || 0,
-                bloodType: String(row['Gol Darah'] || '').trim(),
-                healthNotes: String(row['Riwayat Penyakit'] || '').trim(),
-                hobbies: String(row['Hobi'] || '').trim(),
-                ambition: String(row['Cita-cita'] || '').trim(),
-                achievements: row['Prestasi'] ? String(row['Prestasi']).split(',').map(s=>s.trim()).filter(Boolean) : [],
-                violations: row['Pelanggaran'] ? String(row['Pelanggaran']).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                religion: String(getVal(row, 'Agama') || 'Islam').trim(),
+                address: String(getVal(row, 'Alamat') || '').trim(),
+                rt: String(getVal(row, 'RT') || '').trim(),
+                rw: String(getVal(row, 'RW') || '').trim(),
+                dusun: String(getVal(row, 'Dusun') || '').trim(),
+                kelurahan: String(getVal(row, 'Kelurahan', 'Desa') || '').trim(),
+                kecamatan: String(getVal(row, 'Kecamatan') || '').trim(),
+                kodePos: String(getVal(row, 'Kode Pos') || '').trim(),
+                jenisTinggal: String(getVal(row, 'Jenis Tinggal') || '').trim(),
+                alatTransportasi: String(getVal(row, 'Alat Transportasi') || '').trim(),
+                telepon: String(getVal(row, 'Telepon') || '').trim(),
+                hp: hpVal,
+                email: String(getVal(row, 'E-Mail', 'Email') || '').trim(),
+                skhun: String(getVal(row, 'SKHUN') || '').trim(),
+                penerimaKps: String(getVal(row, 'Penerima KPS') || 'Tidak').trim(),
+                noKps: String(getVal(row, 'No. KPS', 'No KPS') || '').trim(),
+
+                fatherName: String(getVal(row, 'Data Ayah - Nama', 'Nama Ayah') || '').trim().toUpperCase(),
+                fatherBirthYear: String(getVal(row, 'Data Ayah - Tahun Lahir', 'Tahun Lahir Ayah') || '').trim(),
+                fatherEducation: String(getVal(row, 'Data Ayah - Jenjang Pendidikan', 'Pendidikan Ayah') || '').trim(),
+                fatherJob: String(getVal(row, 'Data Ayah - Pekerjaan', 'Pekerjaan Ayah') || '').trim(),
+                fatherIncome: String(getVal(row, 'Data Ayah - Penghasilan', 'Penghasilan Ayah') || '').trim(),
+                fatherNik: String(getVal(row, 'Data Ayah - NIK', 'NIK Ayah') || '').trim(),
+
+                motherName: String(getVal(row, 'Data Ibu - Nama', 'Nama Ibu') || '').trim().toUpperCase(),
+                motherBirthYear: String(getVal(row, 'Data Ibu - Tahun Lahir', 'Tahun Lahir Ibu') || '').trim(),
+                motherEducation: String(getVal(row, 'Data Ibu - Jenjang Pendidikan', 'Pendidikan Ibu') || '').trim(),
+                motherJob: String(getVal(row, 'Data Ibu - Pekerjaan', 'Pekerjaan Ibu') || '').trim(),
+                motherIncome: String(getVal(row, 'Data Ibu - Penghasilan', 'Penghasilan Ibu') || '').trim(),
+                motherNik: String(getVal(row, 'Data Ibu - NIK', 'NIK Ibu') || '').trim(),
+
+                parentName: String(getVal(row, 'Data Wali - Nama', 'Nama Wali') || getVal(row, 'Data Ayah - Nama', 'Nama Ayah') || getVal(row, 'Data Ibu - Nama', 'Nama Ibu') || '').trim().toUpperCase(),
+                guardianBirthYear: String(getVal(row, 'Data Wali - Tahun Lahir', 'Tahun Lahir Wali') || '').trim(),
+                guardianEducation: String(getVal(row, 'Data Wali - Jenjang Pendidikan', 'Pendidikan Wali') || '').trim(),
+                parentJob: String(getVal(row, 'Data Wali - Pekerjaan', 'Pekerjaan Wali') || getVal(row, 'Data Ayah - Pekerjaan', 'Pekerjaan Ayah') || '').trim(),
+                guardianIncome: String(getVal(row, 'Data Wali - Penghasilan', 'Penghasilan Wali') || '').trim(),
+                guardianNik: String(getVal(row, 'Data Wali - NIK', 'NIK Wali') || '').trim(),
+                parentPhone,
+
+                noUjianNasional: String(getVal(row, 'No. Peserta Ujian Nasional', 'No Peserta Ujian Nasional') || '').trim(),
+                noSeriIjazah: String(getVal(row, 'No. Seri Ijazah', 'No Seri Ijazah') || '').trim(),
+                penerimaKip: String(getVal(row, 'Penerima KIP') || 'Tidak').trim(),
+                nomorKip: String(getVal(row, 'Nomor KIP', 'No KIP') || '').trim(),
+                namaDiKip: String(getVal(row, 'Nama di KIP', 'Nama Pada KIP') || '').trim(),
+                nomorKks: String(getVal(row, 'Nomor KKS', 'No KKS') || '').trim(),
+                noRegistrasiAktaLahir: String(getVal(row, 'No. Registrasi Akta Lahir', 'No Registrasi Akta Lahir', 'No Akta') || '').trim(),
+                bank: String(getVal(row, 'Bank') || '').trim(),
+                nomorRekeningBank: String(getVal(row, 'Nomor Rekening Bank', 'No Rekening Bank', 'No Rekening') || '').trim(),
+                rekeningAtasNama: String(getVal(row, 'Rekening Atas Nama', 'Atas Nama Rekening') || '').trim(),
+                layakPip: String(getVal(row, 'Layak PIP (Usulan dari Sekolah)', 'Layak PIP') || 'Tidak').trim(),
+                alasanLayakPip: String(getVal(row, 'Alasan Layak PIP') || '').trim(),
+                kebutuhanKhusus: String(getVal(row, 'Kebutuhan Khusus') || '').trim(),
+                sekolahAsal: String(getVal(row, 'Sekolah Asal') || '').trim(),
+                anakKe: String(getVal(row, 'Anak ke-berapa', 'Anak Ke') || '').trim(),
+                lintang: String(getVal(row, 'Lintang') || '').trim(),
+                bujur: String(getVal(row, 'Bujur') || '').trim(),
+                noKk: String(getVal(row, 'No. KK', 'No KK', 'Nomor KK') || '').trim(),
+                weight: Number(getVal(row, 'Berat Badan', 'Berat (kg)', 'Berat')) || 0,
+                height: Number(getVal(row, 'Tinggi Badan', 'Tinggi (cm)', 'Tinggi')) || 0,
+                lingkarKepala: Number(getVal(row, 'Lingkar Kepala')) || 0,
+                jmlSaudaraKandung: Number(getVal(row, 'Jml. Saudara Kandung', 'Jml Saudara Kandung', 'Jumlah Saudara')) || 0,
+                jarakRumahKm: Number(getVal(row, 'Jarak Rumah ke Sekolah (KM)', 'Jarak Rumah (KM)', 'Jarak Rumah')) || 0,
+
+                economyStatus: (getVal(row, 'Status Ekonomi') as any) || (getVal(row, 'Penerima KIP') === 'Ya' || getVal(row, 'Penerima KPS') === 'Ya' ? 'KIP' : 'Mampu'),
+                bloodType: String(getVal(row, 'Gol Darah', 'Golongan Darah') || '').trim(),
+                healthNotes: String(getVal(row, 'Riwayat Penyakit', 'Catatan Kesehatan') || '').trim(),
+                hobbies: String(getVal(row, 'Hobi') || '').trim(),
+                ambition: String(getVal(row, 'Cita-cita') || '').trim(),
+                achievements: getVal(row, 'Prestasi') ? String(getVal(row, 'Prestasi')).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                violations: getVal(row, 'Pelanggaran') ? String(getVal(row, 'Pelanggaran')).split(',').map(s=>s.trim()).filter(Boolean) : [],
                 behaviorScore: 100,
                 attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
               };
@@ -1039,53 +1375,174 @@ const StudentList: React.FC<StudentListProps> = ({
           });
         }
 
+        // Fallback for headerless / index-based arrays if jsonObjects didn't match
         if (newStudentsBatch.length === 0 && rawRows.length > 1) {
           const rows = rawRows.slice(1);
           rows.forEach((row) => {
             if (!row || row.length === 0) return;
-            const classIdInput = row[0] ? String(row[0]).trim() : classId;
-            const nis = row[1] ? String(row[1]).trim() : '';
-            const nisn = row[2] ? String(row[2]).trim() : '';
-            const nik = row[3] ? String(row[3]).trim() : '';
-            const name = row[4] ? String(row[4]).trim().toUpperCase() : (row[3] && isNaN(Number(row[3])) ? String(row[3]).trim().toUpperCase() : '');
+            
+            // Check if it's 66-column format (row[1] is Nama, row[2] is NIS)
+            // or legacy format (row[0] is ClassID, row[1] is NIS, row[4] is Nama)
+            let name = '';
+            let nis = '';
+            let nisn = '';
+            let nik = '';
+            let gender: 'L' | 'P' = 'L';
+            let birthPlace = '';
+            let birthDate = '';
+            let religion = 'Islam';
+            let address = '';
 
-            if (nis && name) {
-              const genderRaw = row[5] ? String(row[5]).toUpperCase() : 'L';
-              const gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN')) ? 'P' : 'L';
+            if (row.length >= 40) {
+              // 66 Dapodik format
+              name = row[1] ? String(row[1]).trim().toUpperCase() : '';
+              nis = row[2] ? String(row[2]).trim() : '';
+              const genderRaw = row[3] ? String(row[3]).toUpperCase() : 'L';
+              gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN')) ? 'P' : 'L';
+              nisn = row[4] ? String(row[4]).trim() : '';
+              birthPlace = row[5] ? String(row[5]).trim() : '';
+              birthDate = parseExcelDate(row[6]);
+              nik = row[7] ? String(row[7]).trim() : '';
+              religion = row[8] ? String(row[8]).trim() : 'Islam';
+              address = row[9] ? String(row[9]).trim() : '';
+              const rt = row[10] ? String(row[10]).trim() : '';
+              const rw = row[11] ? String(row[11]).trim() : '';
+              const dusun = row[12] ? String(row[12]).trim() : '';
+              const kelurahan = row[13] ? String(row[13]).trim() : '';
+              const kecamatan = row[14] ? String(row[14]).trim() : '';
+              const kodePos = row[15] ? String(row[15]).trim() : '';
+              const jenisTinggal = row[16] ? String(row[16]).trim() : '';
+              const alatTransportasi = row[17] ? String(row[17]).trim() : '';
+              const telepon = row[18] ? String(row[18]).trim() : '';
+              const hp = row[19] ? String(row[19]).trim().replace(/^'/, '') : '';
+              const email = row[20] ? String(row[20]).trim() : '';
+              const skhun = row[21] ? String(row[21]).trim() : '';
+              const penerimaKps = row[22] ? String(row[22]).trim() : 'Tidak';
+              const noKps = row[23] ? String(row[23]).trim() : '';
 
-              const newStudent: Omit<Student, 'id'> = {
-                classId: classIdInput || classId,
-                nis,
-                nisn,
-                nik,
-                name,
-                gender,
-                birthPlace: row[6] ? String(row[6]).trim() : '',
-                birthDate: parseExcelDate(row[7]),
-                religion: row[8] ? String(row[8]).trim() : 'Islam',
-                address: row[9] ? String(row[9]).trim() : '',
-                fatherName: row[10] ? String(row[10]).trim().toUpperCase() : '',
-                fatherJob: row[11] ? String(row[11]).trim() : '',
-                fatherEducation: row[12] ? String(row[12]).trim() : '',
-                motherName: row[13] ? String(row[13]).trim().toUpperCase() : '',
-                motherJob: row[14] ? String(row[14]).trim() : '',
-                motherEducation: row[15] ? String(row[15]).trim() : '',
-                parentName: row[16] ? String(row[16]).trim().toUpperCase() : (row[10] ? String(row[10]).trim().toUpperCase() : (row[13] ? String(row[13]).trim().toUpperCase() : '')),
-                parentPhone: row[17] ? String(row[17]).trim().replace(/^'/, '') : '',
-                parentJob: row[18] ? String(row[18]).trim() : '',
-                economyStatus: (row[19] as any) || 'Mampu',
-                height: Number(row[20]) || 0,
-                weight: Number(row[21]) || 0,
-                bloodType: row[22] ? String(row[22]).trim() : '',
-                healthNotes: row[23] ? String(row[23]).trim() : '',
-                hobbies: row[24] ? String(row[24]).trim() : '',
-                ambition: row[25] ? String(row[25]).trim() : '',
-                achievements: row[26] ? String(row[26]).split(',').map(s=>s.trim()).filter(Boolean) : [],
-                violations: row[27] ? String(row[27]).split(',').map(s=>s.trim()).filter(Boolean) : [],
-                behaviorScore: 100,
-                attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
-              };
-              newStudentsBatch.push(newStudent);
+              const fatherName = row[24] ? String(row[24]).trim().toUpperCase() : '';
+              const fatherBirthYear = row[25] ? String(row[25]).trim() : '';
+              const fatherEducation = row[26] ? String(row[26]).trim() : '';
+              const fatherJob = row[27] ? String(row[27]).trim() : '';
+              const fatherIncome = row[28] ? String(row[28]).trim() : '';
+              const fatherNik = row[29] ? String(row[29]).trim() : '';
+
+              const motherName = row[30] ? String(row[30]).trim().toUpperCase() : '';
+              const motherBirthYear = row[31] ? String(row[31]).trim() : '';
+              const motherEducation = row[32] ? String(row[32]).trim() : '';
+              const motherJob = row[33] ? String(row[33]).trim() : '';
+              const motherIncome = row[34] ? String(row[34]).trim() : '';
+              const motherNik = row[35] ? String(row[35]).trim() : '';
+
+              const parentName = row[36] ? String(row[36]).trim().toUpperCase() : (fatherName || motherName);
+              const guardianBirthYear = row[37] ? String(row[37]).trim() : '';
+              const guardianEducation = row[38] ? String(row[38]).trim() : '';
+              const parentJob = row[39] ? String(row[39]).trim() : (fatherJob || motherJob);
+              const guardianIncome = row[40] ? String(row[40]).trim() : '';
+              const guardianNik = row[41] ? String(row[41]).trim() : '';
+
+              const rombel = row[42] ? String(row[42]).trim() : classId;
+              const noUjianNasional = row[43] ? String(row[43]).trim() : '';
+              const noSeriIjazah = row[44] ? String(row[44]).trim() : '';
+              const penerimaKip = row[45] ? String(row[45]).trim() : 'Tidak';
+              const nomorKip = row[46] ? String(row[46]).trim() : '';
+              const namaDiKip = row[47] ? String(row[47]).trim() : '';
+              const nomorKks = row[48] ? String(row[48]).trim() : '';
+              const noRegistrasiAktaLahir = row[49] ? String(row[49]).trim() : '';
+              const bank = row[50] ? String(row[50]).trim() : '';
+              const nomorRekeningBank = row[51] ? String(row[51]).trim() : '';
+              const rekeningAtasNama = row[52] ? String(row[52]).trim() : '';
+              const layakPip = row[53] ? String(row[53]).trim() : 'Tidak';
+              const alasanLayakPip = row[54] ? String(row[54]).trim() : '';
+              const kebutuhanKhusus = row[55] ? String(row[55]).trim() : '';
+              const sekolahAsal = row[56] ? String(row[56]).trim() : '';
+              const anakKe = row[57] ? String(row[57]).trim() : '';
+              const lintang = row[58] ? String(row[58]).trim() : '';
+              const bujur = row[59] ? String(row[59]).trim() : '';
+              const noKk = row[60] ? String(row[60]).trim() : '';
+              const weight = Number(row[61]) || 0;
+              const height = Number(row[62]) || 0;
+              const lingkarKepala = Number(row[63]) || 0;
+              const jmlSaudaraKandung = Number(row[64]) || 0;
+              const jarakRumahKm = Number(row[65]) || 0;
+
+              if (name) {
+                newStudentsBatch.push({
+                  classId: rombel || classId,
+                  rombel: rombel || classId,
+                  nis: nis || `NIS-${Math.floor(1000 + Math.random() * 9000)}`,
+                  nisn,
+                  nik,
+                  name,
+                  gender,
+                  birthPlace,
+                  birthDate,
+                  religion,
+                  address,
+                  rt, rw, dusun, kelurahan, kecamatan, kodePos, jenisTinggal, alatTransportasi,
+                  telepon, hp, email, skhun, penerimaKps, noKps,
+                  fatherName, fatherBirthYear, fatherEducation, fatherJob, fatherIncome, fatherNik,
+                  motherName, motherBirthYear, motherEducation, motherJob, motherIncome, motherNik,
+                  parentName, guardianBirthYear, guardianEducation, parentJob, guardianIncome, guardianNik,
+                  parentPhone: hp,
+                  noUjianNasional, noSeriIjazah, penerimaKip, nomorKip, namaDiKip, nomorKks,
+                  noRegistrasiAktaLahir, bank, nomorRekeningBank, rekeningAtasNama,
+                  layakPip, alasanLayakPip, kebutuhanKhusus, sekolahAsal, anakKe, lintang, bujur, noKk,
+                  weight, height, lingkarKepala, jmlSaudaraKandung, jarakRumahKm,
+                  economyStatus: penerimaKip === 'Ya' || penerimaKps === 'Ya' ? 'KIP' : 'Mampu',
+                  behaviorScore: 100,
+                  attendance: { present: 0, sick: 0, permit: 0, alpha: 0 },
+                  achievements: [],
+                  violations: []
+                });
+              }
+            } else {
+              // Legacy format fallback
+              const classIdInput = row[0] ? String(row[0]).trim() : classId;
+              nis = row[1] ? String(row[1]).trim() : '';
+              nisn = row[2] ? String(row[2]).trim() : '';
+              nik = row[3] ? String(row[3]).trim() : '';
+              name = row[4] ? String(row[4]).trim().toUpperCase() : (row[3] && isNaN(Number(row[3])) ? String(row[3]).trim().toUpperCase() : '');
+
+              if (nis && name) {
+                const genderRaw = row[5] ? String(row[5]).toUpperCase() : 'L';
+                gender = (genderRaw.includes('P') || genderRaw.includes('PEREMPUAN')) ? 'P' : 'L';
+
+                const newStudent: Omit<Student, 'id'> = {
+                  classId: classIdInput || classId,
+                  rombel: classIdInput || classId,
+                  nis,
+                  nisn,
+                  nik,
+                  name,
+                  gender,
+                  birthPlace: row[6] ? String(row[6]).trim() : '',
+                  birthDate: parseExcelDate(row[7]),
+                  religion: row[8] ? String(row[8]).trim() : 'Islam',
+                  address: row[9] ? String(row[9]).trim() : '',
+                  fatherName: row[10] ? String(row[10]).trim().toUpperCase() : '',
+                  fatherJob: row[11] ? String(row[11]).trim() : '',
+                  fatherEducation: row[12] ? String(row[12]).trim() : '',
+                  motherName: row[13] ? String(row[13]).trim().toUpperCase() : '',
+                  motherJob: row[14] ? String(row[14]).trim() : '',
+                  motherEducation: row[15] ? String(row[15]).trim() : '',
+                  parentName: row[16] ? String(row[16]).trim().toUpperCase() : (row[10] ? String(row[10]).trim().toUpperCase() : (row[13] ? String(row[13]).trim().toUpperCase() : '')),
+                  parentPhone: row[17] ? String(row[17]).trim().replace(/^'/, '') : '',
+                  parentJob: row[18] ? String(row[18]).trim() : '',
+                  economyStatus: (row[19] as any) || 'Mampu',
+                  height: Number(row[20]) || 0,
+                  weight: Number(row[21]) || 0,
+                  bloodType: row[22] ? String(row[22]).trim() : '',
+                  healthNotes: row[23] ? String(row[23]).trim() : '',
+                  hobbies: row[24] ? String(row[24]).trim() : '',
+                  ambition: row[25] ? String(row[25]).trim() : '',
+                  achievements: row[26] ? String(row[26]).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                  violations: row[27] ? String(row[27]).split(',').map(s=>s.trim()).filter(Boolean) : [],
+                  behaviorScore: 100,
+                  attendance: { present: 0, sick: 0, permit: 0, alpha: 0 }
+                };
+                newStudentsBatch.push(newStudent);
+              }
             }
           });
         }
@@ -1141,7 +1598,14 @@ const StudentList: React.FC<StudentListProps> = ({
     if (selectedStudent) {
       const achievementsArray = detailTempAchievements ? detailTempAchievements.split(',').map(s => s.trim()) : [];
       const violationsArray = detailTempViolations ? detailTempViolations.split(',').map(s => s.trim()) : [];
-      onUpdate({ ...selectedStudent, achievements: achievementsArray, violations: violationsArray });
+      const syncedClass = selectedStudent.rombel || selectedStudent.classId;
+      onUpdate({ 
+        ...selectedStudent, 
+        classId: syncedClass,
+        rombel: syncedClass,
+        achievements: achievementsArray, 
+        violations: violationsArray 
+      });
       onShowNotification("Data siswa berhasil disimpan!", 'success');
       setSelectedStudent(null);
     }
@@ -1151,6 +1615,11 @@ const StudentList: React.FC<StudentListProps> = ({
     if (isReadOnly) return;
     if(selectedStudent) {
       let updated = { ...selectedStudent, [field]: value };
+      if (field === 'classId') {
+        updated.rombel = value;
+      } else if (field === 'rombel') {
+        updated.classId = value;
+      }
       if (field === 'fatherName' || field === 'motherName') { const f = field === 'fatherName' ? value : updated.fatherName; const m = field === 'motherName' ? value : updated.motherName; updated.parentName = (f ? f : m).toUpperCase(); }
       setSelectedStudent(updated);
     }
@@ -1159,7 +1628,7 @@ const StudentList: React.FC<StudentListProps> = ({
   const [tempAchievements, setTempAchievements] = useState('');
   const [tempViolations, setTempViolations] = useState('');
   const [newStudent, setNewStudent] = useState<Partial<Student>>({
-     name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+     name: '', nis: '', nisn: '', nik: '', classId: classId, rombel: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
      fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
      height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0, sick:0, permit:0, alpha:0}, achievements: [], violations: []
   });
@@ -1170,10 +1639,17 @@ const StudentList: React.FC<StudentListProps> = ({
     if(newStudent.name && newStudent.nis) {
        const achievementsArray = tempAchievements ? tempAchievements.split(',').map(s => s.trim()) : [];
        const violationsArray = tempViolations ? tempViolations.split(',').map(s => s.trim()) : [];
-       onAdd({ ...newStudent, achievements: achievementsArray, violations: violationsArray } as Omit<Student, 'id'>);
+       const syncedClass = newStudent.rombel || newStudent.classId || classId;
+       onAdd({ 
+         ...newStudent, 
+         classId: syncedClass,
+         rombel: syncedClass,
+         achievements: achievementsArray, 
+         violations: violationsArray 
+       } as Omit<Student, 'id'>);
        setIsAddModalOpen(false);
        setNewStudent({ 
-         name: '', nis: '', nisn: '', nik: '', classId: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
+         name: '', nis: '', nisn: '', nik: '', classId: classId, rombel: classId, gender: 'L', religion: 'Islam', birthPlace: '', birthDate: '', address: '', photo: '',
          fatherName: '', fatherJob: '', fatherEducation: '', motherName: '', motherJob: '', motherEducation: '', parentName: '', parentPhone: '', parentJob: '',
          height: 0, weight: 0, bloodType: '', healthNotes: '', hobbies: '', ambition: '', economyStatus: 'Mampu', behaviorScore: 100, attendance: {present:0,sick:0,permit:0,alpha:0},
          achievements: [], violations: []
@@ -1931,7 +2407,7 @@ const StudentList: React.FC<StudentListProps> = ({
                         <input required className="border p-2 rounded uppercase" placeholder="NIS" value={newStudent.nis} onChange={e=>setNewStudent({...newStudent, nis:e.target.value})}/>
                         <input className="border p-2 rounded font-mono" placeholder="NISN" value={newStudent.nisn || ''} onChange={e=>setNewStudent({...newStudent, nisn:e.target.value})}/>
                         <input className="border p-2 rounded font-mono" placeholder="NIK" value={newStudent.nik || ''} onChange={e=>setNewStudent({...newStudent, nik:e.target.value})}/>
-                        <input className="border p-2 rounded" placeholder="Kelas" value={newStudent.classId} onChange={e=>setNewStudent({...newStudent, classId:e.target.value})}/>
+                        <input className="border p-2 rounded" placeholder="Kelas / Rombel" value={newStudent.classId || newStudent.rombel || ''} onChange={e=>setNewStudent({...newStudent, classId:e.target.value, rombel:e.target.value})}/>
                         <select className="border p-2 rounded" value={newStudent.gender} onChange={e=>setNewStudent({...newStudent, gender:e.target.value as any})}><option value="L">Laki-laki</option><option value="P">Perempuan</option></select>
                         <input className="border p-2 rounded" placeholder="Tempat Lahir" value={newStudent.birthPlace || ''} onChange={e=>setNewStudent({...newStudent, birthPlace:e.target.value})}/>
                         <input type="date" className="border p-2 rounded" placeholder="Tanggal Lahir" value={newStudent.birthDate || ''} onChange={e=>setNewStudent({...newStudent, birthDate:e.target.value})}/>

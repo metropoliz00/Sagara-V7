@@ -26,8 +26,9 @@ export interface Student {
   id: string;
   classId: string;
   nis: string;
-  nisn?: string;
   bukuInduk?: string;
+  nisn?: string;
+  nik?: string;
   name: string;
   gender: 'L' | 'P';
   birthDate: string;
@@ -36,19 +37,75 @@ export interface Student {
   address: string;
   photo?: string;
   
+  // Alamat & Lokasi
+  rt?: string;
+  rw?: string;
+  dusun?: string;
+  kelurahan?: string;
+  kecamatan?: string;
+  kodePos?: string;
+  jenisTinggal?: string;
+  alatTransportasi?: string;
+  telepon?: string;
+  hp?: string;
+  email?: string;
+  skhun?: string;
+  penerimaKps?: string;
+  noKps?: string;
+
+  // Data Ayah
   fatherName: string; 
-  fatherJob?: string; 
+  fatherBirthYear?: string;
   fatherEducation?: string;
+  fatherJob?: string; 
+  fatherIncome?: string;
+  fatherNik?: string;
+
+  // Data Ibu
   motherName: string;
-  motherJob?: string;
+  motherBirthYear?: string;
   motherEducation?: string;
+  motherJob?: string;
+  motherIncome?: string;
+  motherNik?: string;
+
+  // Data Wali
   parentName: string;
+  guardianBirthYear?: string;
+  guardianEducation?: string;
   parentJob?: string;
+  guardianIncome?: string;
+  guardianNik?: string;
   parentPhone: string;
   
-  bloodType?: string;
+  // Dapodik & Registrasi Tambahan
+  rombel?: string;
+  noUjianNasional?: string;
+  noSeriIjazah?: string;
+  penerimaKip?: string;
+  nomorKip?: string;
+  namaDiKip?: string;
+  nomorKks?: string;
+  noRegistrasiAktaLahir?: string;
+  bank?: string;
+  nomorRekeningBank?: string;
+  rekeningAtasNama?: string;
+  layakPip?: string;
+  alasanLayakPip?: string;
+  kebutuhanKhusus?: string;
+  sekolahAsal?: string;
+  anakKe?: string | number;
+  lintang?: string;
+  bujur?: string;
+  noKk?: string;
+
+  // Fisik & Periodik
   height?: number;
   weight?: number;
+  lingkarKepala?: number;
+  jmlSaudaraKandung?: number;
+  jarakRumahKm?: number;
+  bloodType?: string;
   healthNotes?: string;
   hobbies?: string;
   ambition?: string;

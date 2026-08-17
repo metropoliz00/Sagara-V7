@@ -1055,13 +1055,13 @@ const StudentList: React.FC<StudentListProps> = ({
 
       exportToExcelWithHeader({
         title: "Template Input Data Siswa Sagara",
-        subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
-        filename: "template_input_siswa_sagara.xlsx",
+        subtitle: `Kelas: ${classId === 'ALL' || !classId ? 'Semua Kelas (Seluruh Siswa)' : classId}`,
+        filename: classId === 'ALL' || !classId ? "template_input_seluruh_siswa.xlsx" : "template_input_siswa_sagara.xlsx",
         sheetName: "Template Siswa",
         headers,
         data: [example],
         isTemplate: true,
-        notes: "Isi data siswa mulai baris setelah judul tabel. Kolom wajib: Nama, NISN/NIS, JK, Tanggal Lahir (YYYY-MM-DD).",
+        notes: "Isi data siswa mulai baris setelah judul tabel. Kolom wajib: Nama, NISN/NIS, JK, Tanggal Lahir (YYYY-MM-DD), Rombel Saat Ini.",
         groupHeaders
       });
       onShowNotification("Template Excel Sagara berhasil diunduh!", "success");
@@ -1228,8 +1228,8 @@ const StudentList: React.FC<StudentListProps> = ({
 
       exportToExcelWithHeader({
         title: "Laporan Data Siswa Sagara",
-        subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Siswa: ${students.length}`,
-        filename: `data_siswa_sagara_${classId || 'semua'}.xlsx`,
+        subtitle: `Kelas: ${classId === 'ALL' || !classId ? 'Semua Kelas (Seluruh Siswa)' : classId} | Total Siswa: ${students.length}`,
+        filename: `data_siswa_sagara_${classId === 'ALL' || !classId ? 'seluruh_siswa' : classId}.xlsx`,
         sheetName: "Data Siswa",
         headers,
         data: rows,

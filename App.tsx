@@ -783,7 +783,7 @@ const AppContent: React.FC = () => {
     combinedSet.delete('ALL');
     combinedSet.delete('');
     combinedSet.delete('-');
-    return Array.from(combinedSet).sort((a, b) => {
+    const arr = Array.from(combinedSet).sort((a, b) => {
         const strA = String(a || '');
         const strB = String(b || '');
         const numA = parseInt(strA.replace(/\D/g, '')) || 0;
@@ -791,7 +791,11 @@ const AppContent: React.FC = () => {
         if (numA !== numB) return numA - numB;
         return strA.localeCompare(strB);
     });
-  }, [students, users]);
+    if (currentUser?.role === 'admin') {
+      arr.unshift('ALL');
+    }
+    return arr;
+  }, [students, users, currentUser]);
   
   const activeClassId = useMemo(() => {
     if (!currentUser) return '';
@@ -800,7 +804,11 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-        if (canSelectClass) {
+        if (currentUser.role === 'admin') {
+            if (!selectedClassId || !availableClasses.includes(selectedClassId)) {
+                setSelectedClassId('ALL');
+            }
+        } else if (canSelectClass) {
             const currentStr = String(selectedClassId || '');
             const isValid = selectedClassId && availableClasses.some(c => String(c).toUpperCase() === currentStr.toUpperCase());
             if (!isValid && availableClasses.length > 0 && !selectedClassId) {
@@ -871,6 +879,7 @@ const AppContent: React.FC = () => {
   const isClassMatch = (id1?: string, id2?: string) => {
       const s1 = String(id1 || '').trim().toLowerCase();
       const s2 = String(id2 || '').trim().toLowerCase();
+      if (s2 === 'all' || s2 === 'semua') return true;
       return s1 === s2;
   };
 

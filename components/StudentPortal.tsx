@@ -2782,99 +2782,320 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
               </div>
           )}
 
-          {/* --- PROFILE TAB (Separate from Character) --- */}
+          {/* --- PROFILE TAB (Complete Data & Editable) --- */}
           {activeTab === 'profile' && (
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  {/* Left Card: Data Pokok */}
-                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-fit">
-                      <h3 className="font-bold text-gray-800 text-lg flex items-center mb-4">
-                          <User size={18} className="mr-2 text-indigo-500"/> Data Pokok
-                      </h3>
-                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                          <div className="space-y-4 text-sm">
-                              <div><strong className="block text-xs text-gray-500">Nama Lengkap</strong> <span className={`font-semibold text-gray-800 uppercase break-words block leading-snug ${
-                                  (student.name?.length || 0) > 25 ? 'text-xs sm:text-sm' : 'text-sm'
-                              }`}>{student.name.toUpperCase()}</span></div>
-                              <div><strong className="block text-xs text-gray-500">NIS / NISN</strong> <span className="font-semibold text-gray-800">{student.nis} / {student.nisn || '-'}</span></div>
-                              <div><strong className="block text-xs text-gray-500">Alamat</strong> <span className="font-semibold text-gray-800">{student.address}</span></div>
-                              <div>
-                                  <strong className="block text-xs text-gray-500 mb-0.5">No. WA Wali</strong>
-                                  {student.parentPhone && student.parentPhone !== '-' ? (
-                                      <a
-                                          href={formatWaUrl(student.parentPhone)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-xs transition-all cursor-pointer hover:scale-102 shadow-xs"
-                                          title="Klik untuk chat WhatsApp Orang Tua"
-                                      >
-                                          <MessageCircle size={14} className="text-emerald-600 fill-emerald-100" />
-                                          <span>{String(student.parentPhone).replace(/^'/, '')}</span>
-                                          <ExternalLink size={11} className="text-emerald-500 ml-0.5" />
-                                      </a>
-                                  ) : (
-                                      <span className="font-semibold text-gray-800">-</span>
-                                  )}
-                              </div>
+              <div className="space-y-6">
+                  {/* Header Banner & Edit Actions */}
+                  <div className="bg-gradient-to-r from-indigo-700 via-blue-700 to-sky-700 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                      <div className="relative z-10 flex items-center gap-4">
+                          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl font-black shadow-inner">
+                              {student.photo ? (
+                                  <img src={student.photo} alt={student.name} className="w-full h-full object-cover rounded-2xl" />
+                              ) : (
+                                  student.name?.charAt(0) || 'S'
+                              )}
+                          </div>
+                          <div>
+                              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-1">
+                                  <User size={13} className="mr-1.5 text-sky-200" /> Profil Lengkap Siswa & Keluarga
+                              </span>
+                              <h3 className="text-2xl font-black tracking-tight">{student.name.toUpperCase()}</h3>
+                              <p className="text-sky-100 text-xs mt-0.5">NIS: {student.nis} | NISN: {student.nisn || '-'} | Rombel: {student.rombel || student.classId}</p>
                           </div>
                       </div>
-                  </div>
 
-                  {/* Right Card: Editable Data */}
-                  <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-gray-800 text-lg flex items-center">
-                              <Edit size={18} className="mr-2 text-indigo-500"/> Edit Profil Siswa
-                          </h3>
+                      <div className="relative z-10 flex items-center gap-3 w-full md:w-auto justify-end">
                           {!isEditingProfile ? (
-                              <button onClick={() => setIsEditingProfile(true)} className="flex items-center gap-2 bg-white text-indigo-600 font-bold px-4 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-50 shadow-sm text-xs">
-                                  <Edit size={14}/> Ubah Data
+                              <button 
+                                onClick={() => { setProfileData(student); setIsEditingProfile(true); }} 
+                                className="flex items-center gap-2 bg-white text-indigo-700 font-extrabold px-5 py-2.5 rounded-xl shadow-lg hover:bg-sky-50 transition-all text-xs cursor-pointer"
+                              >
+                                  <Edit size={15}/> Ubah Data Lengkap
                               </button>
                           ) : (
-                              <div className="flex gap-2">
-                                  <button onClick={() => { setIsEditingProfile(false); setProfileData(student); }} className="px-3 py-1.5 text-gray-600 font-medium rounded-lg hover:bg-gray-100 text-xs">Batal</button>
-                                  <button onClick={handleSaveProfile} disabled={isSavingProfile} className="flex items-center gap-2 bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-md hover:bg-indigo-700 disabled:opacity-50 text-xs">
-                                      {isSavingProfile ? <Loader2 size={12} className="animate-spin"/> : <Save size={12}/>} Simpan
+                              <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => { setIsEditingProfile(false); setProfileData(student); }} 
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs backdrop-blur-md transition-all cursor-pointer"
+                                  >
+                                    Batal
+                                  </button>
+                                  <button 
+                                    onClick={handleSaveProfile} 
+                                    disabled={isSavingProfile} 
+                                    className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-5 py-2 rounded-xl shadow-lg transition-all text-xs disabled:opacity-50 cursor-pointer"
+                                  >
+                                      {isSavingProfile ? <Loader2 size={15} className="animate-spin"/> : <Save size={15}/>} Simpan Perubahan
                                   </button>
                               </div>
                           )}
                       </div>
+                  </div>
 
-                      <div className="space-y-6 text-sm">
-                          <div>
-                              <h4 className="text-xs font-bold text-indigo-600 uppercase mb-2 border-b border-indigo-100 pb-1">Data Fisik & Kesehatan</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-2">
+                  {/* Main Form Sections */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left Column: Identitas Utama & Alamat (1 Col on lg) */}
+                      <div className="space-y-6 lg:col-span-1">
+                          {/* Identitas Diri (Read-only / Melekat) */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                  <h4 className="font-extrabold text-gray-800 text-sm flex items-center">
+                                      <User size={16} className="mr-2 text-indigo-600"/> Identitas Pribadi
+                                  </h4>
+                                  <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">Data Tetap</span>
+                              </div>
+                              <div className="space-y-3 text-xs">
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Tinggi Badan (cm)</label>
-                                      <input type="number" value={profileData.height || 0} onChange={e => handleProfileChange('height', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Nama Lengkap</label>
+                                      <input type="text" value={profileData.name || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NIS</label>
+                                          <input type="text" value={profileData.nis || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NISN</label>
+                                          <input type="text" value={profileData.nisn || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NIK</label>
+                                          <input type="text" value={profileData.nik || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Jenis Kelamin</label>
+                                          <select value={profileData.gender || 'L'} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none">
+                                              <option value="L">Laki-laki</option>
+                                              <option value="P">Perempuan</option>
+                                          </select>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Tempat Lahir</label>
+                                          <input type="text" value={profileData.birthPlace || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Tanggal Lahir</label>
+                                          <input type="date" value={profileData.birthDate || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
                                   </div>
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Berat Badan (kg)</label>
-                                      <input type="number" value={profileData.weight || 0} onChange={e => handleProfileChange('weight', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
-                                  </div>
-                                  <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Golongan Darah</label>
-                                      <input type="text" value={profileData.bloodType || ''} onChange={e => handleProfileChange('bloodType', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
-                                  </div>
-                                  <div className="md:col-span-2">
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Riwayat Penyakit / Catatan Kesehatan</label>
-                                      <textarea rows={2} value={profileData.healthNotes || ''} onChange={e => handleProfileChange('healthNotes', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Agama</label>
+                                      <input type="text" value={profileData.religion || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
                                   </div>
                               </div>
                           </div>
 
-                          <div>
-                              <h4 className="text-xs font-bold text-indigo-600 uppercase mb-2 border-b border-indigo-100 pb-1">Minat & Impian</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-2">
+                          {/* Alamat & Kontak */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <MapPin size={16} className="mr-2 text-indigo-600"/> Alamat & Kontak
+                              </h4>
+                              <div className="space-y-3 text-xs">
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Hobi</label>
-                                      <input type="text" value={profileData.hobbies || ''} onChange={e => handleProfileChange('hobbies', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Alamat Jalan / Rumah</label>
+                                      <textarea rows={2} value={profileData.address || ''} onChange={e => handleProfileChange('address', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"/>
                                   </div>
-                                  <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Cita-cita</label>
-                                      <input type="text" value={profileData.ambition || ''} onChange={e => handleProfileChange('ambition', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">RT / RW</label>
+                                          <input type="text" value={profileData.rt || ''} onChange={e => handleProfileChange('rt', e.target.value)} disabled={!isEditingProfile} placeholder="001 / 002" className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kelurahan / Desa</label>
+                                          <input type="text" value={profileData.kelurahan || ''} onChange={e => handleProfileChange('kelurahan', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kecamatan</label>
+                                          <input type="text" value={profileData.kecamatan || ''} onChange={e => handleProfileChange('kecamatan', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kode Pos</label>
+                                          <input type="text" value={profileData.kodePos || ''} onChange={e => handleProfileChange('kodePos', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">No. HP Siswa</label>
+                                          <input type="text" value={profileData.hp || ''} onChange={e => handleProfileChange('hp', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Email Siswa</label>
+                                          <input type="email" value={profileData.email || ''} onChange={e => handleProfileChange('email', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
                                   </div>
                               </div>
                           </div>
+                      </div>
+
+                      {/* Right Column: Orang Tua, Fisik, Hobi & Dapodik (2 Cols on lg) */}
+                      <div className="space-y-6 lg:col-span-2">
+                          
+                          {/* Data Orang Tua & Wali */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <HeartHandshake size={16} className="mr-2 text-indigo-600"/> Data Orang Tua & Wali
+                              </h4>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {/* Ayah */}
+                                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 space-y-3">
+                                      <h5 className="font-extrabold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center justify-between">
+                                          <span>Data Ayah Kandung</span>
+                                      </h5>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Ayah</label>
+                                          <input type="text" value={profileData.fatherName || ''} onChange={e => handleProfileChange('fatherName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Tahun Lahir</label>
+                                              <input type="text" value={profileData.fatherBirthYear || ''} onChange={e => handleProfileChange('fatherBirthYear', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pendidikan</label>
+                                              <input type="text" value={profileData.fatherEducation || ''} onChange={e => handleProfileChange('fatherEducation', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pekerjaan</label>
+                                              <input type="text" value={profileData.fatherJob || ''} onChange={e => handleProfileChange('fatherJob', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
+                                              <input type="text" value={profileData.fatherIncome || ''} onChange={e => handleProfileChange('fatherIncome', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                  </div>
+
+                                  {/* Ibu */}
+                                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 space-y-3">
+                                      <h5 className="font-extrabold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center justify-between">
+                                          <span>Data Ibu Kandung</span>
+                                      </h5>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Ibu</label>
+                                          <input type="text" value={profileData.motherName || ''} onChange={e => handleProfileChange('motherName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Tahun Lahir</label>
+                                              <input type="text" value={profileData.motherBirthYear || ''} onChange={e => handleProfileChange('motherBirthYear', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pendidikan</label>
+                                              <input type="text" value={profileData.motherEducation || ''} onChange={e => handleProfileChange('motherEducation', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pekerjaan</label>
+                                              <input type="text" value={profileData.motherJob || ''} onChange={e => handleProfileChange('motherJob', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
+                                              <input type="text" value={profileData.motherIncome || ''} onChange={e => handleProfileChange('motherIncome', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* Wali & No WA */}
+                              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-3 text-xs">
+                                  <h5 className="font-extrabold text-emerald-900 border-b border-emerald-200 pb-1.5">Data Wali / Kontak Orang Tua</h5>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Wali / Kepala Keluarga</label>
+                                          <input type="text" value={profileData.parentName || ''} onChange={e => handleProfileChange('parentName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">No. WA Orang Tua / Wali</label>
+                                          <input type="text" value={profileData.parentPhone || ''} onChange={e => handleProfileChange('parentPhone', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Data Fisik, Kesehatan & Hobi */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <Activity size={16} className="mr-2 text-indigo-600"/> Data Fisik, Kesehatan & Impian
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Tinggi Badan (cm)</label>
+                                      <input type="number" value={profileData.height || 0} onChange={e => handleProfileChange('height', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Berat Badan (kg)</label>
+                                      <input type="number" value={profileData.weight || 0} onChange={e => handleProfileChange('weight', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Lingkar Kepala (cm)</label>
+                                      <input type="number" value={profileData.lingkarKepala || 0} onChange={e => handleProfileChange('lingkarKepala', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Golongan Darah</label>
+                                      <input type="text" value={profileData.bloodType || ''} onChange={e => handleProfileChange('bloodType', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Hobi</label>
+                                      <input type="text" value={profileData.hobbies || ''} onChange={e => handleProfileChange('hobbies', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Cita-cita</label>
+                                      <input type="text" value={profileData.ambition || ''} onChange={e => handleProfileChange('ambition', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                              <div className="text-xs">
+                                  <label className="block font-bold text-gray-500 mb-1">Riwayat Penyakit / Catatan Kesehatan</label>
+                                  <textarea rows={2} value={profileData.healthNotes || ''} onChange={e => handleProfileChange('healthNotes', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"/>
+                              </div>
+                          </div>
+
+                          {/* Data Periodik & Registrasi Lainnya */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <FileText size={16} className="mr-2 text-indigo-600"/> Data Periodik & Registrasi Dapodik
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Anak Ke-</label>
+                                      <input type="text" value={profileData.anakKe || ''} onChange={e => handleProfileChange('anakKe', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Jumlah Saudara</label>
+                                      <input type="number" value={profileData.jmlSaudaraKandung || 0} onChange={e => handleProfileChange('jmlSaudaraKandung', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Jarak Rumah (km)</label>
+                                      <input type="number" value={profileData.jarakRumahKm || 0} onChange={e => handleProfileChange('jarakRumahKm', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">No. KK</label>
+                                      <input type="text" value={profileData.noKk || ''} onChange={e => handleProfileChange('noKk', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Sekolah Asal</label>
+                                      <input type="text" value={profileData.sekolahAsal || ''} onChange={e => handleProfileChange('sekolahAsal', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">No. Reg Akta Lahir</label>
+                                      <input type="text" value={profileData.noRegistrasiAktaLahir || ''} onChange={e => handleProfileChange('noRegistrasiAktaLahir', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                          </div>
+
                       </div>
                   </div>
               </div>

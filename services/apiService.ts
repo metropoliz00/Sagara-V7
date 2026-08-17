@@ -2500,13 +2500,23 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes').eq('class_id', classId);
+      let { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes').eq('class_id', classId);
+      if (error && error.code === '42703') {
+        const res2 = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url').eq('class_id', classId);
+        data = res2.data;
+        error = res2.error;
+      }
+      if (error && error.code === '42703') {
+        const res3 = await supabase.from('schedule').select('id, class_id, day, time, subject').eq('class_id', classId);
+        data = res3.data;
+        error = res3.error;
+      }
       if (error) {
         console.error('Error fetching schedule:', error);
         const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
         return cached || [];
       }
-      return data.map((s: any) => ({ 
+      return (data || []).map((s: any) => ({ 
         id: s.id, 
         day: s.day, 
         time: s.time, 
@@ -2542,12 +2552,22 @@ export const apiService = {
       return allSchedules;
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes');
+      let { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes');
+      if (error && error.code === '42703') {
+        const res2 = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url');
+        data = res2.data;
+        error = res2.error;
+      }
+      if (error && error.code === '42703') {
+        const res3 = await supabase.from('schedule').select('id, class_id, day, time, subject');
+        data = res3.data;
+        error = res3.error;
+      }
       if (error) {
         console.error('Error fetching all schedules:', error);
         return [];
       }
-      return data.map((s: any) => ({ 
+      return (data || []).map((s: any) => ({ 
         id: s.id, 
         day: s.day, 
         time: s.time, 

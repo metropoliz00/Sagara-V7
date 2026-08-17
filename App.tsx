@@ -376,7 +376,7 @@ const AppContent: React.FC = () => {
           setFetchingSchools(true);
           const { data, error: err } = await masterSupabase
             .from('school_databases')
-            .select('*')
+            .select('id, school_name, supabase_url, supabase_anon_key')
             .order('school_name', { ascending: true });
           if (!err && data) {
             setSchoolsList(data);

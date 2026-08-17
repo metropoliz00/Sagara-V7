@@ -22,7 +22,7 @@ export const apiService = {
 
   // --- SYNC UTILS ---
   syncUserToStudent: async (user: User, studentId: string): Promise<void> => {
-      const { data: student, error } = await supabase.from('students').select('*').eq('id', studentId).single();
+      const { data: student, error } = await supabase.from('students').select('id, name, nis, address, parent_phone').eq('id', studentId).single();
       if (error || !student) return;
 
       const updates: any = {};
@@ -37,7 +37,7 @@ export const apiService = {
   },
 
   syncStudentToUser: async (student: Student, userId: string): Promise<void> => {
-      const { data: user, error } = await supabase.from('users').select('*').eq('id', userId).single();
+      const { data: user, error } = await supabase.from('users').select('id, full_name, username, address, phone').eq('id', userId).single();
       if (error || !user) return;
 
       const updates: any = {};
@@ -59,7 +59,7 @@ export const apiService = {
     
     const { data, error } = await client
       .from('users')
-      .select('*')
+      .select('id, username, password, full_name, role, class_id, student_id, is_active, permissions, birth_info, address, phone, avatar')
       .eq('username', username)
       .eq('password', password)
       .single();
@@ -90,7 +90,7 @@ export const apiService = {
   loginWithGoogle: async (email: string): Promise<User | null> => {
     const { data, error } = await supabase
       .from('users')
-      .select('*')
+      .select('id, username, email, full_name, role, class_id, student_id, is_active, permissions, birth_info, address, phone, avatar')
       .eq('email', email)
       .single();
     
@@ -120,7 +120,7 @@ export const apiService = {
   getUsers: async (currentUser: User | null): Promise<User[]> => {
     const { data, error } = await supabase
       .from('users')
-      .select('*');
+      .select('id, username, role, full_name, nip, nuptk, birth_info, education, position, rank, class_id, email, phone, address, photo, signature, student_id');
     
     if (error) return [];
     return data.map((u: any) => {
@@ -241,11 +241,11 @@ export const apiService = {
   syncStudentAccounts: async (): Promise<{ status: string; message: string }> => {
     try {
       // 1. Get all students
-      const { data: students, error: studentError } = await supabase.from('students').select('*');
+      const { data: students, error: studentError } = await supabase.from('students').select('id, name, nis, class_id');
       if (studentError) throw studentError;
 
       // 2. Get all existing student users
-      const { data: users, error: userError } = await supabase.from('users').select('*').eq('role', 'siswa');
+      const { data: users, error: userError } = await supabase.from('users').select('id, username, student_id').eq('role', 'siswa');
       if (userError) throw userError;
 
       let createdCount = 0;
@@ -293,7 +293,7 @@ export const apiService = {
 
   // --- Graduates ---
   getGraduates: async (): Promise<Graduate[]> => {
-    const { data, error } = await supabase.from('graduates').select('*');
+    const { data, error } = await supabase.from('graduates').select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at');
     if (error) return [];
     return data.map((g: any) => ({
       ...g,
@@ -345,7 +345,7 @@ export const apiService = {
     // 1. Try by ID (most reliable if graduated via button)
     const { data: byId } = await supabase
       .from('graduates')
-      .select('*')
+      .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
       .eq('id', student.id)
       .maybeSingle();
     
@@ -364,7 +364,7 @@ export const apiService = {
     if (student.nisn) {
       const { data: byNisN } = await supabase
         .from('graduates')
-        .select('*')
+        .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
         .eq('nisn', student.nisn)
         .maybeSingle();
       
@@ -384,7 +384,7 @@ export const apiService = {
     if (student.nis) {
       const { data: byNis } = await supabase
         .from('graduates')
-        .select('*')
+        .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
         .eq('nisn', student.nis)
         .maybeSingle();
       
@@ -407,7 +407,7 @@ export const apiService = {
     if (!nisn) return null;
     const { data, error } = await supabase
       .from('students')
-      .select('*')
+      .select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha')
       .eq('nisn', nisn)
       .maybeSingle();
     
@@ -444,7 +444,7 @@ export const apiService = {
     if (!nis) return null;
     const { data, error } = await supabase
       .from('students')
-      .select('*')
+      .select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha')
       .eq('nis', nis)
       .maybeSingle();
     
@@ -504,7 +504,14 @@ export const apiService = {
 
   // --- Students ---
   getStudents: async (currentUser: User | null): Promise<Student[]> => {
-    const { data, error } = await supabase.from('students').select('*');
+    let query = supabase.from('students').select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha');
+    
+    // If student user, only fetch the students in their class to save egress
+    if (currentUser?.role === 'siswa' && currentUser.classId) {
+      query = query.eq('class_id', currentUser.classId);
+    }
+    
+    const { data, error } = await query;
     if (error) return [];
     return data.map((s: any) => {
       const classVal = s.rombel || s.class_id || s.classId || '1A';
@@ -926,7 +933,11 @@ export const apiService = {
 
   // --- Agendas ---
   getAgendas: async (currentUser: User | null): Promise<AgendaItem[]> => {
-    const { data, error } = await supabase.from('agendas').select('*');
+    let query = supabase.from('agendas').select('id, class_id, title, date, end_date, time, type, completed');
+    if (currentUser?.role === 'siswa' && currentUser.classId) {
+      query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((a: any) => ({ 
       ...a, 
@@ -970,7 +981,7 @@ export const apiService = {
   // --- Materials ---
   getMaterials: async (classId: string): Promise<Material[]> => {
     console.log("Fetching materials for classId:", classId);
-    const { data, error } = await supabase.from('materials').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('materials').select('id, class_id, subject_id, title, description, link, is_visible, created_at').eq('class_id', classId);
     if (error) {
       console.warn("Error fetching materials:", error);
       return [];
@@ -1054,7 +1065,15 @@ export const apiService = {
 
   // --- Grades ---
   getGrades: async (currentUser: User | null): Promise<GradeRecord[]> => {
-    const { data, error } = await supabase.from('grades').select('*');
+    let query = supabase.from('grades').select('student_id, class_id, subject_id, sum1, sum2, sum3, sum4, sas, extra_data');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) {
+        query = query.eq('student_id', currentUser.id);
+      } else if (currentUser.classId) {
+        query = query.eq('class_id', currentUser.classId);
+      }
+    }
+    const { data, error } = await query;
     if (error) return [];
     
     const gradeMap: Record<string, GradeRecord> = {};
@@ -1078,7 +1097,7 @@ export const apiService = {
     return Object.values(gradeMap);
   },
   getGradesForStudent: async (studentId: string): Promise<GradeRecord | null> => {
-    const { data, error } = await supabase.from('grades').select('*').eq('student_id', studentId);
+    const { data, error } = await supabase.from('grades').select('student_id, class_id, subject_id, sum1, sum2, sum3, sum4, sas, extra_data').eq('student_id', studentId);
     if (error || !data || data.length === 0) return null;
     
     const record: GradeRecord = {
@@ -1215,7 +1234,12 @@ export const apiService = {
 
   // --- Counseling ---
   getCounselingLogs: async (currentUser: User | null): Promise<BehaviorLog[]> => {
-    const { data, error } = await supabase.from('counseling').select('*');
+    let query = supabase.from('counseling').select('id, class_id, student_id, student_name, date, type, category, description, point, emotion, status');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({
       ...l,
@@ -1241,7 +1265,7 @@ export const apiService = {
 
   // --- Extracurriculars ---
   getExtracurriculars: async (currentUser: User | null): Promise<Extracurricular[]> => {
-    const { data, error } = await supabase.from('extracurriculars').select('*');
+    const { data, error } = await supabase.from('extracurriculars').select('id, class_id, name, category, schedule, coach, members');
     if (error) return [];
     return data.map((e: any) => ({ ...e, classId: e.class_id }));
   },
@@ -1273,7 +1297,7 @@ export const apiService = {
 
   // --- Profiles ---
   getProfiles: async (): Promise<{ teacher?: TeacherProfileData, school?: SchoolProfileData }> => {
-    const { data, error } = await supabase.from('profiles').select('*');
+    const { data, error } = await supabase.from('profiles').select('id, data');
     if (error) return {};
     const profiles: any = {};
     data.forEach((p: any) => {
@@ -1291,7 +1315,7 @@ export const apiService = {
 
   // --- Holidays ---
   getHolidays: async (currentUser: User | null): Promise<Holiday[]> => {
-    const { data, error } = await supabase.from('holidays').select('*');
+    const { data, error } = await supabase.from('holidays').select('id, class_id, date, description, type');
     if (error) return [];
     return data.map((h: any) => ({ ...h, classId: h.class_id }));
   },
@@ -1334,7 +1358,7 @@ export const apiService = {
 
   // --- Attendance ---
   getAttendance: async (currentUser: User | null): Promise<any[]> => {
-    const { data, error } = await supabase.from('attendance').select('*');
+    const { data, error } = await supabase.from('attendance').select('id, records');
     if (error) return [];
     const allRecords: any[] = [];
     data.forEach((row: any) => {
@@ -1431,7 +1455,12 @@ export const apiService = {
 
   // --- Sikap & Karakter ---
   getSikapAssessments: async (currentUser: User | null): Promise<SikapAssessment[]> => {
-    const { data, error } = await supabase.from('penilaian_sikap').select('*');
+    let query = supabase.from('penilaian_sikap').select('id, student_id, class_id, keimanan, kewargaan, penalaran_kritis, kreativitas, kolaborasi, kemandirian, kesehatan, komunikasi');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((s: any) => ({
       ...s,
@@ -1459,7 +1488,12 @@ export const apiService = {
     }
   },
   getKarakterAssessments: async (currentUser: User | null): Promise<KarakterAssessment[]> => {
-    const { data, error } = await supabase.from('penilaian_karakter').select('*');
+    let query = supabase.from('penilaian_karakter').select('id, student_id, class_id, bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_awal, catatan, afirmasi');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((k: any) => ({
       ...k,
@@ -1492,7 +1526,7 @@ export const apiService = {
   // --- Jurnal Harian 7 KAIH ---
   getDailyKAIHJournals: async (classId: string, date?: string, startDate?: string, endDate?: string): Promise<DailyKAIHJournal[]> => {
     try {
-      let query = supabase.from('jurnal_kaih_harian').select('*').eq('class_id', classId);
+      let query = supabase.from('jurnal_kaih_harian').select('id, student_id, class_id, date, bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_awal, catatan, catatan_guru, details, catatan_kegiatan, updated_at').eq('class_id', classId);
       if (date) {
         query = query.eq('date', date);
       }
@@ -1616,7 +1650,7 @@ export const apiService = {
 
   // --- Employment Links ---
   getEmploymentLinks: async (): Promise<EmploymentLink[]> => {
-    const { data, error } = await supabase.from('employment_links').select('*');
+    const { data, error } = await supabase.from('employment_links').select('id, title, url, icon');
     if (error || !data || data.length === 0) {
       return [
         { id: 'def-1', title: 'Si Jempol', url: 'https://sijempol.tubankab.go.id/', icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAXCAMAAABd273TAAAAbFBMVEVHcEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWFhYMDAwAAAAAAAChoaHZ2dmampozMzMAAAAcHBwpKSmKior09PRcXFwjIyPNzc2rq6s5OTns7Ox4eHgAAAAAAAC3t7e9vb0AAABCQkIDazJdAAAAI3RSTlMAFUt3s+VdmdD///8H8/////8n//////////////+E/f//OIGIR7EAAAEaSURBVHgBbdIFDsQgEEBR6v1QY0u9Xb3/HXfCuryE6GgG9S0IozhJIvVPkGY52iB+A4owK4GqbrTVlHG0e68piaK1ruu7ocNZA5TZLaZEoDF2hKmH2RnjIyAJJSBGLEZbQ2vWmm1jBD3i5UrtgREMgn6qOjxn8WIfoKubZp3wnLlvw0FlwNFXEf0Jo3Gap1TtDrgOjDEaaQFuwHFXntVtCIzDypMW7aXhLg+V8D3adsShB9nCHXGIOC3UTcZTNa1VRWv8cE8hT0O9zhYLHDL1kvB06pfZjIjk/U73CG30LAFgEeodokVrun5rRgTxT4C39PN2QZSFelfyMK2n3/z3Tcfj5m/4peAp358D9UsO4vlP9N95Fyap+uMKV5wYXq2GYZoAAAAASUVORK5CYII=' },
@@ -1652,7 +1686,7 @@ export const apiService = {
       return cached.filter(i => String(i.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
     }
     try {
-      const query = supabase.from('inventory').select('*');
+      const query = supabase.from('inventory').select('id, class_id, name, condition, qty');
       if (classId !== 'ALL') query.eq('class_id', classId);
       const { data, error } = await query;
       if (error) {
@@ -1723,7 +1757,7 @@ export const apiService = {
       return cached.filter(g => String(g.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
     }
     try {
-      const { data, error } = await supabase.from('guests').select('*').eq('class_id', classId);
+      const { data, error } = await supabase.from('guests').select('id, class_id, date, time, name, agency, purpose').eq('class_id', classId);
       if (error) {
         const cached = cacheService.get<Guest[]>('guests') || [];
         return cached.filter(g => String(g.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
@@ -1785,7 +1819,7 @@ export const apiService = {
 
   // --- GTK Data ---
   getGtkData: async (): Promise<GtkRecord[]> => {
-    const { data, error } = await supabase.from('gtk_data').select('*');
+    const { data, error } = await supabase.from('gtk_data').select('id, user_id, nama, nip, nuptk, jenis_kelamin, tempat_lahir, tanggal_lahir, ijazah_tertinggi, jabatan, status_pegawai, tmt_pengangkatan, mulai_bekerja_disini, pangkat_golongan, masa_kerja_tahun, masa_kerja_bulan, sk_terakhir, email_pribadi, email_belajar, foto');
     if (error || !data || data.length === 0) {
       // Fallback: Check if old data exists in class_config
       const { data: oldData } = await supabase.from('class_config').select('data').eq('class_id', 'global_gtk_data').single();
@@ -1920,7 +1954,7 @@ export const apiService = {
 
   // --- Learning Reports ---
   getLearningReports: async (classId: string): Promise<LearningReport[]> => {
-    const { data, error } = await supabase.from('learning_reports').select('*');
+    const { data, error } = await supabase.from('learning_reports').select('id, class_id, date, type, subject, topic, document_link, teacher_name');
     if (error) return [];
     
     const mapped = data.map((r: any) => ({ 
@@ -2001,7 +2035,7 @@ export const apiService = {
 
   // --- Learning Journal ---
   getLearningJournal: async (classId: string): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content').eq('class_id', classId);
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -2020,7 +2054,7 @@ export const apiService = {
     return entries;
   },
   getLearningJournalAll: async (): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*');
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content');
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -2086,7 +2120,7 @@ export const apiService = {
     // Find the row containing the entry
     const { data, error } = await supabase
       .from('jurnal_kelas')
-      .select('*')
+      .select('id, content')
       .eq('class_id', classId)
       .filter('content', 'cs', `[{"id": "${id}"}]`);
     
@@ -2102,7 +2136,7 @@ export const apiService = {
   },
 
   getAllLearningJournals: async (): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*');
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content');
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -2124,7 +2158,7 @@ export const apiService = {
   markJournalFeedbackAsRead: async (entryId: string, classId: string): Promise<void> => {
     const { data, error } = await supabase
       .from('jurnal_kelas')
-      .select('*')
+      .select('id, content')
       .eq('class_id', classId)
       .filter('content', 'cs', `[{"id": "${entryId}"}]`);
     
@@ -2146,7 +2180,7 @@ export const apiService = {
 
   // --- Learning Documentation ---
   getLearningDocumentation: async (classId: string): Promise<LearningDocumentation[]> => {
-    const { data, error } = await supabase.from('learning_documentation').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('learning_documentation').select('id, class_id, nama_kegiatan, link_foto').eq('class_id', classId);
     if (error) return [];
     return data.map((d: any) => ({ ...d, classId: d.class_id, namaKegiatan: d.nama_kegiatan, linkFoto: d.link_foto }));
   },
@@ -2164,7 +2198,12 @@ export const apiService = {
 
   // --- Liaison Logs ---
   getLiaisonLogs: async (currentUser: User | null): Promise<LiaisonLog[]> => {
-    const { data, error } = await supabase.from('buku_penghubung').select('*');
+    let query = supabase.from('buku_penghubung').select('id, class_id, student_id, date, sender, message, status, category, response');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({ ...l, classId: l.class_id, studentId: l.student_id }));
   },
@@ -2189,7 +2228,12 @@ export const apiService = {
 
   // --- Permission Requests ---
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
-    const { data, error } = await supabase.from('permission_requests').select('*');
+    let query = supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status, rejection_reason');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((p: any) => ({ 
       ...p, 
@@ -2214,7 +2258,7 @@ export const apiService = {
     // 1. Get request details
     const { data: request, error: fetchError } = await supabase
         .from('permission_requests')
-        .select('*')
+        .select('id, class_id, student_id, date, type, reason, status, rejection_reason')
         .eq('id', id)
         .single();
     
@@ -2234,7 +2278,7 @@ export const apiService = {
         // Get existing attendance
         const { data: attendance, error: attError } = await supabase
             .from('attendance')
-            .select('*')
+            .select('id, records')
             .eq('id', attendanceId)
             .single();
         
@@ -2261,7 +2305,7 @@ export const apiService = {
         const attendanceId = `${request.class_id}_${request.date}`;
         const { data: attendance } = await supabase
             .from('attendance')
-            .select('*')
+            .select('id, records')
             .eq('id', attendanceId)
             .single();
         
@@ -2276,7 +2320,7 @@ export const apiService = {
 
   // --- Support Documents ---
   getSupportDocuments: async (currentUser: User | null): Promise<SupportDocument[]> => {
-    const { data, error } = await supabase.from('support_documents').select('*');
+    const { data, error } = await supabase.from('support_documents').select('id, class_id, name, url');
     if (error) return [];
     return data.map((d: any) => ({ ...d, classId: d.class_id }));
   },
@@ -2294,7 +2338,7 @@ export const apiService = {
 
   // --- School Assets (Sarana Prasarana) ---
   getSchoolAssets: async (): Promise<SchoolAsset[]> => {
-    const { data, error } = await supabase.from('school_assets').select('*');
+    const { data, error } = await supabase.from('school_assets').select('id, name, qty, condition, location');
     if (error) return [];
     return data;
   },
@@ -2376,7 +2420,7 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('*').eq('class_id', classId);
+      const { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes').eq('class_id', classId);
       if (error) {
         console.error('Error fetching schedule:', error);
         const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
@@ -2418,7 +2462,7 @@ export const apiService = {
       return allSchedules;
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('*');
+      const { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes');
       if (error) {
         console.error('Error fetching all schedules:', error);
         return [];
@@ -2500,7 +2544,12 @@ export const apiService = {
 
   // --- Book Loans ---
   getBookLoans: async (currentUser: User | null): Promise<BookLoan[]> => {
-    const { data, error } = await supabase.from('book_loans').select('*');
+    let query = supabase.from('book_loans').select('id, student_id, student_name, class_id, books, qty, status, date, notes');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({ ...l, classId: l.class_id, studentId: l.student_id, studentName: l.student_name }));
   },
@@ -2531,7 +2580,7 @@ export const apiService = {
 
   // --- Book Inventory ---
   getBookInventory: async (classId: string): Promise<BookInventory[]> => {
-    const { data, error } = await supabase.from('book_inventory').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('book_inventory').select('id, class_id, subject_id, name, stock, total_stock, cover_url, digital_url').eq('class_id', classId);
     if (error) return [];
     return data.map((b: any) => ({
       ...b,
@@ -2561,7 +2610,7 @@ export const apiService = {
 
   // --- BOS Management ---
   getBOS: async (): Promise<BOSTransaction[]> => {
-    const { data, error } = await supabase.from('bos_management').select('*');
+    const { data, error } = await supabase.from('bos_management').select('id, date, type, category, description, amount');
     if (error) return [];
     return data;
   },
@@ -2589,7 +2638,7 @@ export const apiService = {
 
   // --- Performance Assessments ---
   getPerformanceAssessments: async (): Promise<PerformanceAssessment[]> => {
-    const { data, error } = await supabase.from('performance_assessments').select('*');
+    const { data, error } = await supabase.from('performance_assessments').select('id, teacher_id, teacher_name, supervisor_id, supervisor_name, date, scores, reflection, total_score, percentage, category, created_at');
     if (error) return [];
     return data.map((pa: any) => {
       const scoresObj = pa.scores || {};
@@ -3188,7 +3237,7 @@ export const apiService = {
     try {
       const { data, error } = await supabase
         .from('sumatifs')
-        .select('*')
+        .select('id, class_id, subject_id, title, type, duration, start_time, end_time, is_active, is_visible, token, questions, created_at')
         .eq('class_id', classId);
       if (error) {
         return cached || [];
@@ -3333,7 +3382,7 @@ export const apiService = {
     try {
       const { data, error } = await supabase
         .from('sumatif_results')
-        .select('*')
+        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at, created_at')
         .eq('sumatif_id', sumatifId);
       if (error) {
         console.error("Error fetching sumatif results:", error);
@@ -3494,7 +3543,7 @@ export const apiService = {
   getLearningPlans: async (): Promise<LearningPlan[]> => {
     const { data, error } = await supabase
       .from('learning_plans')
-      .select('*')
+      .select('id, school_name, compiler, nip, subject, topic, class_semester, academic_year, time_allocation, student_characteristics, profile_dimensions, capaian_pembelajaran, learning_goals, pendekatan, pendekatan_reason, model, model_reason, strategi, strategi_reason, metode, metode_reason, lintas_disiplin, mitra, digital, lingkungan, kegiatan_awal, kegiatan_inti, kegiatan_penutup, kegiatan_awal_title, kegiatan_inti_title, kegiatan_penutup_title, durasi_awal, durasi_inti, durasi_penutup, asesmen_awal, asesmen_proses, asesmen_akhir, attachments, created_date, created_at')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -3661,7 +3710,7 @@ export const apiService = {
   getKokurikulerPlans: async (): Promise<KokurikulerPlan[]> => {
     const { data, error } = await supabase
       .from('kokurikuler_plans')
-      .select('*')
+      .select('id, identitas, analisis_kebutuhan, dimensi_profil, tujuan_pembelajaran, praktik_pedagogis, lingkungan_pembelajaran, pemanfaatan_digital, kemitraan, kegiatan, asesmen, produk, created_at')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -3769,7 +3818,7 @@ export const apiService = {
     if (!supabase) return null;
     const { data, error } = await supabase
       .from('emergency_alerts')
-      .select('*')
+      .select('id, type, description, is_active, triggered_by, triggered_by_name, created_at')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -3843,7 +3892,7 @@ export const apiService = {
     try {
       const cached = cacheService.get<MailRecord[]>('mail_records') || [];
       if (!isApiConfigured()) return cached;
-      const { data, error } = await supabase.from('mail_records').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('mail_records').select('id, type, letter_number, agenda_number, sender_or_recipient, subject, letter_date, received_or_sent_date, category, description, file_url, status, class_id, created_at').order('created_at', { ascending: false });
       if (error || !data) return cached;
       const mapped: MailRecord[] = data.map((item: any) => ({
         id: item.id,
@@ -3983,7 +4032,7 @@ export const apiService = {
         }
         return cached;
       }
-      const { data, error } = await supabase.from('staff_leave_requests').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('staff_leave_requests').select('id, user_id, user_name, nip, jabatan, pangkat, kategori_ijin, tanggal_mulai, tanggal_selesai, alasan, status, rejection_reason, file_url, created_at').order('created_at', { ascending: false });
       if (error || !data || data.length === 0) {
         if (!cached || cached.length === 0) {
           cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
@@ -4088,7 +4137,7 @@ export const apiService = {
       if (!isApiConfigured()) {
         return cached || [];
       }
-      const { data, error } = await supabase.from('gtk_data').select('*');
+      const { data, error } = await supabase.from('gtk_data').select('id, user_id, nama, nip, nuptk, jenis_kelamin, tempat_lahir, tanggal_lahir, ijazah_tertinggi, jabatan, status_pegawai, tmt_pengangkatan, mulai_bekerja_di_sini, pangkat_golongan, masa_kerja_tahun, masa_kerja_bulan, sk_terakhir, email_pribadi, email_belajar, foto');
       if (error || !data) {
         return cached || [];
       }

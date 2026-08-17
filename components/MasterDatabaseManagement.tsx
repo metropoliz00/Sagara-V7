@@ -42,7 +42,7 @@ export const MasterDatabaseManagement: React.FC = () => {
       
       const { data, error: fetchErr } = await masterSupabase
         .from('school_databases')
-        .select('*')
+        .select('id, school_code, school_name, supabase_url, supabase_anon_key, is_active, created_at')
         .order('created_at', { ascending: false });
         
       if (fetchErr) throw fetchErr;

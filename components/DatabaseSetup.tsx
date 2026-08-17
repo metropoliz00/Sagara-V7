@@ -64,7 +64,7 @@ export const DatabaseSetup: React.FC = () => {
       
       const { data, error: fetchError } = await masterSupabase
         .from('school_databases')
-        .select('*')
+        .select('id, is_active, supabase_url, supabase_anon_key')
         .eq('school_code', cleanCode)
         .single();
 

@@ -21,7 +21,7 @@ const MitigasiBencanaView: React.FC<MitigasiBencanaViewProps> = ({ currentUser }
     if (!supabase) return;
     const { data, error } = await supabase
       .from('emergency_alerts')
-      .select('*')
+      .select('id, type, description, is_active, triggered_by, triggered_by_name, created_at')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();

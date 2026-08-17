@@ -6,6 +6,7 @@ import {
   Upload, Download, FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import { useModal } from '../context/ModalContext';
 
 interface SchoolAssetsAdminProps {
@@ -28,25 +29,21 @@ const SchoolAssetsAdmin: React.FC<SchoolAssetsAdminProps> = ({ assets, onSave, o
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
+    const headers = ['Nama Sarana / Prasarana', 'Jumlah', 'Kondisi (Baik/Rusak Ringan/Rusak Berat)', 'Lokasi'];
     const templateData = [
-      {
-        'Nama Sarana / Prasarana': 'Meja Guru',
-        'Jumlah': 10,
-        'Kondisi (Baik/Rusak Ringan/Rusak Berat)': 'Baik',
-        'Lokasi': 'Ruang Kelas 1A'
-      },
-      {
-        'Nama Sarana / Prasarana': 'Papan Tulis',
-        'Jumlah': 2,
-        'Kondisi (Baik/Rusak Ringan/Rusak Berat)': 'Rusak Ringan',
-        'Lokasi': 'Ruang Kelas 2B'
-      }
+      ['Meja Guru', 10, 'Baik', 'Ruang Kelas 1A'],
+      ['Papan Tulis', 2, 'Rusak Ringan', 'Ruang Kelas 2B']
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Aset");
-    XLSX.writeFile(wb, "Template_Sarana_Prasarana.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Sarana & Prasarana Sekolah",
+      filename: "Template_Sarana_Prasarana.xlsx",
+      sheetName: "Template Aset",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      notes: "Kondisi diisi: Baik / Rusak Ringan / Rusak Berat."
+    });
     showAlert("Template Excel berhasil diunduh!", "success");
   };
 
@@ -69,7 +66,7 @@ const SchoolAssetsAdmin: React.FC<SchoolAssetsAdminProps> = ({ assets, onSave, o
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['Nama Sarana', 'Jumlah', 'Kondisi']);
 
         if (rawData.length === 0) {
           showAlert("Berkas Excel kosong atau format salah.", "error");
@@ -78,9 +75,9 @@ const SchoolAssetsAdmin: React.FC<SchoolAssetsAdminProps> = ({ assets, onSave, o
 
         let importedCount = 0;
         for (const row of rawData) {
-          const name = row['Nama Sarana / Prasarana'];
-          const qty = Number(row['Jumlah']) || 1;
-          let condition = String(row['Kondisi (Baik/Rusak Ringan/Rusak Berat)'] || 'Baik').trim();
+          const name = row['Nama Sarana / Prasarana'] || row['Nama Sarana'] || row['Nama'] || '';
+          const qty = Number(row['Jumlah'] || row['Qty']) || 1;
+          let condition = String(row['Kondisi (Baik/Rusak Ringan/Rusak Berat)'] || row['Kondisi'] || 'Baik').trim();
           if (condition !== 'Baik' && condition !== 'Rusak Ringan' && condition !== 'Rusak Berat') {
             condition = 'Baik';
           }
@@ -118,18 +115,23 @@ const SchoolAssetsAdmin: React.FC<SchoolAssetsAdminProps> = ({ assets, onSave, o
       return;
     }
 
-    const exportData = filteredAssets.map((asset, idx) => ({
-      'NO': idx + 1,
-      'NAMA SARANA / PRASARANA': asset.name,
-      'LOKASI': asset.location || '-',
-      'JUMLAH': asset.qty,
-      'KONDISI': asset.condition
-    }));
+    const headers = ['NO', 'NAMA SARANA / PRASARANA', 'LOKASI', 'JUMLAH', 'KONDISI'];
+    const exportData = filteredAssets.map((asset, idx) => [
+      idx + 1,
+      asset.name,
+      asset.location || '-',
+      asset.qty,
+      asset.condition
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Aset Sekolah");
-    XLSX.writeFile(wb, "Data_Sarana_Prasarana.xlsx");
+    exportToExcelWithHeader({
+      title: "Laporan Data Sarana & Prasarana Sekolah",
+      subtitle: `Total Aset: ${filteredAssets.length} Item`,
+      filename: "Data_Sarana_Prasarana.xlsx",
+      sheetName: "Aset Sekolah",
+      headers,
+      data: exportData
+    });
     showAlert("Data sarana prasarana berhasil diekspor ke Excel!", "success");
   };
 

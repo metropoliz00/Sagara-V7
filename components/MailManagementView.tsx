@@ -7,6 +7,7 @@ import {
 import { MailRecord, SchoolProfileData } from '../types';
 import { apiService } from '../services/apiService';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader } from '../utils/excelHelper';
 
 interface MailManagementViewProps {
   schoolProfile?: SchoolProfileData;
@@ -299,25 +300,46 @@ const MailManagementView: React.FC<MailManagementViewProps> = ({
       return;
     }
 
-    const dataToExport = filteredRecords.map((item, index) => ({
-      'No': index + 1,
-      'Jenis Surat': item.type === 'masuk' ? 'Surat Masuk' : 'Surat Keluar',
-      'Nomor Surat': item.letterNumber,
-      'Nomor Agenda': item.agendaNumber || '-',
-      [item.type === 'masuk' ? 'Pengirim / Instansi' : 'Tujuan / Penerima']: item.senderOrRecipient,
-      'Perihal': item.subject,
-      'Kategori': item.category,
-      'Tanggal Surat': item.letterDate,
-      [item.type === 'masuk' ? 'Tanggal Diterima' : 'Tanggal Dikirim']: item.receivedOrSentDate,
-      'Status': item.status || 'Tersimpan',
-      'Ringkasan': item.description || '-',
-      'Tautan File': item.fileUrl || '-'
-    }));
+    const headers = [
+      'No',
+      'Jenis Surat',
+      'Nomor Surat',
+      'Nomor Agenda',
+      'Pengirim / Penerima',
+      'Perihal',
+      'Kategori',
+      'Tanggal Surat',
+      'Tanggal Diterima/Dikirim',
+      'Status',
+      'Ringkasan',
+      'Tautan File'
+    ];
 
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Surat Menyurat");
-    XLSX.writeFile(workbook, `Agenda_Surat_Menyurat_${new Date().toISOString().split('T')[0]}.xlsx`);
+    const dataToExport = filteredRecords.map((item, index) => [
+      index + 1,
+      item.type === 'masuk' ? 'Surat Masuk' : 'Surat Keluar',
+      item.letterNumber,
+      item.agendaNumber || '-',
+      item.senderOrRecipient,
+      item.subject,
+      item.category,
+      item.letterDate,
+      item.receivedOrSentDate,
+      item.status || 'Tersimpan',
+      item.description || '-',
+      item.fileUrl || '-'
+    ]);
+
+    exportToExcelWithHeader({
+      title: "Laporan Buku Agenda Arsip Surat (Masuk & Keluar)",
+      subtitle: `Total Surat: ${filteredRecords.length} Dokumen | ${schoolProfile?.name || 'Sekolah'}`,
+      filename: `Agenda_Surat_Menyurat_${new Date().toISOString().split('T')[0]}.xlsx`,
+      sheetName: "Surat Menyurat",
+      headers,
+      data: dataToExport,
+      currentUser
+    });
+
     onShowNotification('Data surat berhasil di-export ke Excel!', 'success');
   };
 

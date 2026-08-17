@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Student, TeacherProfileData, SchoolProfileData, Graduate } from '../types';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import JSZip from 'jszip';
 import html2pdf from 'html2pdf.js';
 import { compressImage } from '../utils/imageHelper';
@@ -1046,10 +1047,16 @@ const StudentList: React.FC<StudentListProps> = ({
         "0.5"
       ];
 
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Template Siswa Dapodik");
-      XLSX.writeFile(workbook, "template_input_siswa_dapodik.xlsx");
+      exportToExcelWithHeader({
+        title: "Template Input Data Siswa Dapodik",
+        subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+        filename: "template_input_siswa_dapodik.xlsx",
+        sheetName: "Template Siswa",
+        headers,
+        data: [example],
+        isTemplate: true,
+        notes: "Isi data siswa mulai baris setelah judul tabel. Kolom wajib: Nama, NISN/NIS, JK, Tanggal Lahir (YYYY-MM-DD)."
+      });
       onShowNotification("Template Excel Dapodik berhasil diunduh!", "success");
     } catch (err: any) {
       console.error("Gagal mengunduh template:", err);
@@ -1197,10 +1204,14 @@ const StudentList: React.FC<StudentListProps> = ({
         s.jarakRumahKm || 0
       ]);
 
-      const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Siswa Dapodik");
-      XLSX.writeFile(workbook, `data_siswa_dapodik_${classId || 'semua'}.xlsx`);
+      exportToExcelWithHeader({
+        title: "Laporan Data Siswa Dapodik",
+        subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Siswa: ${students.length}`,
+        filename: `data_siswa_dapodik_${classId || 'semua'}.xlsx`,
+        sheetName: "Data Siswa",
+        headers,
+        data: rows
+      });
       onShowNotification("Data siswa berhasil diekspor ke Excel!", "success");
     } catch (err: any) {
       console.error("Gagal melakukan ekspor:", err);
@@ -1254,9 +1265,8 @@ const StudentList: React.FC<StudentListProps> = ({
         const wb = XLSX.read(data, { type: 'array' });
         const wsName = wb.SheetNames[0];
         const ws = wb.Sheets[wsName];
-        
-        const jsonObjects = XLSX.utils.sheet_to_json<Record<string, any>>(ws);
-        const rawRows = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1 });
+        const rawRows: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+        const { rows: jsonObjects } = parseExcelWithHeaders(ws, ['Nama', 'NIS', 'NISN', 'JK']);
 
         const newStudentsBatch: Omit<Student, 'id'>[] = [];
 

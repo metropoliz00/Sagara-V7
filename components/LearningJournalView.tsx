@@ -5,6 +5,7 @@ import { useModal } from '../context/ModalContext';
 import { getLocalISODate } from '../utils/dateUtils';
 import html2pdf from 'html2pdf.js';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import { 
   Save, Calendar, Printer, Plus, Trash2, Loader2, 
   ChevronLeft, ChevronRight, NotebookPen, RefreshCw,
@@ -255,25 +256,38 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'Tanggal (YYYY-MM-DD)': getLocalISODate(),
-        'Slot Waktu': '07:30 - 08:40',
-        'Mata Pelajaran': 'Matematika',
-        'Topik/Bab': 'Pecahan',
-        'Model Pembelajaran': 'Problem-Based Learning (PBL)',
-        'Pendekatan': 'Pendekatan kontekstual',
-        'Metode': 'Tanya jawab, Diskusi kelompok',
-        'Kegiatan Pembelajaran': 'Pendahuluan, inti, penutup',
-        'Evaluasi': 'Kuis singkat',
-        'Refleksi Guru': 'Siswa sangat aktif.',
-        'Tindak Lanjut': 'Pembelajaran lanjutan topik perkalian pecahan.'
-      }
+    const headers = [
+      'Tanggal (YYYY-MM-DD)', 'Slot Waktu', 'Mata Pelajaran', 'Topik/Bab', 'Model Pembelajaran',
+      'Pendekatan', 'Metode', 'Kegiatan Pembelajaran', 'Evaluasi', 'Refleksi Guru', 'Tindak Lanjut'
     ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Jurnal");
-    XLSX.writeFile(wb, "Template_Jurnal_Pembelajaran.xlsx");
+    const templateData = [
+      [
+        getLocalISODate(),
+        '07:30 - 08:40',
+        'Matematika',
+        'Pecahan',
+        'Problem-Based Learning (PBL)',
+        'Pendekatan kontekstual',
+        'Tanya jawab, Diskusi kelompok',
+        'Pendahuluan, inti, penutup',
+        'Kuis singkat',
+        'Siswa sangat aktif.',
+        'Pembelajaran lanjutan topik perkalian pecahan.'
+      ]
+    ];
+
+    exportToExcelWithHeader({
+      title: "Template Jurnal Pembelajaran",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "Template_Jurnal_Pembelajaran.xlsx",
+      sheetName: "Template Jurnal",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      currentUser,
+      notes: "Format tanggal: YYYY-MM-DD. Kolom Metode dapat diisi beberapa metode dipisahkan tanda koma (,)."
+    });
+
     if (onShowNotification) {
       onShowNotification("Template Jurnal berhasil diunduh!", "success");
     } else {
@@ -300,7 +314,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['Tanggal', 'Mata Pelajaran', 'Slot Waktu']);
 
         if (rawData.length === 0) {
           if (onShowNotification) onShowNotification("Berkas Excel kosong.", "error");
@@ -314,16 +328,16 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
           return {
             id: row['ID'] || `journal-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             classId,
-            date: row['Tanggal (YYYY-MM-DD)'] || currentDate,
-            day: getDayName(row['Tanggal (YYYY-MM-DD)'] || currentDate),
+            date: row['Tanggal (YYYY-MM-DD)'] || row['Tanggal'] || currentDate,
+            day: getDayName(row['Tanggal (YYYY-MM-DD)'] || row['Tanggal'] || currentDate),
             timeSlot: row['Slot Waktu'] || '',
             subject: row['Mata Pelajaran'] || '',
-            topic: row['Topik/Bab'] || '',
+            topic: row['Topik/Bab'] || row['Topik'] || '',
             activities: row['Kegiatan Pembelajaran'] || '',
             evaluation: row['Evaluasi'] || '',
             reflection: row['Refleksi Guru'] || '',
             followUp: row['Tindak Lanjut'] || '',
-            model: row['Model Pembelajaran'] || '',
+            model: row['Model Pembelajaran'] || row['Model'] || '',
             pendekatan: row['Pendekatan'] || '',
             metode,
             isTeacherPresent: true,
@@ -368,28 +382,40 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
        return;
      }
 
-     const exportData = dataToExport.map((item, idx) => ({
-       'NO': idx + 1,
-       'KELAS': item.classId || classId,
-       'TANGGAL': item.date,
-       'SLOT WAKTU': item.timeSlot || '-',
-       'MATA PELAJARAN': item.subject,
-       'TOPIK/BAB': isSpecialSubject(item.subject) ? '-' : (item.topic || '-'),
-       'MODEL PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.model || '-'),
-       'PENDEKATAN': isSpecialSubject(item.subject) ? '-' : (item.pendekatan || '-'),
-       'METODE': isSpecialSubject(item.subject) ? '-' : (item.metode ? item.metode.join(', ') : '-'),
-       'KEGIATAN PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.activities || '-'),
-       'EVALUASI': isSpecialSubject(item.subject) ? '-' : (item.evaluation || '-'),
-       'REFLEKSI GURU': isSpecialSubject(item.subject) ? '-' : (item.reflection || '-'),
-       'TINDAK LANJUT': isSpecialSubject(item.subject) ? '-' : (item.followUp || '-'),
-       'GURU HADIR': isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
-       'NAMA GURU': item.teacherName || '-'
-     }));
+     const headers = [
+       'NO', 'KELAS', 'TANGGAL', 'SLOT WAKTU', 'MATA PELAJARAN', 'TOPIK/BAB',
+       'MODEL PEMBELAJARAN', 'PENDEKATAN', 'METODE', 'KEGIATAN PEMBELAJARAN',
+       'EVALUASI', 'REFLEKSI GURU', 'TINDAK LANJUT', 'GURU HADIR', 'NAMA GURU'
+     ];
 
-     const ws = XLSX.utils.json_to_sheet(exportData);
-     const wb = XLSX.utils.book_new();
-     XLSX.utils.book_append_sheet(wb, ws, "Jurnal Pembelajaran");
-     XLSX.writeFile(wb, `Jurnal_Pembelajaran_${classId}.xlsx`);
+     const exportData = dataToExport.map((item, idx) => [
+       idx + 1,
+       item.classId || classId,
+       item.date,
+       item.timeSlot || '-',
+       item.subject,
+       isSpecialSubject(item.subject) ? '-' : (item.topic || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.model || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.pendekatan || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.metode ? item.metode.join(', ') : '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.activities || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.evaluation || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.reflection || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.followUp || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
+       item.teacherName || '-'
+     ]);
+
+     exportToExcelWithHeader({
+       title: "Laporan Jurnal Pembelajaran Guru",
+       subtitle: `Kelas: ${classId || 'Semua Kelas'} | Guru: ${(teacherProfile as any)?.fullName || teacherProfile?.name || currentUser?.fullName || 'Guru Kelas'}`,
+       filename: `Jurnal_Pembelajaran_${classId || 'semua'}.xlsx`,
+       sheetName: "Jurnal Pembelajaran",
+       headers,
+       data: exportData,
+       currentUser
+     });
+
      if (onShowNotification) {
        onShowNotification("Data jurnal berhasil diekspor ke Excel!", "success");
      } else {

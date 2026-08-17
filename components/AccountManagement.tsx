@@ -2,6 +2,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import { User, Student } from '../types';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader } from '../utils/excelHelper';
 import { 
   UserCog, Plus, X, Save, Trash2, PenTool, Loader2, Download, Upload, 
   RefreshCw, LayoutGrid, Shield, Briefcase, GraduationCap, CheckSquare, Square, FileSpreadsheet
@@ -184,20 +185,43 @@ const AccountManagement: React.FC<AccountManagementProps> = ({ users, students, 
   // --- Export/Import ---
   const handleDownloadTemplate = () => {
     const headers = ["Username *", "Password *", "Role (admin/guru/siswa/supervisor) *", "Nama Lengkap *", "NIP", "NUPTK", "Tempat, Tgl Lahir", "Pendidikan Terakhir", "Jabatan", "Pangkat / Gol", "Class ID", "Email", "No HP", "Alamat"];
-    const example = ["guru01", "123456", "guru", "Budi Santoso, S.Pd", "19800101...", "1234...", "Jakarta, 01-01-1980", "S1 PGSD", "Guru Kelas", "III/a", "1A", "budi@email.com", "081...", "Jl. Merdeka"];
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template User");
-    XLSX.writeFile(workbook, "template_akun_pengguna.xlsx");
+    const example = [
+      ["guru01", "123456", "guru", "Budi Santoso, S.Pd", "19800101...", "1234...", "Jakarta, 01-01-1980", "S1 PGSD", "Guru Kelas", "III/a", "1A", "budi@email.com", "081...", "Jl. Merdeka"]
+    ];
+
+    exportToExcelWithHeader({
+      title: "Template Akun Pengguna Sistem",
+      filename: "template_akun_pengguna.xlsx",
+      sheetName: "Template User",
+      headers,
+      data: example,
+      isTemplate: true,
+      notes: "Kolom dengan tanda (*) wajib diisi. Pilihan role: admin / Kepala Sekolah / guru / siswa."
+    });
+    showAlert("Template Excel berhasil diunduh!", "success");
   };
 
   const handleExport = () => {
-    const headers = ["Username", "Role", "Nama Lengkap", "NIP", "Class ID", "Status Link"];
-    const rows = users.map(u => [u.username, u.role, u.fullName, u.nip, u.classId, u.role === 'siswa' ? (u.studentId ? 'Linked' : 'Unlinked') : '-']);
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Data Akun");
-    XLSX.writeFile(workbook, "data_akun_pengguna.xlsx");
+    const headers = ["NO", "Username", "Role", "Nama Lengkap", "NIP", "Class ID", "Status Link"];
+    const rows = users.map((u, idx) => [
+      idx + 1,
+      u.username,
+      u.role,
+      u.fullName,
+      u.nip || '-',
+      u.classId || '-',
+      u.role === 'siswa' ? (u.studentId ? 'Linked' : 'Unlinked') : '-'
+    ]);
+
+    exportToExcelWithHeader({
+      title: "Laporan Data Akun Pengguna",
+      subtitle: `Total Akun: ${users.length} Pengguna`,
+      filename: "data_akun_pengguna.xlsx",
+      sheetName: "Data Akun",
+      headers,
+      data: rows
+    });
+    showAlert("Data akun berhasil diekspor ke Excel!", "success");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

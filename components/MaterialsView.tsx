@@ -8,6 +8,7 @@ import {
   ClipboardList, FileCheck, Paperclip, CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import CustomModal from './CustomModal';
 
 // Helper to compress image and convert to Base64 (lightweight but sharp)
@@ -232,20 +233,34 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
+    const headers = [
+      'Mata Pelajaran',
+      'Judul Materi',
+      'Deskripsi',
+      'Link Tautan (Opsional)',
+      'Status Tampilkan (Ya/Tidak)'
+    ];
     const templateData = [
-      {
-        'Mata Pelajaran': subjects[0]?.name || 'Matematika',
-        'Judul Materi': 'Aljabar Dasar Bagian 1',
-        'Deskripsi': 'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
-        'Link Tautan (Opsional)': 'https://youtube.com/... atau https://drive.google.com/...',
-        'Status Tampilkan (Ya/Tidak)': 'Ya'
-      }
+      [
+        subjects[0]?.name || 'Matematika',
+        'Aljabar Dasar Bagian 1',
+        'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
+        'https://youtube.com/... atau https://drive.google.com/...',
+        'Ya'
+      ]
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Materi");
-    XLSX.writeFile(wb, "Template_Materi_Pembelajaran.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Materi Pembelajaran",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "Template_Materi_Pembelajaran.xlsx",
+      sheetName: "Template Materi",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      currentUser,
+      notes: "Status Tampilkan: Ya / Tidak. Link tautan dapat berupa Google Drive, Youtube, atau tautan web."
+    });
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
@@ -268,7 +283,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['Mata Pelajaran', 'Judul Materi']);
 
         if (rawData.length === 0) {
           onShowNotification("Berkas Excel kosong atau format salah.", "error");
@@ -277,11 +292,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
 
         let importedCount = 0;
         for (const row of rawData) {
-          const subjectName = row['Mata Pelajaran'];
-          const title = row['Judul Materi'];
+          const subjectName = row['Mata Pelajaran'] || row['Mapel'];
+          const title = row['Judul Materi'] || row['Judul'];
           const description = row['Deskripsi'] || '';
-          const link = row['Link Tautan (Opsional)'] || '';
-          const visibleText = String(row['Status Tampilkan (Ya/Tidak)'] || 'Ya').toLowerCase().trim();
+          const link = row['Link Tautan (Opsional)'] || row['Link'] || '';
+          const visibleText = String(row['Status Tampilkan (Ya/Tidak)'] || row['Status'] || 'Ya').toLowerCase().trim();
           const isVisible = visibleText === 'ya' || visibleText === 'yes' || visibleText === 'true';
 
           if (subjectName && title) {
@@ -321,6 +336,12 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
       return;
     }
 
+    const headers = [
+      'NO', 'MATA PELAJARAN', 'TIPE', 'JUDUL MATERI', 'DESKRIPSI',
+      'LINK UTAMA', 'LINK VIDEO', 'INFOGRAFIS/GAMBAR', 'JUDUL TUGAS',
+      'LINK TUGAS', 'FILE TUGAS', 'TAMPILKAN', 'TANGGAL BUAT'
+    ];
+
     const exportData = filteredMaterials.map((item, idx) => {
       const sub = subjects.find(s => s.id === item.subjectId);
       
@@ -329,30 +350,35 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         tipeMateri = 'Tugas';
       }
 
-      return {
-        'NO': idx + 1,
-        'MATA PELAJARAN': sub ? sub.name : 'Lainnya',
-        'TIPE': tipeMateri,
-        'JUDUL MATERI': item.title || '-',
-        'DESKRIPSI': item.description || '-',
-        'LINK UTAMA': item.link || '-',
-        'LINK VIDEO': item.videoLink || '-',
-        'INFOGRAFIS/GAMBAR': item.infographic ? 'Ada' : '-',
-        'JUDUL TUGAS': item.taskTitle || '-',
-        'LINK TUGAS': item.taskLink || '-',
-        'FILE TUGAS': item.taskFile ? 'Ada File' : '-',
-        'TAMPILKAN': item.isVisible ? 'Ya' : 'Tidak',
-        'TANGGAL BUAT': item.createdAt && !isNaN(new Date(item.createdAt).getTime())
+      return [
+        idx + 1,
+        sub ? sub.name : 'Lainnya',
+        tipeMateri,
+        item.title || '-',
+        item.description || '-',
+        item.link || '-',
+        item.videoLink || '-',
+        item.infographic ? 'Ada' : '-',
+        item.taskTitle || '-',
+        item.taskLink || '-',
+        item.taskFile ? 'Ada File' : '-',
+        item.isVisible ? 'Ya' : 'Tidak',
+        item.createdAt && !isNaN(new Date(item.createdAt).getTime())
           ? new Date(item.createdAt).toLocaleDateString('id-ID')
           : '-'
-      };
+      ];
     });
 
     try {
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
-      XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
+      exportToExcelWithHeader({
+        title: "Laporan Dokumen Materi Pembelajaran",
+        subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Materi: ${filteredMaterials.length}`,
+        filename: `Dokumen_Materi_Pembelajaran_Kelas_${classId || 'semua'}.xlsx`,
+        sheetName: "Materi Pembelajaran",
+        headers,
+        data: exportData,
+        currentUser
+      });
       onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
     } catch (error) {
       console.error("Gagal mengekspor excel:", error);

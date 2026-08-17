@@ -2,6 +2,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useLocation } from 'react-router-dom';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, calculateAutoColumnWidths, getCurrentUserInfo } from '../utils/excelHelper';
+import { formatDateID, getTimeWithZone } from '../utils/dateUtils';
 import { Student, Holiday, TeacherProfileData, SchoolProfileData, User, ScheduleItem } from '../types';
 import { MOCK_SUBJECTS } from '../constants';
 import html2pdf from 'html2pdf.js';
@@ -296,10 +298,18 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       "Keterangan opsional"
     ];
     
-    const worksheet = XLSX.utils.aoa_to_sheet([headers, example]);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Template Absensi");
-    XLSX.writeFile(workbook, "template_absensi_siswa.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Absensi Siswa",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "template_absensi_siswa.xlsx",
+      sheetName: "Template Absensi",
+      headers,
+      data: [example],
+      isTemplate: true,
+      currentUser,
+      notes: "Status yang didukung: Hadir, Sakit, Izin, Alpha, Dispensasi. Format tanggal: YYYY-MM-DD."
+    });
+    onShowNotification("Template Absensi berhasil diunduh!", "success");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -319,10 +329,19 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
+        const rawData = XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[];
 
-        // Skip header row
-        const rows = data.slice(1);
+        // Cari baris header yang mengandung NIS / Tanggal
+        let headerRowIndex = 0;
+        for (let i = 0; i < Math.min(rawData.length, 10); i++) {
+          const r = rawData[i];
+          if (Array.isArray(r) && r.some(c => String(c).toLowerCase().includes('nis') || String(c).toLowerCase().includes('status'))) {
+            headerRowIndex = i;
+            break;
+          }
+        }
+
+        const rows = rawData.slice(headerRowIndex + 1);
         const batchMap: Record<string, any[]> = {};
 
         rows.forEach(row => {
@@ -947,6 +966,16 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
   };
 
   const handleExportSemesterExcel = () => {
+    const now = new Date();
+    const dateStr = formatDateID(now.toISOString().split('T')[0]);
+    const timeStr = getTimeWithZone(now);
+    const userInfo = getCurrentUserInfo(currentUser);
+
+    const titleRow = [`REKAPITULASI ABSENSI SISWA SEMESTER ${selectedSemester} TAHUN ${semesterYear}`];
+    const metaRow = [`Diunduh pada: ${dateStr}, Pukul: ${timeStr} | Oleh: ${userInfo.name} (${userInfo.role.toUpperCase()})`];
+    const classRow = [`Kelas: ${classId || 'Semua Kelas'} | Sekolah: ${schoolProfile?.name || 'Kelasku Pro'}`];
+    const emptyRow: any[] = [];
+
     const headersLine1 = ['No', 'Nama Siswa'];
     const headersLine2 = ['', ''];
     
@@ -957,7 +986,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
     headersLine1.push('Total Satu Semester', '', '');
     headersLine2.push('S', 'I', 'A');
 
-    const rows: any[] = [headersLine1, headersLine2];
+    const dataRows: any[] = [];
 
     students.forEach((s, idx) => {
       const row = [idx + 1, s.name.toUpperCase()];
@@ -976,25 +1005,39 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       });
 
       row.push(totalS, totalI, totalA);
-      rows.push(row);
+      dataRows.push(row);
     });
 
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const allSheetRows = [
+      titleRow,
+      metaRow,
+      classRow,
+      emptyRow,
+      headersLine1,
+      headersLine2,
+      ...dataRows
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(allSheetRows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Semester");
     
+    // Header tabel mulai di baris indeks ke-4 (baris ke-5 di Excel)
     worksheet['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } }, 
-      { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } }, 
+      { s: { r: 4, c: 0 }, e: { r: 5, c: 0 } }, 
+      { s: { r: 4, c: 1 }, e: { r: 5, c: 1 } }, 
     ];
 
     let colIndex = 2;
     semesterMonths.forEach(() => {
-      worksheet['!merges']?.push({ s: { r: 0, c: colIndex }, e: { r: 0, c: colIndex + 2 } });
+      worksheet['!merges']?.push({ s: { r: 4, c: colIndex }, e: { r: 4, c: colIndex + 2 } });
       colIndex += 3;
     });
 
-    worksheet['!merges']?.push({ s: { r: 0, c: colIndex }, e: { r: 0, c: colIndex + 2 } });
+    worksheet['!merges']?.push({ s: { r: 4, c: colIndex }, e: { r: 4, c: colIndex + 2 } });
+
+    // Hitung lebar kolom otomatis
+    worksheet['!cols'] = calculateAutoColumnWidths(headersLine1, [headersLine2, ...dataRows]);
 
     XLSX.writeFile(workbook, `rekap_semester_${selectedSemester}_${semesterYear}.xlsx`);
     onShowNotification("Rekap semester berhasil diexport ke Excel", "success");

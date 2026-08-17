@@ -1149,7 +1149,16 @@ const StudentList: React.FC<StudentListProps> = ({
         s.gender || 'L',
         s.nisn || '',
         s.birthPlace || '',
-        s.birthDate || '',
+        s.birthDate ? (() => {
+          const parts = s.birthDate.split('-');
+          if (parts.length === 3) {
+            // If format is yyyy-mm-dd or yyyy/mm/dd
+            if (parts[0].length === 4) {
+              return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
+          }
+          return s.birthDate;
+        })() : '',
         s.nik || '',
         s.religion || 'Islam',
         s.address || '',

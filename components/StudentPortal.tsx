@@ -2881,7 +2881,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                       </div>
                                       <div>
                                           <label className="block font-bold text-gray-500 mb-1">Tanggal Lahir</label>
-                                          <input type="date" value={profileData.birthDate || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                          <input type="text" value={profileData.birthDate ? (() => { const p = profileData.birthDate.split('T')[0].split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : profileData.birthDate; })() : ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
                                       </div>
                                   </div>
                                   <div>
@@ -2971,7 +2971,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           </div>
                                           <div>
                                               <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
-                                              <input type="text" value={profileData.fatherIncome || ''} onChange={e => handleProfileChange('fatherIncome', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                              <div className="relative flex items-center"><span className="absolute left-2.5 text-gray-400 font-bold text-xs select-none">Rp.</span><input type="text" value={profileData.fatherIncome || ''} onChange={e => handleProfileChange('fatherIncome', e.target.value)} disabled={!isEditingProfile} placeholder="0" className="w-full border pl-9 pr-2.5 py-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
                                           </div>
                                       </div>
                                   </div>
@@ -3002,7 +3002,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                           </div>
                                           <div>
                                               <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
-                                              <input type="text" value={profileData.motherIncome || ''} onChange={e => handleProfileChange('motherIncome', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                              <div className="relative flex items-center"><span className="absolute left-2.5 text-gray-400 font-bold text-xs select-none">Rp.</span><input type="text" value={profileData.motherIncome || ''} onChange={e => handleProfileChange('motherIncome', e.target.value)} disabled={!isEditingProfile} placeholder="0" className="w-full border pl-9 pr-2.5 py-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
                                           </div>
                                       </div>
                                   </div>

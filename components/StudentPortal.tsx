@@ -2844,7 +2844,6 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   <h4 className="font-extrabold text-gray-800 text-sm flex items-center">
                                       <User size={16} className="mr-2 text-indigo-600"/> Identitas Pribadi
                                   </h4>
-                                  <span className="text-[10px] bg-indigo-50 text-indigo-600 font-bold px-2 py-0.5 rounded-md">Data Tetap</span>
                               </div>
                               <div className="space-y-3 text-xs">
                                   <div>

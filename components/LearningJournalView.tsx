@@ -881,13 +881,13 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                 <colgroup>
                     <col style="width: 3%;" />
                     <col style="width: 7%;" />
+                    <col style="width: 10%;" />
                     <col style="width: 11%;" />
-                    <col style="width: 12%;" />
-                    <col style="width: 36%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 11%;" />
+                    <col style="width: 24%;" />
+                    <col style="width: 10%;" />
+                    <col style="width: 15%;" />
+                    <col style="width: 15%;" />
                     <col style="width: 5%;" />
-                    <col style="width: 4%;" />
                 </colgroup>
                 <tbody>
                     ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666; border: 1px solid black;">Tidak ada data jurnal minggu ini</td></tr>`}
@@ -1505,48 +1505,50 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-white border-b border-gray-100 text-gray-500 print:border-gray-400 print:text-black">
-                                        <tr>
-                                            <th className="p-2 w-24 min-w-[100px]">Jam</th>
-                                            <th className="p-2 w-40">Mata Pelajaran</th>
-                                            <th className="p-2 w-40">Materi</th>
-                                            <th className="p-2">Kegiatan Pembelajaran</th>
-                                            <th className="p-2 w-32">Evaluasi</th>
-                                            <th className="p-2 w-32">Refleksi</th>
-                                            <th className="p-2 w-32">Tindak Lanjut</th>
-                                            <th className="p-2 w-24">Kehadiran</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 print:divide-gray-400">
-                                        {rows.map((row, rIdx) => {
-                                            const isBreak = row.subject?.toLowerCase().includes('istirahat');
-                                            const isSpecial = isSpecialSubject(row.subject);
-                                            return (
-                                            <tr key={rIdx} className={isBreak ? 'bg-orange-50/60' : ''}>
-                                                <td className="p-2 align-top text-gray-500">{row.timeSlot || '-'}</td>
-                                                <td className={`p-2 align-top font-semibold ${isBreak ? 'text-orange-700' : ''}`}>
-                                                    {isBreak && <Coffee size={12} className="inline mr-1 text-orange-600 no-print"/>}
-                                                    {row.subject}
-                                                </td>
-                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
-                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">
-                                                    {isBreak || isSpecial ? (
-                                                        <span className="text-gray-400 font-medium">-</span>
-                                                    ) : (
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                                            {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
-                                                        </span>
-                                                    )}
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs text-left min-w-[980px]">
+                                        <thead className="bg-white border-b border-gray-100 text-gray-500 print:border-gray-400 print:text-black font-bold">
+                                            <tr>
+                                                <th className="p-2 w-20 min-w-[75px]">Jam</th>
+                                                <th className="p-2 w-32 min-w-[110px]">Mata Pelajaran</th>
+                                                <th className="p-2 w-36 min-w-[120px]">Materi</th>
+                                                <th className="p-2 w-56 min-w-[180px]">Kegiatan Pembelajaran</th>
+                                                <th className="p-2 w-28 min-w-[90px]">Evaluasi</th>
+                                                <th className="p-2 w-48 min-w-[150px]">Refleksi</th>
+                                                <th className="p-2 w-48 min-w-[150px]">Tindak Lanjut</th>
+                                                <th className="p-2 w-24 min-w-[80px] text-center">Kehadiran</th>
                                             </tr>
-                                        )})}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 print:divide-gray-400">
+                                            {rows.map((row, rIdx) => {
+                                                const isBreak = row.subject?.toLowerCase().includes('istirahat');
+                                                const isSpecial = isSpecialSubject(row.subject);
+                                                return (
+                                                <tr key={rIdx} className={isBreak ? 'bg-orange-50/60' : ''}>
+                                                    <td className="p-2 align-top text-gray-500">{row.timeSlot || '-'}</td>
+                                                    <td className={`p-2 align-top font-semibold ${isBreak ? 'text-orange-700' : ''}`}>
+                                                        {isBreak && <Coffee size={12} className="inline mr-1 text-orange-600 no-print"/>}
+                                                        {row.subject}
+                                                    </td>
+                                                    <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 text-center">
+                                                        {isBreak || isSpecial ? (
+                                                            <span className="text-gray-400 font-medium">-</span>
+                                                        ) : (
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                                                {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )})}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     );

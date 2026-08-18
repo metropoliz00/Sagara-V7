@@ -2308,59 +2308,115 @@ export const apiService = {
 
   // --- Permission Requests ---
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
-    let query = supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status, rejection_reason');
-    if (currentUser?.role === 'siswa') {
-      if (currentUser.id) query = query.eq('student_id', currentUser.id);
-      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    try {
+      let query = supabase.from('permission_requests').select('*');
+      if (currentUser?.role === 'siswa') {
+        if (currentUser.classId) {
+          query = query.eq('class_id', currentUser.classId);
+        }
+      }
+      const { data, error } = await query;
+      if (error) {
+        // Fallback to explicit standard columns without rejection_reason if select('*') has an issue
+        const fallbackRes = await supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status');
+        if (fallbackRes.error) {
+          console.error("Error fetching permission requests:", fallbackRes.error);
+          return [];
+        }
+        return (fallbackRes.data || []).map((p: any) => ({
+          id: String(p.id),
+          classId: p.class_id,
+          studentId: String(p.student_id),
+          date: p.date,
+          type: p.type,
+          reason: p.reason,
+          status: p.status || 'Pending',
+          rejectionReason: p.rejection_reason || ''
+        }));
+      }
+      return (data || []).map((p: any) => ({ 
+        id: String(p.id),
+        classId: p.class_id, 
+        studentId: String(p.student_id),
+        date: p.date,
+        type: p.type,
+        reason: p.reason,
+        status: p.status || 'Pending',
+        rejectionReason: p.rejection_reason || ''
+      }));
+    } catch (e) {
+      console.error("getPermissionRequests catch error:", e);
+      return [];
     }
-    const { data, error } = await query;
-    if (error) return [];
-    return data.map((p: any) => ({ 
-      ...p, 
-      classId: p.class_id, 
-      studentId: p.student_id,
-      rejectionReason: p.rejection_reason 
-    }));
   },
-  savePermissionRequest: async (request: any): Promise<void> => {
-    await supabase.from('permission_requests').insert([{
+  savePermissionRequest: async (request: any): Promise<any> => {
+    const payload = {
       class_id: request.classId,
-      student_id: request.studentId,
+      student_id: String(request.studentId),
       date: request.date,
       type: request.type,
       reason: request.reason,
       status: 'Pending'
-    }]);
+    };
+    const { data, error } = await supabase.from('permission_requests').insert([payload]).select();
+    if (error) {
+      console.error("Error saving permission request:", error);
+      throw error;
+    }
+    return data;
   },
   processPermissionRequest: async (id: string, actionStatus: string, reason?: string): Promise<void> => {
     const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
     
     // 1. Get request details
-    const { data: request, error: fetchError } = await supabase
+    let request: any = null;
+    const { data: singleReq, error: fetchError } = await supabase
         .from('permission_requests')
-        .select('id, class_id, student_id, date, type, reason, status, rejection_reason')
+        .select('*')
         .eq('id', id)
-        .single();
+        .maybeSingle();
     
-    if (fetchError || !request) throw fetchError || new Error('Request not found');
+    if (fetchError || !singleReq) {
+      const { data: listData } = await supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status').eq('id', id);
+      if (listData && listData.length > 0) {
+        request = listData[0];
+      } else {
+        throw fetchError || new Error('Request not found');
+      }
+    } else {
+      request = singleReq;
+    }
 
     // 2. Update status
     const updateData: any = { status: newStatus };
     if (newStatus === 'Rejected' && reason) {
         updateData.rejection_reason = reason;
     }
-    await supabase.from('permission_requests').update(updateData).eq('id', id);
+    const { error: updateError } = await supabase.from('permission_requests').update(updateData).eq('id', id);
+    if (updateError) {
+      // If rejection_reason column does not exist in schema, retry updating only status
+      if (updateData.rejection_reason) {
+        const { error: retryError } = await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
+        if (retryError) {
+          console.error("Error updating permission status:", retryError);
+          throw retryError;
+        }
+      } else {
+        console.error("Error updating permission status:", updateError);
+        throw updateError;
+      }
+    }
 
     // 3. If approved, add to attendance
-    if (actionStatus === 'approve') {
+    if (actionStatus === 'approve' && request) {
         const attendanceId = `${request.class_id}_${request.date}`;
         
         // Get existing attendance
-        const { data: attendance, error: attError } = await supabase
+        const { data: attendance } = await supabase
             .from('attendance')
             .select('id, records')
             .eq('id', attendanceId)
-            .single();
+            .maybeSingle();
         
         const newRecord = {
             studentId: request.student_id,
@@ -2370,7 +2426,7 @@ export const apiService = {
 
         if (attendance) {
             // Update existing - filter out old record for this student to avoid duplicates
-            const otherRecords = (attendance.records || []).filter((r: any) => r.studentId !== request.student_id);
+            const otherRecords = (attendance.records || []).filter((r: any) => String(r.studentId) !== String(request.student_id));
             const records = [...otherRecords, newRecord];
             await supabase.from('attendance').update({ records }).eq('id', attendanceId);
         } else {
@@ -2380,17 +2436,17 @@ export const apiService = {
                 records: [newRecord]
             }]);
         }
-    } else if (actionStatus === 'reject') {
+    } else if (actionStatus === 'reject' && request) {
         // If rejected, ensure it's NOT in attendance (remove if exists)
         const attendanceId = `${request.class_id}_${request.date}`;
         const { data: attendance } = await supabase
             .from('attendance')
             .select('id, records')
             .eq('id', attendanceId)
-            .single();
+            .maybeSingle();
         
         if (attendance && attendance.records) {
-            const filteredRecords = attendance.records.filter((r: any) => r.studentId !== request.student_id);
+            const filteredRecords = attendance.records.filter((r: any) => String(r.studentId) !== String(request.student_id));
             if (filteredRecords.length !== attendance.records.length) {
                 await supabase.from('attendance').update({ records: filteredRecords }).eq('id', attendanceId);
             }

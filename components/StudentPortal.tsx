@@ -1249,10 +1249,21 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   }, [liaisonLogs, student.id]);
 
   const myPermissions = useMemo(() => {
-      return permissionRequests
-        .filter(p => p.studentId === student.id)
+      const sId = String(student.id || '').trim();
+      const sNisn = String(student.nisn || '').trim();
+      const sNis = String(student.nis || '').trim();
+      
+      return (permissionRequests || [])
+        .filter(p => {
+          const pStudentId = String(p.studentId || '').trim();
+          return (
+            pStudentId === sId ||
+            (sNisn && pStudentId === sNisn) ||
+            (sNis && pStudentId === sNis)
+          );
+        })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [permissionRequests, student.id]);
+  }, [permissionRequests, student]);
 
   // -- GRADES CALCULATION FOR DASHBOARD --
   const selectedGradeData = useMemo(() => {

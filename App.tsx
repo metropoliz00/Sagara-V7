@@ -943,10 +943,10 @@ const AppContent: React.FC = () => {
   }, [liaisonLogs, activeClassId, students]);
 
   const pendingPermissions = useMemo(() => {
-      const raw = permissionRequests.filter(p => p.status === 'Pending');
+      const raw = permissionRequests.filter(p => (p.status || '').toLowerCase() === 'pending');
       if (currentUser?.role === 'admin' || currentUser?.role === 'Kepala Sekolah') return raw; 
-      return raw.filter(p => isClassMatch(p.classId, activeClassId));
-  }, [permissionRequests, activeClassId, currentUser]);
+      return raw.filter(p => isRecordMatchClass(p, activeClassId) || isClassMatch(p.classId, activeClassId));
+  }, [permissionRequests, activeClassId, currentUser, students]);
 
   // NEW: Check for unread liaison messages for teachers
   const unreadLiaisonCount = useMemo(() => {
@@ -1786,20 +1786,25 @@ const AppContent: React.FC = () => {
       const typeStr = records[0]?.status; 
       const typeLabel = typeStr === 'sick' ? 'Sakit' : typeStr === 'dispensation' ? 'Dispensasi' : 'Ijin'; 
       
-      if (isDemoMode) { 
-          const newReqs = records.map(rec => ({
-              id: `perm-demo-${Date.now()}-${Math.random()}`,
-              studentId: rec.studentId,
-              classId: rec.classId,
-              date: date,
-              type: rec.status,
-              reason: rec.notes,
-              status: 'Pending' as const,
-              studentName: students.find(s => String(s.id).trim() === String(rec.studentId).trim())?.name || 'Siswa'
-          }));
-          const updated = [...newReqs, ...permissionRequests];
-          setPermissionRequests(updated);
+      const newReqs = records.map(rec => ({
+          id: `perm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          studentId: rec.studentId,
+          classId: rec.classId,
+          date: date,
+          type: rec.status,
+          reason: rec.notes,
+          status: 'Pending' as const,
+          studentName: students.find(s => String(s.id).trim() === String(rec.studentId).trim())?.name || 'Siswa'
+      }));
+
+      // Optimistic state update immediately so history in StudentPortal and notification in Teacher Dashboard show instantly
+      setPermissionRequests(prev => {
+          const updated = [...newReqs, ...prev];
           cacheService.set('permissionRequests', updated);
+          return updated;
+      });
+
+      if (isDemoMode) { 
           handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
           return; 
       } 
@@ -1817,19 +1822,18 @@ const AppContent: React.FC = () => {
           
           handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
           const reqs = await apiService.getPermissionRequests(currentUser); 
-          if (reqs && students) {
+          if (reqs && reqs.length > 0) {
+              const currentStudents = students || [];
               const hydratedPermissions = reqs.map((p: any) => ({
                   ...p,
-                  studentName: students.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || 'Siswa Tidak Dikenal'
+                  studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
               }));
               setPermissionRequests(hydratedPermissions);
               cacheService.set('permissionRequests', hydratedPermissions);
-          } else {
-              setPermissionRequests(reqs);
           }
       } catch (err) {
           console.error("Error saving permission request:", err);
-          handleShowNotification(`Gagal mengirim pengajuan ${typeLabel}.`, 'error');
+          handleShowNotification(`Gagal mengirim pengajuan ${typeLabel} ke database cloud.`, 'error');
       }
   };
 
@@ -2199,10 +2203,11 @@ const AppContent: React.FC = () => {
           }
       }
       
-      if (fPermissions !== null && fStudents !== null) {
+      if (fPermissions !== null) {
+          const currentStudents = (Array.isArray(fStudents) ? fStudents : (students || [])) as Student[];
           const hydratedPermissions = (fPermissions as PermissionRequest[]).map((p: any) => ({
               ...p,
-              studentName: (fStudents as Student[]).find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || 'Siswa Tidak Dikenal'
+              studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
           }));
           setPermissionRequests(hydratedPermissions);
           cacheService.set('permissionRequests', hydratedPermissions);

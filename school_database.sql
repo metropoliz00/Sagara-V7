@@ -404,8 +404,11 @@ CREATE TABLE IF NOT EXISTS permission_requests (
   type TEXT,
   reason TEXT,
   status TEXT DEFAULT 'Pending',
+  rejection_reason TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+ALTER TABLE permission_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
 
 -- 21. Support Documents table
 CREATE TABLE IF NOT EXISTS support_documents (

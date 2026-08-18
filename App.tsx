@@ -1787,33 +1787,50 @@ const AppContent: React.FC = () => {
       const typeLabel = typeStr === 'sick' ? 'Sakit' : typeStr === 'dispensation' ? 'Dispensasi' : 'Ijin'; 
       
       if (isDemoMode) { 
-          handleShowNotification(`Pengajuan ${typeLabel} tersimpan (Demo).`, 'success'); 
+          const newReqs = records.map(rec => ({
+              id: `perm-demo-${Date.now()}-${Math.random()}`,
+              studentId: rec.studentId,
+              classId: rec.classId,
+              date: date,
+              type: rec.status,
+              reason: rec.notes,
+              status: 'Pending' as const,
+              studentName: students.find(s => String(s.id).trim() === String(rec.studentId).trim())?.name || 'Siswa'
+          }));
+          const updated = [...newReqs, ...permissionRequests];
+          setPermissionRequests(updated);
+          cacheService.set('permissionRequests', updated);
+          handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
           return; 
       } 
       
-      for (const rec of records) { 
-          await apiService.savePermissionRequest({ 
-              studentId: rec.studentId, 
-              classId: rec.classId, 
-              date: date, 
-              type: rec.status, 
-              reason: rec.notes 
-          }); 
-      } 
-      
-      // Automatically add to attendance
-      const attendanceRecords = records.map(rec => ({
-          studentId: rec.studentId,
-          status: rec.status,
-          notes: rec.notes
-      }));
-      await apiService.saveAttendance(date, attendanceRecords.map(r => ({...r, classId: records[0].classId})));
-
-      handleShowNotification(`Pengajuan ${typeLabel} dikirim dan dicatat di absensi.`, 'success'); 
-      const reqs = await apiService.getPermissionRequests(currentUser); 
-      setPermissionRequests(reqs); 
-      const att = await apiService.getAttendance(currentUser);
-      setAllAttendanceRecords(att);
+      try {
+          for (const rec of records) { 
+              await apiService.savePermissionRequest({ 
+                  studentId: rec.studentId, 
+                  classId: rec.classId, 
+                  date: date, 
+                  type: rec.status, 
+                  reason: rec.notes 
+              }); 
+          } 
+          
+          handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
+          const reqs = await apiService.getPermissionRequests(currentUser); 
+          if (reqs && students) {
+              const hydratedPermissions = reqs.map((p: any) => ({
+                  ...p,
+                  studentName: students.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || 'Siswa Tidak Dikenal'
+              }));
+              setPermissionRequests(hydratedPermissions);
+              cacheService.set('permissionRequests', hydratedPermissions);
+          } else {
+              setPermissionRequests(reqs);
+          }
+      } catch (err) {
+          console.error("Error saving permission request:", err);
+          handleShowNotification(`Gagal mengirim pengajuan ${typeLabel}.`, 'error');
+      }
   };
 
   // Support Docs

@@ -28,7 +28,7 @@ const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ currentUser }) =>
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-kelasku-${currentUser.classId}-${getLocalISODate()}.json`;
+      a.download = `backup-sagara-${currentUser.classId}-${getLocalISODate()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

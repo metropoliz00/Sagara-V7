@@ -973,7 +973,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
 
     const titleRow = [`REKAPITULASI ABSENSI SISWA SEMESTER ${selectedSemester} TAHUN ${semesterYear}`];
     const metaRow = [`Diunduh pada: ${dateStr}, Pukul: ${timeStr} | Oleh: ${userInfo.name} (${userInfo.role.toUpperCase()})`];
-    const classRow = [`Kelas: ${classId || 'Semua Kelas'} | Sekolah: ${schoolProfile?.name || 'Kelasku Pro'}`];
+    const classRow = [`Kelas: ${classId || 'Semua Kelas'} | Sekolah: ${schoolProfile?.name || 'Sagara'}`];
     const emptyRow: any[] = [];
 
     const headersLine1 = ['No', 'Nama Siswa'];

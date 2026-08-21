@@ -3,7 +3,7 @@
   "configVersion": 0,
   "workspaces": {
     "": {
-      "name": "kelasku-pro",
+      "name": "sagara",
       "dependencies": {
         "@google/genai": "^1.42.0",
         "@supabase/supabase-js": "^2.98.0",

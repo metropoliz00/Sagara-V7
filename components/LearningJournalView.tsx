@@ -668,22 +668,11 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                   await apiService.saveLearningJournalBatch(validRows);
               }
               
-              if (isPresent) {
-                  showAlert('Tersimpan! Guru tercatat hadir di jurnal ini.', 'success', 'Hadir');
-              } else {
-                  showAlert('Kehadiran dibatalkan.', 'alert', 'Batal Hadir');
-              }
-              
               const newJournalData = await apiService.getLearningJournal(classId);
               setEntries(newJournalData);
-          } else {
-              if (isPresent) {
-                  showAlert('Tersimpan di Draf. Guru tercatat hadir.', 'success', 'Hadir (Draf)');
-              }
           }
       } catch (e) {
           console.error(e);
-          showAlert('Gagal menyimpan perubahan kehadiran.', 'error', 'Error');
       }
   };
 

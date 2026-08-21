@@ -2309,7 +2309,7 @@ export const apiService = {
   // --- Permission Requests ---
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
     try {
-      let query = supabase.from('permission_requests').select('*');
+      let query = supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status, rejection_reason');
       if (currentUser?.role === 'siswa') {
         if (currentUser.classId) {
           query = query.eq('class_id', currentUser.classId);
@@ -2317,22 +2317,8 @@ export const apiService = {
       }
       const { data, error } = await query;
       if (error) {
-        // Fallback to explicit standard columns without rejection_reason if select('*') has an issue
-        const fallbackRes = await supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status');
-        if (fallbackRes.error) {
-          console.error("Error fetching permission requests:", fallbackRes.error);
-          return [];
-        }
-        return (fallbackRes.data || []).map((p: any) => ({
-          id: String(p.id),
-          classId: p.class_id,
-          studentId: String(p.student_id),
-          date: p.date,
-          type: p.type,
-          reason: p.reason,
-          status: p.status || 'Pending',
-          rejectionReason: p.rejection_reason || ''
-        }));
+        console.error("Error fetching permission requests:", error);
+        return [];
       }
       return (data || []).map((p: any) => ({ 
         id: String(p.id),
@@ -2342,7 +2328,7 @@ export const apiService = {
         type: p.type,
         reason: p.reason,
         status: p.status || 'Pending',
-        rejectionReason: p.rejection_reason || ''
+        rejectionReason: p.rejection_reason 
       }));
     } catch (e) {
       console.error("getPermissionRequests catch error:", e);
@@ -2372,12 +2358,12 @@ export const apiService = {
     let request: any = null;
     const { data: singleReq, error: fetchError } = await supabase
         .from('permission_requests')
-        .select('*')
+        .select('id, class_id, student_id, date, type, reason, status, rejection_reason')
         .eq('id', id)
         .maybeSingle();
     
     if (fetchError || !singleReq) {
-      const { data: listData } = await supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status').eq('id', id);
+      const { data: listData } = await supabase.from('permission_requests').select('*').eq('id', id);
       if (listData && listData.length > 0) {
         request = listData[0];
       } else {
@@ -2394,17 +2380,8 @@ export const apiService = {
     }
     const { error: updateError } = await supabase.from('permission_requests').update(updateData).eq('id', id);
     if (updateError) {
-      // If rejection_reason column does not exist in schema, retry updating only status
-      if (updateData.rejection_reason) {
-        const { error: retryError } = await supabase.from('permission_requests').update({ status: newStatus }).eq('id', id);
-        if (retryError) {
-          console.error("Error updating permission status:", retryError);
-          throw retryError;
-        }
-      } else {
-        console.error("Error updating permission status:", updateError);
-        throw updateError;
-      }
+      console.error("Error updating permission status:", updateError);
+      throw updateError;
     }
 
     // 3. If approved, add to attendance

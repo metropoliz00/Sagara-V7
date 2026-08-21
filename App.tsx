@@ -2432,7 +2432,6 @@ const AppContent: React.FC = () => {
             {canSelectClass && (
                 <div className="hidden lg:flex items-center bg-[#CAF4FF]/40 border border-[#A0DEFF] hover:border-[#5AB2FF] rounded-xl px-3.5 py-1.5 shadow-xs transition-all">
                     <GraduationCap size={18} className="text-[#0066CC] mr-2 shrink-0 animate-pulse" />
-                    <span className="text-xs font-extrabold text-gray-600 uppercase tracking-wider mr-2">Pilih Kelas:</span>
                     <select 
                         value={selectedClassId} 
                         onChange={(e) => setSelectedClassId(e.target.value)}
@@ -2583,7 +2582,6 @@ const AppContent: React.FC = () => {
         {canSelectClass && (
             <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2 flex items-center justify-center shadow-xs relative z-20">
                 <GraduationCap size={18} className="text-[#0066CC] mr-1.5 shrink-0" />
-                <span className="text-xs font-extrabold text-gray-600 uppercase mr-2 tracking-wider">Kelas Aktif:</span>
                 <select 
                     value={selectedClassId} 
                     onChange={(e) => setSelectedClassId(e.target.value)}

@@ -2317,10 +2317,10 @@ export const apiService = {
       }
       const { data, error } = await query;
       if (error) {
-        console.error("Error fetching permission requests:", error);
-        return [];
+        console.warn("Could not fetch permission requests (using cache):", error.message || error);
+        return cacheService.get('permissionRequests') || [];
       }
-      return (data || []).map((p: any) => ({ 
+      const results = (data || []).map((p: any) => ({ 
         id: String(p.id),
         classId: p.class_id, 
         studentId: String(p.student_id),
@@ -2330,9 +2330,11 @@ export const apiService = {
         status: p.status || 'Pending',
         rejectionReason: p.rejection_reason 
       }));
-    } catch (e) {
-      console.error("getPermissionRequests catch error:", e);
-      return [];
+      cacheService.set('permissionRequests', results);
+      return results;
+    } catch (e: any) {
+      console.warn("getPermissionRequests network/catch warning:", e?.message || e);
+      return cacheService.get('permissionRequests') || [];
     }
   },
   savePermissionRequest: async (request: any): Promise<any> => {

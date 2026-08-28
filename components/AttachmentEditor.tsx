@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Attachment, LearningPlan } from '../types';
 import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, Edit2, X, Image, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Table, Link2, Eye, EyeOff, PenTool, AlignLeft, AlignCenter, AlignRight, AlignJustify, Sparkles, Loader2, CheckCircle2, AlertCircle, ExternalLink, KeyRound, Check, Clock, RotateCcw } from 'lucide-react';
-import { parseRichText, markdownToHtml, htmlToMarkdown } from '../utils/textParser';
+import { parseRichText, markdownToHtml, htmlToMarkdown, cleanAiText } from '../utils/textParser';
 import { ContentModal } from './ContentModal';
 import CustomModal from './CustomModal';
 
@@ -305,23 +305,25 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const subject = planData?.subject || '[Mata Pelajaran]';
     const classSem = planData?.classSemester || '[Kelas/Semester]';
 
+    const basePrefix = "Berikan HANYA isi materi atau butir soal secara langsung TANPA mengulang judul kategori atau materi pokok di awal, TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.\n\n";
+
     switch (categoryType) {
       case 'Ringkasan Materi':
-        return `Buatkan Ringkasan Materi pembelajaran yang mendalam, terstruktur rapi, dan mudah dipahami murid untuk mata pelajaran ${subject}, ${classSem}, dengan materi pokok "${topic}".
+        return basePrefix + `Buatkan Ringkasan Materi pembelajaran yang mendalam, terstruktur rapi, dan mudah dipahami murid untuk mata pelajaran ${subject}, ${classSem}, dengan materi pokok "${topic}".
 Susun secara lengkap mencakup:
 1. Konsep Utama, Definisi Kunci, dan Tujuan Pembelajaran
 2. Tabel Rangkuman Sub-Materi beserta penjelasan esensial dan contoh kontekstual nyata dalam kehidupan sehari-hari
 3. Poin-poin intisari penting dan pemahaman bermakna bagi murid.`;
 
       case 'Media':
-        return `Rancang panduan dan rekomendasi Media Pembelajaran yang interaktif, menarik, dan aplikatif untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
+        return basePrefix + `Rancang panduan dan rekomendasi Media Pembelajaran yang interaktif, menarik, dan aplikatif untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
 Sertakan secara rinci:
 1. Rekomendasi media visual, infografis, alat peraga konkret, atau simulasi digital yang relevan
 2. Panduan/skenario integrasi media pada saat kegiatan inti pembelajaran di kelas
 3. Sumber referensi media digital atau materi pendukung yang dapat langsung dimanfaatkan.`;
 
       case 'LKM':
-        return `Buatkan Lembar Kerja Murid (LKM) yang interaktif, eksploratif, dan mengasah kolaborasi untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+        return basePrefix + `Buatkan Lembar Kerja Murid (LKM) yang interaktif, eksploratif, dan mengasah kolaborasi untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
 Susun dengan format terstruktur:
 1. Informasi Pembelajaran & Petunjuk Aktivitas Belajar Murid
 2. Langkah-Langkah Eksplorasi / Penyelidikan Kelompok Murid
@@ -329,7 +331,7 @@ Susun dengan format terstruktur:
 4. Pertanyaan Refleksi, Analisis Masalah, dan Kesimpulan Murid.`;
 
       case 'Rubrik Penilaian':
-        return `Buatkan Rubrik Penilaian Kinerja, Asesmen Autentik, dan Observasi Sikap/Profil Lulusan untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
+        return basePrefix + `Buatkan Rubrik Penilaian Kinerja, Asesmen Autentik, dan Observasi Sikap/Profil Lulusan untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
 Sajikan dalam format tabel matriks dengan kriteria tingkatan:
 - Sangat Baik (Skor 4)
 - Baik (Skor 3)
@@ -338,9 +340,7 @@ Sajikan dalam format tabel matriks dengan kriteria tingkatan:
 Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional.`;
 
       case 'Soal Sumatif':
-        return `Berikan HANYA isi instrumen Soal Asesmen Sumatif secara langsung TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.
-Langsung mulai dengan judul kategori dan butir soal.
-Konfigurasi Soal:
+        return basePrefix + `Konfigurasi Soal:
 - Jenis Soal: ${sumatifQuestionType} (Mencakup variasi seperti Pilihan Ganda, Isian Singkat, Benar-Salah, dan Uraian)
 - Jumlah Soal: ${sumatifQuestionCount} butir.
 Susun secara profesional dan lengkap mencakup:
@@ -348,28 +348,28 @@ Susun secara profesional dan lengkap mencakup:
 2. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
 
       case 'Asesmen Awal':
-        return `Buatkan instrumen Asesmen Awal (Diagnostik Kognitif & Non-Kognitif) untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
+        return basePrefix + `Buatkan instrumen Asesmen Awal (Diagnostik Kognitif & Non-Kognitif) untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
 Sertakan:
 1. Pertanyaan pemantik pengukur pemahaman konsep prasyarat murid
 2. Instrumen pemetaan gaya belajar dan kesiapan emosional belajar murid
 3. Pedoman tindak lanjut pembelajaran berdiferensiasi berdasarkan hasil asesmen awal.`;
 
       case 'Proses':
-        return `Buatkan instrumen Asesmen Formatif (Proses Pembelajaran) untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
+        return basePrefix + `Buatkan instrumen Asesmen Formatif (Proses Pembelajaran) untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
 Sertakan:
 1. Lembar Observasi Keterlibatan dan Keaktifan Murid saat proses belajar
 2. Check-list lembar pantau diskusi dan kolaborasi kelompok
 3. Panduan catatan anekdot dan umpan balik berkala (feedback loop) untuk guru dan murid.`;
 
       case 'Akhir':
-        return `Buatkan instrumen Refleksi dan Asesmen Evaluasi Akhir Pembelajaran untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+        return basePrefix + `Buatkan instrumen Refleksi dan Asesmen Evaluasi Akhir Pembelajaran untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
 Sertakan:
 1. Lembar Refleksi Diri Murid (Self-Assessment) dan Refleksi Antarteman
 2. Pertanyaan evaluasi pemahaman menyeluruh terhadap capaian pembelajaran
 3. Rekomendasi tindak lanjut bagi murid (program remedial dan pengayaan).`;
 
       default:
-        return `Buatkan dokumen lampiran pembelajaran untuk mata pelajaran ${subject}, materi "${topic}".`;
+        return basePrefix + `Buatkan dokumen lampiran pembelajaran untuk mata pelajaran ${subject}, materi "${topic}".`;
     }
   };
 
@@ -436,10 +436,47 @@ Sertakan:
       if (data && data.text) {
         setIsRateLimited(false);
         setRateLimitCountdown(0);
-        const generatedHtml = markdownToHtml(data.text);
+        const cleaned = cleanAiText(data.text);
+        
+        const topic = planData?.topic || '[Materi Pokok]';
+        const subject = planData?.subject || '[Mata Pelajaran]';
+        const classSem = planData?.classSemester || '[Kelas/Semester]';
+
+        let header = '';
+        switch (selectedType) {
+          case 'Ringkasan Materi':
+            header = `RINGKASAN MATERI\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Media':
+            header = `MEDIA PEMBELAJARAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'LKM':
+            header = `LEMBAR KERJA MURID (LKM)\nMata Pelajaran: ${subject}\nKelas / Semester: ${classSem}\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Rubrik Penilaian':
+            header = `RUBRIK PENILAIAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Soal Sumatif':
+            header = `ASESMEN SUMATIF AKHIR\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Asesmen Awal':
+            header = `LEMBAR ASESMEN DIAGNOSTIK / AWAL\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Proses':
+            header = `LEMBAR OBSERVASI PROSES PEMBELAJARAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Akhir':
+            header = `LEMBAR REFLEKSI & EVALUASI AKHIR\nMateri Pokok: ${topic}\n`;
+            break;
+          default:
+            header = `${(selectedType as string).toUpperCase()}\nMateri Pokok: ${topic}\n`;
+        }
+
+        const combinedContent = `${header}\n${cleaned}`;
+        const generatedHtml = markdownToHtml(combinedContent);
         
         // Otomatis isi kolom teks dengan hasil AI
-        setContent(data.text);
+        setContent(combinedContent);
         if (editorRef.current) {
           editorRef.current.innerHTML = generatedHtml;
         }

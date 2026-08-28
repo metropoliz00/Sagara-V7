@@ -544,3 +544,21 @@ export const htmlToMarkdown = (html: string): string => {
 
   return markdown.replace(/\n{3,}/g, '\n\n').trim();
 };
+
+export const cleanAiText = (text: string): string => {
+  if (!text) return '';
+  let cleaned = text.trim();
+  // Remove markdown code block wrappers if present (e.g. ```markdown ... ```)
+  if (cleaned.startsWith('```')) {
+    cleaned = cleaned.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '');
+  }
+  cleaned = cleaned.trim();
+  
+  // Remove unwanted introductory conversational filler phrases
+  cleaned = cleaned.replace(/^(berikut\s+adalah|berikut\s+ini\s+adalah|berikut\s+rancangan|berikut\s+lampiran|berikut\s+paket)[^.\n]*[.\n]+/i, '');
+  
+  // Normalize excessive blank lines and formatting
+  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+};
+

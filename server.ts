@@ -1,6 +1,8 @@
 import express from "express";
 import path from "path";
 import { GoogleGenAI } from "@google/genai";
+import { cleanAiText } from "./utils/textParser";
+
 
 function parseGeminiError(error: any): string {
   if (!error) return "Terjadi kesalahan saat memproses permintaan AI.";
@@ -226,7 +228,8 @@ async function startServer() {
       });
 
       const { text, modelUsed } = await generateWithFallback(ai, prompt);
-      res.json({ text, modelUsed });
+      const cleanedText = cleanAiText(text);
+      res.json({ text: cleanedText, modelUsed });
     } catch (error: any) {
       console.error("Gemini API Error:", error);
       const friendlyError = parseGeminiError(error);

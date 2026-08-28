@@ -82,6 +82,10 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
   const [isKeySavedLocally, setIsKeySavedLocally] = useState(false);
   const [aiSuccessToast, setAiSuccessToast] = useState<string | null>(null);
 
+  // Soal Sumatif Custom Configuration states
+  const [sumatifQuestionType, setSumatifQuestionType] = useState<string>('Pilihan Ganda & Uraian');
+  const [sumatifQuestionCount, setSumatifQuestionCount] = useState<string>('10');
+
   useEffect(() => {
     fetch('/api/ai/status')
       .then(res => res.json())
@@ -260,18 +264,37 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const { topic, subject } = planData || {};
     const t = topic || '[Topik]';
     const s = subject || '[Mata Pelajaran]';
+    const count = Number(sumatifQuestionCount) || 10;
     
-    const generated = `\n# Bagian A: Pilihan Ganda\n` + 
-      [1, 2, 3, 4, 5].map(i => 
-        `${i}. [Tuliskan pertanyaan nomor ${i} tentang ${t} di sini...]\n` +
-        `   a. [Pilihan Jawaban A]\n` +
-        `   b. [Pilihan Jawaban B]\n` +
-        `   c. [Pilihan Jawaban C]\n` +
-        `   d. [Pilihan Jawaban D]\n`
-      ).join('\n') +
-      `\n# Bagian B: Uraian / Essai\n` +
-      `1. Jelaskan secara mendalam mengenai penerapan ${t} dalam kehidupan sehari-hari!\n` +
-      `2. Sebutkan dan uraikan 3 komponen penting dalam ${t} pada mata pelajaran ${s}!`;
+    let generated = `\n# Asesmen Sumatif: ${t} (${sumatifQuestionType})\n`;
+    if (sumatifQuestionType.toLowerCase().includes('pilihan ganda') && !sumatifQuestionType.toLowerCase().includes('uraian') && !sumatifQuestionType.toLowerCase().includes('campuran')) {
+      generated += Array.from({ length: count }, (_, i) => i + 1).map(i => 
+        `\n${i}. [Pertanyaan Pilihan Ganda nomor ${i} tentang ${t}...]\n` +
+        `   a. [Pilihan A]\n` +
+        `   b. [Pilihan B]\n` +
+        `   c. [Pilihan C]\n` +
+        `   d. [Pilihan D]\n`
+      ).join('');
+    } else if (sumatifQuestionType.toLowerCase().includes('uraian')) {
+      generated += Array.from({ length: count }, (_, i) => i + 1).map(i => 
+        `\n${i}. Uraikan dan jelaskan secara analitis mengenai aspek ${t} nomor ${i}!\n`
+      ).join('');
+    } else {
+      const pgCount = Math.ceil(count / 2);
+      const essayCount = count - pgCount;
+      generated += `\n## Bagian A: Pilihan Ganda (${pgCount} Butir)\n` + 
+        Array.from({ length: pgCount }, (_, i) => i + 1).map(i => 
+          `${i}. [Pertanyaan Pilihan Ganda nomor ${i} tentang ${t}...]\n` +
+          `   a. [Pilihan A]\n` +
+          `   b. [Pilihan B]\n` +
+          `   c. [Pilihan C]\n` +
+          `   d. [Pilihan D]\n`
+        ).join('\n') +
+        `\n## Bagian B: Uraian / Essay (${essayCount} Butir)\n` +
+        Array.from({ length: essayCount }, (_, i) => i + 1).map(i => 
+          `${i}. Jelaskan secara mendalam mengenai penerapan ${t} dalam studi ${s}!\n`
+        ).join('\n');
+    }
 
     const newHtml = markdownToHtml(generated);
     insertHtmlAtCursor(newHtml);
@@ -316,10 +339,12 @@ Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional
 
       case 'Soal Sumatif':
         return `Buatkan paket instrumen Soal Asesmen Sumatif yang komprehensif untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
-Susun dengan format:
-1. 5 Butir Soal Pilihan Ganda (opsi a, b, c, d) dengan stimulus kontekstual
-2. 3 Butir Soal Uraian / HOTS berbasis pemecahan masalah (problem solving)
-3. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Penilaian.`;
+Konfigurasi Soal:
+- Jenis Soal: ${sumatifQuestionType}
+- Jumlah Soal: ${sumatifQuestionCount} butir.
+Susun secara profesional dan lengkap mencakup:
+1. Butir-butir soal berkualitas tinggi sesuai jenis "${sumatifQuestionType}" sebanyak ${sumatifQuestionCount} butir dengan stimulus kontekstual bermakna.
+2. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
 
       case 'Asesmen Awal':
         return `Buatkan instrumen Asesmen Awal (Diagnostik Kognitif & Non-Kognitif) untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
@@ -741,6 +766,49 @@ Sertakan:
               />
             </div>
           </div>
+
+          {selectedType === 'Soal Sumatif' && (
+            <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-4 space-y-3 animate-in fade-in duration-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  Konfigurasi Generator Soal Sumatif AI
+                </span>
+                <span className="text-[10px] bg-purple-200/80 text-purple-900 font-bold px-2.5 py-0.5 rounded-full">
+                  Custom AI Prompting
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Jenis Soal / Bentuk Soal:</label>
+                  <select
+                    value={sumatifQuestionType}
+                    onChange={(e) => setSumatifQuestionType(e.target.value)}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  >
+                    <option value="Pilihan Ganda & Uraian">Campuran (Pilihan Ganda & Uraian)</option>
+                    <option value="Pilihan Ganda">Pilihan Ganda Saja (Multiple Choice)</option>
+                    <option value="Uraian / Essay HOTS">Uraian / Essay HOTS</option>
+                    <option value="Isian Singkat & Benar-Salah">Isian Singkat & Benar-Salah</option>
+                  </select>
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Jumlah Soal:</label>
+                  <select
+                    value={sumatifQuestionCount}
+                    onChange={(e) => setSumatifQuestionCount(e.target.value)}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  >
+                    <option value="5">5 Butir Soal</option>
+                    <option value="10">10 Butir Soal</option>
+                    <option value="15">15 Butir Soal</option>
+                    <option value="20">20 Butir Soal</option>
+                    <option value="25">25 Butir Soal</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showLinkModal && (
             <div className="bg-slate-100 border border-indigo-200 rounded-lg p-3 space-y-3 shadow-inner">

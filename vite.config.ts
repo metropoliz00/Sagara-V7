@@ -17,8 +17,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Polyfill process.env agar kode eksisting yang menggunakannya tetap berjalan
-      // Gunakan JSON.stringify untuk memastikan nilai terdefinisi dengan benar sebagai string/objek di client
+      'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
       'process.env': JSON.stringify(env)
     },
     build: {

@@ -124,7 +124,9 @@ const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
       try {
           const saved = localStorage.getItem('sagara_user');
-          return saved ? JSON.parse(saved) : null;
+          if (!saved || saved === 'undefined' || saved === 'null') return null;
+          const parsed = JSON.parse(saved);
+          return (parsed && typeof parsed === 'object' && parsed.id && parsed.role) ? parsed : null;
       } catch (e) { return null; }
   });
 
@@ -2313,6 +2315,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
        fetchData();
+    } else {
+       setLoading(false);
     }
   }, [currentUser, activeClassId]);
 

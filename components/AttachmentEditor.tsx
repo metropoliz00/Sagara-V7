@@ -362,18 +362,52 @@ Sertakan:
     setIsRateLimited(false);
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt, 
-          apiKey: effectiveKey || undefined 
-        }),
-      });
+      let data: any = null;
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            prompt, 
+            apiKey: effectiveKey || undefined 
+          }),
+        });
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error(`Server status ${response.status}`);
+        }
+      } catch (serverErr) {
+        // Fallback for static hosting like Vercel where Express backend is not running
+        if (!effectiveKey) {
+          throw new Error("API Key Gemini belum dikonfigurasi.");
+        }
+        const { GoogleGenAI } = await import('@google/genai');
+        const aiClient = new GoogleGenAI({ apiKey: effectiveKey });
+        const modelsToTry = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"];
+        let generatedText = "";
+        let lastErr: any = null;
+        for (const m of modelsToTry) {
+          try {
+            const result = await aiClient.models.generateContent({
+              model: m,
+              contents: [{ role: 'user', parts: [{ text: prompt }] }]
+            });
+            if (result.text) {
+              generatedText = result.text;
+              break;
+            }
+          } catch (err: any) {
+            lastErr = err;
+          }
+        }
+        if (!generatedText && lastErr) {
+          throw lastErr;
+        }
+        data = { text: generatedText };
+      }
 
-      const data = await response.json();
-
-      if (data.text) {
+      if (data && data.text) {
         setIsRateLimited(false);
         setRateLimitCountdown(0);
         const generatedHtml = markdownToHtml(data.text);
@@ -389,9 +423,9 @@ Sertakan:
           setAiSuccessToast(null);
         }, 4000);
       } else {
-        const errorMsg = data.error || "Gagal menghasilkan konten AI. Periksa kembali API Key Anda.";
+        const errorMsg = data?.error || "Gagal menghasilkan konten AI. Periksa kembali API Key Anda.";
         
-        const rateLimitDetected = data.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan|too\s*many\s*requests/i.test(errorMsg);
+        const rateLimitDetected = data?.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan|too\s*many\s*requests/i.test(errorMsg);
         if (rateLimitDetected) {
           setIsRateLimited(true);
           setRateLimitCountdown(15);
@@ -414,13 +448,15 @@ Sertakan:
       }
     } catch (e: any) {
       console.error("AI Generation failed:", e);
+      const errStr = e?.message || String(e);
+      const isRate = /rate\s*exceeded|429|quota|resource_exhausted/i.test(errStr);
       setModalConfig({
         isOpen: true,
-        type: 'error',
-        title: 'Koneksi Server AI Gagal',
-        message: 'Gagal menghubungi server AI. Pastikan jaringan internet aktif.'
+        type: isRate ? 'alert' : 'error',
+        title: isRate ? 'Batas Kecepatan Request Google AI (429)' : 'Gagal Generate Konten AI',
+        message: isRate ? 'Batas frekuensi request Google AI sedang penuh. Mohon tunggu 15 detik lalu coba kembali.' : (errStr || 'Gagal menghubungi server AI. Pastikan jaringan internet aktif.')
       });
-      setIsRateLimited(false);
+      setIsRateLimited(isRate);
     } finally {
       setIsGeneratingAi(false);
     }

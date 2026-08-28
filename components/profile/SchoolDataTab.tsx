@@ -46,32 +46,59 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
     setVerifyResult(null);
 
     try {
-      const res = await fetch('/api/ai/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: keyToTest || undefined }),
-      });
+      let data: any = null;
+      try {
+        const res = await fetch('/api/ai/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: keyToTest || undefined }),
+        });
+        if (res.ok) {
+          data = await res.json();
+        } else {
+          throw new Error(`Server status ${res.status}`);
+        }
+      } catch {
+        // Fallback for static hosting like Vercel where Express backend is not running
+        if (!keyToTest) {
+          throw new Error("API Key Gemini belum dikonfigurasi.");
+        }
+        const { GoogleGenAI } = await import('@google/genai');
+        const aiClient = new GoogleGenAI({ apiKey: keyToTest });
+        const res = await aiClient.models.generateContent({
+          model: 'gemini-3.7-flash',
+          contents: [{ role: 'user', parts: [{ text: 'Ping test' }] }]
+        });
+        if (res.text) {
+          data = { success: true, message: 'Koneksi Berhasil! Model Gemini aktif dan siap digunakan (Client Verified).' };
+        } else {
+          data = { success: false, error: 'Gagal mendapatkan respons dari Google AI.' };
+        }
+      }
 
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         setVerifyResult({
           success: true,
           message: data.message || 'Koneksi Berhasil! Model Gemini aktif dan siap digunakan.',
         });
       } else {
-        const isRate = data.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(data.error || '');
+        const errText = data?.error || 'Koneksi gagal. Periksa kembali API Key Anda.';
+        const isRate = data?.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(errText);
         setVerifyResult({
           success: false,
           isRateLimit: isRate,
           message: isRate 
             ? 'API Key terhubung ke Google AI, namun batas kecepatan request per menit (15 RPM) sedang penuh. Silakan tunggu 10–15 detik, lalu klik tombol "Coba Uji Ulang Sekarang".'
-            : (data.error || 'Koneksi gagal. Periksa kembali API Key Anda.'),
+            : errText,
         });
       }
-    } catch {
+    } catch (e: any) {
+      const errStr = e?.message || String(e);
+      const isRate = /rate\s*exceeded|429|quota/i.test(errStr);
       setVerifyResult({
         success: false,
-        message: 'Gagal menghubungi server verifikasi AI. Pastikan server aktif.',
+        isRateLimit: isRate,
+        message: isRate ? 'Batas kecepatan request Google AI (429). Mohon tunggu 15 detik.' : (errStr || 'Gagal menghubungi server verifikasi AI. Pastikan API Key valid.'),
       });
     } finally {
       setIsVerifyingAi(false);

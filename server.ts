@@ -71,10 +71,9 @@ function parseGeminiError(error: any): string {
 }
 
 const FALLBACK_MODELS = [
-  "gemini-flash-latest",
-  "gemini-3.1-flash-lite",
-  "gemini-2.5-flash",
   "gemini-3.7-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
 ];
 
 async function generateWithFallback(
@@ -118,18 +117,19 @@ async function generateWithFallback(
         const isRateLimit = /rate\s*exceeded|resource_exhausted|429|quota|too\s*many\s*requests/i.test(raw);
         const isServerBusy = raw.includes("503") || raw.includes("high demand") || raw.includes("UNAVAILABLE") || raw.includes("overloaded");
 
-        console.warn(`[AI Fallback] Model '${model}' (Percobaan ${attempt}) mengalami kendala (${isRateLimit ? 'Rate Exceeded / 429' : raw.slice(0, 80)}).`);
+        const statusLabel = isRateLimit ? '429 Rate Limit' : (isServerBusy ? '503 High Demand' : raw.slice(0, 80));
+        console.warn(`[AI Fallback] Model '${model}' (Percobaan ${attempt}) mengalami kendala (${statusLabel}).`);
 
         // If rate limited or server overloaded on this model, wait with backoff before retry attempt
         if (attempt < maxAttempts && (isRateLimit || isServerBusy)) {
-          const retryWait = isRateLimit ? 1800 : 1000;
+          const retryWait = isRateLimit ? 2000 : 1200;
           await new Promise(res => setTimeout(res, retryWait));
           continue;
         }
 
-        // When switching to the next model, pause so rate limit token bucket has time to recover
+        // When switching to the next model, pause so rate limit token bucket or server queue has time to recover
         if (i < FALLBACK_MODELS.length - 1) {
-          const switchWait = isRateLimit ? 1400 : (isServerBusy ? 1000 : 350);
+          const switchWait = isRateLimit ? 1500 : (isServerBusy ? 1000 : 350);
           await new Promise(res => setTimeout(res, switchWait));
         }
         break; // break inner attempt loop to proceed to next model

@@ -3700,6 +3700,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                       attachments={attachments}
                       onChange={setAttachments}
                       planData={{ topic, subject, classSemester, timeAllocation, profileDimensions: selectedDimensions }}
+                      geminiApiKey={schoolProfile?.geminiApiKey}
                     />
                   </div>
                 </div>

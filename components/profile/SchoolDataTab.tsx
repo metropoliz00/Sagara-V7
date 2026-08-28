@@ -1,8 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SchoolProfileData } from '../../types';
 import { compressImage } from '../../utils/imageHelper';
-import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2 } from 'lucide-react';
+import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, ExternalLink, CheckCircle2, Clock } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
 
 interface SchoolDataTabProps {
@@ -16,7 +16,67 @@ interface SchoolDataTabProps {
 const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave, isSaving, isReadOnly = false }) => {
   const [uploadingRegency, setUploadingRegency] = useState(false);
   const [uploadingSchool, setUploadingSchool] = useState(false);
+  const [serverConfigured, setServerConfigured] = useState(false);
+  const [isVerifyingAi, setIsVerifyingAi] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<{ success: boolean; message: string; isRateLimit?: boolean } | null>(null);
   const { showAlert } = useModal();
+
+  useEffect(() => {
+    fetch('/api/ai/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.configured) {
+          setServerConfigured(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleVerifyAiConnection = async () => {
+    const keyToTest = (school.geminiApiKey || '').trim();
+    if (!keyToTest && !serverConfigured) {
+      setVerifyResult({
+        success: false,
+        message: 'Masukkan Gemini API Key terlebih dahulu pada kolom di bawah atau di menu Secrets AI Studio.',
+      });
+      return;
+    }
+
+    setIsVerifyingAi(true);
+    setVerifyResult(null);
+
+    try {
+      const res = await fetch('/api/ai/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: keyToTest || undefined }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setVerifyResult({
+          success: true,
+          message: data.message || 'Koneksi Berhasil! Model Gemini aktif dan siap digunakan.',
+        });
+      } else {
+        const isRate = data.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(data.error || '');
+        setVerifyResult({
+          success: false,
+          isRateLimit: isRate,
+          message: isRate 
+            ? 'API Key terhubung ke Google AI, namun batas kecepatan request per menit (15 RPM) sedang penuh. Silakan tunggu 10–15 detik, lalu klik tombol "Coba Uji Ulang Sekarang".'
+            : (data.error || 'Koneksi gagal. Periksa kembali API Key Anda.'),
+        });
+      }
+    } catch {
+      setVerifyResult({
+        success: false,
+        message: 'Gagal menghubungi server verifikasi AI. Pastikan server aktif.',
+      });
+    } finally {
+      setIsVerifyingAi(false);
+    }
+  };
 
   const academicYears = Array.from({ length: 40 }, (_, i) => {
     const startYear = 2020 + i;
@@ -449,6 +509,132 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
                       <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500 peer-focus:ring-2 peer-focus:ring-amber-300 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
                     </label>
                 </div>
+            </div>
+        </div>
+
+        {/* --- Gemini API Settings --- */}
+        <div className="md:col-span-2 bg-slate-50/50 p-5 rounded-xl border border-slate-200 mt-0">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="text-sm font-bold text-slate-800 uppercase flex items-center">
+                  <BrainCircuit size={16} className="mr-2 text-indigo-600"/> Konfigurasi AI (Gemini)
+              </h4>
+              {(() => {
+                const hasLocalKey = !!(school.geminiApiKey && school.geminiApiKey.trim().length > 0);
+                const isConnected = hasLocalKey || serverConfigured;
+                return (
+                  <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${
+                    isConnected 
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></span>
+                    {isConnected ? 'Terkoneksi (Aktif)' : 'Belum Dikonfigurasi'}
+                  </span>
+                );
+              })()}
+            </div>
+
+            <div className="space-y-4">
+                <div>
+                     <div className="flex items-center justify-between mb-1">
+                       <label className="block text-sm font-medium text-gray-700">
+                         Gemini API Key
+                       </label>
+                       <a 
+                         href="https://aistudio.google.com/apikey" 
+                         target="_blank" 
+                         rel="noopener noreferrer" 
+                         className="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 hover:underline"
+                       >
+                         Dapatkan API Key di Google AI Studio <ExternalLink size={12} />
+                       </a>
+                     </div>
+                     <div className="flex flex-col sm:flex-row gap-2">
+                       <input 
+                          disabled={isReadOnly} 
+                          type="password" 
+                          value={school.geminiApiKey || ''} 
+                          onChange={(e) => {
+                            setSchool({...school, geminiApiKey: e.target.value});
+                            setVerifyResult(null);
+                          }} 
+                          placeholder={serverConfigured ? "Menggunakan API Key dari Secrets (atau tempel di sini untuk override)..." : "Tempel Gemini API Key di sini (AIzaSy... / AQ...)"} 
+                          className="flex-1 px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-slate-500 focus:border-slate-500 outline-none transition-all disabled:bg-gray-50 disabled:text-gray-500 text-sm font-mono" 
+                       />
+                       <button
+                         type="button"
+                         onClick={handleVerifyAiConnection}
+                         disabled={isVerifyingAi}
+                         className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50 whitespace-nowrap shadow-xs"
+                       >
+                         {isVerifyingAi ? (
+                           <>
+                             <Loader2 size={14} className="animate-spin text-indigo-600" />
+                             <span>Menguji...</span>
+                           </>
+                         ) : (
+                           <>
+                             <BrainCircuit size={14} className="text-indigo-600" />
+                             <span>Uji Koneksi AI</span>
+                           </>
+                         )}
+                       </button>
+                     </div>
+                </div>
+
+                {verifyResult && (
+                  <div className={`p-3 rounded-lg border text-xs flex items-start gap-2.5 ${
+                    verifyResult.success 
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-800' 
+                      : verifyResult.isRateLimit
+                        ? 'bg-amber-50 border-amber-300 text-amber-900'
+                        : 'bg-rose-50 border-rose-200 text-rose-800'
+                  }`}>
+                    {verifyResult.success ? (
+                      <CheckCircle2 size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                    ) : verifyResult.isRateLimit ? (
+                      <Clock size={16} className="text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+                    ) : (
+                      <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                    )}
+                    <div className="space-y-1">
+                      <p className="font-semibold">
+                        {verifyResult.success 
+                          ? 'Koneksi AI Terverifikasi' 
+                          : verifyResult.isRateLimit
+                            ? 'API Key Terhubung (Namun Batas Kuota Per Menit Tercapai: 429 Rate Limit)'
+                            : 'Gagal Menghubungkan ke Gemini AI'}
+                      </p>
+                      <p className="text-[11px] leading-relaxed opacity-90">
+                        {verifyResult.message}
+                      </p>
+                      {!verifyResult.success && (
+                        <div className="pt-1 text-[11px] flex flex-wrap items-center gap-3">
+                          {verifyResult.isRateLimit || verifyResult.message.includes('503') || verifyResult.message.includes('429') || verifyResult.message.includes('trafik') || verifyResult.message.includes('kuota') ? (
+                            <button
+                              type="button"
+                              onClick={handleVerifyAiConnection}
+                              className={`inline-flex items-center gap-1 font-bold underline hover:opacity-80 cursor-pointer ${
+                                verifyResult.isRateLimit ? 'text-amber-950' : 'text-rose-900'
+                              }`}
+                            >
+                              🔄 Coba Uji Ulang Sekarang
+                            </button>
+                          ) : (
+                            <a 
+                              href="https://aistudio.google.com/apikey" 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-1 text-rose-900 font-bold underline hover:text-rose-950"
+                            >
+                              👉 Buat API Key baru di Google AI Studio (Gratis)
+                            </a>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
             </div>
         </div>
 

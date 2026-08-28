@@ -338,12 +338,13 @@ Sajikan dalam format tabel matriks dengan kriteria tingkatan:
 Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional.`;
 
       case 'Soal Sumatif':
-        return `Buatkan paket instrumen Soal Asesmen Sumatif yang komprehensif untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+        return `Berikan HANYA isi instrumen Soal Asesmen Sumatif secara langsung TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.
+Langsung mulai dengan judul kategori dan butir soal.
 Konfigurasi Soal:
-- Jenis Soal: ${sumatifQuestionType}
+- Jenis Soal: ${sumatifQuestionType} (Mencakup variasi seperti Pilihan Ganda, Isian Singkat, Benar-Salah, dan Uraian)
 - Jumlah Soal: ${sumatifQuestionCount} butir.
 Susun secara profesional dan lengkap mencakup:
-1. Butir-butir soal berkualitas tinggi sesuai jenis "${sumatifQuestionType}" sebanyak ${sumatifQuestionCount} butir dengan stimulus kontekstual bermakna.
+1. Butir-butir soal berkualitas tinggi sesuai jenis "${sumatifQuestionType}" sebanyak ${sumatifQuestionCount} butir dengan stimulus kontekstual bermakna untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
 2. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
 
       case 'Asesmen Awal':

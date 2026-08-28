@@ -83,8 +83,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
   const [aiSuccessToast, setAiSuccessToast] = useState<string | null>(null);
 
   // Soal Sumatif Custom Configuration states
-  const [sumatifQuestionType, setSumatifQuestionType] = useState<string>('Pilihan Ganda & Uraian');
-  const [sumatifQuestionCount, setSumatifQuestionCount] = useState<string>('10');
+  const [sumatifCounts, setSumatifCounts] = useState({
+    pg: 10,
+    isian: 0,
+    bs: 0,
+    uraian: 5
+  });
 
   useEffect(() => {
     fetch('/api/ai/status')
@@ -264,36 +268,49 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const { topic, subject } = planData || {};
     const t = topic || '[Topik]';
     const s = subject || '[Mata Pelajaran]';
-    const count = Number(sumatifQuestionCount) || 10;
     
-    let generated = `\n# Asesmen Sumatif: ${t} (${sumatifQuestionType})\n`;
-    if (sumatifQuestionType.toLowerCase().includes('pilihan ganda') && !sumatifQuestionType.toLowerCase().includes('uraian') && !sumatifQuestionType.toLowerCase().includes('campuran')) {
-      generated += Array.from({ length: count }, (_, i) => i + 1).map(i => 
-        `\n${i}. [Pertanyaan Pilihan Ganda nomor ${i} tentang ${t}...]\n` +
-        `   a. [Pilihan A]\n` +
-        `   b. [Pilihan B]\n` +
-        `   c. [Pilihan C]\n` +
-        `   d. [Pilihan D]\n`
-      ).join('');
-    } else if (sumatifQuestionType.toLowerCase().includes('uraian')) {
-      generated += Array.from({ length: count }, (_, i) => i + 1).map(i => 
-        `\n${i}. Uraikan dan jelaskan secara analitis mengenai aspek ${t} nomor ${i}!\n`
-      ).join('');
-    } else {
-      const pgCount = Math.ceil(count / 2);
-      const essayCount = count - pgCount;
-      generated += `\n## Bagian A: Pilihan Ganda (${pgCount} Butir)\n` + 
-        Array.from({ length: pgCount }, (_, i) => i + 1).map(i => 
-          `${i}. [Pertanyaan Pilihan Ganda nomor ${i} tentang ${t}...]\n` +
+    let generated = `\n# Asesmen Sumatif: ${t}\n`;
+    
+    let currentNumber = 1;
+
+    if (sumatifCounts.pg > 0) {
+      generated += `\n## Pilihan Ganda\n`;
+      generated += Array.from({ length: sumatifCounts.pg }, () => {
+        const str = `\n${currentNumber}. [Pertanyaan Pilihan Ganda nomor ${currentNumber} tentang ${t}...]\n` +
           `   a. [Pilihan A]\n` +
           `   b. [Pilihan B]\n` +
           `   c. [Pilihan C]\n` +
-          `   d. [Pilihan D]\n`
-        ).join('\n') +
-        `\n## Bagian B: Uraian / Essay (${essayCount} Butir)\n` +
-        Array.from({ length: essayCount }, (_, i) => i + 1).map(i => 
-          `${i}. Jelaskan secara mendalam mengenai penerapan ${t} dalam studi ${s}!\n`
-        ).join('\n');
+          `   d. [Pilihan D]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.isian > 0) {
+      generated += `\n## Isian Singkat\n`;
+      generated += Array.from({ length: sumatifCounts.isian }, () => {
+        const str = `\n${currentNumber}. [Pertanyaan isian singkat nomor ${currentNumber}...]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.bs > 0) {
+      generated += `\n## Benar - Salah\n`;
+      generated += Array.from({ length: sumatifCounts.bs }, () => {
+        const str = `\n${currentNumber}. [Pernyataan untuk nomor ${currentNumber} - Benar/Salah]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.uraian > 0) {
+      generated += `\n## Uraian / Essay\n`;
+      generated += Array.from({ length: sumatifCounts.uraian }, () => {
+        const str = `\n${currentNumber}. Jelaskan secara mendalam mengenai penerapan ${t} dalam studi ${s}!\n`;
+        currentNumber++;
+        return str;
+      }).join('');
     }
 
     const newHtml = markdownToHtml(generated);
@@ -339,13 +356,23 @@ Sajikan dalam format tabel matriks dengan kriteria tingkatan:
 - Perlu Bimbingan (Skor 1)
 Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional.`;
 
-      case 'Soal Sumatif':
-        return basePrefix + `Konfigurasi Soal:
-- Jenis Soal: ${sumatifQuestionType} (Mencakup variasi seperti Pilihan Ganda, Isian Singkat, Benar-Salah, dan Uraian)
-- Jumlah Soal: ${sumatifQuestionCount} butir.
+      case 'Soal Sumatif': {
+        const totalSoal = sumatifCounts.pg + sumatifCounts.isian + sumatifCounts.bs + sumatifCounts.uraian;
+        const configDetails = [
+          sumatifCounts.pg > 0 ? `- Pilihan Ganda: ${sumatifCounts.pg} soal` : '',
+          sumatifCounts.isian > 0 ? `- Isian Singkat: ${sumatifCounts.isian} soal` : '',
+          sumatifCounts.bs > 0 ? `- Benar-Salah: ${sumatifCounts.bs} soal` : '',
+          sumatifCounts.uraian > 0 ? `- Uraian / Essay: ${sumatifCounts.uraian} soal` : ''
+        ].filter(Boolean).join('\n');
+
+        return basePrefix + `Konfigurasi Soal (Total: ${totalSoal} butir):
+${configDetails}
+
 Susun secara profesional dan lengkap mencakup:
-1. Butir-butir soal berkualitas tinggi sesuai jenis "${sumatifQuestionType}" sebanyak ${sumatifQuestionCount} butir dengan stimulus kontekstual bermakna untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
-2. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
+1. Butir-butir soal berkualitas tinggi dengan stimulus kontekstual bermakna untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+2. Pastikan setiap butir soal diberikan penomoran angka yang berurutan (misal: 1, 2, 3, dst).
+3. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
+      }
 
       case 'Asesmen Awal':
         return basePrefix + `Buatkan instrumen Asesmen Awal (Diagnostik Kognitif & Non-Kognitif) untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
@@ -816,33 +843,46 @@ Sertakan:
                   Custom AI Prompting
                 </span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                 <div className="space-y-1">
-                  <label className="font-bold text-purple-900 block">Jenis Soal / Bentuk Soal:</label>
-                  <select
-                    value={sumatifQuestionType}
-                    onChange={(e) => setSumatifQuestionType(e.target.value)}
+                  <label className="font-bold text-purple-900 block">Pilihan Ganda:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.pg}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, pg: parseInt(e.target.value) || 0 })}
                     className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
-                  >
-                    <option value="Pilihan Ganda & Uraian">Campuran (Pilihan Ganda & Uraian)</option>
-                    <option value="Pilihan Ganda">Pilihan Ganda Saja (Multiple Choice)</option>
-                    <option value="Uraian / Essay HOTS">Uraian / Essay HOTS</option>
-                    <option value="Isian Singkat & Benar-Salah">Isian Singkat & Benar-Salah</option>
-                  </select>
+                  />
                 </div>
                 <div className="space-y-1">
-                  <label className="font-bold text-purple-900 block">Jumlah Soal:</label>
-                  <select
-                    value={sumatifQuestionCount}
-                    onChange={(e) => setSumatifQuestionCount(e.target.value)}
+                  <label className="font-bold text-purple-900 block">Isian Singkat:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.isian}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, isian: parseInt(e.target.value) || 0 })}
                     className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
-                  >
-                    <option value="5">5 Butir Soal</option>
-                    <option value="10">10 Butir Soal</option>
-                    <option value="15">15 Butir Soal</option>
-                    <option value="20">20 Butir Soal</option>
-                    <option value="25">25 Butir Soal</option>
-                  </select>
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Benar-Salah:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.bs}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, bs: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Uraian / Essay:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.uraian}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, uraian: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
                 </div>
               </div>
             </div>

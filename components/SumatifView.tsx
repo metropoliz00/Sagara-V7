@@ -1098,41 +1098,67 @@ const SumatifEditor: React.FC<{
     const template = [
       {
         No: 1,
-        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda',
         Tipe: 'PG',
         Bobot: 1,
+        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda',
+        Gambar_URL: '',
+        Keterangan_Gambar: '',
         Opsi_A: 'Pilihan A',
         Opsi_B: 'Pilihan B',
         Opsi_C: 'Pilihan C',
         Opsi_D: 'Pilihan D',
         Jawaban_Benar: 'A',
-        Gambar_URL: '',
-        Keterangan_Gambar: ''
+        Pernyataan_1: '',
+        Pernyataan_2: '',
+        Pernyataan_3: ''
       },
       {
         No: 2,
-        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda Kompleks',
         Tipe: 'PGK',
         Bobot: 1,
+        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda Kompleks',
+        Gambar_URL: '',
+        Keterangan_Gambar: '',
         Opsi_A: 'Pilihan A',
         Opsi_B: 'Pilihan B',
         Opsi_C: 'Pilihan C',
         Opsi_D: 'Pilihan D',
         Jawaban_Benar: 'A, B',
-        Gambar_URL: '',
-        Keterangan_Gambar: ''
+        Pernyataan_1: '',
+        Pernyataan_2: '',
+        Pernyataan_3: ''
       },
       {
         No: 3,
-        Pertanyaan: 'Contoh Pertanyaan Benar Salah',
         Tipe: 'BS',
         Bobot: 1,
+        Pertanyaan: 'Contoh Pertanyaan Benar Salah',
+        Gambar_URL: '',
+        Keterangan_Gambar: '',
+        Opsi_A: '',
+        Opsi_B: '',
+        Opsi_C: '',
+        Opsi_D: '',
+        Jawaban_Benar: 'B, S, B',
         Pernyataan_1: 'Pernyataan 1',
         Pernyataan_2: 'Pernyataan 2',
-        Pernyataan_3: 'Pernyataan 3',
-        Jawaban_Benar: 'B, S, B',
+        Pernyataan_3: 'Pernyataan 3'
+      },
+      {
+        No: 4,
+        Tipe: 'Uraian',
+        Bobot: 2,
+        Pertanyaan: 'Contoh Pertanyaan Uraian / Essay',
         Gambar_URL: '',
-        Keterangan_Gambar: ''
+        Keterangan_Gambar: '',
+        Opsi_A: '',
+        Opsi_B: '',
+        Opsi_C: '',
+        Opsi_D: '',
+        Jawaban_Benar: 'Kunci jawaban uraian (opsional)',
+        Pernyataan_1: '',
+        Pernyataan_2: '',
+        Pernyataan_3: ''
       }
     ];
 
@@ -1161,22 +1187,27 @@ const SumatifEditor: React.FC<{
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         const newQuestions: Question[] = data.map((row) => {
-            const rawType = String(row.Tipe || 'PG').trim().toUpperCase();
-            const type = (rawType === 'PGK' ? 'pgk' : rawType === 'BS' ? 'bs' : 'pg') as QuestionType;
+            const rawType = String(row.Tipe || row.tipe || 'PG').trim().toUpperCase();
+            const type = (rawType === 'PGK' ? 'pgk' : rawType === 'BS' ? 'bs' : rawType === 'URAIAN' || rawType === 'ESSAY' ? 'uraian' : 'pg') as QuestionType;
             const q: Question = {
               id: Math.random().toString(36).substr(2, 9),
-              text: row.Pertanyaan || '',
+              text: row.Pertanyaan || row.pertanyaan || '',
               type,
-              points: parseInt(row.Bobot) || 1,
-              imageUrl: row.Gambar_URL || '',
-              imageCaption: row.Keterangan_Gambar || '',
-              correctAnswer: '',
+              points: parseInt(row.Bobot || row.bobot) || 1,
+              imageUrl: row.Gambar_URL || row.gambar_url || '',
+              imageCaption: row.Keterangan_Gambar || row.keterangan_gambar || '',
+              correctAnswer: type === 'uraian' ? (row.Jawaban_Benar || row.jawaban_benar || '') : '',
               options: [],
               subQuestions: []
             };
   
             if (type === 'pg' || type === 'pgk') {
-              const rawOptions = [row.Opsi_A, row.Opsi_B, row.Opsi_C, row.Opsi_D].map(o => String(o || '').trim());
+              const rawOptions = [
+                row.Opsi_A || row.opsi_a, 
+                row.Opsi_B || row.opsi_b, 
+                row.Opsi_C || row.opsi_c, 
+                row.Opsi_D || row.opsi_d
+              ].map(o => String(o || '').trim());
               q.options = rawOptions.map(opt => {
                  const isUrl = opt.startsWith('http://') || opt.startsWith('https://') || opt.startsWith('data:image/');
                  return {
@@ -1186,41 +1217,41 @@ const SumatifEditor: React.FC<{
                  };
               });
             
-            const mapAnsToId = (ans: any) => {
-              if (!ans) return '';
-              const a = String(ans).trim().toUpperCase();
-              if (a === 'A') return q.options![0]?.id;
-              if (a === 'B') return q.options![1]?.id;
-              if (a === 'C') return q.options![2]?.id;
-              if (a === 'D') return q.options![3]?.id;
-              
-              // Fallback to text match
-              const found = q.options!.find(o => o.text && o.text.toUpperCase() === a);
-              return found ? found.id : '';
-            };
+              const mapAnsToId = (ans: any) => {
+                if (!ans) return '';
+                const a = String(ans).trim().toUpperCase();
+                if (a === 'A') return q.options![0]?.id;
+                if (a === 'B') return q.options![1]?.id;
+                if (a === 'C') return q.options![2]?.id;
+                if (a === 'D') return q.options![3]?.id;
+                
+                // Fallback to text match
+                const found = q.options!.find(o => o.text && o.text.toUpperCase() === a);
+                return found ? found.id : '';
+              };
 
-            if (type === 'pg') {
-              q.correctAnswer = mapAnsToId(row.Jawaban_Benar) || "";
-            } else {
-              q.correctAnswer = String(row.Jawaban_Benar || '').split(',').map(s => mapAnsToId(s)).filter(id => id);
+              if (type === 'pg') {
+                q.correctAnswer = mapAnsToId(row.Jawaban_Benar || row.jawaban_benar) || "";
+              } else {
+                q.correctAnswer = String(row.Jawaban_Benar || row.jawaban_benar || '').split(',').map(s => mapAnsToId(s)).filter(id => id);
+              }
+            } else if (type === 'bs') {
+              const bsAnswers = String(row.Jawaban_Benar || row.jawaban_benar || '').split(',').map(s => s.trim().toUpperCase());
+              const getBsAns = (idx: number) => {
+                const val = bsAnswers[idx];
+                if (val === 'B' || val === 'BENAR') return 'Benar';
+                if (val === 'S' || val === 'SALAH') return 'Salah';
+                return 'Benar'; // Default
+              };
+
+              q.subQuestions = [
+                { id: 'sq1', text: row.Pernyataan_1 || row.pernyataan_1 || '', correctAnswer: getBsAns(0) as any },
+                { id: 'sq2', text: row.Pernyataan_2 || row.pernyataan_2 || '', correctAnswer: getBsAns(1) as any },
+                { id: 'sq3', text: row.Pernyataan_3 || row.pernyataan_3 || '', correctAnswer: getBsAns(2) as any }
+              ].filter(sq => sq.text.trim() !== '');
             }
-          } else if (type === 'bs') {
-            const bsAnswers = String(row.Jawaban_Benar || '').split(',').map(s => s.trim().toUpperCase());
-            const getBsAns = (idx: number) => {
-              const val = bsAnswers[idx];
-              if (val === 'B') return 'Benar';
-              if (val === 'S') return 'Salah';
-              return 'Benar'; // Default
-            };
 
-            q.subQuestions = [
-              { id: 'sq1', text: row.Pernyataan_1 || '', correctAnswer: getBsAns(0) as any },
-              { id: 'sq2', text: row.Pernyataan_2 || '', correctAnswer: getBsAns(1) as any },
-              { id: 'sq3', text: row.Pernyataan_3 || '', correctAnswer: getBsAns(2) as any }
-            ].filter(sq => sq.text.trim() !== ''); // Hanya ambil pernyataan yang ada isinya
-          }
-
-          return q;
+            return q;
         });
 
         setFormData({ ...formData, questions: [...formData.questions, ...newQuestions] });

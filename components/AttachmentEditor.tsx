@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Attachment, LearningPlan } from '../types';
-import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, Edit2, X, Image, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Table, Link2, Eye, PenTool, AlignLeft, AlignCenter, AlignRight, AlignJustify, Sparkles } from 'lucide-react';
-import { parseRichText, markdownToHtml, htmlToMarkdown } from '../utils/textParser';
+import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, Edit2, X, Image, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Table, Link2, Eye, EyeOff, PenTool, AlignLeft, AlignCenter, AlignRight, AlignJustify, Sparkles, Loader2, CheckCircle2, AlertCircle, ExternalLink, KeyRound, Check, Clock, RotateCcw } from 'lucide-react';
+import { parseRichText, markdownToHtml, htmlToMarkdown, cleanAiText } from '../utils/textParser';
 import { ContentModal } from './ContentModal';
+import CustomModal from './CustomModal';
 
 
 interface AttachmentEditorProps {
   attachments: Attachment[];
   onChange: (attachments: Attachment[]) => void;
   planData?: Pick<LearningPlan, 'topic' | 'subject' | 'classSemester' | 'timeAllocation' | 'profileDimensions'>;
+  geminiApiKey?: string;
 }
 
 const getTypeBadgeStyle = (type: Attachment['type']) => {
@@ -36,12 +38,23 @@ const ALL_ATTACHMENT_TYPES: Attachment['type'][] = [
   'Akhir'
 ];
 
-export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments = [], onChange, planData }) => {
+export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments = [], onChange, planData, geminiApiKey }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedType, setSelectedType] = useState<Attachment['type']>('Ringkasan Materi');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: ''
+  });
 
   // Rich text editor states
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -55,6 +68,122 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
   const [tableRows, setTableRows] = useState(3);
   const [tableWidth, setTableWidth] = useState('100%');
   const [tableCaption, setTableCaption] = useState('');
+
+  // AI Generator states
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const [serverAiConfigured, setServerAiConfigured] = useState(false);
+  const [customKeyInput, setCustomKeyInput] = useState('');
+  const [isVerifyingKey, setIsVerifyingKey] = useState(false);
+  const [keyVerifyResult, setKeyVerifyResult] = useState<{ success: boolean; text: string } | null>(null);
+  const [showKeyPassword, setShowKeyPassword] = useState(false);
+  const [isKeySavedLocally, setIsKeySavedLocally] = useState(false);
+  const [aiSuccessToast, setAiSuccessToast] = useState<string | null>(null);
+
+  // Soal Sumatif Custom Configuration states
+  const [sumatifCounts, setSumatifCounts] = useState({
+    pg: 10,
+    isian: 0,
+    bs: 0,
+    uraian: 5
+  });
+
+  useEffect(() => {
+    fetch('/api/ai/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data?.configured) {
+          setServerAiConfigured(true);
+        }
+      })
+      .catch(() => {});
+
+    // Try loading local cached key if available
+    try {
+      const cached = localStorage.getItem('school_profile_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.geminiApiKey && !customKeyInput) {
+          setCustomKeyInput(parsed.geminiApiKey);
+        }
+      }
+    } catch {}
+  }, []);
+
+  // Countdown timer for rate limit recovery
+  useEffect(() => {
+    if (rateLimitCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setRateLimitCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [rateLimitCountdown]);
+
+  const handleVerifyCustomKey = async () => {
+    const keyToTest = (customKeyInput.trim() || geminiApiKey || '').trim();
+    if (!keyToTest && !serverAiConfigured) {
+      setKeyVerifyResult({ success: false, text: 'Masukkan API Key terlebih dahulu pada kolom input.' });
+      return;
+    }
+
+    setIsVerifyingKey(true);
+    setKeyVerifyResult(null);
+
+    try {
+      const res = await fetch('/api/ai/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: keyToTest || undefined }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setKeyVerifyResult({ 
+          success: true, 
+          text: data.message || 'API Key Valid! Berhasil terhubung ke Gemini AI.' 
+        });
+      } else {
+        const isRate = data.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(data.error || '');
+        setKeyVerifyResult({ 
+          success: false, 
+          text: isRate
+            ? 'API Key terhubung ke Google AI, tetapi batas frekuensi per menit (15 request/menit) sedang penuh. Tunggu 10–15 detik lalu klik tombol "Uji API Key" kembali.'
+            : (data.error || 'API Key ditolak. Periksa kembali API Key Anda.')
+        });
+      }
+    } catch {
+      setKeyVerifyResult({ 
+        success: false, 
+        text: 'Gagal menghubungi server verifikasi. Pastikan jaringan aktif.' 
+      });
+    } finally {
+      setIsVerifyingKey(false);
+    }
+  };
+
+  const handleSaveKeyLocally = () => {
+    if (!customKeyInput.trim()) return;
+    try {
+      const cached = localStorage.getItem('school_profile_cache');
+      const obj = cached ? JSON.parse(cached) : {};
+      obj.geminiApiKey = customKeyInput.trim();
+      localStorage.setItem('school_profile_cache', JSON.stringify(obj));
+      setIsKeySavedLocally(true);
+      setTimeout(() => setIsKeySavedLocally(false), 3000);
+    } catch (e) {
+      console.error("Gagal simpan key ke cache", e);
+    }
+  };
+
+  const isAiConnected = !!(geminiApiKey?.trim() || serverAiConfigured || customKeyInput.trim());
 
   const editorRef = React.useRef<HTMLDivElement>(null);
 
@@ -140,20 +269,287 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const t = topic || '[Topik]';
     const s = subject || '[Mata Pelajaran]';
     
-    const generated = `\n# Bagian A: Pilihan Ganda\n` + 
-      [1, 2, 3, 4, 5].map(i => 
-        `${i}. [Tuliskan pertanyaan nomor ${i} tentang ${t} di sini...]\n` +
-        `   a. [Pilihan Jawaban A]\n` +
-        `   b. [Pilihan Jawaban B]\n` +
-        `   c. [Pilihan Jawaban C]\n` +
-        `   d. [Pilihan Jawaban D]\n`
-      ).join('\n') +
-      `\n# Bagian B: Uraian / Essai\n` +
-      `1. Jelaskan secara mendalam mengenai penerapan ${t} dalam kehidupan sehari-hari!\n` +
-      `2. Sebutkan dan uraikan 3 komponen penting dalam ${t} pada mata pelajaran ${s}!`;
+    let generated = `\n# Asesmen Sumatif: ${t}\n`;
+    
+    let currentNumber = 1;
+
+    if (sumatifCounts.pg > 0) {
+      generated += `\n## Pilihan Ganda\n`;
+      generated += Array.from({ length: sumatifCounts.pg }, () => {
+        const str = `\n${currentNumber}. [Pertanyaan Pilihan Ganda nomor ${currentNumber} tentang ${t}...]\n` +
+          `   a. [Pilihan A]\n` +
+          `   b. [Pilihan B]\n` +
+          `   c. [Pilihan C]\n` +
+          `   d. [Pilihan D]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.isian > 0) {
+      generated += `\n## Isian Singkat\n`;
+      generated += Array.from({ length: sumatifCounts.isian }, () => {
+        const str = `\n${currentNumber}. [Pertanyaan isian singkat nomor ${currentNumber}...]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.bs > 0) {
+      generated += `\n## Benar - Salah\n`;
+      generated += Array.from({ length: sumatifCounts.bs }, () => {
+        const str = `\n${currentNumber}. [Pernyataan untuk nomor ${currentNumber} - Benar/Salah]\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
+
+    if (sumatifCounts.uraian > 0) {
+      generated += `\n## Uraian / Essay\n`;
+      generated += Array.from({ length: sumatifCounts.uraian }, () => {
+        const str = `\n${currentNumber}. Jelaskan secara mendalam mengenai penerapan ${t} dalam studi ${s}!\n`;
+        currentNumber++;
+        return str;
+      }).join('');
+    }
 
     const newHtml = markdownToHtml(generated);
     insertHtmlAtCursor(newHtml);
+  };
+
+  const getDefaultAiPrompt = (categoryType: Attachment['type']) => {
+    const topic = planData?.topic || '[Materi Pokok]';
+    const subject = planData?.subject || '[Mata Pelajaran]';
+    const classSem = planData?.classSemester || '[Kelas/Semester]';
+
+    const basePrefix = "Berikan HANYA isi materi atau butir soal secara langsung TANPA mengulang judul kategori atau materi pokok di awal, TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.\n\n";
+
+    switch (categoryType) {
+      case 'Ringkasan Materi':
+        return basePrefix + `Buatkan Ringkasan Materi pembelajaran yang mendalam, terstruktur rapi, dan mudah dipahami murid untuk mata pelajaran ${subject}, ${classSem}, dengan materi pokok "${topic}".
+Susun secara lengkap mencakup:
+1. Konsep Utama, Definisi Kunci, dan Tujuan Pembelajaran
+2. Tabel Rangkuman Sub-Materi beserta penjelasan esensial dan contoh kontekstual nyata dalam kehidupan sehari-hari
+3. Poin-poin intisari penting dan pemahaman bermakna bagi murid.`;
+
+      case 'Media':
+        return basePrefix + `Rancang panduan dan rekomendasi Media Pembelajaran yang interaktif, menarik, dan aplikatif untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
+Sertakan secara rinci:
+1. Rekomendasi media visual, infografis, alat peraga konkret, atau simulasi digital yang relevan
+2. Panduan/skenario integrasi media pada saat kegiatan inti pembelajaran di kelas
+3. Sumber referensi media digital atau materi pendukung yang dapat langsung dimanfaatkan.`;
+
+      case 'LKM':
+        return basePrefix + `Buatkan Lembar Kerja Murid (LKM) yang interaktif, eksploratif, dan mengasah kolaborasi untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+Susun dengan format terstruktur:
+1. Informasi Pembelajaran & Petunjuk Aktivitas Belajar Murid
+2. Langkah-Langkah Eksplorasi / Penyelidikan Kelompok Murid
+3. Tabel Lembar Pengamatan / Isian Data Hasil Investigasi Murid
+4. Pertanyaan Refleksi, Analisis Masalah, dan Kesimpulan Murid.`;
+
+      case 'Rubrik Penilaian':
+        return basePrefix + `Buatkan Rubrik Penilaian Kinerja, Asesmen Autentik, dan Observasi Sikap/Profil Lulusan untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
+Sajikan dalam format tabel matriks dengan kriteria tingkatan:
+- Sangat Baik (Skor 4)
+- Baik (Skor 3)
+- Cukup (Skor 2)
+- Perlu Bimbingan (Skor 1)
+Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional.`;
+
+      case 'Soal Sumatif': {
+        const totalSoal = sumatifCounts.pg + sumatifCounts.isian + sumatifCounts.bs + sumatifCounts.uraian;
+        const configDetails = [
+          sumatifCounts.pg > 0 ? `- Pilihan Ganda: ${sumatifCounts.pg} soal` : '',
+          sumatifCounts.isian > 0 ? `- Isian Singkat: ${sumatifCounts.isian} soal` : '',
+          sumatifCounts.bs > 0 ? `- Benar-Salah: ${sumatifCounts.bs} soal` : '',
+          sumatifCounts.uraian > 0 ? `- Uraian / Essay: ${sumatifCounts.uraian} soal` : ''
+        ].filter(Boolean).join('\n');
+
+        return basePrefix + `Konfigurasi Soal (Total: ${totalSoal} butir):
+${configDetails}
+
+Susun secara profesional dan lengkap mencakup:
+1. Butir-butir soal berkualitas tinggi dengan stimulus kontekstual bermakna untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+2. Pastikan setiap butir soal diberikan penomoran angka yang berurutan (misal: 1, 2, 3, dst).
+3. Kunci Jawaban Lengkap dan Pedoman Penskoran / Kriteria Rubrik Penilaian.`;
+      }
+
+      case 'Asesmen Awal':
+        return basePrefix + `Buatkan instrumen Asesmen Awal (Diagnostik Kognitif & Non-Kognitif) untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
+Sertakan:
+1. Pertanyaan pemantik pengukur pemahaman konsep prasyarat murid
+2. Instrumen pemetaan gaya belajar dan kesiapan emosional belajar murid
+3. Pedoman tindak lanjut pembelajaran berdiferensiasi berdasarkan hasil asesmen awal.`;
+
+      case 'Proses':
+        return basePrefix + `Buatkan instrumen Asesmen Formatif (Proses Pembelajaran) untuk mata pelajaran ${subject}, ${classSem}, topik "${topic}".
+Sertakan:
+1. Lembar Observasi Keterlibatan dan Keaktifan Murid saat proses belajar
+2. Check-list lembar pantau diskusi dan kolaborasi kelompok
+3. Panduan catatan anekdot dan umpan balik berkala (feedback loop) untuk guru dan murid.`;
+
+      case 'Akhir':
+        return basePrefix + `Buatkan instrumen Refleksi dan Asesmen Evaluasi Akhir Pembelajaran untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+Sertakan:
+1. Lembar Refleksi Diri Murid (Self-Assessment) dan Refleksi Antarteman
+2. Pertanyaan evaluasi pemahaman menyeluruh terhadap capaian pembelajaran
+3. Rekomendasi tindak lanjut bagi murid (program remedial dan pengayaan).`;
+
+      default:
+        return basePrefix + `Buatkan dokumen lampiran pembelajaran untuk mata pelajaran ${subject}, materi "${topic}".`;
+    }
+  };
+
+  const handleDirectAiGenerate = async () => {
+    if (isGeneratingAi) return;
+
+    const effectiveKey = (customKeyInput.trim() || geminiApiKey || '').trim();
+    if (!effectiveKey && !serverAiConfigured) {
+      setShowApiKeyModal(true);
+      return;
+    }
+
+    const prompt = getDefaultAiPrompt(selectedType);
+
+    setIsGeneratingAi(true);
+    setIsRateLimited(false);
+
+    try {
+      let data: any = null;
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            prompt, 
+            apiKey: effectiveKey || undefined 
+          }),
+        });
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error(`Server status ${response.status}`);
+        }
+      } catch (serverErr) {
+        // Fallback for static hosting like Vercel where Express backend is not running
+        if (!effectiveKey) {
+          throw new Error("API Key Gemini belum dikonfigurasi.");
+        }
+        const { GoogleGenAI } = await import('@google/genai');
+        const aiClient = new GoogleGenAI({ apiKey: effectiveKey });
+        const modelsToTry = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"];
+        let generatedText = "";
+        let lastErr: any = null;
+        for (const m of modelsToTry) {
+          try {
+            const result = await aiClient.models.generateContent({
+              model: m,
+              contents: [{ role: 'user', parts: [{ text: prompt }] }]
+            });
+            if (result.text) {
+              generatedText = result.text;
+              break;
+            }
+          } catch (err: any) {
+            lastErr = err;
+          }
+        }
+        if (!generatedText && lastErr) {
+          throw lastErr;
+        }
+        data = { text: generatedText };
+      }
+
+      if (data && data.text) {
+        setIsRateLimited(false);
+        setRateLimitCountdown(0);
+        const cleaned = cleanAiText(data.text);
+        
+        const topic = planData?.topic || '[Materi Pokok]';
+        const subject = planData?.subject || '[Mata Pelajaran]';
+        const classSem = planData?.classSemester || '[Kelas/Semester]';
+
+        let header = '';
+        switch (selectedType) {
+          case 'Ringkasan Materi':
+            header = `RINGKASAN MATERI\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Media':
+            header = `MEDIA PEMBELAJARAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'LKM':
+            header = `LEMBAR KERJA MURID (LKM)\nMata Pelajaran: ${subject}\nKelas / Semester: ${classSem}\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Rubrik Penilaian':
+            header = `RUBRIK PENILAIAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Soal Sumatif':
+            header = `ASESMEN SUMATIF AKHIR\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Asesmen Awal':
+            header = `LEMBAR ASESMEN DIAGNOSTIK / AWAL\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Proses':
+            header = `LEMBAR OBSERVASI PROSES PEMBELAJARAN\nMateri Pokok: ${topic}\n`;
+            break;
+          case 'Akhir':
+            header = `LEMBAR REFLEKSI & EVALUASI AKHIR\nMateri Pokok: ${topic}\n`;
+            break;
+          default:
+            header = `${(selectedType as string).toUpperCase()}\nMateri Pokok: ${topic}\n`;
+        }
+
+        const combinedContent = `${header}\n${cleaned}`;
+        const generatedHtml = markdownToHtml(combinedContent);
+        
+        // Otomatis isi kolom teks dengan hasil AI
+        setContent(combinedContent);
+        if (editorRef.current) {
+          editorRef.current.innerHTML = generatedHtml;
+        }
+
+        setAiSuccessToast(`Hasil AI untuk ${selectedType} berhasil digenerate dan otomatis terisi ke dalam kolom teks.`);
+        setTimeout(() => {
+          setAiSuccessToast(null);
+        }, 4000);
+      } else {
+        const errorMsg = data?.error || "Gagal menghasilkan konten AI. Periksa kembali API Key Anda.";
+        
+        const rateLimitDetected = data?.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan|too\s*many\s*requests/i.test(errorMsg);
+        if (rateLimitDetected) {
+          setIsRateLimited(true);
+          setRateLimitCountdown(15);
+          setModalConfig({
+            isOpen: true,
+            type: 'alert',
+            title: 'Batas Kecepatan Request Google AI (Rate Exceeded / 429)',
+            message: 'Batas frekuensi request per menit (15 RPM) Google AI sedang penuh. Mohon tunggu sekitar 15 detik agar kuota pulih otomatis, lalu klik tombol "Generate AI" kembali.'
+          });
+        } else if (errorMsg.includes("401") || errorMsg.includes("UNAUTHENTICATED") || errorMsg.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") || errorMsg.includes("API Key") || errorMsg.includes("403")) {
+          setShowApiKeyModal(true);
+        } else {
+          setModalConfig({
+            isOpen: true,
+            type: 'error',
+            title: 'Gagal Generate Konten AI',
+            message: errorMsg
+          });
+        }
+      }
+    } catch (e: any) {
+      console.error("AI Generation failed:", e);
+      const errStr = e?.message || String(e);
+      const isRate = /rate\s*exceeded|429|quota|resource_exhausted/i.test(errStr);
+      setModalConfig({
+        isOpen: true,
+        type: isRate ? 'alert' : 'error',
+        title: isRate ? 'Batas Kecepatan Request Google AI (429)' : 'Gagal Generate Konten AI',
+        message: isRate ? 'Batas frekuensi request Google AI sedang penuh. Mohon tunggu 15 detik lalu coba kembali.' : (errStr || 'Gagal menghubungi server AI. Pastikan jaringan internet aktif.')
+      });
+      setIsRateLimited(isRate);
+    } finally {
+      setIsGeneratingAi(false);
+    }
   };
 
   const handleLineHeight = (value: string) => {
@@ -320,7 +716,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
       case 'LKM':
         return {
           title: `LKM - ${t}`,
-          content: `LEMBAR KERJA MURID (LKM)\n\n| Informasi Pembelajaran | Detail Kelas |\n| :--- | :--- |\n| Mata Pelajaran | ${s} |\n| Kelas / Semester | ${cs} |\n| Materi Pokok | ${t} |\n| Alokasi Waktu | ${ta} |\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Siswa] | | Ketua Kelompok |\n| 2. [Nama Siswa] | | Notulis |\n| 3. [Nama Siswa] | | Anggota |\n| 4. [Nama Siswa] | | Anggota |\n| 5. [Nama Siswa] | | Anggota |\n\n# Petunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\n# Pertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
+          content: `LEMBAR KERJA MURID (LKM)\n\n| Informasi Pembelajaran | Detail Kelas |\n| :--- | :--- |\n| Mata Pelajaran | ${s} |\n| Kelas / Semester | ${cs} |\n| Materi Pokok | ${t} |\n| Alokasi Waktu | ${ta} |\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Murid] | | Ketua Kelompok |\n| 2. [Nama Murid] | | Notulis |\n| 3. [Nama Murid] | | Anggota |\n| 4. [Nama Murid] | | Anggota |\n| 5. [Nama Murid] | | Anggota |\n\n# Petunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\n# Pertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
         };
       case 'Rubrik Penilaian':
         const selectedDims = profileDimensions && profileDimensions.length > 0 ? profileDimensions : ['Keimanan dan Ketakwaan terhadap Tuhan YME', 'Penalaran Kritis', 'Kolaborasi'];
@@ -363,7 +759,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
 
   const handleAddNew = () => {
     if (availableTypes.length === 0) {
-      alert('Semua kategori lampiran sudah ditambahkan.');
+      setModalConfig({
+        isOpen: true,
+        type: 'alert',
+        title: 'Informasi Kategori',
+        message: 'Semua kategori lampiran sudah ditambahkan.'
+      });
       return;
     }
     setEditingId(null);
@@ -430,6 +831,62 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
               />
             </div>
           </div>
+
+          {selectedType === 'Soal Sumatif' && (
+            <div className="bg-purple-50/70 border border-purple-200 rounded-xl p-4 space-y-3 animate-in fade-in duration-200 shadow-2xs">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-purple-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-purple-600" />
+                  Konfigurasi Generator Soal Sumatif AI
+                </span>
+                <span className="text-[10px] bg-purple-200/80 text-purple-900 font-bold px-2.5 py-0.5 rounded-full">
+                  Custom AI Prompting
+                </span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Pilihan Ganda:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.pg}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, pg: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Isian Singkat:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.isian}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, isian: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Benar-Salah:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.bs}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, bs: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="font-bold text-purple-900 block">Uraian / Essay:</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={sumatifCounts.uraian}
+                    onChange={(e) => setSumatifCounts({ ...sumatifCounts, uraian: parseInt(e.target.value) || 0 })}
+                    className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {showLinkModal && (
             <div className="bg-slate-100 border border-indigo-200 rounded-lg p-3 space-y-3 shadow-inner">
@@ -556,6 +1013,97 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
                 >
                   Sisipkan Tabel Kosong
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* AI Generation Active Indicator */}
+          {isGeneratingAi && (
+            <div className="bg-gradient-to-r from-indigo-50 via-purple-50 to-indigo-50 border border-indigo-200 text-indigo-950 rounded-xl p-3.5 flex items-center gap-3 animate-pulse shadow-2xs">
+              <div className="p-2 bg-indigo-600 text-white rounded-lg shadow-xs shrink-0">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+              <div className="flex-1 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-indigo-950">Gemini AI sedang menyusun {selectedType}...</span>
+                  <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-bold rounded-full">Proses Otomatis</span>
+                </div>
+                <p className="text-[11px] text-indigo-700 mt-0.5">
+                  Topik: <strong>{planData?.topic || 'Sesuai Rencana'}</strong> &bull; Mapel: <strong>{planData?.subject || 'Umum'}</strong>. Hasil akan otomatis langsung mengisi kolom teks editor di bawah.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* AI Success Toast Banner */}
+          {aiSuccessToast && (
+            <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl p-3 flex items-center justify-between text-xs shadow-xs animate-in fade-in duration-200">
+              <div className="flex items-center gap-2">
+                <div className="p-1 bg-emerald-600 text-white rounded-md shrink-0">
+                  <Check className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="font-bold text-emerald-950">Berhasil: </span>
+                  <span>{aiSuccessToast}</span>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setAiSuccessToast(null)}
+                className="text-emerald-700 hover:text-emerald-950 p-1 text-xs"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
+          {/* Rate Limit Alert & Countdown */}
+          {isRateLimited && rateLimitCountdown > 0 && (
+            <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 text-xs text-amber-900 shadow-xs animate-in fade-in duration-200">
+              <div className="flex items-start gap-2.5">
+                <div className="p-1.5 bg-amber-100 text-amber-700 rounded-lg shrink-0 mt-0.5">
+                  <Clock className="w-4 h-4 animate-pulse" />
+                </div>
+                <div className="flex-1 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-amber-950">
+                      Batas Kecepatan Request Google AI (Rate Exceeded / 429)
+                    </span>
+                    <span className="px-2 py-0.5 bg-amber-200/80 text-amber-900 font-mono font-bold text-[10px] rounded-full">
+                      Pulih dalam {rateLimitCountdown}s
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-amber-800 leading-relaxed">
+                    Akun Google AI gratis memiliki batas frekuensi (15 request/menit). Kuota akan pulih otomatis setelah jeda waktu selesai.
+                  </p>
+                  <div className="pt-1 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleDirectAiGenerate}
+                      disabled={isGeneratingAi || rateLimitCountdown > 0}
+                      className="px-3 py-1 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white rounded font-bold text-xs transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      {rateLimitCountdown > 0 ? (
+                        <>
+                          <Clock className="w-3.5 h-3.5 animate-spin" />
+                          <span>Menunggu ({rateLimitCountdown}s)...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Coba Generate Sekarang</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKeyModal(true)}
+                      className="px-2.5 py-1 bg-white border border-amber-300 text-amber-900 rounded font-semibold text-xs transition hover:bg-amber-100 cursor-pointer"
+                    >
+                      Ganti / Uji API Key
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -720,6 +1268,50 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
                     Asisten Soal
                   </button>
                 )}
+
+                <button
+                  type="button"
+                  onClick={handleDirectAiGenerate}
+                  disabled={isGeneratingAi}
+                  className={`px-3 py-1 rounded text-xs font-bold border flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                    isGeneratingAi
+                      ? 'bg-indigo-700 text-white border-indigo-800'
+                      : isRateLimited && rateLimitCountdown > 0
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-700'
+                        : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700'
+                  }`}
+                  title={`Klik untuk otomatis mengisi teks ${selectedType} dengan hasil AI`}
+                >
+                  {isGeneratingAi ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Sedang Generate AI...</span>
+                    </>
+                  ) : isRateLimited && rateLimitCountdown > 0 ? (
+                    <>
+                      <Clock className="w-3.5 h-3.5 animate-pulse" />
+                      <span>Tunggu ({rateLimitCountdown}s)</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Generate AI</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowApiKeyModal(true)}
+                  className={`p-1.5 rounded transition border cursor-pointer ${
+                    isAiConnected 
+                      ? 'text-slate-600 hover:bg-slate-200 border-transparent hover:border-slate-300' 
+                      : 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-300'
+                  }`}
+                  title={isAiConnected ? "Pengaturan Gemini API Key (Terkoneksi)" : "Gemini API Key Belum Dikonfigurasi (Klik untuk Mengatur)"}
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                </button>
 
                 <div className="w-[1px] h-5 bg-gray-200 mx-1" />
 
@@ -899,6 +1491,144 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
           </div>
         )}
       </div>
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+        onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* API Key Modal */}
+      {showApiKeyModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5 space-y-4 border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">
+                  <KeyRound className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Konfigurasi Google Gemini API Key</h3>
+                  <p className="text-xs text-slate-500">Kunci API digunakan untuk fitur Generate AI otomatis</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setShowApiKeyModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-600 font-medium">Status Koneksi AI:</span>
+                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${
+                  isAiConnected 
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${isAiConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+                  {isAiConnected ? 'Terkoneksi' : 'Belum Dikonfigurasi'}
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                  Gemini API Key (AIzaSy... / AQ...)
+                </label>
+                <div className="relative">
+                  <input
+                    type={showKeyPassword ? "text" : "password"}
+                    placeholder={serverAiConfigured ? "Menggunakan API Key Server (atau masukkan untuk override)..." : "Tempel Gemini API Key di sini..."}
+                    value={customKeyInput}
+                    onChange={e => {
+                      setCustomKeyInput(e.target.value);
+                      setKeyVerifyResult(null);
+                    }}
+                    className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-300 rounded-lg text-xs font-mono focus:ring-2 focus:ring-indigo-500 focus:bg-white outline-none transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowKeyPassword(!showKeyPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                    tabIndex={-1}
+                  >
+                    {showKeyPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-[11px] text-slate-500">
+                <span>Belum punya kunci API?</span>
+                <a
+                  href="https://aistudio.google.com/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:text-indigo-800 font-bold underline inline-flex items-center gap-1"
+                >
+                  Dapatkan API Key Gratis di Google AI Studio <ExternalLink className="w-3 h-3" />
+                </a>
+              </div>
+
+              {keyVerifyResult && (
+                <div className={`p-2.5 rounded-lg text-[11px] flex items-start gap-2 ${
+                  keyVerifyResult.success 
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>
+                  {keyVerifyResult.success ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                  )}
+                  <div className="flex-1 leading-relaxed">
+                    <span className="font-semibold">{keyVerifyResult.success ? 'Berhasil: ' : 'Peringatan: '}</span>
+                    {keyVerifyResult.text}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={handleVerifyCustomKey}
+                disabled={isVerifyingKey}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {isVerifyingKey ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Menguji...</span>
+                  </>
+                ) : (
+                  <>
+                    <BrainCircuit className="w-3.5 h-3.5" />
+                    <span>Uji Koneksi</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  handleSaveKeyLocally();
+                  setShowApiKeyModal(false);
+                }}
+                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>Simpan & Selesai</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

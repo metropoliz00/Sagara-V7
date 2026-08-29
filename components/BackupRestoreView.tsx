@@ -28,7 +28,7 @@ const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ currentUser }) =>
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup-kelasku-${currentUser.classId}-${getLocalISODate()}.json`;
+      a.download = `backup-sagara-${currentUser.classId}-${getLocalISODate()}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -45,6 +45,11 @@ const BackupRestoreView: React.FC<BackupRestoreViewProps> = ({ currentUser }) =>
   const handleRestore = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      setError('Ukuran file melebihi batas maksimum 500 KB.');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = async (e) => {

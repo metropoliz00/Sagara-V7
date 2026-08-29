@@ -262,7 +262,7 @@ export const AttendancePrint: React.FC<AttendancePrintProps> = ({
   const getCityOrVillage = () => {
     if (schoolProfile?.desa) return schoolProfile.desa;
     if (schoolProfile?.kabupaten) return schoolProfile.kabupaten;
-    return extractLocation(schoolProfile?.address || '');
+    return extractLocation(schoolProfile?.jalan || schoolProfile?.address || '');
   };
   const city = getCityOrVillage();
 

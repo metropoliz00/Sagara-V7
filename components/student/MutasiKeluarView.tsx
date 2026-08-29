@@ -56,9 +56,9 @@ export const MutasiKeluarView: React.FC<MutasiKeluarViewProps> = ({
             .kop-text p { margin: 2px 0 0; font-size: 8pt; }
             .title { text-align: center; margin-bottom: 15px; }
             .title h2 { margin: 0; font-size: 12pt; text-transform: uppercase; text-decoration: underline; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            th, td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-wrap: break-word; font-size: 8pt; }
-            th { background-color: #f2f2f2 !important; text-align: center; font-weight: bold; -webkit-print-color-adjust: exact; }
+            table { width: 100%; border-collapse: collapse; margin-top: 10px; table-layout: fixed; font-size: 8pt; }
+            th, td { border: 1px solid #000; padding: 4px; vertical-align: middle; word-break: break-word; overflow-wrap: break-word; white-space: normal; font-size: 8pt; }
+            th { background-color: #f2f2f2 !important; text-align: center !important; vertical-align: middle !important; font-weight: bold; -webkit-print-color-adjust: exact; text-transform: uppercase; }
             .text-center { text-align: center; }
             .signature { margin-top: 30px; display: flex; justify-content: space-between; font-size: 9pt; page-break-inside: avoid; line-height: 1.15; }
             .sig-box { width: 250px; text-align: center; line-height: 1.15; }

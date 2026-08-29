@@ -39,6 +39,10 @@ const EmploymentLinksAdmin: React.FC<EmploymentLinksAdminProps> = ({ links, onSa
   const handleIconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
       try {
         // Compress icon to be small (64px is usually enough for favicon style)
         const base64 = await compressImage(file, 64, 0.8);

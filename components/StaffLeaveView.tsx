@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import CustomModal from './CustomModal';
 import html2pdf from 'html2pdf.js';
 import { 
   FileText, CheckCircle, Clock, XCircle, Plus, Search, Filter,
@@ -40,6 +41,82 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [manualLetterNumber, setManualLetterNumber] = useState("");
   const [rejectModalData, setRejectModalData] = useState<{ isOpen: boolean; request: StaffLeaveRequest | null }>({ isOpen: false, request: null });
   const [rejectionReason, setRejectionReason] = useState("");
+  const [editModalData, setEditModalData] = useState<{ isOpen: boolean; request: StaffLeaveRequest | null }>({ isOpen: false, request: null });
+  const [editIjinGroup, setEditIjinGroup] = useState<keyof typeof IJIN_OPTIONS>('Dispensasi');
+  const [editKategoriIjin, setEditKategoriIjin] = useState('');
+  const [editJenisCutiLainnya, setEditJenisCutiLainnya] = useState('');
+  const [editTanggalMulai, setEditTanggalMulai] = useState('');
+  const [editTanggalSelesai, setEditTanggalSelesai] = useState('');
+  const [editAlasan, setEditAlasan] = useState('');
+
+  const handleOpenEditModal = (req: StaffLeaveRequest) => {
+    let group: keyof typeof IJIN_OPTIONS = 'Dispensasi';
+    let cat = req.kategoriIjin;
+    let cutiLainnya = '';
+
+    if (cat.startsWith('Cuti -')) {
+      group = 'Cuti';
+      const detail = cat.replace('Cuti - ', '').trim();
+      if (IJIN_OPTIONS['Cuti'].includes(detail)) {
+        cat = detail;
+      } else {
+        cat = 'Lainnya';
+        cutiLainnya = detail;
+      }
+    } else {
+      for (const g of Object.keys(IJIN_OPTIONS) as (keyof typeof IJIN_OPTIONS)[]) {
+        if (IJIN_OPTIONS[g].includes(cat)) {
+          group = g;
+          break;
+        }
+      }
+    }
+
+    setEditIjinGroup(group);
+    setEditKategoriIjin(cat);
+    setEditJenisCutiLainnya(cutiLainnya);
+    setEditTanggalMulai(req.tanggalMulai ? req.tanggalMulai.slice(0, 16) : '');
+    setEditTanggalSelesai(req.tanggalSelesai ? req.tanggalSelesai.slice(0, 16) : '');
+    setEditAlasan(req.alasan || '');
+    setEditModalData({ isOpen: true, request: req });
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editModalData.request) return;
+    if (!editTanggalMulai || !editTanggalSelesai || !editAlasan) {
+      onShowNotification('Harap lengkapi semua field.', 'warning');
+      return;
+    }
+
+    let finalKategori = editKategoriIjin;
+    if (editIjinGroup === 'Cuti') {
+      const detail = editKategoriIjin === 'Lainnya' ? editJenisCutiLainnya : editKategoriIjin;
+      if (!detail.trim()) {
+        onShowNotification('Harap isi jenis cuti.', 'warning');
+        return;
+      }
+      finalKategori = `Cuti - ${detail}`;
+    }
+
+    const updated: StaffLeaveRequest = {
+      ...editModalData.request,
+      kategoriIjin: finalKategori,
+      tanggalMulai: editTanggalMulai,
+      tanggalSelesai: editTanggalSelesai,
+      alasan: editAlasan
+    };
+
+    try {
+      await apiService.saveStaffLeaveRequest(updated);
+      setRequests(requests.map(r => r.id === updated.id ? updated : r));
+      onShowNotification('Pengajuan izin berhasil diperbarui.', 'success');
+      setEditModalData({ isOpen: false, request: null });
+    } catch (e) {
+      console.error(e);
+      onShowNotification('Gagal memperbarui pengajuan.', 'error');
+    }
+  };
 
   const handleExecutePrint = () => {
     setIsLetterNumberModalOpen(false);
@@ -59,6 +136,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
       }
 
       standaloneContainer.innerHTML = printElement.outerHTML;
+      document.body.classList.add('has-standalone-print');
 
       let styleTag = document.getElementById('sagara-dynamic-print-style');
       if (!styleTag) {
@@ -77,6 +155,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
 
       const cleanup = () => {
         document.title = originalTitle;
+        document.body.classList.remove('has-standalone-print');
         if (standaloneContainer) {
           standaloneContainer.innerHTML = '';
         }
@@ -138,7 +217,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         <p className="font-bold uppercase">DINAS PENDIDIKAN</p>
         <p className="font-bold uppercase text-lg">{schoolProfile?.name || 'UPT SD NEGERI ...'}</p>
         <p className="font-bold uppercase">KECAMATAN {schoolProfile?.kecamatan?.toUpperCase() || '...'}</p>
-        <p className="text-xs">Jln. {schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
+        <p className="text-xs">Jln. {schoolProfile?.jalan || schoolProfile?.address || '...'}, Desa {schoolProfile?.desa || '...'}, Kecamatan {schoolProfile?.kecamatan || '...'}, Kabupaten {schoolProfile?.kabupaten || '...'}, Kode Pos {schoolProfile?.postalCode || '...'}</p>
         <p className="text-xs">Pos-el : {schoolProfile?.email || '...'}</p>
       </div>
       <div className="w-20 h-20 flex-shrink-0 opacity-0 pointer-events-none"></div>
@@ -152,6 +231,17 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   const [tanggalMulai, setTanggalMulai] = useState('');
   const [tanggalSelesai, setTanggalSelesai] = useState('');
   const [alasan, setAlasan] = useState('');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   
   // Permissions - Admin, Superadmin, and Kepala Sekolah can approve/manage all leave requests
   const isPrincipalOrAdmin = 
@@ -311,15 +401,22 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Yakin ingin menghapus pengajuan ini?')) return;
-    try {
-      await apiService.deleteStaffLeaveRequest(id);
-      setRequests(requests.filter(r => r.id !== id));
-      onShowNotification('Pengajuan berhasil dihapus.', 'success');
-    } catch (e) {
-      console.error(e);
-      onShowNotification('Gagal menghapus pengajuan.', 'error');
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Pengajuan Izin',
+      message: 'Apakah Anda yakin ingin menghapus pengajuan izin ini?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          await apiService.deleteStaffLeaveRequest(id);
+          setRequests(requests.filter(r => r.id !== id));
+          onShowNotification('Pengajuan berhasil dihapus.', 'success');
+        } catch (e) {
+          console.error(e);
+          onShowNotification('Gagal menghapus pengajuan.', 'error');
+        }
+      }
+    });
   };
 
   return (
@@ -426,7 +523,7 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <Calendar size={12} className="mr-1.5 shrink-0 text-gray-400" />
                         <span>{new Date(req.tanggalMulai).toLocaleDateString('id-ID')} - {new Date(req.tanggalSelesai).toLocaleDateString('id-ID')}</span>
                       </div>
-                      <p className="text-xs text-gray-500 italic truncate" title={req.alasan}>"{req.alasan}"</p>
+                      <p className="text-xs text-gray-500 italic whitespace-normal break-words" title={req.alasan}>"{req.alasan}"</p>
                     </div>
                     <div className="md:col-span-3 flex flex-col md:items-end justify-center gap-2">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide inline-block text-center ${
@@ -454,10 +551,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           <>
                              <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-600 hover:text-emerald-800 p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Setujui"><CheckCircle size={16}/></button>
                              <button onClick={() => { setRejectModalData({ isOpen: true, request: req }); setRejectionReason(""); }} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Tolak"><XCircle size={16}/></button>
+                             <button onClick={() => handleOpenEditModal(req)} className="text-amber-600 hover:text-amber-800 p-1.5 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors" title="Edit"><Edit size={16}/></button>
                           </>
                         )}
                         {!canApprove && req.status === 'Menunggu' && (
-                          <button onClick={() => handleDelete(req.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Hapus"><Trash2 size={16}/></button>
+                          <>
+                            <button onClick={() => handleOpenEditModal(req)} className="text-amber-600 hover:text-amber-800 p-1.5 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors" title="Edit"><Edit size={16}/></button>
+                            <button onClick={() => handleDelete(req.id)} className="text-red-600 hover:text-red-800 p-1.5 bg-red-50 hover:bg-red-100 rounded-lg transition-colors" title="Hapus"><Trash2 size={16}/></button>
+                          </>
                         )}
                       </div>
                     </div>
@@ -599,10 +700,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                         <div className="flex items-center justify-center gap-2">
                            <button onClick={() => handleUpdateStatus(req, 'Disetujui')} className="text-emerald-500 hover:text-emerald-700 p-1 bg-emerald-50 rounded" title="Setujui"><CheckCircle size={16}/></button>
                            <button onClick={() => { setRejectModalData({ isOpen: true, request: req }); setRejectionReason(""); }} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Tolak"><XCircle size={16}/></button>
+                           <button onClick={() => handleOpenEditModal(req)} className="text-amber-500 hover:text-amber-700 p-1 bg-amber-50 rounded" title="Edit"><Edit size={16}/></button>
                         </div>
                       )}
                       {!canApprove && req.status === 'Menunggu' && (
-                         <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded mx-auto block" title="Hapus"><Trash2 size={16}/></button>
+                         <div className="flex items-center justify-center gap-2">
+                           <button onClick={() => handleOpenEditModal(req)} className="text-amber-500 hover:text-amber-700 p-1 bg-amber-50 rounded" title="Edit"><Edit size={16}/></button>
+                           <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Hapus"><Trash2 size={16}/></button>
+                         </div>
                       )}
                       {req.status === 'Disetujui' && (
                         <div className="flex items-center justify-center gap-2">
@@ -612,7 +717,12 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                           )}
                         </div>
                       )}
-                      {req.status !== 'Menunggu' && req.status !== 'Disetujui' && <span className="text-gray-300">-</span>}
+                      {req.status === 'Ditolak' && canApprove && (
+                        <div className="flex items-center justify-center gap-2">
+                          <button onClick={() => handleDelete(req.id)} className="text-red-500 hover:text-red-700 p-1 bg-red-50 rounded" title="Hapus"><Trash2 size={16}/></button>
+                        </div>
+                      )}
+                      {req.status !== 'Menunggu' && req.status !== 'Disetujui' && req.status !== 'Ditolak' && <span className="text-gray-300">-</span>}
                     </td>
                   </tr>
                 ))}
@@ -794,6 +904,122 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         </div>
       )}
 
+      {/* Edit Modal */}
+      {editModalData.isOpen && editModalData.request && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[150] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
+              <h3 className="text-lg font-bold text-gray-800">Edit Pengajuan Izin</h3>
+              <button 
+                onClick={() => setEditModalData({ isOpen: false, request: null })}
+                className="text-gray-400 hover:text-gray-600 font-bold"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Jenis Pengajuan</label>
+                  <select
+                    value={editIjinGroup}
+                    onChange={(e) => {
+                      const grp = e.target.value as keyof typeof IJIN_OPTIONS;
+                      setEditIjinGroup(grp);
+                      setEditKategoriIjin(IJIN_OPTIONS[grp][0]);
+                    }}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {Object.keys(IJIN_OPTIONS).map(group => (
+                      <option key={group} value={group}>{group}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Detail {editIjinGroup}</label>
+                  <select
+                    value={editKategoriIjin}
+                    onChange={(e) => setEditKategoriIjin(e.target.value)}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    {IJIN_OPTIONS[editIjinGroup].map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {editIjinGroup === 'Cuti' && editKategoriIjin === 'Lainnya' && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Sebutkan Jenis Cuti</label>
+                  <input
+                    type="text"
+                    value={editJenisCutiLainnya}
+                    onChange={(e) => setEditJenisCutiLainnya(e.target.value)}
+                    placeholder="Sebutkan jenis cuti..."
+                    className="w-full bg-white border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    required
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Mulai</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editTanggalMulai}
+                    onChange={(e) => setEditTanggalMulai(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Tanggal Selesai</label>
+                  <input
+                    type="datetime-local"
+                    required
+                    value={editTanggalSelesai}
+                    onChange={(e) => setEditTanggalSelesai(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Alasan Detail</label>
+                <textarea
+                  required
+                  rows={3}
+                  value={editAlasan}
+                  onChange={(e) => setEditAlasan(e.target.value)}
+                  placeholder="Tuliskan alasan..."
+                  className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                ></textarea>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setEditModalData({ isOpen: false, request: null })}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-200"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold hover:bg-indigo-700 shadow"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {printRequestedLeave && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 print:p-0 print:bg-white print:block">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto print:shadow-none print:w-full print:max-w-none print:max-h-none print:overflow-visible relative">
@@ -817,13 +1043,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                   ? ['Surat Dispensasi']
                   : isCuti
                   ? ['Permohonan Cuti', 'Izin Cuti', 'Pengantar']
-                  : ['Surat Izin', 'Permohonan Izin', 'Pengantar'];
+                  : ['Surat Izin']; // Menampilkan Surat Izin saja jika kategori izin
 
                 const activeType = isDispensasi ? 'Surat Dispensasi' : letterType;
+                const hasLetterNumber = ['Surat Izin', 'Izin Cuti', 'Pengantar'].includes(activeType);
 
                 return (
                   <>
-                    {!isDispensasi && (
+                    {!isDispensasi && availableLetterTypes.length > 1 && (
                       <div className="flex gap-2 mb-4 overflow-x-auto">
                         {availableLetterTypes.map(type => (
                           <button
@@ -837,13 +1064,30 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
                       </div>
                     )}
 
-                    <div className="flex gap-2 mb-2">
-                      <button
-                        onClick={() => setIsLetterNumberModalOpen(true)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors"
-                      >
-                        <Printer size={16} className="mr-2" /> Cetak {activeType}
-                      </button>
+                    <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center justify-between mb-2">
+                      {hasLetterNumber ? (
+                        <div className="flex items-center gap-2 flex-1 max-w-md">
+                          <span className="text-xs font-bold text-gray-700 whitespace-nowrap">Nomor Surat:</span>
+                          <input
+                            type="text"
+                            value={manualLetterNumber}
+                            onChange={(e) => setManualLetterNumber(e.target.value)}
+                            placeholder="Contoh: 800.1.11.2/043/414.101.319/2026"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 text-gray-800"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex-1"></div>
+                      )}
+
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleExecutePrint}
+                          className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-bold flex items-center shadow-sm shadow-indigo-200 hover:bg-indigo-700 transition-colors"
+                        >
+                          <Printer size={16} className="mr-2" /> Cetak {activeType}
+                        </button>
+                      </div>
                     </div>
                   </>
                 );
@@ -1336,6 +1580,14 @@ const StaffLeaveView: React.FC<StaffLeaveViewProps> = ({ currentUser, onShowNoti
         </div>
       )}
 
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type="confirm"
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

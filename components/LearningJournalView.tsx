@@ -5,6 +5,7 @@ import { useModal } from '../context/ModalContext';
 import { getLocalISODate } from '../utils/dateUtils';
 import html2pdf from 'html2pdf.js';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import { 
   Save, Calendar, Printer, Plus, Trash2, Loader2, 
   ChevronLeft, ChevronRight, NotebookPen, RefreshCw,
@@ -255,25 +256,38 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'Tanggal (YYYY-MM-DD)': getLocalISODate(),
-        'Slot Waktu': '07:30 - 08:40',
-        'Mata Pelajaran': 'Matematika',
-        'Topik/Bab': 'Pecahan',
-        'Model Pembelajaran': 'Problem-Based Learning (PBL)',
-        'Pendekatan': 'Pendekatan kontekstual',
-        'Metode': 'Tanya jawab, Diskusi kelompok',
-        'Kegiatan Pembelajaran': 'Pendahuluan, inti, penutup',
-        'Evaluasi': 'Kuis singkat',
-        'Refleksi Guru': 'Siswa sangat aktif.',
-        'Tindak Lanjut': 'Pembelajaran lanjutan topik perkalian pecahan.'
-      }
+    const headers = [
+      'Tanggal (YYYY-MM-DD)', 'Slot Waktu', 'Mata Pelajaran', 'Topik/Bab', 'Model Pembelajaran',
+      'Pendekatan', 'Metode', 'Kegiatan Pembelajaran', 'Evaluasi', 'Refleksi Guru', 'Tindak Lanjut'
     ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Jurnal");
-    XLSX.writeFile(wb, "Template_Jurnal_Pembelajaran.xlsx");
+    const templateData = [
+      [
+        getLocalISODate(),
+        '07:30 - 08:40',
+        'Matematika',
+        'Pecahan',
+        'Problem-Based Learning (PBL)',
+        'Pendekatan kontekstual',
+        'Tanya jawab, Diskusi kelompok',
+        'Pendahuluan, inti, penutup',
+        'Kuis singkat',
+        'Siswa sangat aktif.',
+        'Pembelajaran lanjutan topik perkalian pecahan.'
+      ]
+    ];
+
+    exportToExcelWithHeader({
+      title: "Template Jurnal Pembelajaran",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "Template_Jurnal_Pembelajaran.xlsx",
+      sheetName: "Template Jurnal",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      currentUser,
+      notes: "Format tanggal: YYYY-MM-DD. Kolom Metode dapat diisi beberapa metode dipisahkan tanda koma (,)."
+    });
+
     if (onShowNotification) {
       onShowNotification("Template Jurnal berhasil diunduh!", "success");
     } else {
@@ -289,6 +303,10 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      if (onShowNotification) onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -296,7 +314,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['Tanggal', 'Mata Pelajaran', 'Slot Waktu']);
 
         if (rawData.length === 0) {
           if (onShowNotification) onShowNotification("Berkas Excel kosong.", "error");
@@ -310,16 +328,16 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
           return {
             id: row['ID'] || `journal-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
             classId,
-            date: row['Tanggal (YYYY-MM-DD)'] || currentDate,
-            day: getDayName(row['Tanggal (YYYY-MM-DD)'] || currentDate),
+            date: row['Tanggal (YYYY-MM-DD)'] || row['Tanggal'] || currentDate,
+            day: getDayName(row['Tanggal (YYYY-MM-DD)'] || row['Tanggal'] || currentDate),
             timeSlot: row['Slot Waktu'] || '',
             subject: row['Mata Pelajaran'] || '',
-            topic: row['Topik/Bab'] || '',
+            topic: row['Topik/Bab'] || row['Topik'] || '',
             activities: row['Kegiatan Pembelajaran'] || '',
             evaluation: row['Evaluasi'] || '',
             reflection: row['Refleksi Guru'] || '',
             followUp: row['Tindak Lanjut'] || '',
-            model: row['Model Pembelajaran'] || '',
+            model: row['Model Pembelajaran'] || row['Model'] || '',
             pendekatan: row['Pendekatan'] || '',
             metode,
             isTeacherPresent: true,
@@ -364,28 +382,40 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
        return;
      }
 
-     const exportData = dataToExport.map((item, idx) => ({
-       'NO': idx + 1,
-       'KELAS': item.classId || classId,
-       'TANGGAL': item.date,
-       'SLOT WAKTU': item.timeSlot || '-',
-       'MATA PELAJARAN': item.subject,
-       'TOPIK/BAB': isSpecialSubject(item.subject) ? '-' : (item.topic || '-'),
-       'MODEL PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.model || '-'),
-       'PENDEKATAN': isSpecialSubject(item.subject) ? '-' : (item.pendekatan || '-'),
-       'METODE': isSpecialSubject(item.subject) ? '-' : (item.metode ? item.metode.join(', ') : '-'),
-       'KEGIATAN PEMBELAJARAN': isSpecialSubject(item.subject) ? '-' : (item.activities || '-'),
-       'EVALUASI': isSpecialSubject(item.subject) ? '-' : (item.evaluation || '-'),
-       'REFLEKSI GURU': isSpecialSubject(item.subject) ? '-' : (item.reflection || '-'),
-       'TINDAK LANJUT': isSpecialSubject(item.subject) ? '-' : (item.followUp || '-'),
-       'GURU HADIR': isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
-       'NAMA GURU': item.teacherName || '-'
-     }));
+     const headers = [
+       'NO', 'KELAS', 'TANGGAL', 'SLOT WAKTU', 'MATA PELAJARAN', 'TOPIK/BAB',
+       'MODEL PEMBELAJARAN', 'PENDEKATAN', 'METODE', 'KEGIATAN PEMBELAJARAN',
+       'EVALUASI', 'REFLEKSI GURU', 'TINDAK LANJUT', 'GURU HADIR', 'NAMA GURU'
+     ];
 
-     const ws = XLSX.utils.json_to_sheet(exportData);
-     const wb = XLSX.utils.book_new();
-     XLSX.utils.book_append_sheet(wb, ws, "Jurnal Pembelajaran");
-     XLSX.writeFile(wb, `Jurnal_Pembelajaran_${classId}.xlsx`);
+     const exportData = dataToExport.map((item, idx) => [
+       idx + 1,
+       item.classId || classId,
+       item.date,
+       item.timeSlot || '-',
+       item.subject,
+       isSpecialSubject(item.subject) ? '-' : (item.topic || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.model || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.pendekatan || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.metode ? item.metode.join(', ') : '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.activities || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.evaluation || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.reflection || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.followUp || '-'),
+       isSpecialSubject(item.subject) ? '-' : (item.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'),
+       item.teacherName || '-'
+     ]);
+
+     exportToExcelWithHeader({
+       title: "Laporan Jurnal Pembelajaran Guru",
+       subtitle: `Kelas: ${classId || 'Semua Kelas'} | Guru: ${(teacherProfile as any)?.fullName || teacherProfile?.name || currentUser?.fullName || 'Guru Kelas'}`,
+       filename: `Jurnal_Pembelajaran_${classId || 'semua'}.xlsx`,
+       sheetName: "Jurnal Pembelajaran",
+       headers,
+       data: exportData,
+       currentUser
+     });
+
      if (onShowNotification) {
        onShowNotification("Data jurnal berhasil diekspor ke Excel!", "success");
      } else {
@@ -638,22 +668,11 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                   await apiService.saveLearningJournalBatch(validRows);
               }
               
-              if (isPresent) {
-                  showAlert('Tersimpan! Guru tercatat hadir di jurnal ini.', 'success', 'Hadir');
-              } else {
-                  showAlert('Kehadiran dibatalkan.', 'alert', 'Batal Hadir');
-              }
-              
               const newJournalData = await apiService.getLearningJournal(classId);
               setEntries(newJournalData);
-          } else {
-              if (isPresent) {
-                  showAlert('Tersimpan di Draf. Guru tercatat hadir.', 'success', 'Hadir (Draf)');
-              }
           }
       } catch (e) {
           console.error(e);
-          showAlert('Gagal menyimpan perubahan kehadiran.', 'error', 'Error');
       }
   };
 
@@ -851,13 +870,13 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                 <colgroup>
                     <col style="width: 3%;" />
                     <col style="width: 7%;" />
+                    <col style="width: 10%;" />
                     <col style="width: 11%;" />
-                    <col style="width: 12%;" />
-                    <col style="width: 36%;" />
-                    <col style="width: 11%;" />
-                    <col style="width: 11%;" />
+                    <col style="width: 24%;" />
+                    <col style="width: 10%;" />
+                    <col style="width: 15%;" />
+                    <col style="width: 15%;" />
                     <col style="width: 5%;" />
-                    <col style="width: 4%;" />
                 </colgroup>
                 <tbody>
                     ${hasData ? rowsHtml : `<tr><td colspan="9" style="text-align: center; padding: 15px; font-style: italic; color: #666; border: 1px solid black;">Tidak ada data jurnal minggu ini</td></tr>`}
@@ -991,6 +1010,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         document.body.appendChild(standaloneContainer);
       }
       standaloneContainer.innerHTML = htmlContent;
+      document.body.classList.add('has-standalone-print');
 
       // 2. Add dynamic print orientation style
       let styleTag = document.getElementById('sagara-dynamic-print-style');
@@ -1012,6 +1032,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
       // 5. Cleanup after print dialog finishes
       const cleanup = () => {
         document.title = originalTitle;
+        document.body.classList.remove('has-standalone-print');
         if (standaloneContainer) {
           standaloneContainer.innerHTML = '';
         }
@@ -1473,48 +1494,50 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                         </div>
                                     </div>
                                 )}
-                                <table className="w-full text-xs text-left">
-                                    <thead className="bg-white border-b border-gray-100 text-gray-500 print:border-gray-400 print:text-black">
-                                        <tr>
-                                            <th className="p-2 w-24 min-w-[100px]">Jam</th>
-                                            <th className="p-2 w-40">Mata Pelajaran</th>
-                                            <th className="p-2 w-40">Materi</th>
-                                            <th className="p-2">Kegiatan Pembelajaran</th>
-                                            <th className="p-2 w-32">Evaluasi</th>
-                                            <th className="p-2 w-32">Refleksi</th>
-                                            <th className="p-2 w-32">Tindak Lanjut</th>
-                                            <th className="p-2 w-24">Kehadiran</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100 print:divide-gray-400">
-                                        {rows.map((row, rIdx) => {
-                                            const isBreak = row.subject?.toLowerCase().includes('istirahat');
-                                            const isSpecial = isSpecialSubject(row.subject);
-                                            return (
-                                            <tr key={rIdx} className={isBreak ? 'bg-orange-50/60' : ''}>
-                                                <td className="p-2 align-top text-gray-500">{row.timeSlot || '-'}</td>
-                                                <td className={`p-2 align-top font-semibold ${isBreak ? 'text-orange-700' : ''}`}>
-                                                    {isBreak && <Coffee size={12} className="inline mr-1 text-orange-600 no-print"/>}
-                                                    {row.subject}
-                                                </td>
-                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
-                                                <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
-                                                <td className="p-2 align-top text-gray-600">
-                                                    {isBreak || isSpecial ? (
-                                                        <span className="text-gray-400 font-medium">-</span>
-                                                    ) : (
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                                                            {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
-                                                        </span>
-                                                    )}
-                                                </td>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs text-left min-w-[980px]">
+                                        <thead className="bg-white border-b border-gray-100 text-gray-500 print:border-gray-400 print:text-black font-bold">
+                                            <tr>
+                                                <th className="p-2 w-20 min-w-[75px]">Jam</th>
+                                                <th className="p-2 w-32 min-w-[110px]">Mata Pelajaran</th>
+                                                <th className="p-2 w-36 min-w-[120px]">Materi</th>
+                                                <th className="p-2 w-56 min-w-[180px]">Kegiatan Pembelajaran</th>
+                                                <th className="p-2 w-28 min-w-[90px]">Evaluasi</th>
+                                                <th className="p-2 w-48 min-w-[150px]">Refleksi</th>
+                                                <th className="p-2 w-48 min-w-[150px]">Tindak Lanjut</th>
+                                                <th className="p-2 w-24 min-w-[80px] text-center">Kehadiran</th>
                                             </tr>
-                                        )})}
-                                    </tbody>
-                                </table>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100 print:divide-gray-400">
+                                            {rows.map((row, rIdx) => {
+                                                const isBreak = row.subject?.toLowerCase().includes('istirahat');
+                                                const isSpecial = isSpecialSubject(row.subject);
+                                                return (
+                                                <tr key={rIdx} className={isBreak ? 'bg-orange-50/60' : ''}>
+                                                    <td className="p-2 align-top text-gray-500">{row.timeSlot || '-'}</td>
+                                                    <td className={`p-2 align-top font-semibold ${isBreak ? 'text-orange-700' : ''}`}>
+                                                        {isBreak && <Coffee size={12} className="inline mr-1 text-orange-600 no-print"/>}
+                                                        {row.subject}
+                                                    </td>
+                                                    <td className="p-2 align-top">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.topic || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.activities || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.evaluation || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.reflection || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 leading-relaxed">{isSpecial ? <span className="text-gray-400 font-medium">-</span> : (row.followUp || '-')}</td>
+                                                    <td className="p-2 align-top text-gray-600 text-center">
+                                                        {isBreak || isSpecial ? (
+                                                            <span className="text-gray-400 font-medium">-</span>
+                                                        ) : (
+                                                            <span className={`px-2 py-1 rounded text-[10px] font-bold ${row.isTeacherPresent ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                                                                {row.isTeacherPresent ? 'Hadir' : 'Tidak Hadir'}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )})}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         </div>
                     );

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import CustomModal from './CustomModal';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { GtkRecord, User } from '../types';
 import { Save, Plus, Trash2, Edit2, Download, Search, X, Camera, Upload } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import { formatDateID, formatDateNumericID } from '../utils/dateUtils';
 import { compressImage } from '../utils/imageHelper';
 
@@ -57,35 +59,58 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<GtkRecord | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
+    const headers = [
+      'NAMA', 'NIP', 'NUPTK', 'JENIS KELAMIN', 'TEMPAT LAHIR', 'TANGGAL LAHIR',
+      'IJAZAH TERTINGGI', 'JABATAN', 'STATUS', 'TMT PENGANGKATAN', 'MULAI BEKERJA DISINI',
+      'PANGKAT/GOL', 'MASA KERJA (THN)', 'MASA KERJA (BLN)', 'TANGGAL DAN NO SK TERAKHIR',
+      'EMAIL PRIBADI', 'EMAIL BELAJAR'
+    ];
     const templateData = [
-      {
-        'NAMA': 'Ahmad Fauzi, S.Pd.',
-        'NIP': '198501012010011002',
-        'NUPTK': '1234567890123456',
-        'JENIS KELAMIN': 'Laki-laki',
-        'TEMPAT LAHIR': 'Jakarta',
-        'TANGGAL LAHIR': '1985-01-01',
-        'IJAZAH TERTINGGI': 'S1 Pendidikan',
-        'JABATAN': 'Guru Kelas',
-        'STATUS': 'PNS',
-        'TMT PENGANGKATAN': '2010-01-01',
-        'MULAI BEKERJA DISINI': '2012-07-01',
-        'PANGKAT/GOL': 'Penata, III/c',
-        'MASA KERJA (THN)': 15,
-        'MASA KERJA (BLN)': 6,
-        'TANGGAL DAN NO SK TERAKHIR': '01/01/2010 No: 123/SK/2010',
-        'EMAIL PRIBADI': 'ahmad.fauzi@gmail.com',
-        'EMAIL BELAJAR': 'ahmad.fauzi@guru.sd.belajar.id'
-      }
+      [
+        'Ahmad Fauzi, S.Pd.',
+        '198501012010011002',
+        '1234567890123456',
+        'Laki-laki',
+        'Jakarta',
+        '1985-01-01',
+        'S1 Pendidikan',
+        'Guru Kelas',
+        'PNS',
+        '2010-01-01',
+        '2012-07-01',
+        'Penata, III/c',
+        15,
+        6,
+        '01/01/2010 No: 123/SK/2010',
+        'ahmad.fauzi@gmail.com',
+        'ahmad.fauzi@guru.sd.belajar.id'
+      ]
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template GTK");
-    XLSX.writeFile(wb, "Template_Data_GTK.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Data Guru & Tenaga Kependidikan (GTK)",
+      filename: "Template_Data_GTK.xlsx",
+      sheetName: "Template GTK",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      currentUser,
+      notes: "Format tanggal: YYYY-MM-DD. Jenis kelamin: Laki-laki / Perempuan."
+    });
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
@@ -97,6 +122,10 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -104,7 +133,7 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['NAMA', 'NIP', 'JABATAN']);
 
         if (rawData.length === 0) {
           onShowNotification("Berkas Excel kosong atau format salah.", "error");
@@ -346,48 +375,67 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm("Apakah Anda yakin ingin menghapus data GTK ini?")) {
-      try {
-        if (onDeleteGtk) {
-          await onDeleteGtk(id);
-        } else {
-          const newData = data.filter(d => d.id !== id);
-          await onSaveGtk(newData);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Data GTK',
+      message: 'Apakah Anda yakin ingin menghapus data GTK ini?',
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        try {
+          if (onDeleteGtk) {
+            await onDeleteGtk(id);
+          } else {
+            const newData = data.filter(d => d.id !== id);
+            await onSaveGtk(newData);
+          }
+          setData(data.filter(d => d.id !== id));
+          onShowNotification("Data GTK berhasil dihapus", "success");
+        } catch (e) {
+          onShowNotification("Gagal menghapus data GTK", "error");
         }
-        setData(data.filter(d => d.id !== id));
-        onShowNotification("Data GTK berhasil dihapus", "success");
-      } catch (e) {
-        onShowNotification("Gagal menghapus data GTK", "error");
       }
-    }
+    });
   };
 
   const handleExport = () => {
-    const exportData = sortedData.map((d, index) => ({
-      'NO': index + 1,
-      'NAMA': d.nama,
-      'NIP': d.nip,
-      'NUPTK': d.nuptk,
-      'JENIS KELAMIN': d.jenisKelamin === 'L' ? 'Laki-laki' : d.jenisKelamin === 'P' ? 'Perempuan' : '',
-      'TEMPAT LAHIR': d.tempatLahir,
-      'TANGGAL LAHIR': d.tanggalLahir,
-      'IJAZAH TERTINGGI': d.ijazahTertinggi,
-      'JABATAN': d.jabatan,
-      'STATUS': d.statusPegawai,
-      'TMT PENGANGKATAN': d.tmtPengangkatan,
-      'MULAI BEKERJA DISINI': d.mulaiBekerjaDiSini,
-      'PANGKAT/GOL': d.pangkatGolongan,
-      'MASA KERJA (THN)': d.masaKerjaTahun,
-      'MASA KERJA (BLN)': d.masaKerjaBulan,
-      'TANGGAL DAN NO SK TERAKHIR': d.skTerakhir,
-      'EMAIL PRIBADI': d.emailPribadi,
-      'EMAIL BELAJAR': d.emailBelajar
-    }));
+    const headers = [
+      'NO', 'NAMA', 'NIP', 'NUPTK', 'JENIS KELAMIN', 'TEMPAT LAHIR', 'TANGGAL LAHIR',
+      'IJAZAH TERTINGGI', 'JABATAN', 'STATUS', 'TMT PENGANGKATAN', 'MULAI BEKERJA DISINI',
+      'PANGKAT/GOL', 'MASA KERJA (THN)', 'MASA KERJA (BLN)', 'TANGGAL DAN NO SK TERAKHIR',
+      'EMAIL PRIBADI', 'EMAIL BELAJAR'
+    ];
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Data GTK");
-    XLSX.writeFile(wb, "Data_GTK.xlsx");
+    const exportData = sortedData.map((d, index) => [
+      index + 1,
+      d.nama,
+      d.nip || '-',
+      d.nuptk || '-',
+      d.jenisKelamin === 'L' ? 'Laki-laki' : d.jenisKelamin === 'P' ? 'Perempuan' : '-',
+      d.tempatLahir || '-',
+      d.tanggalLahir || '-',
+      d.ijazahTertinggi || '-',
+      d.jabatan || '-',
+      d.statusPegawai || '-',
+      d.tmtPengangkatan || '-',
+      d.mulaiBekerjaDiSini || '-',
+      d.pangkatGolongan || '-',
+      d.masaKerjaTahun ?? 0,
+      d.masaKerjaBulan ?? 0,
+      d.skTerakhir || '-',
+      d.emailPribadi || '-',
+      d.emailBelajar || '-'
+    ]);
+
+    exportToExcelWithHeader({
+      title: "Laporan Data Guru & Tenaga Kependidikan (GTK)",
+      subtitle: `Total GTK: ${sortedData.length} Orang`,
+      filename: "Data_GTK.xlsx",
+      sheetName: "Data GTK",
+      headers,
+      data: exportData,
+      currentUser
+    });
+    onShowNotification("Data GTK berhasil diekspor ke Excel!", "success");
   };
 
   return (
@@ -607,8 +655,8 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              if (file.size > 1024 * 1024) {
-                                onShowNotification("Ukuran file maksimal 1MB", "error");
+                              if (file.size > 500 * 1024) {
+                                onShowNotification("Ukuran file maksimal 500 KB", "error");
                                 return;
                               }
                               try {
@@ -722,6 +770,14 @@ const GtkDataView: React.FC<GtkDataViewProps> = ({ gtkData, users, currentUser, 
         </div>
       )}
 
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type="confirm"
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

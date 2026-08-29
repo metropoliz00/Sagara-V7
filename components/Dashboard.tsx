@@ -215,7 +215,7 @@ const Dashboard: React.FC<DashboardProps> = ({
           if (!masterSupabase) throw new Error("Database Pusat tidak terkonfigurasi.");
           const { data, error: fetchErr } = await masterSupabase
             .from('school_databases')
-            .select('*');
+            .select('id, is_active');
           if (fetchErr) throw fetchErr;
           setSchools(data || []);
         } catch (err: any) {

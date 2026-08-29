@@ -2,27 +2,30 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Ambil konfigurasi database sekolah yang disimpan di laptop
-const savedUrl = localStorage.getItem('CUSTOM_SUPABASE_URL');
-const savedKey = localStorage.getItem('CUSTOM_SUPABASE_ANON_KEY');
+const savedUrl = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_SUPABASE_URL') : null;
+const savedKey = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_SUPABASE_ANON_KEY') : null;
+
+const centralSavedUrl = typeof window !== 'undefined' ? localStorage.getItem('CENTRAL_SUPABASE_URL') : null;
+const centralSavedKey = typeof window !== 'undefined' ? localStorage.getItem('CENTRAL_SUPABASE_ANON_KEY') : null;
 
 // Jika sudah diatur oleh sekolah, gunakan milik mereka. Jika belum, gunakan default Anda.
 const supabaseUrl = savedUrl || import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = savedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-const masterUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const masterKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-
-export const masterSupabase = (masterUrl && masterKey)
-  ? createClient(masterUrl, masterKey)
-  : null as any;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase URL or Anon Key is missing. App may not function correctly without database configuration.');
-}
+const masterUrl = centralSavedUrl || import.meta.env.VITE_SUPABASE_URL || supabaseUrl || '';
+const masterKey = centralSavedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey || '';
 
 let activeSupabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null as any;
+
+export const masterSupabase = (masterUrl && masterKey)
+  ? createClient(masterUrl, masterKey)
+  : activeSupabase;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.warn('Supabase URL or Anon Key is missing. App may not function correctly without database configuration.');
+}
 
 export const setTemporarySupabase = (url?: string, key?: string) => {
   if (url && key) {
@@ -58,9 +61,18 @@ export const saveDatabaseConfig = (url: string, key: string) => {
   window.location.reload(); // Reload aplikasi agar database baru aktif
 };
 
+// Fungsi untuk menyimpan konfigurasi database pusat
+export const saveCentralDatabaseConfig = (url: string, key: string) => {
+  localStorage.setItem('CENTRAL_SUPABASE_URL', url.trim());
+  localStorage.setItem('CENTRAL_SUPABASE_ANON_KEY', key.trim());
+  window.location.reload();
+};
+
 // Fungsi untuk menghapus konfigurasi jika ingin ganti database
 export const resetDatabaseConfig = () => {
   localStorage.removeItem('CUSTOM_SUPABASE_URL');
   localStorage.removeItem('CUSTOM_SUPABASE_ANON_KEY');
+  localStorage.removeItem('CENTRAL_SUPABASE_URL');
+  localStorage.removeItem('CENTRAL_SUPABASE_ANON_KEY');
   window.location.reload();
 };

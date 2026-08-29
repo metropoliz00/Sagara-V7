@@ -18,6 +18,10 @@ const SignatureTab: React.FC<SignatureTabProps> = ({ profile, setProfile, onSave
   const handleSignatureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        showAlert("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
       try {
         // Kompres agresif untuk TTD agar muat di sheet (300px cukup untuk TTD)
         const resizedBase64 = await compressImage(file, 300, 0.6);

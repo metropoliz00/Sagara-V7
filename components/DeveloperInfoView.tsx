@@ -71,6 +71,10 @@ export const DeveloperInfoView: React.FC<DeveloperInfoViewProps> = ({
     if (!isSuperadmin) return;
     const file = e.target.files?.[0];
     if (file) {
+      if (file.size > 500 * 1024) {
+        onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+        return;
+      }
       try {
         const base64 = await compressImage(file, 200, 0.7);
         setForm(prev => ({ ...prev, photo: base64 }));

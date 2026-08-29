@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import CustomModal from './CustomModal';
 import { User, KokurikulerPlan } from '../types';
 import { apiService } from '../services/apiService';
 import { Plus, BookOpen, Trash2, Edit, Sparkles, FileText, CheckCircle2, Printer, ArrowLeft, FileDown, Upload, Download } from 'lucide-react';
@@ -298,11 +299,32 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
     });
   };
 
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: 'alert',
+    title: '',
+    message: ''
+  });
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.identitas.temaKokurikuler) {
-      if (onShowNotification) onShowNotification('Tema Kokurikuler wajib diisi.', 'warning');
-      else alert('Tema Kokurikuler wajib diisi.');
+      if (onShowNotification) {
+        onShowNotification('Tema Kokurikuler wajib diisi.', 'warning');
+      } else {
+        setModalConfig({
+          isOpen: true,
+          type: 'alert',
+          title: 'Peringatan',
+          message: 'Tema Kokurikuler wajib diisi.'
+        });
+      }
       return;
     }
     try {
@@ -313,23 +335,46 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
       setView('list');
     } catch (err) {
       console.error("Failed to save RPK:", err);
-      if (onShowNotification) onShowNotification('Gagal menyimpan RPK ke database.', 'error');
-      else alert('Gagal menyimpan RPK.');
+      if (onShowNotification) {
+        onShowNotification('Gagal menyimpan RPK ke database.', 'error');
+      } else {
+        setModalConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Gagal Menyimpan',
+          message: 'Gagal menyimpan RPK ke database.'
+        });
+      }
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Apakah Anda yakin ingin menghapus RPK ini dari database?')) {
-      try {
-        await apiService.deleteKokurikulerPlan(id);
-        setPlans(prev => prev.filter(p => p.id !== id));
-        if (onShowNotification) onShowNotification('Rencana Projek Kokurikuler berhasil dihapus.', 'success');
-      } catch (err) {
-        console.error("Failed to delete RPK:", err);
-        if (onShowNotification) onShowNotification('Gagal menghapus RPK dari database.', 'error');
-        else alert('Gagal menghapus RPK.');
+    setModalConfig({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Hapus Rencana Projek Kokurikuler',
+      message: 'Apakah Anda yakin ingin menghapus RPK ini dari database?',
+      onConfirm: async () => {
+        setModalConfig(prev => ({ ...prev, isOpen: false }));
+        try {
+          await apiService.deleteKokurikulerPlan(id);
+          setPlans(prev => prev.filter(p => p.id !== id));
+          if (onShowNotification) onShowNotification('Rencana Projek Kokurikuler berhasil dihapus.', 'success');
+        } catch (err) {
+          console.error("Failed to delete RPK:", err);
+          if (onShowNotification) {
+            onShowNotification('Gagal menghapus RPK dari database.', 'error');
+          } else {
+            setModalConfig({
+              isOpen: true,
+              type: 'error',
+              title: 'Gagal Menghapus',
+              message: 'Gagal menghapus RPK dari database.'
+            });
+          }
+        }
       }
-    }
+    });
   };
 
   const exportToExcel = () => {
@@ -349,6 +394,12 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.size > 500 * 1024) {
+      if (onShowNotification) onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (evt) => {
       const data = new Uint8Array(evt.target?.result as ArrayBuffer);
@@ -1464,7 +1515,7 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
                 </div>
                 <div className="text-center px-4">
                   <p className="font-medium">
-                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {
+                    {selectedPlan.identitas.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}, {
                       selectedPlan.identitas.tanggalPengesahan 
                         ? new Date(selectedPlan.identitas.tanggalPengesahan).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
                         : new Date(selectedPlan.createdAt || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
@@ -1488,6 +1539,15 @@ export const KokurikulerPlanView: React.FC<KokurikulerPlanViewProps> = ({ curren
           </div>
         </div>
       )}
+
+      <CustomModal
+        isOpen={modalConfig.isOpen}
+        type={modalConfig.type}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        onConfirm={modalConfig.onConfirm || (() => setModalConfig(prev => ({ ...prev, isOpen: false })))}
+        onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

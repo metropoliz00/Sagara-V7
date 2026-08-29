@@ -270,7 +270,7 @@ const StudentMonitor: React.FC<StudentMonitorProps> = ({
                                             title="Klik untuk chat WhatsApp Orang Tua"
                                         >
                                             <MessageCircle size={13} className="text-emerald-600 fill-emerald-100" />
-                                            <span>{selectedStudent.parentPhone}</span>
+                                            <span>{String(selectedStudent.parentPhone).replace(/^'/, '')}</span>
                                             <ExternalLink size={10} className="text-emerald-500" />
                                         </a>
                                     ) : (

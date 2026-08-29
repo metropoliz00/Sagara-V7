@@ -6,6 +6,7 @@ import {
   Printer, Search, Edit2, Filter, X, AlertCircle, Clock, Upload, Download, FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
 
@@ -41,25 +42,22 @@ const AgendaView: React.FC<AgendaViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
-    const templateData = [
-      {
-        'JUDUL AGENDA': 'Rapat Wali Murid Kelas',
-        'TANGGAL (YYYY-MM-DD)': getLocalISODate(),
-        'WAKTU (HH:MM)': '08:00',
-        'PRIORITAS (info/warning/urgent)': 'info'
-      },
-      {
-        'JUDUL AGENDA': 'Ujian Tengah Semester',
-        'TANGGAL (YYYY-MM-DD)': getLocalISODate(),
-        'WAKTU (HH:MM)': '07:30',
-        'PRIORITAS (info/warning/urgent)': 'urgent'
-      }
+    const headers = ['JUDUL AGENDA', 'TANGGAL (YYYY-MM-DD)', 'WAKTU (HH:MM)', 'PRIORITAS (info/warning/urgent)'];
+    const example = [
+      ['Rapat Wali Murid Kelas', getLocalISODate(), '08:00', 'info'],
+      ['Ujian Tengah Semester', getLocalISODate(), '07:30', 'urgent']
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Agenda");
-    XLSX.writeFile(wb, "Template_Agenda_Kelas.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Agenda Kelas",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "Template_Agenda_Kelas.xlsx",
+      sheetName: "Template Agenda",
+      headers,
+      data: example,
+      isTemplate: true,
+      notes: "Pilihan prioritas: info / warning / urgent. Format waktu: HH:MM (contoh 08:00)."
+    });
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
@@ -71,6 +69,10 @@ const AgendaView: React.FC<AgendaViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -78,7 +80,7 @@ const AgendaView: React.FC<AgendaViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['AGENDA', 'TANGGAL', 'WAKTU']);
 
         if (rawData.length === 0) {
           onShowNotification("Berkas Excel kosong atau format salah.", "error");
@@ -87,10 +89,20 @@ const AgendaView: React.FC<AgendaViewProps> = ({
 
         let importedCount = 0;
         rawData.forEach((row: any) => {
-          const title = row['JUDUL AGENDA'];
-          const date = row['TANGGAL (YYYY-MM-DD)'];
-          const time = row['WAKTU (HH:MM)'] ? String(row['WAKTU (HH:MM)']) : undefined;
-          let type = String(row['PRIORITAS (info/warning/urgent)'] || 'info').toLowerCase().trim();
+          // Helper to get val case-insensitively
+          const getRowVal = (k1: string, k2: string) => {
+            for (const key of Object.keys(row)) {
+              if (key.toLowerCase().includes(k1.toLowerCase()) || key.toLowerCase().includes(k2.toLowerCase())) {
+                return row[key];
+              }
+            }
+            return '';
+          };
+
+          const title = row['JUDUL AGENDA'] || getRowVal('judul', 'agenda');
+          const date = row['TANGGAL (YYYY-MM-DD)'] || getRowVal('tanggal', 'date');
+          const time = row['WAKTU (HH:MM)'] ? String(row['WAKTU (HH:MM)']) : (getRowVal('waktu', 'time') ? String(getRowVal('waktu', 'time')) : undefined);
+          let type = String(row['PRIORITAS (info/warning/urgent)'] || getRowVal('prioritas', 'priority') || 'info').toLowerCase().trim();
           if (type !== 'info' && type !== 'warning' && type !== 'urgent') {
             type = 'info';
           }
@@ -129,19 +141,24 @@ const AgendaView: React.FC<AgendaViewProps> = ({
       return;
     }
 
-    const exportData = filteredAgendas.map((item, idx) => ({
-      'NO': idx + 1,
-      'JUDUL AGENDA': item.title,
-      'TANGGAL': item.date,
-      'WAKTU': item.time || '-',
-      'PRIORITAS': item.type,
-      'STATUS': item.completed ? 'Selesai' : 'Belum Selesai'
-    }));
+    const headers = ['NO', 'JUDUL AGENDA', 'TANGGAL', 'WAKTU', 'PRIORITAS', 'STATUS'];
+    const exportData = filteredAgendas.map((item, idx) => [
+      idx + 1,
+      item.title,
+      item.date,
+      item.time || '-',
+      item.type.toUpperCase(),
+      item.completed ? 'Selesai' : 'Belum Selesai'
+    ]);
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Agenda Kelas");
-    XLSX.writeFile(wb, `Agenda_Kelas_${classId}.xlsx`);
+    exportToExcelWithHeader({
+      title: "Laporan Agenda Kegiatan Kelas",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Agenda: ${filteredAgendas.length}`,
+      filename: `Agenda_Kelas_${classId || 'semua'}.xlsx`,
+      sheetName: "Agenda Kelas",
+      headers,
+      data: exportData
+    });
     onShowNotification("Data agenda berhasil diekspor ke Excel!", "success");
   };
 

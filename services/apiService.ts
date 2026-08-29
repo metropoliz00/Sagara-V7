@@ -4,7 +4,7 @@ import { cacheService } from '../src/services/cacheService';
 import { 
   Student, AgendaItem, GradeRecord, GradeData, BehaviorLog, Extracurricular, 
   TeacherProfileData, SchoolProfileData, User, Holiday, InventoryItem, Guest, 
-  ScheduleItem, PiketGroup, SikapAssessment, KarakterAssessment, SeatingLayouts, 
+  ScheduleItem, PiketGroup, SikapAssessment, KarakterAssessment, DailyKAIHJournal, SeatingLayouts, 
   AcademicCalendarData, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, 
   LearningJournalEntry, SupportDocument, OrganizationStructure, SchoolAsset, 
   BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Graduate, Material,
@@ -22,7 +22,7 @@ export const apiService = {
 
   // --- SYNC UTILS ---
   syncUserToStudent: async (user: User, studentId: string): Promise<void> => {
-      const { data: student, error } = await supabase.from('students').select('*').eq('id', studentId).single();
+      const { data: student, error } = await supabase.from('students').select('id, name, nis, address, parent_phone').eq('id', studentId).single();
       if (error || !student) return;
 
       const updates: any = {};
@@ -37,7 +37,7 @@ export const apiService = {
   },
 
   syncStudentToUser: async (student: Student, userId: string): Promise<void> => {
-      const { data: user, error } = await supabase.from('users').select('*').eq('id', userId).single();
+      const { data: user, error } = await supabase.from('users').select('id, full_name, username, address, phone').eq('id', userId).single();
       if (error || !user) return;
 
       const updates: any = {};
@@ -54,73 +54,153 @@ export const apiService = {
   // --- Auth & Users ---
 
   login: async (username: string, password?: string): Promise<User | null> => {
-    // If logging in as superadmin, always query the master central database
-    const client = (username.toLowerCase() === 'superadmin' && masterSupabase) ? masterSupabase : supabase;
+    const cleanUsername = (username || '').trim();
+    const cleanPassword = (password || '').trim();
+    if (!cleanUsername) return null;
+
+    // Determine target Supabase client
+    const isSuperadminAttempt = cleanUsername.toLowerCase() === 'superadmin';
+    const primaryClient = (isSuperadminAttempt && masterSupabase) ? masterSupabase : supabase;
     
-    const { data, error } = await client
-      .from('users')
-      .select('*')
-      .eq('username', username)
-      .eq('password', password)
-      .single();
-    
-    if (error || !data) return null;
+    // Helper to query user from a client
+    const queryUser = async (client: any) => {
+      if (!client) return null;
+      try {
+        // 1. Try exact match username + password
+        let query = client.from('users').select('*');
+        if (cleanPassword) {
+          query = query.eq('password', cleanPassword);
+        }
+        
+        const { data: exactData, error: exactErr } = await query.eq('username', cleanUsername).maybeSingle();
+        if (!exactErr && exactData) return exactData;
+
+        // 2. If not found, try case-insensitive username match
+        let ciQuery = client.from('users').select('*');
+        if (cleanPassword) {
+          ciQuery = ciQuery.eq('password', cleanPassword);
+        }
+        const { data: ciData, error: ciErr } = await ciQuery.ilike('username', cleanUsername).maybeSingle();
+        if (!ciErr && ciData) return ciData;
+      } catch (err) {
+        console.error("Error querying user:", err);
+      }
+      return null;
+    };
+
+    let data = await queryUser(primaryClient);
+
+    // Fallback: If not found in primary client and masterSupabase exists, check fallback client
+    if (!data && masterSupabase && primaryClient !== masterSupabase) {
+      data = await queryUser(masterSupabase);
+    } else if (!data && supabase && primaryClient !== supabase) {
+      data = await queryUser(supabase);
+    }
+
+    if (!data) return null;
+
     let bPlace = '';
     let bDate = '';
     try {
-      if (data.birth_info && data.birth_info.startsWith('{')) {
+      if (data.birth_info && typeof data.birth_info === 'string' && data.birth_info.startsWith('{')) {
         const parsed = JSON.parse(data.birth_info);
         bPlace = parsed.place || '';
         bDate = parsed.date || '';
       } else {
-        bPlace = data.birth_info || '';
+        bPlace = data.birth_info || data.birthPlace || data.birth_place || '';
+        bDate = data.birthDate || data.birth_date || '';
       }
     } catch (e) {}
 
     return {
       ...data,
-      fullName: data.full_name,
+      id: data.id,
+      username: data.username,
+      fullName: data.full_name || data.fullName || data.name || data.username,
+      role: (data.role || 'guru').toLowerCase(),
       birthPlace: bPlace,
       birthDate: bDate,
-      classId: data.class_id,
-      studentId: data.student_id
+      classId: data.class_id || data.classId || '',
+      studentId: data.student_id || data.studentId || '',
+      photo: data.photo || data.avatar || '',
+      signature: data.signature || '',
+      nip: data.nip || '',
+      nuptk: data.nuptk || '',
+      education: data.education || '',
+      position: data.position || '',
+      rank: data.rank || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      address: data.address || ''
     } as User;
   },
 
   loginWithGoogle: async (email: string): Promise<User | null> => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', email)
-      .single();
-    
-    if (error || !data) return null;
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) return null;
+
+    const queryGoogleUser = async (client: any) => {
+      if (!client) return null;
+      try {
+        const { data, error } = await client
+          .from('users')
+          .select('*')
+          .ilike('email', cleanEmail)
+          .maybeSingle();
+        if (!error && data) return data;
+      } catch (err) {
+        console.error("Error during google login query:", err);
+      }
+      return null;
+    };
+
+    let data = await queryGoogleUser(supabase);
+    if (!data && masterSupabase && masterSupabase !== supabase) {
+      data = await queryGoogleUser(masterSupabase);
+    }
+
+    if (!data) return null;
+
     let bPlace = '';
     let bDate = '';
     try {
-      if (data.birth_info && data.birth_info.startsWith('{')) {
+      if (data.birth_info && typeof data.birth_info === 'string' && data.birth_info.startsWith('{')) {
         const parsed = JSON.parse(data.birth_info);
         bPlace = parsed.place || '';
         bDate = parsed.date || '';
       } else {
-        bPlace = data.birth_info || '';
+        bPlace = data.birth_info || data.birthPlace || data.birth_place || '';
+        bDate = data.birthDate || data.birth_date || '';
       }
     } catch (e) {}
 
     return {
       ...data,
-      fullName: data.full_name,
+      id: data.id,
+      username: data.username,
+      fullName: data.full_name || data.fullName || data.name || data.username,
+      role: (data.role || 'guru').toLowerCase(),
       birthPlace: bPlace,
       birthDate: bDate,
-      classId: data.class_id,
-      studentId: data.student_id
+      classId: data.class_id || data.classId || '',
+      studentId: data.student_id || data.studentId || '',
+      photo: data.photo || data.avatar || '',
+      signature: data.signature || '',
+      nip: data.nip || '',
+      nuptk: data.nuptk || '',
+      education: data.education || '',
+      position: data.position || '',
+      rank: data.rank || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      address: data.address || ''
     } as User;
   },
 
   getUsers: async (currentUser: User | null): Promise<User[]> => {
     const { data, error } = await supabase
       .from('users')
-      .select('*');
+      .select('id, username, role, full_name, nip, nuptk, birth_info, education, position, rank, class_id, email, phone, address, photo, signature, student_id');
     
     if (error) return [];
     return data.map((u: any) => {
@@ -241,11 +321,11 @@ export const apiService = {
   syncStudentAccounts: async (): Promise<{ status: string; message: string }> => {
     try {
       // 1. Get all students
-      const { data: students, error: studentError } = await supabase.from('students').select('*');
+      const { data: students, error: studentError } = await supabase.from('students').select('id, name, nis, class_id');
       if (studentError) throw studentError;
 
       // 2. Get all existing student users
-      const { data: users, error: userError } = await supabase.from('users').select('*').eq('role', 'siswa');
+      const { data: users, error: userError } = await supabase.from('users').select('id, username, student_id').eq('role', 'siswa');
       if (userError) throw userError;
 
       let createdCount = 0;
@@ -293,7 +373,7 @@ export const apiService = {
 
   // --- Graduates ---
   getGraduates: async (): Promise<Graduate[]> => {
-    const { data, error } = await supabase.from('graduates').select('*');
+    const { data, error } = await supabase.from('graduates').select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at');
     if (error) return [];
     return data.map((g: any) => ({
       ...g,
@@ -345,7 +425,7 @@ export const apiService = {
     // 1. Try by ID (most reliable if graduated via button)
     const { data: byId } = await supabase
       .from('graduates')
-      .select('*')
+      .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
       .eq('id', student.id)
       .maybeSingle();
     
@@ -364,7 +444,7 @@ export const apiService = {
     if (student.nisn) {
       const { data: byNisN } = await supabase
         .from('graduates')
-        .select('*')
+        .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
         .eq('nisn', student.nisn)
         .maybeSingle();
       
@@ -384,7 +464,7 @@ export const apiService = {
     if (student.nis) {
       const { data: byNis } = await supabase
         .from('graduates')
-        .select('*')
+        .select('id, nis, nisn, name, ijazah_number, status, graduation_year, continued_to, skl_url, is_visible, created_at, updated_at')
         .eq('nisn', student.nis)
         .maybeSingle();
       
@@ -407,7 +487,7 @@ export const apiService = {
     if (!nisn) return null;
     const { data, error } = await supabase
       .from('students')
-      .select('*')
+      .select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha')
       .eq('nisn', nisn)
       .maybeSingle();
     
@@ -424,7 +504,7 @@ export const apiService = {
       motherJob: data.mother_job,
       motherEducation: data.mother_education,
       parentName: data.parent_name,
-      parentPhone: data.parent_phone,
+      parentPhone: data.parent_phone ? String(data.parent_phone).replace(/^'/, '') : '',
       parentJob: data.parent_job,
       economyStatus: data.economy_status,
       bloodType: data.blood_type,
@@ -444,7 +524,7 @@ export const apiService = {
     if (!nis) return null;
     const { data, error } = await supabase
       .from('students')
-      .select('*')
+      .select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha')
       .eq('nis', nis)
       .maybeSingle();
     
@@ -461,7 +541,7 @@ export const apiService = {
       motherJob: data.mother_job,
       motherEducation: data.mother_education,
       parentName: data.parent_name,
-      parentPhone: data.parent_phone,
+      parentPhone: data.parent_phone ? String(data.parent_phone).replace(/^'/, '') : '',
       parentJob: data.parent_job,
       economyStatus: data.economy_status,
       bloodType: data.blood_type,
@@ -504,68 +584,174 @@ export const apiService = {
 
   // --- Students ---
   getStudents: async (currentUser: User | null): Promise<Student[]> => {
-    const { data, error } = await supabase.from('students').select('*');
+    let query = supabase.from('students').select('id, class_id, rombel, nis, nisn, nik, name, gender, birth_place, birth_date, religion, address, rt, rw, dusun, kelurahan, kecamatan, kode_pos, jenis_tinggal, alat_transportasi, telepon, hp, email, skhun, penerima_kps, no_kps, father_name, father_birth_year, father_job, father_education, father_income, father_nik, mother_name, mother_birth_year, mother_job, mother_education, mother_income, mother_nik, parent_name, guardian_birth_year, guardian_education, parent_job, guardian_income, guardian_nik, parent_phone, no_ujian_nasional, no_seri_ijazah, penerima_kip, nomor_kip, nama_di_kip, nomor_kks, no_registrasi_akta_lahir, bank, nomor_rekening_bank, rekening_atas_nama, layak_pip, alasan_layak_pip, kebutuhan_khusus, sekolah_asal, anak_ke, lintang, bujur, no_kk, height, weight, lingkar_kepala, jml_saudara_kandung, jarak_rumah_km, economy_status, blood_type, health_notes, hobbies, ambition, achievements, violations, behavior_score, photo, teacher_notes, present, sick, permit, alpha');
+    
+    // If student user, only fetch the students in their class to save egress
+    if (currentUser?.role === 'siswa' && currentUser.classId) {
+      query = query.eq('class_id', currentUser.classId);
+    }
+    
+    const { data, error } = await query;
     if (error) return [];
-    return data.map((s: any) => ({
-      ...s,
-      classId: s.class_id,
-      birthPlace: s.birth_place,
-      birthDate: s.birth_date,
-      fatherName: s.father_name,
-      fatherJob: s.father_job,
-      fatherEducation: s.father_education,
-      motherName: s.mother_name,
-      motherJob: s.mother_job,
-      motherEducation: s.mother_education,
-      parentName: s.parent_name,
-      parentPhone: s.parent_phone,
-      parentJob: s.parent_job,
-      economyStatus: s.economy_status,
-      bloodType: s.blood_type,
-      healthNotes: s.health_notes,
-      behaviorScore: Number(s.behavior_score),
-      attendance: {
-        present: Number(s.present),
-        sick: Number(s.sick),
-        permit: Number(s.permit),
-        alpha: Number(s.alpha)
-      },
-      teacherNotes: s.teacher_notes
-    })).sort((a: Student, b: Student) => a.name.localeCompare(b.name));
+    return data.map((s: any) => {
+      const classVal = s.rombel || s.class_id || s.classId || '1A';
+      return {
+        ...s,
+        classId: classVal,
+        rombel: classVal,
+        birthPlace: s.birth_place,
+        birthDate: s.birth_date,
+        rt: s.rt,
+        rw: s.rw,
+        dusun: s.dusun,
+        kelurahan: s.kelurahan,
+        kecamatan: s.kecamatan,
+        kodePos: s.kode_pos,
+        jenisTinggal: s.jenis_tinggal,
+        alatTransportasi: s.alat_transportasi,
+        telepon: s.telepon,
+        hp: s.hp || (s.parent_phone ? String(s.parent_phone).replace(/^'/, '') : ''),
+        email: s.email,
+        skhun: s.skhun,
+        penerimaKps: s.penerima_kps,
+        noKps: s.no_kps,
+        fatherName: s.father_name || '',
+        fatherBirthYear: s.father_birth_year,
+        fatherJob: s.father_job,
+        fatherEducation: s.father_education,
+        fatherIncome: s.father_income,
+        fatherNik: s.father_nik,
+        motherName: s.mother_name || '',
+        motherBirthYear: s.mother_birth_year,
+        motherJob: s.mother_job,
+        motherEducation: s.mother_education,
+        motherIncome: s.mother_income,
+        motherNik: s.mother_nik,
+        parentName: s.parent_name || s.father_name || s.mother_name || '',
+        guardianBirthYear: s.guardian_birth_year,
+        guardianEducation: s.guardian_education,
+        parentJob: s.parent_job,
+        guardianIncome: s.guardian_income,
+        guardianNik: s.guardian_nik,
+        parentPhone: s.parent_phone ? String(s.parent_phone).replace(/^'/, '') : (s.hp || ''),
+        noUjianNasional: s.no_ujian_nasional,
+        noSeriIjazah: s.no_seri_ijazah,
+        penerimaKip: s.penerima_kip,
+        nomorKip: s.nomor_kip,
+        namaDiKip: s.nama_di_kip,
+        nomorKks: s.nomor_kks,
+        noRegistrasiAktaLahir: s.no_registrasi_akta_lahir,
+        bank: s.bank,
+        nomorRekeningBank: s.nomor_rekening_bank,
+        rekeningAtasNama: s.rekening_atas_nama,
+        layakPip: s.layak_pip,
+        alasanLayakPip: s.alasan_layak_pip,
+        kebutuhanKhusus: s.kebutuhan_khusus,
+        sekolahAsal: s.sekolah_asal,
+        anakKe: s.anak_ke,
+        lintang: s.lintang,
+        bujur: s.bujur,
+        noKk: s.no_kk,
+        height: Number(s.height) || 0,
+        weight: Number(s.weight) || 0,
+        lingkarKepala: Number(s.lingkar_kepala) || 0,
+        jmlSaudaraKandung: Number(s.jml_saudara_kandung) || 0,
+        jarakRumahKm: Number(s.jarak_rumah_km) || 0,
+        economyStatus: s.economy_status || 'Mampu',
+        bloodType: s.blood_type,
+        healthNotes: s.health_notes,
+        behaviorScore: Number(s.behavior_score) || 100,
+        attendance: {
+          present: Number(s.present) || 0,
+          sick: Number(s.sick) || 0,
+          permit: Number(s.permit) || 0,
+          alpha: Number(s.alpha) || 0
+        },
+        teacherNotes: s.teacher_notes
+      };
+    }).sort((a: Student, b: Student) => a.name.localeCompare(b.name));
   },
 
   createStudent: async (student: Omit<Student, 'id'>): Promise<Student> => {
+    const classVal = student.rombel || student.classId || '1A';
     const dbStudent = {
-      class_id: student.classId,
+      class_id: classVal,
+      rombel: classVal,
       nis: student.nis,
-      nisn: student.nisn,
+      nisn: student.nisn || null,
+      nik: student.nik || null,
       name: student.name,
       gender: student.gender,
-      birth_place: student.birthPlace,
+      birth_place: student.birthPlace || null,
       birth_date: student.birthDate || null,
-      religion: student.religion,
-      address: student.address,
-      father_name: student.fatherName,
-      father_job: student.fatherJob,
-      father_education: student.fatherEducation,
-      mother_name: student.motherName,
-      mother_job: student.motherJob,
-      mother_education: student.motherEducation,
-      parent_name: student.parentName,
-      parent_phone: student.parentPhone,
-      parent_job: student.parentJob,
-      economy_status: student.economyStatus,
-      height: student.height,
-      weight: student.weight,
-      blood_type: student.bloodType,
-      health_notes: student.healthNotes,
-      hobbies: student.hobbies,
-      ambition: student.ambition,
-      achievements: student.achievements,
-      violations: student.violations,
-      behavior_score: student.behaviorScore,
-      photo: student.photo,
-      teacher_notes: student.teacherNotes,
+      religion: student.religion || 'Islam',
+      address: student.address || null,
+      rt: student.rt || null,
+      rw: student.rw || null,
+      dusun: student.dusun || null,
+      kelurahan: student.kelurahan || null,
+      kecamatan: student.kecamatan || null,
+      kode_pos: student.kodePos || null,
+      jenis_tinggal: student.jenisTinggal || null,
+      alat_transportasi: student.alatTransportasi || null,
+      telepon: student.telepon || null,
+      hp: student.hp || (student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : null),
+      email: student.email || null,
+      skhun: student.skhun || null,
+      penerima_kps: student.penerimaKps || null,
+      no_kps: student.noKps || null,
+      father_name: student.fatherName || null,
+      father_birth_year: student.fatherBirthYear || null,
+      father_job: student.fatherJob || null,
+      father_education: student.fatherEducation || null,
+      father_income: student.fatherIncome || null,
+      father_nik: student.fatherNik || null,
+      mother_name: student.motherName || null,
+      mother_birth_year: student.motherBirthYear || null,
+      mother_job: student.motherJob || null,
+      mother_education: student.motherEducation || null,
+      mother_income: student.motherIncome || null,
+      mother_nik: student.motherNik || null,
+      parent_name: student.parentName || null,
+      guardian_birth_year: student.guardianBirthYear || null,
+      guardian_education: student.guardianEducation || null,
+      parent_job: student.parentJob || null,
+      guardian_income: student.guardianIncome || null,
+      guardian_nik: student.guardianNik || null,
+      parent_phone: student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : null,
+      no_ujian_nasional: student.noUjianNasional || null,
+      no_seri_ijazah: student.noSeriIjazah || null,
+      penerima_kip: student.penerimaKip || null,
+      nomor_kip: student.nomorKip || null,
+      nama_di_kip: student.namaDiKip || null,
+      nomor_kks: student.nomorKks || null,
+      no_registrasi_akta_lahir: student.noRegistrasiAktaLahir || null,
+      bank: student.bank || null,
+      nomor_rekening_bank: student.nomorRekeningBank || null,
+      rekening_atas_nama: student.rekeningAtasNama || null,
+      layak_pip: student.layakPip || null,
+      alasan_layak_pip: student.alasanLayakPip || null,
+      kebutuhan_khusus: student.kebutuhanKhusus || null,
+      sekolah_asal: student.sekolahAsal || null,
+      anak_ke: student.anakKe ? String(student.anakKe) : null,
+      lintang: student.lintang || null,
+      bujur: student.bujur || null,
+      no_kk: student.noKk || null,
+      height: student.height || 0,
+      weight: student.weight || 0,
+      lingkar_kepala: student.lingkarKepala || 0,
+      jml_saudara_kandung: student.jmlSaudaraKandung || 0,
+      jarak_rumah_km: student.jarakRumahKm || 0,
+      economy_status: student.economyStatus || 'Mampu',
+      blood_type: student.bloodType || null,
+      healthNotes: student.healthNotes || null,
+      hobbies: student.hobbies || null,
+      ambition: student.ambition || null,
+      achievements: student.achievements || [],
+      violations: student.violations || [],
+      behavior_score: student.behaviorScore || 100,
+      photo: student.photo || null,
+      teacher_notes: student.teacherNotes || null,
       present: student.attendance?.present || 0,
       sick: student.attendance?.sick || 0,
       permit: student.attendance?.permit || 0,
@@ -599,8 +785,13 @@ export const apiService = {
         }
       }
 
+      const targetClass = (s.rombel && String(s.rombel).trim() !== '-') 
+        ? String(s.rombel).trim() 
+        : (s.classId && String(s.classId).trim() !== '-' ? String(s.classId).trim() : '1A');
+
       return {
-        class_id: s.classId || '1A',
+        class_id: targetClass,
+        rombel: targetClass,
         nis: String(s.nis).trim(),
         nisn: (s.nisn && String(s.nisn).trim() !== '-' && String(s.nisn).trim() !== '') ? String(s.nisn).trim() : null,
         nik: (s.nik && String(s.nik).trim() !== '-' && String(s.nik).trim() !== '') ? String(s.nik).trim() : null,
@@ -610,18 +801,63 @@ export const apiService = {
         birth_date: cleanBirthDate,
         religion: s.religion || 'Islam',
         address: (s.address && String(s.address).trim() !== '-') ? String(s.address).trim() : null,
+        rt: (s.rt && String(s.rt).trim() !== '-') ? String(s.rt).trim() : null,
+        rw: (s.rw && String(s.rw).trim() !== '-') ? String(s.rw).trim() : null,
+        dusun: (s.dusun && String(s.dusun).trim() !== '-') ? String(s.dusun).trim() : null,
+        kelurahan: (s.kelurahan && String(s.kelurahan).trim() !== '-') ? String(s.kelurahan).trim() : null,
+        kecamatan: (s.kecamatan && String(s.kecamatan).trim() !== '-') ? String(s.kecamatan).trim() : null,
+        kode_pos: (s.kodePos && String(s.kodePos).trim() !== '-') ? String(s.kodePos).trim() : null,
+        jenis_tinggal: (s.jenisTinggal && String(s.jenisTinggal).trim() !== '-') ? String(s.jenisTinggal).trim() : null,
+        alat_transportasi: (s.alatTransportasi && String(s.alatTransportasi).trim() !== '-') ? String(s.alatTransportasi).trim() : null,
+        telepon: (s.telepon && String(s.telepon).trim() !== '-') ? String(s.telepon).trim() : null,
+        hp: (s.hp && String(s.hp).trim() !== '-') ? String(s.hp).trim() : ((s.parentPhone && String(s.parentPhone).trim() !== '-') ? String(s.parentPhone).trim().replace(/^'/, '') : null),
+        email: (s.email && String(s.email).trim() !== '-') ? String(s.email).trim() : null,
+        skhun: (s.skhun && String(s.skhun).trim() !== '-') ? String(s.skhun).trim() : null,
+        penerima_kps: (s.penerimaKps && String(s.penerimaKps).trim() !== '-') ? String(s.penerimaKps).trim() : null,
+        no_kps: (s.noKps && String(s.noKps).trim() !== '-') ? String(s.noKps).trim() : null,
         father_name: (s.fatherName && String(s.fatherName).trim() !== '-') ? String(s.fatherName).trim().toUpperCase() : null,
+        father_birth_year: (s.fatherBirthYear && String(s.fatherBirthYear).trim() !== '-') ? String(s.fatherBirthYear).trim() : null,
         father_job: (s.fatherJob && String(s.fatherJob).trim() !== '-') ? String(s.fatherJob).trim() : null,
         father_education: (s.fatherEducation && String(s.fatherEducation).trim() !== '-') ? String(s.fatherEducation).trim() : null,
+        father_income: (s.fatherIncome && String(s.fatherIncome).trim() !== '-') ? String(s.fatherIncome).trim() : null,
+        father_nik: (s.fatherNik && String(s.fatherNik).trim() !== '-') ? String(s.fatherNik).trim() : null,
         mother_name: (s.motherName && String(s.motherName).trim() !== '-') ? String(s.motherName).trim().toUpperCase() : null,
+        mother_birth_year: (s.motherBirthYear && String(s.motherBirthYear).trim() !== '-') ? String(s.motherBirthYear).trim() : null,
         mother_job: (s.motherJob && String(s.motherJob).trim() !== '-') ? String(s.motherJob).trim() : null,
         mother_education: (s.motherEducation && String(s.motherEducation).trim() !== '-') ? String(s.motherEducation).trim() : null,
+        mother_income: (s.motherIncome && String(s.motherIncome).trim() !== '-') ? String(s.motherIncome).trim() : null,
+        mother_nik: (s.motherNik && String(s.motherNik).trim() !== '-') ? String(s.motherNik).trim() : null,
         parent_name: (s.parentName && String(s.parentName).trim() !== '-') ? String(s.parentName).trim().toUpperCase() : null,
-        parent_phone: (s.parentPhone && String(s.parentPhone).trim() !== '-') ? String(s.parentPhone).trim() : null,
+        guardian_birth_year: (s.guardianBirthYear && String(s.guardianBirthYear).trim() !== '-') ? String(s.guardianBirthYear).trim() : null,
+        guardian_education: (s.guardianEducation && String(s.guardianEducation).trim() !== '-') ? String(s.guardianEducation).trim() : null,
         parent_job: (s.parentJob && String(s.parentJob).trim() !== '-') ? String(s.parentJob).trim() : null,
-        economy_status: s.economyStatus || 'Mampu',
+        guardian_income: (s.guardianIncome && String(s.guardianIncome).trim() !== '-') ? String(s.guardianIncome).trim() : null,
+        guardian_nik: (s.guardianNik && String(s.guardianNik).trim() !== '-') ? String(s.guardianNik).trim() : null,
+        parent_phone: (s.parentPhone && String(s.parentPhone).trim() !== '-') ? String(s.parentPhone).trim().replace(/^'/, '') : null,
+        no_ujian_nasional: (s.noUjianNasional && String(s.noUjianNasional).trim() !== '-') ? String(s.noUjianNasional).trim() : null,
+        no_seri_ijazah: (s.noSeriIjazah && String(s.noSeriIjazah).trim() !== '-') ? String(s.noSeriIjazah).trim() : null,
+        penerima_kip: (s.penerimaKip && String(s.penerimaKip).trim() !== '-') ? String(s.penerimaKip).trim() : null,
+        nomor_kip: (s.nomorKip && String(s.nomorKip).trim() !== '-') ? String(s.nomorKip).trim() : null,
+        nama_di_kip: (s.namaDiKip && String(s.namaDiKip).trim() !== '-') ? String(s.namaDiKip).trim() : null,
+        nomor_kks: (s.nomorKks && String(s.nomorKks).trim() !== '-') ? String(s.nomorKks).trim() : null,
+        no_registrasi_akta_lahir: (s.noRegistrasiAktaLahir && String(s.noRegistrasiAktaLahir).trim() !== '-') ? String(s.noRegistrasiAktaLahir).trim() : null,
+        bank: (s.bank && String(s.bank).trim() !== '-') ? String(s.bank).trim() : null,
+        nomor_rekening_bank: (s.nomorRekeningBank && String(s.nomorRekeningBank).trim() !== '-') ? String(s.nomorRekeningBank).trim() : null,
+        rekening_atas_nama: (s.rekeningAtasNama && String(s.rekeningAtasNama).trim() !== '-') ? String(s.rekeningAtasNama).trim() : null,
+        layak_pip: (s.layakPip && String(s.layakPip).trim() !== '-') ? String(s.layakPip).trim() : null,
+        alasan_layak_pip: (s.alasanLayakPip && String(s.alasanLayakPip).trim() !== '-') ? String(s.alasanLayakPip).trim() : null,
+        kebutuhan_khusus: (s.kebutuhanKhusus && String(s.kebutuhanKhusus).trim() !== '-') ? String(s.kebutuhanKhusus).trim() : null,
+        sekolah_asal: (s.sekolahAsal && String(s.sekolahAsal).trim() !== '-') ? String(s.sekolahAsal).trim() : null,
+        anak_ke: s.anakKe ? String(s.anakKe).trim() : null,
+        lintang: (s.lintang && String(s.lintang).trim() !== '-') ? String(s.lintang).trim() : null,
+        bujur: (s.bujur && String(s.bujur).trim() !== '-') ? String(s.bujur).trim() : null,
+        no_kk: (s.noKk && String(s.noKk).trim() !== '-') ? String(s.noKk).trim() : null,
         height: isNaN(Number(s.height)) ? 0 : Number(s.height),
         weight: isNaN(Number(s.weight)) ? 0 : Number(s.weight),
+        lingkar_kepala: isNaN(Number(s.lingkarKepala)) ? 0 : Number(s.lingkarKepala),
+        jml_saudara_kandung: isNaN(Number(s.jmlSaudaraKandung)) ? 0 : Number(s.jmlSaudaraKandung),
+        jarak_rumah_km: isNaN(Number(s.jarakRumahKm)) ? 0 : Number(s.jarakRumahKm),
+        economy_status: s.economyStatus || 'Mampu',
         blood_type: (s.bloodType && String(s.bloodType).trim() !== '-') ? String(s.bloodType).trim() : null,
         health_notes: (s.healthNotes && String(s.healthNotes).trim() !== '-') ? String(s.healthNotes).trim() : null,
         hobbies: (s.hobbies && String(s.hobbies).trim() !== '-') ? String(s.hobbies).trim() : null,
@@ -655,41 +891,89 @@ export const apiService = {
   },
 
   updateStudent: async (student: Student): Promise<void> => {
+    const targetClass = student.rombel || student.classId || '1A';
     const dbStudent = {
-      class_id: student.classId,
+      class_id: targetClass,
+      rombel: targetClass,
       nis: student.nis,
-      nisn: student.nisn,
+      nisn: student.nisn || null,
+      nik: student.nik || null,
       name: student.name,
       gender: student.gender,
-      birth_place: student.birthPlace,
+      birth_place: student.birthPlace || null,
       birth_date: student.birthDate || null,
-      religion: student.religion,
-      address: student.address,
-      father_name: student.fatherName,
-      father_job: student.fatherJob,
-      father_education: student.fatherEducation,
-      mother_name: student.motherName,
-      mother_job: student.motherJob,
-      mother_education: student.motherEducation,
-      parent_name: student.parentName,
-      parent_phone: student.parentPhone,
-      parent_job: student.parentJob,
-      economy_status: student.economyStatus,
-      height: student.height,
-      weight: student.weight,
-      blood_type: student.bloodType,
-      health_notes: student.healthNotes,
-      hobbies: student.hobbies,
-      ambition: student.ambition,
-      achievements: student.achievements,
-      violations: student.violations,
-      behavior_score: student.behaviorScore,
-      present: student.attendance.present,
-      sick: student.attendance.sick,
-      permit: student.attendance.permit,
-      alpha: student.attendance.alpha,
-      photo: student.photo,
-      teacher_notes: student.teacherNotes
+      religion: student.religion || 'Islam',
+      address: student.address || null,
+      rt: student.rt || null,
+      rw: student.rw || null,
+      dusun: student.dusun || null,
+      kelurahan: student.kelurahan || null,
+      kecamatan: student.kecamatan || null,
+      kode_pos: student.kodePos || null,
+      jenis_tinggal: student.jenisTinggal || null,
+      alat_transportasi: student.alatTransportasi || null,
+      telepon: student.telepon || null,
+      hp: student.hp || (student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : null),
+      email: student.email || null,
+      skhun: student.skhun || null,
+      penerima_kps: student.penerimaKps || null,
+      no_kps: student.noKps || null,
+      father_name: student.fatherName || null,
+      father_birth_year: student.fatherBirthYear || null,
+      father_job: student.fatherJob || null,
+      father_education: student.fatherEducation || null,
+      father_income: student.fatherIncome || null,
+      father_nik: student.fatherNik || null,
+      mother_name: student.motherName || null,
+      mother_birth_year: student.motherBirthYear || null,
+      mother_job: student.motherJob || null,
+      mother_education: student.motherEducation || null,
+      mother_income: student.motherIncome || null,
+      mother_nik: student.motherNik || null,
+      parent_name: student.parentName || null,
+      guardian_birth_year: student.guardianBirthYear || null,
+      guardian_education: student.guardianEducation || null,
+      parent_job: student.parentJob || null,
+      guardian_income: student.guardianIncome || null,
+      guardian_nik: student.guardianNik || null,
+      parent_phone: student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : null,
+      no_ujian_nasional: student.noUjianNasional || null,
+      no_seri_ijazah: student.noSeriIjazah || null,
+      penerima_kip: student.penerimaKip || null,
+      nomor_kip: student.nomorKip || null,
+      nama_di_kip: student.namaDiKip || null,
+      nomor_kks: student.nomorKks || null,
+      no_registrasi_akta_lahir: student.noRegistrasiAktaLahir || null,
+      bank: student.bank || null,
+      nomor_rekening_bank: student.nomorRekeningBank || null,
+      rekening_atas_nama: student.rekeningAtasNama || null,
+      layak_pip: student.layakPip || null,
+      alasan_layak_pip: student.alasanLayakPip || null,
+      kebutuhan_khusus: student.kebutuhanKhusus || null,
+      sekolah_asal: student.sekolahAsal || null,
+      anak_ke: student.anakKe ? String(student.anakKe) : null,
+      lintang: student.lintang || null,
+      bujur: student.bujur || null,
+      no_kk: student.noKk || null,
+      height: student.height || 0,
+      weight: student.weight || 0,
+      lingkar_kepala: student.lingkarKepala || 0,
+      jml_saudara_kandung: student.jmlSaudaraKandung || 0,
+      jarak_rumah_km: student.jarakRumahKm || 0,
+      economy_status: student.economyStatus || 'Mampu',
+      blood_type: student.bloodType || null,
+      health_notes: student.healthNotes || null,
+      hobbies: student.hobbies || null,
+      ambition: student.ambition || null,
+      achievements: student.achievements || [],
+      violations: student.violations || [],
+      behavior_score: student.behaviorScore || 100,
+      present: student.attendance?.present || 0,
+      sick: student.attendance?.sick || 0,
+      permit: student.attendance?.permit || 0,
+      alpha: student.attendance?.alpha || 0,
+      photo: student.photo || null,
+      teacher_notes: student.teacherNotes || null
     };
     await supabase.from('students').update(dbStudent).eq('id', student.id);
     
@@ -729,7 +1013,11 @@ export const apiService = {
 
   // --- Agendas ---
   getAgendas: async (currentUser: User | null): Promise<AgendaItem[]> => {
-    const { data, error } = await supabase.from('agendas').select('*');
+    let query = supabase.from('agendas').select('id, class_id, title, date, end_date, time, type, completed');
+    if (currentUser?.role === 'siswa' && currentUser.classId) {
+      query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((a: any) => ({ 
       ...a, 
@@ -773,7 +1061,7 @@ export const apiService = {
   // --- Materials ---
   getMaterials: async (classId: string): Promise<Material[]> => {
     console.log("Fetching materials for classId:", classId);
-    const { data, error } = await supabase.from('materials').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('materials').select('id, class_id, subject_id, title, description, link, is_visible, created_at').eq('class_id', classId);
     if (error) {
       console.warn("Error fetching materials:", error);
       return [];
@@ -857,7 +1145,15 @@ export const apiService = {
 
   // --- Grades ---
   getGrades: async (currentUser: User | null): Promise<GradeRecord[]> => {
-    const { data, error } = await supabase.from('grades').select('*');
+    let query = supabase.from('grades').select('student_id, class_id, subject_id, sum1, sum2, sum3, sum4, sas, extra_data');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) {
+        query = query.eq('student_id', currentUser.id);
+      } else if (currentUser.classId) {
+        query = query.eq('class_id', currentUser.classId);
+      }
+    }
+    const { data, error } = await query;
     if (error) return [];
     
     const gradeMap: Record<string, GradeRecord> = {};
@@ -881,7 +1177,7 @@ export const apiService = {
     return Object.values(gradeMap);
   },
   getGradesForStudent: async (studentId: string): Promise<GradeRecord | null> => {
-    const { data, error } = await supabase.from('grades').select('*').eq('student_id', studentId);
+    const { data, error } = await supabase.from('grades').select('student_id, class_id, subject_id, sum1, sum2, sum3, sum4, sas, extra_data').eq('student_id', studentId);
     if (error || !data || data.length === 0) return null;
     
     const record: GradeRecord = {
@@ -1018,7 +1314,12 @@ export const apiService = {
 
   // --- Counseling ---
   getCounselingLogs: async (currentUser: User | null): Promise<BehaviorLog[]> => {
-    const { data, error } = await supabase.from('counseling').select('*');
+    let query = supabase.from('counseling').select('id, class_id, student_id, student_name, date, type, category, description, point, emotion, status');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({
       ...l,
@@ -1044,7 +1345,7 @@ export const apiService = {
 
   // --- Extracurriculars ---
   getExtracurriculars: async (currentUser: User | null): Promise<Extracurricular[]> => {
-    const { data, error } = await supabase.from('extracurriculars').select('*');
+    const { data, error } = await supabase.from('extracurriculars').select('id, class_id, name, category, schedule, coach, members');
     if (error) return [];
     return data.map((e: any) => ({ ...e, classId: e.class_id }));
   },
@@ -1076,7 +1377,7 @@ export const apiService = {
 
   // --- Profiles ---
   getProfiles: async (): Promise<{ teacher?: TeacherProfileData, school?: SchoolProfileData }> => {
-    const { data, error } = await supabase.from('profiles').select('*');
+    const { data, error } = await supabase.from('profiles').select('id, data');
     if (error) return {};
     const profiles: any = {};
     data.forEach((p: any) => {
@@ -1094,7 +1395,7 @@ export const apiService = {
 
   // --- Holidays ---
   getHolidays: async (currentUser: User | null): Promise<Holiday[]> => {
-    const { data, error } = await supabase.from('holidays').select('*');
+    const { data, error } = await supabase.from('holidays').select('id, class_id, date, description, type');
     if (error) return [];
     return data.map((h: any) => ({ ...h, classId: h.class_id }));
   },
@@ -1137,7 +1438,7 @@ export const apiService = {
 
   // --- Attendance ---
   getAttendance: async (currentUser: User | null): Promise<any[]> => {
-    const { data, error } = await supabase.from('attendance').select('*');
+    const { data, error } = await supabase.from('attendance').select('id, records');
     if (error) return [];
     const allRecords: any[] = [];
     data.forEach((row: any) => {
@@ -1234,7 +1535,12 @@ export const apiService = {
 
   // --- Sikap & Karakter ---
   getSikapAssessments: async (currentUser: User | null): Promise<SikapAssessment[]> => {
-    const { data, error } = await supabase.from('penilaian_sikap').select('*');
+    let query = supabase.from('penilaian_sikap').select('id, student_id, class_id, keimanan, kewargaan, penalaran_kritis, kreativitas, kolaborasi, kemandirian, kesehatan, komunikasi');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((s: any) => ({
       ...s,
@@ -1262,7 +1568,12 @@ export const apiService = {
     }
   },
   getKarakterAssessments: async (currentUser: User | null): Promise<KarakterAssessment[]> => {
-    const { data, error } = await supabase.from('penilaian_karakter').select('*');
+    let query = supabase.from('penilaian_karakter').select('id, student_id, class_id, bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_awal, catatan, afirmasi');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((k: any) => ({
       ...k,
@@ -1292,9 +1603,134 @@ export const apiService = {
     }
   },
 
+  // --- Jurnal Harian 7 KAIH ---
+  getDailyKAIHJournals: async (classId: string, date?: string, startDate?: string, endDate?: string): Promise<DailyKAIHJournal[]> => {
+    try {
+      let query = supabase.from('jurnal_kaih_harian').select('id, student_id, class_id, date, bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_awal, catatan, catatan_guru, details, catatan_kegiatan, updated_at').eq('class_id', classId);
+      if (date) {
+        query = query.eq('date', date);
+      }
+      if (startDate) {
+        query = query.gte('date', startDate);
+      }
+      if (endDate) {
+        query = query.lte('date', endDate);
+      }
+      const { data, error } = await query;
+      if (!error && data && data.length > 0) {
+        return data.map((d: any) => ({
+          id: d.id,
+          studentId: d.student_id,
+          classId: d.class_id,
+          date: d.date,
+          bangunPagi: d.bangun_pagi || '',
+          beribadah: d.beribadah || '',
+          berolahraga: d.berolahraga || '',
+          makanSehat: d.makan_sehat || '',
+          gemarBelajar: d.gemar_belajar || '',
+          bermasyarakat: d.bermasyarakat || '',
+          tidurAwal: d.tidur_awal || '',
+          catatan: d.catatan || '',
+          catatanGuru: d.catatan_guru || '',
+          details: d.details || (d.catatan_kegiatan ? JSON.parse(d.catatan_kegiatan) : {}),
+          updatedAt: d.updated_at
+        }));
+      }
+    } catch (e) {
+      console.warn("Supabase query for jurnal_kaih_harian failed, reading local storage.", e);
+    }
+
+    // Local Storage Fallback
+    const localJournalsStr = localStorage.getItem(`kaih_journals_${classId}`);
+    if (localJournalsStr) {
+      try {
+        let journals: DailyKAIHJournal[] = JSON.parse(localJournalsStr);
+        if (date) {
+          journals = journals.filter(j => j.date === date);
+        }
+        if (startDate) {
+          journals = journals.filter(j => j.date >= startDate);
+        }
+        if (endDate) {
+          journals = journals.filter(j => j.date <= endDate);
+        }
+        return journals;
+      } catch (err) {}
+    }
+    return [];
+  },
+
+  saveDailyKAIHJournal: async (journal: DailyKAIHJournal): Promise<DailyKAIHJournal> => {
+    const dbPayload = {
+      student_id: journal.studentId,
+      class_id: journal.classId,
+      date: journal.date,
+      bangun_pagi: journal.bangunPagi || '',
+      beribadah: journal.beribadah || '',
+      berolahraga: journal.berolahraga || '',
+      makan_sehat: journal.makanSehat || '',
+      gemar_belajar: journal.gemarBelajar || '',
+      bermasyarakat: journal.bermasyarakat || '',
+      tidur_awal: journal.tidurAwal || '',
+      catatan: journal.catatan || '',
+      catatan_guru: journal.catatanGuru || '',
+      details: journal.details || {},
+      updated_at: new Date().toISOString()
+    };
+
+    let savedResult: DailyKAIHJournal = { ...journal, updatedAt: dbPayload.updated_at };
+
+    try {
+      const { data, error } = await supabase
+        .from('jurnal_kaih_harian')
+        .upsert(dbPayload, { onConflict: 'student_id,date' })
+        .select()
+        .single();
+      if (!error && data) {
+        savedResult = {
+          id: data.id,
+          studentId: data.student_id,
+          classId: data.class_id,
+          date: data.date,
+          bangunPagi: data.bangun_pagi,
+          beribadah: data.beribadah,
+          berolahraga: data.berolahraga,
+          makanSehat: data.makan_sehat,
+          gemarBelajar: data.gemar_belajar,
+          bermasyarakat: data.bermasyarakat,
+          tidurAwal: data.tidur_awal,
+          catatan: data.catatan,
+          catatanGuru: data.catatan_guru,
+          details: data.details || journal.details || {},
+          updatedAt: data.updated_at
+        };
+      }
+    } catch (e) {
+      console.warn("Supabase upsert for jurnal_kaih_harian failed, saving to local storage.", e);
+    }
+
+    // Save to local storage backup
+    try {
+      const key = `kaih_journals_${journal.classId}`;
+      const existingStr = localStorage.getItem(key);
+      let existing: DailyKAIHJournal[] = existingStr ? JSON.parse(existingStr) : [];
+      const index = existing.findIndex(j => j.studentId === journal.studentId && j.date === journal.date);
+      if (index >= 0) {
+        existing[index] = savedResult;
+      } else {
+        existing.push(savedResult);
+      }
+      localStorage.setItem(key, JSON.stringify(existing));
+    } catch (err) {
+      console.error("Failed to update local storage for KAIH journal", err);
+    }
+
+    return savedResult;
+  },
+
   // --- Employment Links ---
   getEmploymentLinks: async (): Promise<EmploymentLink[]> => {
-    const { data, error } = await supabase.from('employment_links').select('*');
+    const { data, error } = await supabase.from('employment_links').select('id, title, url, icon');
     if (error || !data || data.length === 0) {
       return [
         { id: 'def-1', title: 'Si Jempol', url: 'https://sijempol.tubankab.go.id/', icon: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAXCAMAAABd273TAAAAbFBMVEVHcEwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWFhYMDAwAAAAAAAChoaHZ2dmampozMzMAAAAcHBwpKSmKior09PRcXFwjIyPNzc2rq6s5OTns7Ox4eHgAAAAAAAC3t7e9vb0AAABCQkIDazJdAAAAI3RSTlMAFUt3s+VdmdD///8H8/////8n//////////////+E/f//OIGIR7EAAAEaSURBVHgBbdIFDsQgEEBR6v1QY0u9Xb3/HXfCuryE6GgG9S0IozhJIvVPkGY52iB+A4owK4GqbrTVlHG0e68piaK1ruu7ocNZA5TZLaZEoDF2hKmH2RnjIyAJJSBGLEZbQ2vWmm1jBD3i5UrtgREMgn6qOjxn8WIfoKubZp3wnLlvw0FlwNFXEf0Jo3Gap1TtDrgOjDEaaQFuwHFXntVtCIzDypMW7aXhLg+V8D3adsShB9nCHXGIOC3UTcZTNa1VRWv8cE8hT0O9zhYLHDL1kvB06pfZjIjk/U73CG30LAFgEeodokVrun5rRgTxT4C39PN2QZSFelfyMK2n3/z3Tcfj5m/4peAp358D9UsO4vlP9N95Fyap+uMKV5wYXq2GYZoAAAAASUVORK5CYII=' },
@@ -1330,7 +1766,7 @@ export const apiService = {
       return cached.filter(i => String(i.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
     }
     try {
-      const query = supabase.from('inventory').select('*');
+      const query = supabase.from('inventory').select('id, class_id, name, condition, qty');
       if (classId !== 'ALL') query.eq('class_id', classId);
       const { data, error } = await query;
       if (error) {
@@ -1401,7 +1837,7 @@ export const apiService = {
       return cached.filter(g => String(g.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
     }
     try {
-      const { data, error } = await supabase.from('guests').select('*').eq('class_id', classId);
+      const { data, error } = await supabase.from('guests').select('id, class_id, date, time, name, agency, purpose').eq('class_id', classId);
       if (error) {
         const cached = cacheService.get<Guest[]>('guests') || [];
         return cached.filter(g => String(g.classId).trim().toLowerCase() === String(classId).trim().toLowerCase());
@@ -1463,7 +1899,7 @@ export const apiService = {
 
   // --- GTK Data ---
   getGtkData: async (): Promise<GtkRecord[]> => {
-    const { data, error } = await supabase.from('gtk_data').select('*');
+    const { data, error } = await supabase.from('gtk_data').select('id, user_id, nama, nip, nuptk, jenis_kelamin, tempat_lahir, tanggal_lahir, ijazah_tertinggi, jabatan, status_pegawai, tmt_pengangkatan, mulai_bekerja_disini, pangkat_golongan, masa_kerja_tahun, masa_kerja_bulan, sk_terakhir, email_pribadi, email_belajar, foto');
     if (error || !data || data.length === 0) {
       // Fallback: Check if old data exists in class_config
       const { data: oldData } = await supabase.from('class_config').select('data').eq('class_id', 'global_gtk_data').single();
@@ -1598,7 +2034,7 @@ export const apiService = {
 
   // --- Learning Reports ---
   getLearningReports: async (classId: string): Promise<LearningReport[]> => {
-    const { data, error } = await supabase.from('learning_reports').select('*');
+    const { data, error } = await supabase.from('learning_reports').select('id, class_id, date, type, subject, topic, document_link, teacher_name');
     if (error) return [];
     
     const mapped = data.map((r: any) => ({ 
@@ -1679,7 +2115,7 @@ export const apiService = {
 
   // --- Learning Journal ---
   getLearningJournal: async (classId: string): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content').eq('class_id', classId);
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -1698,7 +2134,7 @@ export const apiService = {
     return entries;
   },
   getLearningJournalAll: async (): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*');
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content');
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -1764,7 +2200,7 @@ export const apiService = {
     // Find the row containing the entry
     const { data, error } = await supabase
       .from('jurnal_kelas')
-      .select('*')
+      .select('id, content')
       .eq('class_id', classId)
       .filter('content', 'cs', `[{"id": "${id}"}]`);
     
@@ -1780,7 +2216,7 @@ export const apiService = {
   },
 
   getAllLearningJournals: async (): Promise<LearningJournalEntry[]> => {
-    const { data, error } = await supabase.from('jurnal_kelas').select('*');
+    const { data, error } = await supabase.from('jurnal_kelas').select('id, class_id, date, day, content');
     if (error) return [];
     
     const entries: LearningJournalEntry[] = [];
@@ -1802,7 +2238,7 @@ export const apiService = {
   markJournalFeedbackAsRead: async (entryId: string, classId: string): Promise<void> => {
     const { data, error } = await supabase
       .from('jurnal_kelas')
-      .select('*')
+      .select('id, content')
       .eq('class_id', classId)
       .filter('content', 'cs', `[{"id": "${entryId}"}]`);
     
@@ -1824,7 +2260,7 @@ export const apiService = {
 
   // --- Learning Documentation ---
   getLearningDocumentation: async (classId: string): Promise<LearningDocumentation[]> => {
-    const { data, error } = await supabase.from('learning_documentation').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('learning_documentation').select('id, class_id, nama_kegiatan, link_foto').eq('class_id', classId);
     if (error) return [];
     return data.map((d: any) => ({ ...d, classId: d.class_id, namaKegiatan: d.nama_kegiatan, linkFoto: d.link_foto }));
   },
@@ -1842,7 +2278,12 @@ export const apiService = {
 
   // --- Liaison Logs ---
   getLiaisonLogs: async (currentUser: User | null): Promise<LiaisonLog[]> => {
-    const { data, error } = await supabase.from('buku_penghubung').select('*');
+    let query = supabase.from('buku_penghubung').select('id, class_id, student_id, date, sender, message, status, category, response');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({ ...l, classId: l.class_id, studentId: l.student_id }));
   },
@@ -1867,54 +2308,94 @@ export const apiService = {
 
   // --- Permission Requests ---
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
-    const { data, error } = await supabase.from('permission_requests').select('*');
-    if (error) return [];
-    return data.map((p: any) => ({ 
-      ...p, 
-      classId: p.class_id, 
-      studentId: p.student_id,
-      rejectionReason: p.rejection_reason 
-    }));
+    try {
+      let query = supabase.from('permission_requests').select('id, class_id, student_id, date, type, reason, status, rejection_reason');
+      if (currentUser?.role === 'siswa') {
+        if (currentUser.classId) {
+          query = query.eq('class_id', currentUser.classId);
+        }
+      }
+      const { data, error } = await query;
+      if (error) {
+        console.warn("Could not fetch permission requests (using cache):", error.message || error);
+        return cacheService.get('permissionRequests') || [];
+      }
+      const results = (data || []).map((p: any) => ({ 
+        id: String(p.id),
+        classId: p.class_id, 
+        studentId: String(p.student_id),
+        date: p.date,
+        type: p.type,
+        reason: p.reason,
+        status: p.status || 'Pending',
+        rejectionReason: p.rejection_reason 
+      }));
+      cacheService.set('permissionRequests', results);
+      return results;
+    } catch (e: any) {
+      console.warn("getPermissionRequests network/catch warning:", e?.message || e);
+      return cacheService.get('permissionRequests') || [];
+    }
   },
-  savePermissionRequest: async (request: any): Promise<void> => {
-    await supabase.from('permission_requests').insert([{
+  savePermissionRequest: async (request: any): Promise<any> => {
+    const payload = {
       class_id: request.classId,
-      student_id: request.studentId,
+      student_id: String(request.studentId),
       date: request.date,
       type: request.type,
       reason: request.reason,
       status: 'Pending'
-    }]);
+    };
+    const { data, error } = await supabase.from('permission_requests').insert([payload]).select();
+    if (error) {
+      console.error("Error saving permission request:", error);
+      throw error;
+    }
+    return data;
   },
   processPermissionRequest: async (id: string, actionStatus: string, reason?: string): Promise<void> => {
     const newStatus = actionStatus === 'approve' ? 'Approved' : 'Rejected';
     
     // 1. Get request details
-    const { data: request, error: fetchError } = await supabase
+    let request: any = null;
+    const { data: singleReq, error: fetchError } = await supabase
         .from('permission_requests')
-        .select('*')
+        .select('id, class_id, student_id, date, type, reason, status, rejection_reason')
         .eq('id', id)
-        .single();
+        .maybeSingle();
     
-    if (fetchError || !request) throw fetchError || new Error('Request not found');
+    if (fetchError || !singleReq) {
+      const { data: listData } = await supabase.from('permission_requests').select('*').eq('id', id);
+      if (listData && listData.length > 0) {
+        request = listData[0];
+      } else {
+        throw fetchError || new Error('Request not found');
+      }
+    } else {
+      request = singleReq;
+    }
 
     // 2. Update status
     const updateData: any = { status: newStatus };
     if (newStatus === 'Rejected' && reason) {
         updateData.rejection_reason = reason;
     }
-    await supabase.from('permission_requests').update(updateData).eq('id', id);
+    const { error: updateError } = await supabase.from('permission_requests').update(updateData).eq('id', id);
+    if (updateError) {
+      console.error("Error updating permission status:", updateError);
+      throw updateError;
+    }
 
     // 3. If approved, add to attendance
-    if (actionStatus === 'approve') {
+    if (actionStatus === 'approve' && request) {
         const attendanceId = `${request.class_id}_${request.date}`;
         
         // Get existing attendance
-        const { data: attendance, error: attError } = await supabase
+        const { data: attendance } = await supabase
             .from('attendance')
-            .select('*')
+            .select('id, records')
             .eq('id', attendanceId)
-            .single();
+            .maybeSingle();
         
         const newRecord = {
             studentId: request.student_id,
@@ -1924,7 +2405,7 @@ export const apiService = {
 
         if (attendance) {
             // Update existing - filter out old record for this student to avoid duplicates
-            const otherRecords = (attendance.records || []).filter((r: any) => r.studentId !== request.student_id);
+            const otherRecords = (attendance.records || []).filter((r: any) => String(r.studentId) !== String(request.student_id));
             const records = [...otherRecords, newRecord];
             await supabase.from('attendance').update({ records }).eq('id', attendanceId);
         } else {
@@ -1934,17 +2415,17 @@ export const apiService = {
                 records: [newRecord]
             }]);
         }
-    } else if (actionStatus === 'reject') {
+    } else if (actionStatus === 'reject' && request) {
         // If rejected, ensure it's NOT in attendance (remove if exists)
         const attendanceId = `${request.class_id}_${request.date}`;
         const { data: attendance } = await supabase
             .from('attendance')
-            .select('*')
+            .select('id, records')
             .eq('id', attendanceId)
-            .single();
+            .maybeSingle();
         
         if (attendance && attendance.records) {
-            const filteredRecords = attendance.records.filter((r: any) => r.studentId !== request.student_id);
+            const filteredRecords = attendance.records.filter((r: any) => String(r.studentId) !== String(request.student_id));
             if (filteredRecords.length !== attendance.records.length) {
                 await supabase.from('attendance').update({ records: filteredRecords }).eq('id', attendanceId);
             }
@@ -1954,7 +2435,7 @@ export const apiService = {
 
   // --- Support Documents ---
   getSupportDocuments: async (currentUser: User | null): Promise<SupportDocument[]> => {
-    const { data, error } = await supabase.from('support_documents').select('*');
+    const { data, error } = await supabase.from('support_documents').select('id, class_id, name, url');
     if (error) return [];
     return data.map((d: any) => ({ ...d, classId: d.class_id }));
   },
@@ -1972,7 +2453,7 @@ export const apiService = {
 
   // --- School Assets (Sarana Prasarana) ---
   getSchoolAssets: async (): Promise<SchoolAsset[]> => {
-    const { data, error } = await supabase.from('school_assets').select('*');
+    const { data, error } = await supabase.from('school_assets').select('id, name, qty, condition, location');
     if (error) return [];
     return data;
   },
@@ -2054,13 +2535,32 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('*').eq('class_id', classId);
+      let { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes').eq('class_id', classId);
+      if (error && error.code === '42703') {
+        const res2 = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url').eq('class_id', classId);
+        data = res2.data;
+        error = res2.error;
+      }
+      if (error && error.code === '42703') {
+        const res3 = await supabase.from('schedule').select('id, class_id, day, time, subject').eq('class_id', classId);
+        data = res3.data;
+        error = res3.error;
+      }
       if (error) {
         console.error('Error fetching schedule:', error);
         const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
         return cached || [];
       }
-      return data.map((s: any) => ({ id: s.id, day: s.day, time: s.time, subject: s.subject }));
+      return (data || []).map((s: any) => ({ 
+        id: s.id, 
+        day: s.day, 
+        time: s.time, 
+        subject: s.subject,
+        meetUrl: s.meet_url || s.meetUrl || undefined,
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined,
+        attachedMaterialIds: s.attached_material_ids || s.attachedMaterialIds || undefined,
+        attachedNotes: s.attached_notes || s.attachedNotes || undefined
+      }));
     } catch (err) {
       console.warn("getSchedule failed, using local fallback:", err);
       const cached = cacheService.get<ScheduleItem[]>(`schedule_${classId}`);
@@ -2087,12 +2587,32 @@ export const apiService = {
       return allSchedules;
     }
     try {
-      const { data, error } = await supabase.from('schedule').select('*');
+      let { data, error } = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url, attached_material_ids, attached_notes');
+      if (error && error.code === '42703') {
+        const res2 = await supabase.from('schedule').select('id, class_id, day, time, subject, meet_url, zoom_url');
+        data = res2.data;
+        error = res2.error;
+      }
+      if (error && error.code === '42703') {
+        const res3 = await supabase.from('schedule').select('id, class_id, day, time, subject');
+        data = res3.data;
+        error = res3.error;
+      }
       if (error) {
         console.error('Error fetching all schedules:', error);
         return [];
       }
-      return data.map((s: any) => ({ id: s.id, day: s.day, time: s.time, subject: s.subject, classId: s.class_id }));
+      return (data || []).map((s: any) => ({ 
+        id: s.id, 
+        day: s.day, 
+        time: s.time, 
+        subject: s.subject, 
+        classId: s.class_id,
+        meetUrl: s.meet_url || s.meetUrl || undefined,
+        zoomUrl: s.zoom_url || s.zoomUrl || undefined,
+        attachedMaterialIds: s.attached_material_ids || s.attachedMaterialIds || undefined,
+        attachedNotes: s.attached_notes || s.attachedNotes || undefined
+      }));
     } catch (err) {
       console.warn("getScheduleAll failed:", err);
       return [];
@@ -2117,18 +2637,40 @@ export const apiService = {
 
       if (schedule.length === 0) return;
 
-      // Then insert new schedule
+      // Then insert new schedule (try with virtual class links & attached materials first)
       const dbSchedule = schedule.map(s => ({
         class_id: classId,
         day: s.day,
         time: s.time,
-        subject: s.subject
+        subject: s.subject,
+        meet_url: s.meetUrl || null,
+        zoom_url: s.zoomUrl || null,
+        attached_material_ids: s.attachedMaterialIds || null,
+        attached_notes: s.attachedNotes || null
       }));
 
       const { error: insertError } = await supabase.from('schedule').insert(dbSchedule);
       if (insertError) {
-        console.error('Error saving schedule:', insertError);
-        throw insertError;
+        console.warn('Error saving schedule with extended columns, attempting fallback:', insertError);
+        const dbScheduleStandard = schedule.map(s => ({
+          class_id: classId,
+          day: s.day,
+          time: s.time,
+          subject: s.subject,
+          meet_url: s.meetUrl || null,
+          zoom_url: s.zoomUrl || null
+        }));
+        const { error: insertError2 } = await supabase.from('schedule').insert(dbScheduleStandard);
+        if (insertError2) {
+          console.warn('Fallback 1 failed, trying minimal schedule save:', insertError2);
+          const dbScheduleMinimal = schedule.map(s => ({
+            class_id: classId,
+            day: s.day,
+            time: s.time,
+            subject: s.subject
+          }));
+          await supabase.from('schedule').insert(dbScheduleMinimal);
+        }
       }
     } catch (err) {
       console.warn("saveSchedule database failed:", err);
@@ -2137,7 +2679,12 @@ export const apiService = {
 
   // --- Book Loans ---
   getBookLoans: async (currentUser: User | null): Promise<BookLoan[]> => {
-    const { data, error } = await supabase.from('book_loans').select('*');
+    let query = supabase.from('book_loans').select('id, student_id, student_name, class_id, books, qty, status, date, notes');
+    if (currentUser?.role === 'siswa') {
+      if (currentUser.id) query = query.eq('student_id', currentUser.id);
+      else if (currentUser.classId) query = query.eq('class_id', currentUser.classId);
+    }
+    const { data, error } = await query;
     if (error) return [];
     return data.map((l: any) => ({ ...l, classId: l.class_id, studentId: l.student_id, studentName: l.student_name }));
   },
@@ -2168,7 +2715,7 @@ export const apiService = {
 
   // --- Book Inventory ---
   getBookInventory: async (classId: string): Promise<BookInventory[]> => {
-    const { data, error } = await supabase.from('book_inventory').select('*').eq('class_id', classId);
+    const { data, error } = await supabase.from('book_inventory').select('id, class_id, subject_id, name, stock, total_stock, cover_url, digital_url').eq('class_id', classId);
     if (error) return [];
     return data.map((b: any) => ({
       ...b,
@@ -2198,7 +2745,7 @@ export const apiService = {
 
   // --- BOS Management ---
   getBOS: async (): Promise<BOSTransaction[]> => {
-    const { data, error } = await supabase.from('bos_management').select('*');
+    const { data, error } = await supabase.from('bos_management').select('id, date, type, category, description, amount');
     if (error) return [];
     return data;
   },
@@ -2226,7 +2773,7 @@ export const apiService = {
 
   // --- Performance Assessments ---
   getPerformanceAssessments: async (): Promise<PerformanceAssessment[]> => {
-    const { data, error } = await supabase.from('performance_assessments').select('*');
+    const { data, error } = await supabase.from('performance_assessments').select('id, teacher_id, teacher_name, supervisor_id, supervisor_name, date, scores, reflection, total_score, percentage, category, created_at');
     if (error) return [];
     return data.map((pa: any) => {
       const scoresObj = pa.scores || {};
@@ -2825,7 +3372,7 @@ export const apiService = {
     try {
       const { data, error } = await supabase
         .from('sumatifs')
-        .select('*')
+        .select('id, class_id, subject_id, title, type, duration, start_time, end_time, is_active, is_visible, token, questions, created_at')
         .eq('class_id', classId);
       if (error) {
         return cached || [];
@@ -2970,7 +3517,7 @@ export const apiService = {
     try {
       const { data, error } = await supabase
         .from('sumatif_results')
-        .select('*')
+        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at, created_at')
         .eq('sumatif_id', sumatifId);
       if (error) {
         console.error("Error fetching sumatif results:", error);
@@ -3131,7 +3678,7 @@ export const apiService = {
   getLearningPlans: async (): Promise<LearningPlan[]> => {
     const { data, error } = await supabase
       .from('learning_plans')
-      .select('*')
+      .select('id, school_name, compiler, nip, subject, topic, class_semester, academic_year, time_allocation, student_characteristics, profile_dimensions, capaian_pembelajaran, learning_goals, pendekatan, pendekatan_reason, model, model_reason, strategi, strategi_reason, metode, metode_reason, lintas_disiplin, mitra, digital, lingkungan, kegiatan_awal, kegiatan_inti, kegiatan_penutup, kegiatan_awal_title, kegiatan_inti_title, kegiatan_penutup_title, durasi_awal, durasi_inti, durasi_penutup, asesmen_awal, asesmen_proses, asesmen_akhir, attachments, created_date, created_at')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -3298,7 +3845,7 @@ export const apiService = {
   getKokurikulerPlans: async (): Promise<KokurikulerPlan[]> => {
     const { data, error } = await supabase
       .from('kokurikuler_plans')
-      .select('*')
+      .select('id, identitas, analisis_kebutuhan, dimensi_profil, tujuan_pembelajaran, praktik_pedagogis, lingkungan_pembelajaran, pemanfaatan_digital, kemitraan, kegiatan, asesmen, produk, created_at')
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -3406,7 +3953,7 @@ export const apiService = {
     if (!supabase) return null;
     const { data, error } = await supabase
       .from('emergency_alerts')
-      .select('*')
+      .select('id, type, description, is_active, triggered_by, triggered_by_name, created_at')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(1)
@@ -3480,7 +4027,7 @@ export const apiService = {
     try {
       const cached = cacheService.get<MailRecord[]>('mail_records') || [];
       if (!isApiConfigured()) return cached;
-      const { data, error } = await supabase.from('mail_records').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('mail_records').select('id, type, letter_number, agenda_number, sender_or_recipient, subject, letter_date, received_or_sent_date, category, description, file_url, status, class_id, created_at').order('created_at', { ascending: false });
       if (error || !data) return cached;
       const mapped: MailRecord[] = data.map((item: any) => ({
         id: item.id,
@@ -3620,7 +4167,7 @@ export const apiService = {
         }
         return cached;
       }
-      const { data, error } = await supabase.from('staff_leave_requests').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('staff_leave_requests').select('id, user_id, user_name, nip, jabatan, pangkat, kategori_ijin, tanggal_mulai, tanggal_selesai, alasan, status, rejection_reason, file_url, created_at').order('created_at', { ascending: false });
       if (error || !data || data.length === 0) {
         if (!cached || cached.length === 0) {
           cacheService.set('staff_leave_requests', DEFAULT_LEAVE_REQUESTS);
@@ -3678,22 +4225,25 @@ export const apiService = {
         jabatan: leaveRequest.jabatan,
         pangkat: leaveRequest.pangkat,
         kategori_ijin: leaveRequest.kategoriIjin,
-        tanggal_mulai: leaveRequest.tanggalMulai,
-        tanggal_selesai: leaveRequest.tanggalSelesai,
+        tanggal_mulai: leaveRequest.tanggalMulai ? new Date(leaveRequest.tanggalMulai).toISOString() : null,
+        tanggal_selesai: leaveRequest.tanggalSelesai ? new Date(leaveRequest.tanggalSelesai).toISOString() : null,
         alasan: leaveRequest.alasan,
         status: leaveRequest.status,
         rejection_reason: leaveRequest.rejectionReason || null,
-        file_url: leaveRequest.fileUrl
+        file_url: leaveRequest.fileUrl || null
       };
 
-      const { data: existing } = await supabase.from('staff_leave_requests').select('id').eq('id', leaveRequest.id).single();
-      if (existing) {
-        await supabase.from('staff_leave_requests').update(dbItem).eq('id', leaveRequest.id);
-      } else {
-        await supabase.from('staff_leave_requests').insert([dbItem]);
+      const { error } = await supabase
+        .from('staff_leave_requests')
+        .upsert(dbItem, { onConflict: 'id' });
+
+      if (error) {
+        console.error("Error saving staff leave request to database:", error);
+        throw error;
       }
     } catch (err) {
-      console.warn("saveStaffLeaveRequest DB error (fallback to local cache):", err);
+      console.error("saveStaffLeaveRequest DB error:", err);
+      throw err;
     }
   },
   deleteStaffLeaveRequest: async (id: string): Promise<{ status: string; message?: string }> => {
@@ -3706,10 +4256,11 @@ export const apiService = {
     if (!isApiConfigured()) return { status: 'success' };
 
     try {
-      await supabase.from('staff_leave_requests').delete().eq('id', id);
+      const { error } = await supabase.from('staff_leave_requests').delete().eq('id', id);
+      if (error) throw error;
       return { status: 'success' };
     } catch (err: any) {
-      console.warn("deleteStaffLeaveRequest DB error:", err);
+      console.error("deleteStaffLeaveRequest DB error:", err);
       return { status: 'error', message: err?.message };
     }
   },
@@ -3721,7 +4272,7 @@ export const apiService = {
       if (!isApiConfigured()) {
         return cached || [];
       }
-      const { data, error } = await supabase.from('gtk_data').select('*');
+      const { data, error } = await supabase.from('gtk_data').select('id, user_id, nama, nip, nuptk, jenis_kelamin, tempat_lahir, tanggal_lahir, ijazah_tertinggi, jabatan, status_pegawai, tmt_pengangkatan, mulai_bekerja_di_sini, pangkat_golongan, masa_kerja_tahun, masa_kerja_bulan, sk_terakhir, email_pribadi, email_belajar, foto');
       if (error || !data) {
         return cached || [];
       }

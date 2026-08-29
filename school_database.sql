@@ -77,22 +77,68 @@ CREATE TABLE IF NOT EXISTS students (
   birth_date DATE,
   religion TEXT,
   address TEXT,
+  rt TEXT,
+  rw TEXT,
+  dusun TEXT,
+  kelurahan TEXT,
+  kecamatan TEXT,
+  kode_pos TEXT,
+  jenis_tinggal TEXT,
+  alat_transportasi TEXT,
+  telepon TEXT,
+  hp TEXT,
+  email TEXT,
+  skhun TEXT,
+  penerima_kps TEXT,
+  no_kps TEXT,
   father_name TEXT,
-  father_job TEXT,
+  father_birth_year TEXT,
   father_education TEXT,
+  father_job TEXT,
+  father_income TEXT,
+  father_nik TEXT,
   mother_name TEXT,
-  mother_job TEXT,
+  mother_birth_year TEXT,
   mother_education TEXT,
+  mother_job TEXT,
+  mother_income TEXT,
+  mother_nik TEXT,
   parent_name TEXT,
-  parent_phone TEXT,
+  guardian_birth_year TEXT,
+  guardian_education TEXT,
   parent_job TEXT,
-  economy_status TEXT,
-  height NUMERIC DEFAULT 0,
+  guardian_income TEXT,
+  guardian_nik TEXT,
+  parent_phone TEXT,
+  rombel TEXT,
+  no_ujian_nasional TEXT,
+  no_seri_ijazah TEXT,
+  penerima_kip TEXT,
+  nomor_kip TEXT,
+  nama_di_kip TEXT,
+  nomor_kks TEXT,
+  no_registrasi_akta_lahir TEXT,
+  bank TEXT,
+  nomor_rekening_bank TEXT,
+  rekening_atas_nama TEXT,
+  layak_pip TEXT,
+  alasan_layak_pip TEXT,
+  kebutuhan_khusus TEXT,
+  sekolah_asal TEXT,
+  anak_ke TEXT,
+  lintang TEXT,
+  bujur TEXT,
+  no_kk TEXT,
   weight NUMERIC DEFAULT 0,
+  height NUMERIC DEFAULT 0,
+  lingkar_kepala NUMERIC DEFAULT 0,
+  jml_saudara_kandung NUMERIC DEFAULT 0,
+  jarak_rumah_km NUMERIC DEFAULT 0,
   blood_type TEXT,
   health_notes TEXT,
   hobbies TEXT,
   ambition TEXT,
+  economy_status TEXT,
   achievements JSONB DEFAULT '[]',
   violations JSONB DEFAULT '[]',
   behavior_score NUMERIC DEFAULT 100,
@@ -104,6 +150,54 @@ CREATE TABLE IF NOT EXISTS students (
   teacher_notes TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Migration script to add any missing columns to existing students table without deleting existing data:
+ALTER TABLE students ADD COLUMN IF NOT EXISTS rt TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS rw TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS dusun TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS kelurahan TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS kecamatan TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS kode_pos TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS jenis_tinggal TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS alat_transportasi TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS telepon TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS hp TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS skhun TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS penerima_kps TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS no_kps TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS father_birth_year TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS father_income TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS father_nik TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_birth_year TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_income TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_nik TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_birth_year TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_education TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_income TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_nik TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS rombel TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS no_ujian_nasional TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS no_seri_ijazah TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS penerima_kip TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_kip TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS nama_di_kip TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_kks TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS no_registrasi_akta_lahir TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS bank TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_rekening_bank TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS rekening_atas_nama TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS layak_pip TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS alasan_layak_pip TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS kebutuhan_khusus TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS sekolah_asal TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS anak_ke TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS lintang TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS bujur TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS no_kk TEXT;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS lingkar_kepala NUMERIC DEFAULT 0;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS jml_saudara_kandung NUMERIC DEFAULT 0;
+ALTER TABLE students ADD COLUMN IF NOT EXISTS jarak_rumah_km NUMERIC DEFAULT 0;
 
 -- 5. Agendas table
 CREATE TABLE IF NOT EXISTS agendas (
@@ -232,6 +326,26 @@ CREATE TABLE IF NOT EXISTS penilaian_karakter (
   catatan TEXT,
   afirmasi TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 15b. Jurnal Harian 7 KAIH table
+CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id TEXT NOT NULL,
+  class_id TEXT NOT NULL,
+  date DATE NOT NULL,
+  bangun_pagi TEXT DEFAULT 'Belum Terbiasa',
+  beribadah TEXT DEFAULT 'Belum Terbiasa',
+  berolahraga TEXT DEFAULT 'Belum Terbiasa',
+  makan_sehat TEXT DEFAULT 'Belum Terbiasa',
+  gemar_belajar TEXT DEFAULT 'Belum Terbiasa',
+  bermasyarakat TEXT DEFAULT 'Belum Terbiasa',
+  tidur_awal TEXT DEFAULT 'Belum Terbiasa',
+  catatan TEXT,
+  catatan_guru TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT unique_student_kaih_date UNIQUE (student_id, date)
 );
 
 -- 16. Employment Links table
@@ -557,7 +671,31 @@ CREATE TABLE IF NOT EXISTS staff_leave_requests (
   tanggal_selesai TIMESTAMP WITH TIME ZONE NOT NULL,
   alasan TEXT NOT NULL,
   status TEXT DEFAULT 'Menunggu',
+  rejection_reason TEXT,
   file_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE staff_leave_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
+
+-- 39. Formatif Topics table
+CREATE TABLE IF NOT EXISTS formatif_topics (
+  id TEXT PRIMARY KEY,
+  class_id TEXT NOT NULL,
+  subject_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  assessment_type TEXT NOT NULL DEFAULT 'Observasi',
+  date DATE NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 40. Formatif Scores table
+CREATE TABLE IF NOT EXISTS formatif_scores (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  topic_id TEXT REFERENCES formatif_topics(id) ON DELETE CASCADE,
+  student_id TEXT NOT NULL,
+  score NUMERIC DEFAULT 0,
+  catatan TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

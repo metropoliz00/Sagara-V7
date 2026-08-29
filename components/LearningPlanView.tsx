@@ -496,7 +496,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
 
   // Form Fields
   const [schoolName, setSchoolName] = useState('UPT SD Negeri Remen 2');
-  const [tempatPengesahan, setTempatPengesahan] = useState(schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen');
+  const [tempatPengesahan, setTempatPengesahan] = useState(schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen');
   const [compiler, setCompiler] = useState('Dedy Meyga Saputra, S.Pd, M.Pd');
   const [nip, setNip] = useState('198905202020121006');
   const [subject, setSubject] = useState('IPAS');
@@ -1054,7 +1054,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       if (schoolProfile.year) {
         setAcademicYear(schoolProfile.year);
       }
-      setTempatPengesahan(schoolProfile.desa || schoolProfile.address?.split(',')[0]?.trim() || 'Remen');
+      setTempatPengesahan(schoolProfile.desa || (schoolProfile.jalan || schoolProfile.address)?.split(',')[0]?.trim() || 'Remen');
     }
     if (teacherProfile) {
       setCompiler(teacherProfile.name || '');
@@ -1228,7 +1228,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       if (schoolProfile.year) {
         setAcademicYear(schoolProfile.year);
       }
-      setTempatPengesahan(schoolProfile.desa || schoolProfile.address?.split(',')[0]?.trim() || 'Remen');
+      setTempatPengesahan(schoolProfile.desa || (schoolProfile.jalan || schoolProfile.address)?.split(',')[0]?.trim() || 'Remen');
     } else {
       setTempatPengesahan('Remen');
     }
@@ -1286,7 +1286,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const handleEdit = (plan: LearningPlan) => {
     setEditingId(plan.id);
     setSchoolName(plan.schoolName);
-    setTempatPengesahan(plan.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen');
+    setTempatPengesahan(plan.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen');
     setCompiler(plan.compiler);
     setNip(plan.nip);
     setSubject(plan.subject);
@@ -1544,9 +1544,21 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             word-wrap: break-word !important;
             vertical-align: top;
           }
+          .meta-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            margin-bottom: 15px;
+            table-layout: fixed !important;
+          }
           .meta-table td {
-            padding: 3px;
+            padding: 3px 0;
             font-size: 10pt;
+            vertical-align: top;
+          }
+          .meta-label {
+            color: #475569;
+            font-weight: 500;
+            white-space: nowrap;
           }
           .main-table {
             border: 1.5pt solid #000;
@@ -1598,36 +1610,36 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
 
         <table class="meta-table">
           <tr>
-            <td class="meta-label" style="width: 18%;">Nama Sekolah</td>
+            <td class="meta-label" style="width: 17%;">Nama Sekolah</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 30%;">${plan.schoolName}</td>
-            <td class="meta-label" style="width: 18%; padding-left: 140px;">Materi Pokok</td>
+            <td style="width: 31%; font-weight: bold;">${plan.schoolName}</td>
+            <td class="meta-label" style="width: 17%; padding-left: 20px;">Materi Pokok</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 30%;">${plan.topic}</td>
+            <td style="width: 31%; font-weight: bold;">${plan.topic}</td>
           </tr>
           <tr>
             <td class="meta-label">Nama Penyusun</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.compiler}</td>
-            <td class="meta-label" style="padding-left: 140px;">Kelas/Semester</td>
+            <td style="font-weight: bold;">${plan.compiler}</td>
+            <td class="meta-label" style="padding-left: 20px;">Kelas/Semester</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.classSemester}</td>
+            <td style="font-weight: bold;">${plan.classSemester}</td>
           </tr>
           <tr>
             <td class="meta-label">NIP</td>
             <td style="text-align: center;">:</td>
             <td>${plan.nip || '-'}</td>
-            <td class="meta-label" style="padding-left: 140px;">Tahun Ajaran</td>
+            <td class="meta-label" style="padding-left: 20px;">Tahun Ajaran</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.academicYear}</td>
+            <td style="font-weight: bold;">${plan.academicYear}</td>
           </tr>
           <tr>
             <td class="meta-label">Mata Pelajaran</td>
             <td style="text-align: center;">:</td>
-            <td class="text-blue">${plan.subject}</td>
-            <td class="meta-label" style="padding-left: 140px;">Alokasi Waktu</td>
+            <td class="text-blue" style="font-weight: bold;">${plan.subject}</td>
+            <td class="meta-label" style="padding-left: 20px;">Alokasi Waktu</td>
             <td style="text-align: center;">:</td>
-            <td>${plan.timeAllocation}</td>
+            <td style="font-weight: bold;">${plan.timeAllocation}</td>
           </tr>
         </table>
 
@@ -1949,7 +1961,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     <div className="p-6 max-w-7xl mx-auto space-y-6 select-none font-sans print:p-0">
       {/* Printable Area & Preview Wrapper */}
       {printPlan && (
-        <div className="max-w-4xl mx-auto space-y-4">
+        <div className="w-full max-w-[210mm] mx-auto space-y-4">
           {/* Action Toolbar on Screen */}
           <div className="no-print flex flex-wrap items-center justify-between bg-white border border-slate-200 rounded-2xl p-4 shadow-sm gap-3">
             <button 
@@ -1960,7 +1972,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </button>
             <div className="flex items-center gap-2">
               <span className="hidden sm:inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
-                A4 Portrait
+                A4 Portrait (210 × 297 mm)
               </span>
               <button 
                 onClick={triggerPrintAction}
@@ -1971,7 +1983,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-8 sm:p-12 rounded-2xl shadow-sm border border-gray-200 print:shadow-none print:border-none print:p-0 w-full overflow-hidden" id="print-area">
+          <div className="bg-white p-[8mm] sm:p-[12mm] rounded-sm shadow-xl border border-slate-300 print:shadow-none print:border-none print:p-0 print:m-0 w-full max-w-[210mm] min-h-[297mm] mx-auto overflow-hidden box-border" id="print-area">
             <style>{`
               @media print {
                 @page {
@@ -2048,7 +2060,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               </div>
 
               {/* School Profile Grid */}
-              <div className="grid grid-cols-2 gap-4 text-xs font-medium py-2">
+              <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-xs font-medium py-2">
                 <div className="space-y-1">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Nama Sekolah</span>
@@ -2072,7 +2084,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                   </div>
                 </div>
                 
-                <div className="space-y-1 pl-36">
+                <div className="space-y-1">
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
                     <span className="mr-2 shrink-0">:</span>
@@ -2326,7 +2338,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
               
               <div className="text-center w-60 space-y-14">
                 <div>
-                  <p>{printPlan.tempatPengesahan || schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}, {new Date(printPlan.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
+                  <p>{printPlan.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}, {new Date(printPlan.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
                   <p>Guru Kelas V</p>
                 </div>
                 <div className="space-y-0.5">
@@ -2429,7 +2441,8 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
       )}
 
       {/* Screen view content */}
-      <div className="space-y-6 print:hidden">
+      {!printPlan && (
+        <div className="space-y-6 print:hidden">
         {/* Banner with action button */}
         <div className="bg-gradient-to-r from-[#5AB2FF] to-[#A0DEFF] rounded-3xl p-6 sm:p-8 text-white shadow-xl shadow-[#5AB2FF]/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-2">
@@ -2528,13 +2541,6 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                               className="bg-sky-50 text-sky-700 hover:bg-sky-100 p-2 rounded-xl transition-all border border-sky-200"
                             >
                               <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => handlePrint(plan)}
-                              title="Cetak RPM"
-                              className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 p-2 rounded-xl transition-all border border-emerald-200"
-                            >
-                              <Printer size={16} />
                             </button>
                             {!isReadOnly && (
                               <>
@@ -2721,7 +2727,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                         type="text"
                         value={tempatPengesahan}
                         onChange={(e) => setTempatPengesahan(e.target.value)}
-                        placeholder={`Contoh: ${schoolProfile?.desa || schoolProfile?.address?.split(',')[0]?.trim() || 'Remen'}`}
+                        placeholder={`Contoh: ${schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}`}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                       />
                     </div>
@@ -3694,6 +3700,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                       attachments={attachments}
                       onChange={setAttachments}
                       planData={{ topic, subject, classSemester, timeAllocation, profileDimensions: selectedDimensions }}
+                      geminiApiKey={schoolProfile?.geminiApiKey}
                     />
                   </div>
                 </div>
@@ -3723,6 +3730,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
           </form>
         )}
       </div>
+      )}
     </div>
   );
 };

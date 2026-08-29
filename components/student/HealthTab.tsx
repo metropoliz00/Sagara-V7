@@ -20,6 +20,10 @@ const HealthTab: React.FC<HealthTabProps> = ({ student, onChange }) => {
                 <input type="number" value={student.weight || 0} onChange={(e) => onChange('weight', Number(e.target.value))} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
             </div>
             <div>
+                <label className="block text-sm font-medium mb-1">Lingkar Kepala (cm)</label>
+                <input type="number" value={student.lingkarKepala || 0} onChange={(e) => onChange('lingkarKepala', Number(e.target.value))} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
+            </div>
+            <div>
                 <label className="block text-sm font-medium mb-1">Golongan Darah</label>
                 <input type="text" value={student.bloodType || ''} onChange={(e) => onChange('bloodType', e.target.value)} className="w-full border p-2 rounded focus:ring-2 focus:ring-indigo-500 outline-none print:border-none print:p-0" />
             </div>

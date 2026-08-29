@@ -1146,6 +1146,11 @@ const SumatifEditor: React.FC<{
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
@@ -1591,6 +1596,10 @@ const SumatifEditor: React.FC<{
                             <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if(file) {
+                                    if (file.size > 500 * 1024) {
+                                        onShowNotification("Ukuran file maksimal 500 KB.", "error");
+                                        return;
+                                    }
                                     const base64 = await compressImage(file, 1024, 0.85);
                                     updateQuestion(idx, { imageUrl: base64 });
                                 }
@@ -1710,6 +1719,10 @@ const SumatifEditor: React.FC<{
                                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                                           const file = e.target.files?.[0];
                                           if(file) {
+                                              if (file.size > 500 * 1024) {
+                                                  onShowNotification("Ukuran file maksimal 500 KB.", "error");
+                                                  return;
+                                              }
                                               const base64 = await compressImage(file, 600, 0.8);
                                               const newOpts = [...(q.options || [])];
                                               newOpts[optIdx] = { ...newOpts[optIdx], text: '', imageUrl: base64 };
@@ -1808,6 +1821,10 @@ const SumatifEditor: React.FC<{
                                       <input type="file" accept="image/*" className="hidden" onChange={async (e) => {
                                           const file = e.target.files?.[0];
                                           if(file) {
+                                              if (file.size > 500 * 1024) {
+                                                  onShowNotification("Ukuran file maksimal 500 KB.", "error");
+                                                  return;
+                                              }
                                               const base64 = await compressImage(file, 800, 0.8);
                                               const newSQs = [...(q.subQuestions || [])];
                                               newSQs[sqIdx] = { ...newSQs[sqIdx], imageUrl: base64 };

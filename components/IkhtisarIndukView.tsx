@@ -148,7 +148,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
       s.fatherJob || '-',
       s.motherName || '-',
       s.motherJob || '-',
-      s.parentPhone || '-',
+      s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-',
       s.economyStatus || '-'
     ]);
 
@@ -189,7 +189,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
       const nisLen = (s.nis || '').length;
       const bukuIndukLen = (s.bukuInduk || '').length;
       const nisnLen = (s.nisn || '').length;
-      const phoneLen = (s.parentPhone || '').length;
+      const phoneLen = String(s.parentPhone || '').replace(/^'/, '').length;
 
       if (nameLen > maxNameLen) maxNameLen = nameLen;
       if (birthLen > maxBirthLen) maxBirthLen = birthLen;
@@ -261,7 +261,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
           <div style="font-weight: bold; color: #111;">A: ${s.fatherName || '-'}</div>
           <div style="color: #444; margin-top: 2px;">I: ${s.motherName || '-'}</div>
         </td>
-        <td style="font-family: monospace; text-align: center; width: ${colPhoneWidth}px; max-width: ${colPhoneWidth}px;">${s.parentPhone || '-'}</td>
+        <td style="font-family: monospace; text-align: center; width: ${colPhoneWidth}px; max-width: ${colPhoneWidth}px;">${s.parentPhone ? String(s.parentPhone).replace(/^'/, '') : '-'}</td>
       </tr>
     `).join('');
 
@@ -423,8 +423,8 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
               <h4>DINAS PENDIDIKAN</h4>
               <h2>${schoolProfile?.name?.toUpperCase() || "UPTD SATUAN PENDIDIKAN SDN REMEN"}</h2>
               <p>
-                ${schoolProfile?.address ? `Alamat: ${schoolProfile.address}` : ''}
-                ${schoolProfile?.address && schoolProfile?.postalCode ? ' • ' : ''}
+                ${(schoolProfile?.jalan || schoolProfile?.address) ? `Alamat: ${schoolProfile?.jalan || schoolProfile?.address}` : ''}
+                ${(schoolProfile?.jalan || schoolProfile?.address) && schoolProfile?.postalCode ? ' • ' : ''}
                 ${schoolProfile?.postalCode ? `Kode Pos: ${schoolProfile.postalCode}` : ''}
               </p>
             </div>
@@ -768,7 +768,7 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
                       {student.birthPlace || '-'}, {formatDate(student.birthDate)}
                     </td>
                     <td className="px-4 py-3 text-slate-600 font-semibold font-mono text-xs whitespace-nowrap">
-                      {student.parentPhone || '-'}
+                      {student.parentPhone ? String(student.parentPhone).replace(/^'/, '') : '-'}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
@@ -858,151 +858,300 @@ export const IkhtisarIndukView: React.FC<IkhtisarIndukViewProps> = ({
               </div>
 
               {/* Data Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Biodata Pribadi */}
-                <div className="space-y-4">
-                  <h5 className="text-sm font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex items-center gap-2">
+              <div className="space-y-6">
+                {/* 1. IDENTITAS UTAMA SISWA */}
+                <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
+                  <h5 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-2">
                     <Eye size={16} className="text-[#5AB2FF]" />
-                    DATA DIRI SISWA
+                    1. IDENTITAS UTAMA SISWA
                   </h5>
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
                       <span className="font-medium text-slate-400">No. Buku Induk</span>
                       <span className="font-semibold text-slate-800 font-mono">{selectedStudent.bukuInduk || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">NIK (No. KTP)</span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">NIS</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.nis}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">NISN</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.nisn || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">NIK (KTP)</span>
                       <span className="font-semibold text-slate-800 font-mono">{selectedStudent.nik || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Tempat, Tanggal Lahir</span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">No. KK</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.noKk || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Jenis Kelamin</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.gender === 'L' ? 'Laki-Laki (L)' : 'Perempuan (P)'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Tempat, Tgl Lahir</span>
                       <span className="font-semibold text-slate-800">{selectedStudent.birthPlace || '-'}, {formatDate(selectedStudent.birthDate)}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
                       <span className="font-medium text-slate-400">Agama</span>
                       <span className="font-semibold text-slate-800">{selectedStudent.religion || '-'}</span>
                     </div>
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Kelas / Rombel</span>
+                      <span className="font-semibold text-slate-800">Kelas {selectedStudent.classId}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Anak Ke-berapa</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.anakKe || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Jml Saudara Kandung</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.jmlSaudaraKandung ?? '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Sekolah Asal</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.sekolahAsal || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">No. Registrasi Akta</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.noRegistrasiAktaLahir || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1 md:col-span-2">
+                      <span className="font-medium text-slate-400">Kebutuhan Khusus</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.kebutuhanKhusus || 'Tidak ada'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. ALAMAT & KONTAK */}
+                <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
+                  <h5 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                    <MapPin size={16} className="text-[#5AB2FF]" />
+                    2. ALAMAT & KONTAK
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                    <div className="md:col-span-3 flex justify-between border-b border-dashed border-slate-200 pb-1">
                       <span className="font-medium text-slate-400">Alamat Lengkap</span>
-                      <span className="font-semibold text-slate-800 leading-relaxed bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        {selectedStudent.address || '-'}
-                      </span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.address || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">RT / RW</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.rt || '-'}/{selectedStudent.rw || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Dusun</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.dusun || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Kelurahan / Desa</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.kelurahan || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Kecamatan</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.kecamatan || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Kode Pos</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.kodePos || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Jenis Tinggal</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.jenisTinggal || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Alat Transportasi</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.alatTransportasi || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Telepon / HP</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.hp || selectedStudent.parentPhone || selectedStudent.telepon || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Email</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.email || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Jarak Rumah ke Sekolah</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.jarakRumahKm ? `${selectedStudent.jarakRumahKm} km` : '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Lintang / Bujur</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.lintang || '-'}, {selectedStudent.bujur || '-'}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Data Orang Tua */}
-                <div className="space-y-4">
-                  <h5 className="text-sm font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex items-center gap-2">
-                    <Phone size={16} className="text-[#5AB2FF]" />
-                    DATA ORANG TUA / WALI
-                  </h5>
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Nama Ayah</span>
-                      <span className="font-semibold text-slate-800 uppercase">{selectedStudent.fatherName || '-'}</span>
+                {/* 3. DATA ORANG TUA / WALI */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Ayah */}
+                  <div className="bg-sky-50/50 p-3.5 rounded-xl border border-sky-100 space-y-2">
+                    <h6 className="font-bold text-sky-800 text-xs border-b border-sky-200 pb-1">A. Data Ayah</h6>
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div className="flex justify-between"><span className="text-slate-400">Nama:</span><span className="font-semibold uppercase">{selectedStudent.fatherName || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">NIK:</span><span className="font-mono">{selectedStudent.fatherNik || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Tahun Lahir:</span><span>{selectedStudent.fatherBirthYear || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pendidikan:</span><span>{selectedStudent.fatherEducation || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pekerjaan:</span><span>{selectedStudent.fatherJob || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Penghasilan:</span><span>{selectedStudent.fatherIncome || '-'}</span></div>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Pekerjaan Ayah</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.fatherJob || '-'}</span>
+                  </div>
+
+                  {/* Ibu */}
+                  <div className="bg-pink-50/50 p-3.5 rounded-xl border border-pink-100 space-y-2">
+                    <h6 className="font-bold text-pink-800 text-xs border-b border-pink-200 pb-1">B. Data Ibu</h6>
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div className="flex justify-between"><span className="text-slate-400">Nama:</span><span className="font-semibold uppercase">{selectedStudent.motherName || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">NIK:</span><span className="font-mono">{selectedStudent.motherNik || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Tahun Lahir:</span><span>{selectedStudent.motherBirthYear || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pendidikan:</span><span>{selectedStudent.motherEducation || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pekerjaan:</span><span>{selectedStudent.motherJob || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Penghasilan:</span><span>{selectedStudent.motherIncome || '-'}</span></div>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Pendidikan Ayah</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.fatherEducation || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Nama Ibu</span>
-                      <span className="font-semibold text-slate-800 uppercase">{selectedStudent.motherName || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Pekerjaan Ibu</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.motherJob || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Pendidikan Ibu</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.motherEducation || '-'}</span>
-                    </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">No. HP Orang Tua / Wali</span>
-                      <span className="font-bold text-[#5AB2FF] font-mono">{selectedStudent.parentPhone || '-'}</span>
+                  </div>
+
+                  {/* Wali */}
+                  <div className="bg-amber-50/50 p-3.5 rounded-xl border border-amber-100 space-y-2">
+                    <h6 className="font-bold text-amber-800 text-xs border-b border-amber-200 pb-1">C. Data Wali (Jika Ada)</h6>
+                    <div className="space-y-1.5 text-xs text-slate-600">
+                      <div className="flex justify-between"><span className="text-slate-400">Nama:</span><span className="font-semibold uppercase">{selectedStudent.parentName || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">NIK:</span><span className="font-mono">{selectedStudent.guardianNik || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Tahun Lahir:</span><span>{selectedStudent.guardianBirthYear || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pendidikan:</span><span>{selectedStudent.guardianEducation || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Pekerjaan:</span><span>{selectedStudent.parentJob || '-'}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Penghasilan:</span><span>{selectedStudent.guardianIncome || '-'}</span></div>
                     </div>
                   </div>
                 </div>
 
-                {/* Data Kesehatan & Minat */}
-                <div className="space-y-4">
-                  <h5 className="text-sm font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex items-center gap-2">
-                    <Heart size={16} className="text-[#5AB2FF]" />
-                    KESEHATAN, HOBI & CITA-CITA
+                {/* 4. REGISTRASI, BANTUAN & REKENING BANK */}
+                <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
+                  <h5 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                    <Briefcase size={16} className="text-[#5AB2FF]" />
+                    4. REGISTRASI, BANTUAN & REKENING BANK
                   </h5>
-                  <div className="space-y-2.5 text-xs text-slate-600">
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Tinggi / Berat Badan</span>
-                      <span className="font-semibold text-slate-800">
-                        {selectedStudent.height ? `${selectedStudent.height} cm` : '-'} / {selectedStudent.weight ? `${selectedStudent.weight} kg` : '-'}
-                      </span>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs text-slate-600">
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">No. Ujian Nasional</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.noUjianNasional || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Golongan Darah</span>
-                      <span className="font-bold text-slate-800 uppercase font-mono">{selectedStudent.bloodType || '-'}</span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">No. Seri Ijazah</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.noSeriIjazah || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Hobi</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.hobbies || '-'}</span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">SKHUN</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.skhun || '-'}</span>
                     </div>
-                    <div className="flex justify-between border-b border-dashed border-slate-100 pb-1.5">
-                      <span className="font-medium text-slate-400">Cita-Cita</span>
-                      <span className="font-semibold text-slate-800">{selectedStudent.ambition || '-'}</span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Penerima KPS / No. KPS</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.penerimaKps || 'Tidak'} ({selectedStudent.noKps || '-'})</span>
                     </div>
-                    <div className="flex flex-col space-y-1">
-                      <span className="font-medium text-slate-400">Catatan Kesehatan / Alergi</span>
-                      <span className="font-semibold text-slate-800 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
-                        {selectedStudent.healthNotes || 'Tidak ada catatan khusus.'}
-                      </span>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Nomor KKS</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.nomorKks || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Penerima KIP</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.penerimaKip || 'Tidak'} ({selectedStudent.nomorKip || '-'})</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Nama di KIP</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.namaDiKip || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Layak PIP / Alasan</span>
+                      <span className="font-semibold text-slate-800">{selectedStudent.layakPip || 'Tidak'} {selectedStudent.alasanLayakPip ? `(${selectedStudent.alasanLayakPip})` : ''}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Status Ekonomi</span>
+                      <span className="font-semibold text-amber-600">{selectedStudent.economyStatus || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                      <span className="font-medium text-slate-400">Bank & No. Rekening</span>
+                      <span className="font-semibold text-slate-800 font-mono">{selectedStudent.bank || '-'} - {selectedStudent.nomorRekeningBank || '-'}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-dashed border-slate-200 pb-1 md:col-span-2">
+                      <span className="font-medium text-slate-400">Rekening Atas Nama</span>
+                      <span className="font-semibold text-slate-800 uppercase">{selectedStudent.rekeningAtasNama || '-'}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Prestasi & Catatan Lain */}
-                <div className="space-y-4">
-                  <h5 className="text-sm font-bold text-slate-700 border-b border-slate-100 pb-1.5 flex items-center gap-2">
-                    <Award size={16} className="text-[#5AB2FF]" />
-                    PRESTASI & INTEGRITAS
-                  </h5>
-                  <div className="space-y-3.5 text-xs">
-                    <div>
-                      <span className="block font-medium text-slate-400 mb-1">Daftar Prestasi</span>
-                      {selectedStudent.achievements && selectedStudent.achievements.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {selectedStudent.achievements.map((item, i) => (
-                            <span key={i} className="px-2 py-1 bg-emerald-50 text-emerald-700 font-semibold rounded-lg border border-emerald-100">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">Belum ada catatan prestasi.</span>
-                      )}
+                {/* 5. KESEHATAN, HOBI & PRESTASI */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
+                    <h5 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                      <Heart size={16} className="text-[#5AB2FF]" />
+                      5. KESEHATAN, HOBI & CITA-CITA
+                    </h5>
+                    <div className="space-y-2 text-xs text-slate-600">
+                      <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                        <span className="font-medium text-slate-400">Tinggi / Berat / Lingkar Kepala</span>
+                        <span className="font-semibold text-slate-800">{selectedStudent.height || '-'} cm / {selectedStudent.weight || '-'} kg / {selectedStudent.lingkarKepala || '-'} cm</span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                        <span className="font-medium text-slate-400">Golongan Darah</span>
+                        <span className="font-bold text-slate-800 font-mono">{selectedStudent.bloodType || '-'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                        <span className="font-medium text-slate-400">Hobi</span>
+                        <span className="font-semibold text-slate-800">{selectedStudent.hobbies || '-'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-dashed border-slate-200 pb-1">
+                        <span className="font-medium text-slate-400">Cita-Cita</span>
+                        <span className="font-semibold text-slate-800">{selectedStudent.ambition || '-'}</span>
+                      </div>
+                      <div className="flex flex-col space-y-1">
+                        <span className="font-medium text-slate-400">Catatan Kesehatan / Alergi</span>
+                        <span className="font-semibold text-slate-800 italic bg-white p-2 rounded border border-slate-200">
+                          {selectedStudent.healthNotes || 'Tidak ada catatan khusus.'}
+                        </span>
+                      </div>
                     </div>
+                  </div>
 
-                    <div>
-                      <span className="block font-medium text-slate-400 mb-1">Catatan Pelanggaran</span>
-                      {selectedStudent.violations && selectedStudent.violations.length > 0 ? (
-                        <div className="flex flex-wrap gap-1.5">
-                          {selectedStudent.violations.map((item, i) => (
-                            <span key={i} className="px-2 py-1 bg-rose-50 text-rose-700 font-semibold rounded-lg border border-rose-100">
-                              {item}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-slate-400 italic">Tidak ada catatan pelanggaran (Bersih).</span>
-                      )}
-                    </div>
+                  <div className="bg-slate-50/70 p-4 rounded-xl border border-slate-100 space-y-3">
+                    <h5 className="text-sm font-bold text-slate-800 border-b border-slate-200 pb-1.5 flex items-center gap-2">
+                      <Award size={16} className="text-[#5AB2FF]" />
+                      6. PRESTASI, PELANGGARAN & SIKAP
+                    </h5>
+                    <div className="space-y-2.5 text-xs">
+                      <div>
+                        <span className="block font-medium text-slate-400 mb-1">Daftar Prestasi</span>
+                        {selectedStudent.achievements && selectedStudent.achievements.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedStudent.achievements.map((item, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-semibold rounded border border-emerald-200">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Belum ada catatan prestasi.</span>
+                        )}
+                      </div>
 
-                    <div className="flex justify-between border-t border-slate-100 pt-2.5">
-                      <span className="font-semibold text-slate-500">Skor Sikap & Perilaku</span>
-                      <span className="font-black text-indigo-600 text-sm font-mono">{selectedStudent.behaviorScore || 100} / 100</span>
+                      <div>
+                        <span className="block font-medium text-slate-400 mb-1">Catatan Pelanggaran</span>
+                        {selectedStudent.violations && selectedStudent.violations.length > 0 ? (
+                          <div className="flex flex-wrap gap-1">
+                            {selectedStudent.violations.map((item, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-rose-50 text-rose-700 font-semibold rounded border border-rose-200">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">Tidak ada catatan pelanggaran (Bersih).</span>
+                        )}
+                      </div>
+
+                      <div className="flex justify-between border-t border-slate-200 pt-2">
+                        <span className="font-semibold text-slate-500">Skor Sikap & Perilaku</span>
+                        <span className="font-black text-indigo-600 text-sm font-mono">{selectedStudent.behaviorScore || 100} / 100</span>
+                      </div>
                     </div>
                   </div>
                 </div>

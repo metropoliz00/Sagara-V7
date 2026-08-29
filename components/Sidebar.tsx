@@ -69,10 +69,10 @@ const menuGroups: MenuGroup[] = [
         id: 'mutasi',
         label: 'Mutasi Siswa',
         icon: UsersRound,
-        roles: ['admin', 'guru', 'supervisor'],
+        roles: ['admin', 'supervisor'],
         subItems: [
-          { id: 'mutasi-masuk', label: 'Mutasi Masuk', icon: UserPlus, roles: ['admin', 'guru', 'supervisor'] },
-          { id: 'mutasi-keluar', label: 'Mutasi Keluar', icon: UserMinus, roles: ['admin', 'guru', 'supervisor'] },
+          { id: 'mutasi-masuk', label: 'Mutasi Masuk', icon: UserPlus, roles: ['admin', 'supervisor'] },
+          { id: 'mutasi-keluar', label: 'Mutasi Keluar', icon: UserMinus, roles: ['admin', 'supervisor'] },
         ]
       },
     ]
@@ -84,6 +84,7 @@ const menuGroups: MenuGroup[] = [
       { id: 'absensi', label: 'Absensi', icon: CalendarCheck, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'agenda', label: 'Agenda', icon: ListTodo, roles: ['admin', 'guru', 'supervisor', 'siswa'] },
       { id: 'materi', label: 'Materi', icon: BookOpen, roles: ['admin', 'guru', 'supervisor', 'siswa'] },
+      { id: 'formatif', label: 'Formatif', icon: ClipboardList, roles: ['admin', 'guru', 'supervisor', 'siswa'] },
       { id: 'sumatif', label: 'Sumatif', icon: FileText, roles: ['admin', 'guru', 'supervisor', 'siswa'] },
       { id: 'nilai', label: 'Nilai & Rapor', icon: GraduationCap, roles: ['admin', 'guru', 'supervisor'] },
       { id: 'sikap', label: 'DPL & 7KAIH', icon: Smile, roles: ['admin', 'guru', 'supervisor'] },
@@ -332,12 +333,12 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
     <>
       {/* Mobile Overlay */}
       <div 
-        className={`fixed inset-0 z-[120] bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[999] bg-gray-900/50 backdrop-blur-sm transition-opacity lg:hidden ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
       />
 
       {/* Sidebar Container */}
-      <div className={`fixed inset-y-0 left-0 z-[130] ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className={`fixed inset-y-0 left-0 z-[1000] ${isCollapsed ? 'w-20' : 'w-72'} bg-white border-r border-[#CAF4FF] text-slate-600 transform transition-all duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-auto flex flex-col shadow-xl lg:shadow-none ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         
         {/* Header Logo */}
         <div className={`p-8 pb-4 relative ${isCollapsed ? 'px-4' : ''}`}>

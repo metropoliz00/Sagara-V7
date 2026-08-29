@@ -6,6 +6,10 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
+    server: {
+      host: '0.0.0.0',
+      port: 3000,
+    },
     plugins: [react()],
     resolve: {
       alias: {
@@ -13,8 +17,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     define: {
-      // Polyfill process.env agar kode eksisting yang menggunakannya tetap berjalan
-      // Gunakan JSON.stringify untuk memastikan nilai terdefinisi dengan benar sebagai string/objek di client
+      'process.env.NODE_ENV': JSON.stringify(mode === 'production' ? 'production' : 'development'),
       'process.env': JSON.stringify(env)
     },
     build: {

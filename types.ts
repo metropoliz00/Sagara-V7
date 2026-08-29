@@ -37,19 +37,75 @@ export interface Student {
   address: string;
   photo?: string;
   
+  // Alamat & Lokasi
+  rt?: string;
+  rw?: string;
+  dusun?: string;
+  kelurahan?: string;
+  kecamatan?: string;
+  kodePos?: string;
+  jenisTinggal?: string;
+  alatTransportasi?: string;
+  telepon?: string;
+  hp?: string;
+  email?: string;
+  skhun?: string;
+  penerimaKps?: string;
+  noKps?: string;
+
+  // Data Ayah
   fatherName: string; 
-  fatherJob?: string; 
+  fatherBirthYear?: string;
   fatherEducation?: string;
+  fatherJob?: string; 
+  fatherIncome?: string;
+  fatherNik?: string;
+
+  // Data Ibu
   motherName: string;
-  motherJob?: string;
+  motherBirthYear?: string;
   motherEducation?: string;
+  motherJob?: string;
+  motherIncome?: string;
+  motherNik?: string;
+
+  // Data Wali
   parentName: string;
+  guardianBirthYear?: string;
+  guardianEducation?: string;
   parentJob?: string;
+  guardianIncome?: string;
+  guardianNik?: string;
   parentPhone: string;
   
-  bloodType?: string;
+  // Dapodik & Registrasi Tambahan
+  rombel?: string;
+  noUjianNasional?: string;
+  noSeriIjazah?: string;
+  penerimaKip?: string;
+  nomorKip?: string;
+  namaDiKip?: string;
+  nomorKks?: string;
+  noRegistrasiAktaLahir?: string;
+  bank?: string;
+  nomorRekeningBank?: string;
+  rekeningAtasNama?: string;
+  layakPip?: string;
+  alasanLayakPip?: string;
+  kebutuhanKhusus?: string;
+  sekolahAsal?: string;
+  anakKe?: string | number;
+  lintang?: string;
+  bujur?: string;
+  noKk?: string;
+
+  // Fisik & Periodik
   height?: number;
   weight?: number;
+  lingkarKepala?: number;
+  jmlSaudaraKandung?: number;
+  jarakRumahKm?: number;
+  bloodType?: string;
   healthNotes?: string;
   hobbies?: string;
   ambition?: string;
@@ -109,6 +165,10 @@ export interface ScheduleItem {
   day: string;
   time: string;
   subject: string;
+  meetUrl?: string;
+  zoomUrl?: string;
+  attachedMaterialIds?: string[];
+  attachedNotes?: string;
 }
 
 export interface PiketGroup {
@@ -325,6 +385,7 @@ export interface SchoolProfileData {
   studentMitigationAccess?: boolean;
   primaryColor?: string;
   ttsEnabled?: boolean;
+  geminiApiKey?: string;
 }
 
 export interface AcademicCalendarData {
@@ -407,6 +468,25 @@ export interface KarakterAssessment {
   tidurAwal: string;
   catatan?: string;
   afirmasi?: string;
+}
+
+export interface DailyKAIHJournal {
+  id?: string;
+  studentId: string;
+  studentName?: string;
+  classId: string;
+  date: string; // YYYY-MM-DD
+  bangunPagi: string; // 'Terbiasa' | 'Belum Terbiasa' | ''
+  beribadah: string;
+  berolahraga: string;
+  makanSehat: string;
+  gemarBelajar: string;
+  bermasyarakat: string;
+  tidurAwal: string;
+  catatan?: string; // Catatan / Refleksi Siswa
+  catatanGuru?: string; // Catatan / Umpan Balik Guru
+  details?: Record<string, string>; // Keterangan kegiatan per kebiasaan
+  updatedAt?: string;
 }
 
 export interface Graduate {

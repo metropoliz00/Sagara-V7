@@ -103,7 +103,14 @@ const CounselingView: React.FC<CounselingViewProps> = ({ students, logs, onCreat
   const handleDownloadTemplate = () => { /* ... */ };
   const handleExport = () => { /* ... */ };
   const handleImportClick = () => { if (fileInputRef.current) fileInputRef.current.click(); };
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => { /* ... */ };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 500 * 1024) {
+      onShowNotification('Ukuran file melebihi batas maksimum 500 KB.', 'error');
+      return;
+    }
+  };
 
   // Filter logs for list
   const filteredLogs = activeFilter === 'all' ? logs : logs.filter(l => l.type === activeFilter);

@@ -26,7 +26,11 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Disable RLS on users table so login works correctly without row security blocks
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+
 -- Insert default superadmin
 INSERT INTO users (username, password, role, "fullName", position)
 VALUES ('superadmin', 'superadmin123', 'superadmin', 'Administrator Pusat', 'Superadmin')
 ON CONFLICT (username) DO NOTHING;
+

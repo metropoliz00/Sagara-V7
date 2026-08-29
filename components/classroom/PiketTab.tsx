@@ -220,7 +220,7 @@ const PiketTab: React.FC<PiketTabProps> = ({ piketGroups, students, onSave, onSh
                 </button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 print:grid-cols-3 print:gap-2">
                 {WEEKDAYS.map((day, idx) => {
                     const group = localPiketGroups.find(g => isSameDay(g.day, day));
                     const members = group ? group.studentIds : [];
@@ -235,15 +235,15 @@ const PiketTab: React.FC<PiketTabProps> = ({ piketGroups, students, onSave, onSh
                     return (
                         <div 
                             key={day} 
-                            className={`rounded-2xl shadow-sm border flex flex-col print:border-black print:break-inside-avoid relative transition-all ${isSameDay(dragOverDay, day) ? 'border-indigo-400 border-dashed ring-2 ring-indigo-200' : 'border-gray-200'}`}
+                            className={`rounded-2xl print:rounded-lg shadow-sm border flex flex-col print:border-black print:break-inside-avoid relative transition-all ${isSameDay(dragOverDay, day) ? 'border-indigo-400 border-dashed ring-2 ring-indigo-200' : 'border-gray-200'}`}
                             onDragOver={(e) => handleDragOver(e, day)}
                             onDragLeave={handleDragLeave}
                             onDrop={(e) => handleDrop(e, day)}
                         >
-                            <div className="p-3 rounded-t-2xl font-bold uppercase text-center" style={{ backgroundColor: bgColor, color: textColor }}>
+                            <div className="p-3 print:p-1.5 print:text-xs rounded-t-2xl print:rounded-t-lg font-bold uppercase text-center" style={{ backgroundColor: bgColor, color: textColor }}>
                                 {day}
                             </div>
-                            <div className="p-3 space-y-2 flex-1 bg-white rounded-b-2xl">
+                            <div className="p-3 print:p-1.5 space-y-2 print:space-y-1 flex-1 bg-white rounded-b-2xl print:rounded-b-lg">
                                 {members.map(studentId => {
                                     const student = studentMap.get(studentId);
                                     // FIX: Changed implicit `undefined` return to explicit `null` to satisfy ReactNode type.
@@ -254,13 +254,13 @@ const PiketTab: React.FC<PiketTabProps> = ({ piketGroups, students, onSave, onSh
                                             key={student.id}
                                             draggable
                                             onDragStart={(e) => handleDragStart(e, student.id, day)}
-                                            className="bg-white border border-gray-200 p-2 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-400 hover:shadow-md transition-all flex items-center justify-between group"
+                                            className="bg-white border border-gray-200 p-2 print:p-1 rounded-lg shadow-sm cursor-grab active:cursor-grabbing hover:border-indigo-400 hover:shadow-md transition-all flex items-center justify-between group"
                                         >
                                             <div className="flex items-center space-x-2 overflow-hidden">
-                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] text-white font-bold shrink-0 ${student.gender === 'L' ? 'bg-blue-500' : 'bg-pink-500'}`}>
+                                                <div className={`w-6 h-6 print:w-5 print:h-5 rounded-full flex items-center justify-center text-[10px] print:text-[8px] text-white font-bold shrink-0 ${student.gender === 'L' ? 'bg-blue-500' : 'bg-pink-500'}`}>
                                                     {student.gender}
                                                 </div>
-                                                <span className="text-xs font-medium text-gray-700 truncate uppercase">{student.name.toUpperCase()}</span>
+                                                <span className="text-xs print:text-[10px] font-medium text-gray-700 truncate uppercase">{student.name.toUpperCase()}</span>
                                             </div>
                                             <button onClick={() => removeStudentFromDay(day, student.id)} className="p-1 rounded-full text-gray-300 group-hover:text-red-500 group-hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity no-print">
                                                 <X size={14}/>
@@ -268,7 +268,7 @@ const PiketTab: React.FC<PiketTabProps> = ({ piketGroups, students, onSave, onSh
                                         </div>
                                     )
                                 })}
-                                {members.length === 0 && <p className="text-xs text-gray-400 text-center italic py-10">Kosong</p>}
+                                {members.length === 0 && <p className="text-xs text-gray-400 text-center italic py-10 print:py-2">Kosong</p>}
                             </div>
                         </div>
                     )

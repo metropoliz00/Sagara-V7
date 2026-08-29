@@ -8,6 +8,7 @@ import {
   ClipboardList, FileCheck, Paperclip, CheckSquare
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { exportToExcelWithHeader, parseExcelWithHeaders } from '../utils/excelHelper';
 import CustomModal from './CustomModal';
 
 // Helper to compress image and convert to Base64 (lightweight but sharp)
@@ -189,6 +190,20 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    type: 'alert' | 'confirm' | 'success' | 'error';
+    title?: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    type: 'confirm',
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  });
+
   useEffect(() => {
     setZoomScale(1);
     setPan({ x: 0, y: 0 });
@@ -218,20 +233,34 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDownloadTemplate = () => {
+    const headers = [
+      'Mata Pelajaran',
+      'Judul Materi',
+      'Deskripsi',
+      'Link Tautan (Opsional)',
+      'Status Tampilkan (Ya/Tidak)'
+    ];
     const templateData = [
-      {
-        'Mata Pelajaran': subjects[0]?.name || 'Matematika',
-        'Judul Materi': 'Aljabar Dasar Bagian 1',
-        'Deskripsi': 'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
-        'Link Tautan (Opsional)': 'https://youtube.com/... atau https://drive.google.com/...',
-        'Status Tampilkan (Ya/Tidak)': 'Ya'
-      }
+      [
+        subjects[0]?.name || 'Matematika',
+        'Aljabar Dasar Bagian 1',
+        'Pengenalan variabel, koefisien, dan persamaan linier satu variabel.',
+        'https://youtube.com/... atau https://drive.google.com/...',
+        'Ya'
+      ]
     ];
 
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Template Materi");
-    XLSX.writeFile(wb, "Template_Materi_Pembelajaran.xlsx");
+    exportToExcelWithHeader({
+      title: "Template Materi Pembelajaran",
+      subtitle: `Kelas: ${classId || 'Semua Kelas'}`,
+      filename: "Template_Materi_Pembelajaran.xlsx",
+      sheetName: "Template Materi",
+      headers,
+      data: templateData,
+      isTemplate: true,
+      currentUser,
+      notes: "Status Tampilkan: Ya / Tidak. Link tautan dapat berupa Google Drive, Youtube, atau tautan web."
+    });
     onShowNotification("Template Excel berhasil diunduh!", "success");
   };
 
@@ -243,6 +272,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
+    if (file.size > 500 * 1024) {
+      onShowNotification("Ukuran file melebihi batas maksimum 500 KB.", "error");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -250,7 +283,7 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
         const wb = XLSX.read(bstr, { type: 'binary' });
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
-        const rawData = XLSX.utils.sheet_to_json<any>(ws);
+        const { rows: rawData } = parseExcelWithHeaders(ws, ['Mata Pelajaran', 'Judul Materi']);
 
         if (rawData.length === 0) {
           onShowNotification("Berkas Excel kosong atau format salah.", "error");
@@ -259,11 +292,11 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
 
         let importedCount = 0;
         for (const row of rawData) {
-          const subjectName = row['Mata Pelajaran'];
-          const title = row['Judul Materi'];
+          const subjectName = row['Mata Pelajaran'] || row['Mapel'];
+          const title = row['Judul Materi'] || row['Judul'];
           const description = row['Deskripsi'] || '';
-          const link = row['Link Tautan (Opsional)'] || '';
-          const visibleText = String(row['Status Tampilkan (Ya/Tidak)'] || 'Ya').toLowerCase().trim();
+          const link = row['Link Tautan (Opsional)'] || row['Link'] || '';
+          const visibleText = String(row['Status Tampilkan (Ya/Tidak)'] || row['Status'] || 'Ya').toLowerCase().trim();
           const isVisible = visibleText === 'ya' || visibleText === 'yes' || visibleText === 'true';
 
           if (subjectName && title) {
@@ -298,36 +331,59 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   };
 
   const handleExportExcel = () => {
-    const activeMaterials = materials.filter(item => {
-      const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSubject = selectedSubject === 'all' || item.subjectId === selectedSubject;
-      return matchesSearch && matchesSubject;
-    });
-
-    if (activeMaterials.length === 0) {
+    if (!filteredMaterials || filteredMaterials.length === 0) {
       onShowNotification("Tidak ada data materi untuk diekspor.", "warning");
       return;
     }
 
-    const exportData = activeMaterials.map((item, idx) => {
+    const headers = [
+      'NO', 'MATA PELAJARAN', 'TIPE', 'JUDUL MATERI', 'DESKRIPSI',
+      'LINK UTAMA', 'LINK VIDEO', 'INFOGRAFIS/GAMBAR', 'JUDUL TUGAS',
+      'LINK TUGAS', 'FILE TUGAS', 'TAMPILKAN', 'TANGGAL BUAT'
+    ];
+
+    const exportData = filteredMaterials.map((item, idx) => {
       const sub = subjects.find(s => s.id === item.subjectId);
-      return {
-        'NO': idx + 1,
-        'MATA PELAJARAN': sub ? sub.name : 'Lainnya',
-        'JUDUL MATERI': item.title,
-        'DESKRIPSI': item.description || '-',
-        'LINK TAUTAN': item.link || '-',
-        'TAMPILKAN': item.isVisible ? 'Ya' : 'Tidak',
-        'TANGGAL BUAT': item.createdAt ? new Date(item.createdAt).toLocaleDateString('id-ID') : '-'
-      };
+      
+      let tipeMateri = 'Materi';
+      if (item.taskTitle || item.taskLink || item.taskFile) {
+        tipeMateri = 'Tugas';
+      }
+
+      return [
+        idx + 1,
+        sub ? sub.name : 'Lainnya',
+        tipeMateri,
+        item.title || '-',
+        item.description || '-',
+        item.link || '-',
+        item.videoLink || '-',
+        item.infographic ? 'Ada' : '-',
+        item.taskTitle || '-',
+        item.taskLink || '-',
+        item.taskFile ? 'Ada File' : '-',
+        item.isVisible ? 'Ya' : 'Tidak',
+        item.createdAt && !isNaN(new Date(item.createdAt).getTime())
+          ? new Date(item.createdAt).toLocaleDateString('id-ID')
+          : '-'
+      ];
     });
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Materi Pembelajaran");
-    XLSX.writeFile(wb, `Dokumen_Materi_Pembelajaran_Kelas_${classId}.xlsx`);
-    onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
+    try {
+      exportToExcelWithHeader({
+        title: "Laporan Dokumen Materi Pembelajaran",
+        subtitle: `Kelas: ${classId || 'Semua Kelas'} | Total Materi: ${filteredMaterials.length}`,
+        filename: `Dokumen_Materi_Pembelajaran_Kelas_${classId || 'semua'}.xlsx`,
+        sheetName: "Materi Pembelajaran",
+        headers,
+        data: exportData,
+        currentUser
+      });
+      onShowNotification("Data materi berhasil diekspor ke Excel!", "success");
+    } catch (error) {
+      console.error("Gagal mengekspor excel:", error);
+      onShowNotification("Gagal mengekspor data ke Excel.", "error");
+    }
   };
 
   const getYoutubeEmbedUrl = (url: string) => {
@@ -448,6 +504,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
     }
 
     return matchesSearch && matchesSubject && isVisibleToStudent && matchesTab;
+  }).sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return dateB - dateA;
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -503,10 +563,17 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus materi ini?')) {
-      onDeleteMaterial(id);
-      onShowNotification('Materi berhasil dihapus', 'success');
-    }
+    setConfirmModal({
+      isOpen: true,
+      type: 'confirm',
+      title: 'Hapus Materi Pelajaran',
+      message: 'Apakah Anda yakin ingin menghapus materi pelajaran ini?',
+      onConfirm: () => {
+        onDeleteMaterial(id);
+        onShowNotification('Materi berhasil dihapus', 'success');
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   return (
@@ -732,13 +799,13 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                     </div>
                   </div>
                   
-                  {/* Thumbnail */}
+                  {/* Thumbnail (Portrait) */}
                   {material.infographic && (
-                    <div className="w-32 shrink-0 self-start mt-1">
+                    <div className="w-28 sm:w-32 aspect-[3/4] shrink-0 self-start mt-1 overflow-hidden rounded-lg shadow-sm border border-slate-100 bg-slate-900">
                       <img 
                         src={material.infographic} 
                         alt="Poster" 
-                        className="w-full h-auto rounded-lg object-cover shadow-sm border border-slate-100" 
+                        className="w-full h-full object-cover" 
                       />
                     </div>
                   )}
@@ -981,6 +1048,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 500 * 1024) {
+                                onShowNotification('Ukuran file maksimal 500 KB.', 'error');
+                                return;
+                              }
                               try {
                                 const base64 = await compressImageToBase64(file);
                                 setFormData({...formData, infographic: base64});
@@ -1088,6 +1159,10 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
                           onChange={async (e) => {
                             const file = e.target.files?.[0];
                             if (file) {
+                              if (file.size > 500 * 1024) {
+                                onShowNotification('Ukuran file maksimal 500 KB.', 'error');
+                                return;
+                              }
                               try {
                                 const base64 = await readTaskFileToBase64(file);
                                 setFormData({...formData, taskFile: base64});
@@ -1467,6 +1542,16 @@ const MaterialsView: React.FC<MaterialsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Confirmation & Alert Custom Modal */}
+      <CustomModal
+        isOpen={confirmModal.isOpen}
+        type={confirmModal.type}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 };

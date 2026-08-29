@@ -217,6 +217,11 @@ const LearningDocumentationView: React.FC<LearningDocumentationViewProps> = ({ d
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 500 * 1024) {
+      onShowNotification('Ukuran file melebihi batas maksimum 500 KB.', 'error');
+      return;
+    }
+
     if (!file.type.startsWith('image/')) {
       onShowNotification('Hanya file gambar yang didukung.', 'warning');
       return;

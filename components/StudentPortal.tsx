@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
+import { Student, GradeRecord, LiaisonLog, AgendaItem, Material, BehaviorLog, PermissionRequest, KarakterAssessment, DailyKAIHJournal, KARAKTER_INDICATORS, KarakterIndicatorKey, LearningDocumentation, BookLoan, BookInventory, ScheduleItem, SchoolProfileData, Graduate, EmploymentLink } from '../types';
 import { MOCK_SUBJECTS, CALENDAR_CODES, PREFILLED_CALENDAR_2025, HOLIDAY_DESCRIPTIONS_2025_2026, WEEKDAYS } from '../constants';
 import { 
   Search, Filter, User, Calendar, CalendarDays, Send, FileText, CheckCircle, XCircle, 
@@ -10,16 +10,17 @@ import {
   MapPin, CheckSquare, X, Medal, Heart, MessageCircle, Trophy,
   Edit, Save, Loader2, PlusCircle, History, MessageSquare,
   ClipboardList, Bell, Activity, Sparkles, GraduationCap, ChevronDown, School, AlertTriangle,
-  Camera, ChevronLeft, ChevronRight, Link2, Download,
+  Camera, ChevronLeft, ChevronRight, Link2, Download, Video, Paperclip,
   Sun, Moon, CloudSun, Sunset, Coffee, Youtube, Printer, ExternalLink,
   Calculator, Globe, Compass, Music, Image as ImageIcon, ZoomIn, ZoomOut, RotateCcw
 } from 'lucide-react';
 import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
-import { getLocalISODate } from '../utils/dateUtils';
+import { getLocalISODate, formatDateID } from '../utils/dateUtils';
 import SumatifView from './SumatifView';
 import ManualBookView from './ManualBookView';
 import MitigasiBencanaView from './MitigasiBencanaView';
+import Logo7Kaih from './Logo7Kaih';
 import { ContentModal } from './ContentModal';
 import { pdfjs, Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -713,6 +714,26 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   const [karakterForm, setKarakterForm] = useState<Partial<KarakterAssessment>>({});
   const [isSavingKarakter, setIsSavingKarakter] = useState(false);
 
+  // Daily 7 KAIH Journal State
+  const [selectedJournalDate, setSelectedJournalDate] = useState<string>(getLocalISODate());
+  const [dailyJournalForm, setDailyJournalForm] = useState<DailyKAIHJournal>({
+    studentId: student.id,
+    classId: student.classId || '',
+    date: getLocalISODate(),
+    bangunPagi: '',
+    beribadah: '',
+    berolahraga: '',
+    makanSehat: '',
+    gemarBelajar: '',
+    bermasyarakat: '',
+    tidurAwal: '',
+    catatan: '',
+    catatanGuru: ''
+  });
+  const [studentJournalHistory, setStudentJournalHistory] = useState<DailyKAIHJournal[]>([]);
+  const [isLoadingJournal, setIsLoadingJournal] = useState(false);
+  const [isSavingJournal, setIsSavingJournal] = useState(false);
+
   // Graduation data
   const [graduationData, setGraduationData] = useState<Graduate | null>(null);
   const [isLoadingGraduation, setIsLoadingGraduation] = useState(false);
@@ -1007,8 +1028,88 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       }
   };
 
-  const handleKarakterChange = (key: KarakterIndicatorKey, value: string) => {
-      setKarakterForm(prev => ({ ...prev, [key]: value }));
+  const loadStudentDailyJournals = async (dateStr: string) => {
+    if (!student.id || !student.classId) return;
+    setIsLoadingJournal(true);
+    try {
+      const classJournals = await apiService.getDailyKAIHJournals(student.classId);
+      const myJournals = classJournals.filter(j => j.studentId === student.id);
+      setStudentJournalHistory(myJournals);
+
+      const entry = myJournals.find(j => j.date === dateStr);
+      if (entry) {
+        setDailyJournalForm({
+          ...entry,
+          details: entry.details || {}
+        });
+      } else {
+        setDailyJournalForm({
+          studentId: student.id,
+          classId: student.classId,
+          date: dateStr,
+          bangunPagi: '',
+          beribadah: '',
+          berolahraga: '',
+          makanSehat: '',
+          gemarBelajar: '',
+          bermasyarakat: '',
+          tidurAwal: '',
+          catatan: '',
+          catatanGuru: '',
+          details: {}
+        });
+      }
+    } catch (err) {
+      console.error("Failed loading daily KAIH journal:", err);
+    } finally {
+      setIsLoadingJournal(false);
+    }
+  };
+
+  useEffect(() => {
+    if (student.id) {
+      loadStudentDailyJournals(selectedJournalDate);
+    }
+  }, [selectedJournalDate, student.id, student.classId]);
+
+  const handleSaveDailyJournal = async () => {
+    setIsSavingJournal(true);
+    try {
+      const payload: DailyKAIHJournal = {
+        ...dailyJournalForm,
+        studentId: student.id,
+        classId: student.classId || '',
+        date: selectedJournalDate
+      };
+      const saved = await apiService.saveDailyKAIHJournal(payload);
+      setDailyJournalForm(saved);
+      await loadStudentDailyJournals(selectedJournalDate);
+
+      if (onSaveKarakter) {
+        await onSaveKarakter(student.id, {
+          bangunPagi: saved.bangunPagi,
+          beribadah: saved.beribadah,
+          berolahraga: saved.berolahraga,
+          makanSehat: saved.makanSehat,
+          gemarBelajar: saved.gemarBelajar,
+          bermasyarakat: saved.bermasyarakat,
+          tidurAwal: saved.tidurAwal,
+          catatan: saved.catatan
+        });
+      }
+      showAlert("Jurnal 7 KAIH Hari Ini Berhasil Disimpan! 🎉", "success");
+    } catch (err) {
+      showAlert("Gagal menyimpan jurnal.", "error");
+    } finally {
+      setIsSavingJournal(false);
+    }
+  };
+
+  const handleDailyHabitToggle = (key: keyof DailyKAIHJournal, value: string) => {
+    setDailyJournalForm(prev => ({
+      ...prev,
+      [key]: prev[key] === value ? '' : value
+    }));
   };
 
   const goToPreviousSlide = () => setCarouselIndex((prev) => (prev - 1 + imagesForCarousel.length) % imagesForCarousel.length);
@@ -1148,10 +1249,21 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
   }, [liaisonLogs, student.id]);
 
   const myPermissions = useMemo(() => {
-      return permissionRequests
-        .filter(p => p.studentId === student.id)
+      const sId = String(student.id || '').trim();
+      const sNisn = String(student.nisn || '').trim();
+      const sNis = String(student.nis || '').trim();
+      
+      return (permissionRequests || [])
+        .filter(p => {
+          const pStudentId = String(p.studentId || '').trim();
+          return (
+            pStudentId === sId ||
+            (sNisn && pStudentId === sNisn) ||
+            (sNis && pStudentId === sNis)
+          );
+        })
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [permissionRequests, student.id]);
+  }, [permissionRequests, student]);
 
   // -- GRADES CALCULATION FOR DASHBOARD --
   const selectedGradeData = useMemo(() => {
@@ -1364,11 +1476,16 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
   }, [schedule, scheduleDayName]);
 
+  const hasEmbeddedMaterialsNotification = useMemo(() => {
+    if (!schedule) return false;
+    return schedule.some(item => (item.attachedMaterialIds && item.attachedMaterialIds.length > 0) || item.attachedNotes);
+  }, [schedule]);
+
   const TABS = [
     { id: 'dashboard', label: 'Ringkasan', icon: LayoutDashboard },
     { id: 'profile', label: 'Profil Siswa', icon: User },
     { id: 'attendance', label: 'Izin & Absensi', icon: Calendar },
-    { id: 'schedule', label: 'Jadwal Pelajaran', icon: Calendar },
+    { id: 'schedule', label: 'Jadwal Pelajaran', icon: Calendar, badge: hasEmbeddedMaterialsNotification },
     { id: 'materi', label: 'Materi', icon: BookOpen },
     { id: 'sumatif', label: 'Sumatif', icon: FileText },
     { id: 'liaison', label: 'Buku Penghubung', icon: MessageSquare },
@@ -1499,7 +1616,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                             : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-100'
                         }`}
                     >
-                        <Icon size={16} className="mr-2"/> {tab.label}
+                        <Icon size={16} className="mr-2"/> 
+                        <span>{tab.label}</span>
+                        {tab.badge && (
+                            <span className="ml-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                        )}
                     </button>
                 )
             })}
@@ -1518,7 +1639,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           { id: 'materi', label: 'Materi', icon: BookOpen, color: 'bg-orange-50 text-orange-600' },
                           { id: 'sumatif', label: 'Sumatif', icon: FileText, color: 'bg-blue-50 text-blue-600' },
                           { id: 'attendance', label: 'Izin', icon: Calendar, color: 'bg-green-50 text-green-600' },
-                          { id: 'character', label: '7KAIH', icon: HeartHandshake, color: 'bg-pink-50 text-pink-600' },
+                          { id: 'character', label: '7KAIH', icon: null, is7Kaih: true, color: 'bg-pink-50 text-pink-600' },
                           { id: 'liaison', label: 'Layanan', icon: Bell, color: 'bg-indigo-50 text-indigo-600' },
                           { id: 'schedule', label: 'Jadwal', icon: CalendarDays, color: 'bg-purple-50 text-purple-600' },
                           { id: 'manual_book', label: 'Panduan', icon: BookOpen, color: 'bg-slate-50 text-slate-600' },
@@ -1533,8 +1654,12 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   onClick={() => handleTabChange(item.id as PortalTab)}
                                   className="flex flex-col items-center justify-center space-y-1 active:scale-95 transition-transform"
                               >
-                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${item.color}`}>
-                                      <Icon size={24} />
+                                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${item.is7Kaih ? 'bg-white border border-pink-100' : item.color}`}>
+                                      {item.is7Kaih ? (
+                                        <Logo7Kaih className="w-8 h-8" imgClassName="rounded-lg" />
+                                      ) : (
+                                        Icon && <Icon size={24} />
+                                      )}
                                   </div>
                                   <span className="text-[10px] font-bold text-gray-600 truncate w-full text-center">{item.label}</span>
                               </button>
@@ -2478,11 +2603,11 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                                            )}
                                                       </div>
 
-                                                      {/* Poster Thumbnail inside Card */}
+                                                      {/* Poster Thumbnail inside Card (Portrait - 50% width) */}
                                                       {material.infographic && (
                                                         <div 
                                                           onClick={() => setViewingPoster(material)}
-                                                          className="mb-4 rounded-xl overflow-hidden border border-gray-150/80 aspect-video relative group/poster bg-slate-900 cursor-pointer shadow-md"
+                                                          className="mb-4 w-1/2 mx-auto rounded-xl overflow-hidden border border-gray-150/80 aspect-[3/4] relative group/poster bg-slate-900 cursor-pointer shadow-md"
                                                         >
                                                           <img 
                                                             src={material.infographic} 
@@ -2668,180 +2793,768 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
               </div>
           )}
 
-          {/* --- PROFILE TAB (Separate from Character) --- */}
+          {/* --- PROFILE TAB (Complete Data & Editable) --- */}
           {activeTab === 'profile' && (
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                  {/* Left Card: Data Pokok */}
-                  <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm h-fit">
-                      <h3 className="font-bold text-gray-800 text-lg flex items-center mb-4">
-                          <User size={18} className="mr-2 text-indigo-500"/> Data Pokok
-                      </h3>
-                      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-                          <div className="space-y-4 text-sm">
-                              <div><strong className="block text-xs text-gray-500">Nama Lengkap</strong> <span className={`font-semibold text-gray-800 uppercase break-words block leading-snug ${
-                                  (student.name?.length || 0) > 25 ? 'text-xs sm:text-sm' : 'text-sm'
-                              }`}>{student.name.toUpperCase()}</span></div>
-                              <div><strong className="block text-xs text-gray-500">NIS / NISN</strong> <span className="font-semibold text-gray-800">{student.nis} / {student.nisn || '-'}</span></div>
-                              <div><strong className="block text-xs text-gray-500">Alamat</strong> <span className="font-semibold text-gray-800">{student.address}</span></div>
-                              <div>
-                                  <strong className="block text-xs text-gray-500 mb-0.5">No. WA Wali</strong>
-                                  {student.parentPhone && student.parentPhone !== '-' ? (
-                                      <a
-                                          href={formatWaUrl(student.parentPhone)}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="inline-flex items-center gap-1.5 font-bold text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-lg border border-emerald-200/80 text-xs transition-all cursor-pointer hover:scale-102 shadow-xs"
-                                          title="Klik untuk chat WhatsApp Orang Tua"
-                                      >
-                                          <MessageCircle size={14} className="text-emerald-600 fill-emerald-100" />
-                                          <span>{student.parentPhone}</span>
-                                          <ExternalLink size={11} className="text-emerald-500 ml-0.5" />
-                                      </a>
-                                  ) : (
-                                      <span className="font-semibold text-gray-800">-</span>
-                                  )}
-                              </div>
+              <div className="space-y-6">
+                  {/* Header Banner & Edit Actions */}
+                  <div className="bg-gradient-to-r from-indigo-700 via-blue-700 to-sky-700 p-6 rounded-3xl text-white shadow-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+                      <div className="relative z-10 flex items-center gap-4">
+                          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl font-black shadow-inner">
+                              {student.photo ? (
+                                  <img src={student.photo} alt={student.name} className="w-full h-full object-cover rounded-2xl" />
+                              ) : (
+                                  student.name?.charAt(0) || 'S'
+                              )}
+                          </div>
+                          <div>
+                              <span className="inline-flex items-center px-3 py-1 rounded-full bg-white/20 text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-1">
+                                  <User size={13} className="mr-1.5 text-sky-200" /> Profil Lengkap Siswa & Keluarga
+                              </span>
+                              <h3 className="text-2xl font-black tracking-tight">{student.name.toUpperCase()}</h3>
+                              <p className="text-sky-100 text-xs mt-0.5">NIS: {student.nis} | NISN: {student.nisn || '-'} | Rombel: {student.rombel || student.classId}</p>
                           </div>
                       </div>
-                  </div>
 
-                  {/* Right Card: Editable Data */}
-                  <div className="lg:col-span-3 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-gray-800 text-lg flex items-center">
-                              <Edit size={18} className="mr-2 text-indigo-500"/> Edit Profil Siswa
-                          </h3>
+                      <div className="relative z-10 flex items-center gap-3 w-full md:w-auto justify-end">
                           {!isEditingProfile ? (
-                              <button onClick={() => setIsEditingProfile(true)} className="flex items-center gap-2 bg-white text-indigo-600 font-bold px-4 py-2 rounded-lg border border-indigo-200 hover:bg-indigo-50 shadow-sm text-xs">
-                                  <Edit size={14}/> Ubah Data
+                              <button 
+                                onClick={() => { setProfileData(student); setIsEditingProfile(true); }} 
+                                className="flex items-center gap-2 bg-white text-indigo-700 font-extrabold px-5 py-2.5 rounded-xl shadow-lg hover:bg-sky-50 transition-all text-xs cursor-pointer"
+                              >
+                                  <Edit size={15}/> Ubah Data Lengkap
                               </button>
                           ) : (
-                              <div className="flex gap-2">
-                                  <button onClick={() => { setIsEditingProfile(false); setProfileData(student); }} className="px-3 py-1.5 text-gray-600 font-medium rounded-lg hover:bg-gray-100 text-xs">Batal</button>
-                                  <button onClick={handleSaveProfile} disabled={isSavingProfile} className="flex items-center gap-2 bg-indigo-600 text-white font-bold px-3 py-1.5 rounded-lg shadow-md hover:bg-indigo-700 disabled:opacity-50 text-xs">
-                                      {isSavingProfile ? <Loader2 size={12} className="animate-spin"/> : <Save size={12}/>} Simpan
+                              <div className="flex items-center gap-2">
+                                  <button 
+                                    onClick={() => { setIsEditingProfile(false); setProfileData(student); }} 
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs backdrop-blur-md transition-all cursor-pointer"
+                                  >
+                                    Batal
+                                  </button>
+                                  <button 
+                                    onClick={handleSaveProfile} 
+                                    disabled={isSavingProfile} 
+                                    className="flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold px-5 py-2 rounded-xl shadow-lg transition-all text-xs disabled:opacity-50 cursor-pointer"
+                                  >
+                                      {isSavingProfile ? <Loader2 size={15} className="animate-spin"/> : <Save size={15}/>} Simpan Perubahan
                                   </button>
                               </div>
                           )}
                       </div>
+                  </div>
 
-                      <div className="space-y-6 text-sm">
-                          <div>
-                              <h4 className="text-xs font-bold text-indigo-600 uppercase mb-2 border-b border-indigo-100 pb-1">Data Fisik & Kesehatan</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-2">
+                  {/* Main Form Sections */}
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      
+                      {/* Left Column: Identitas Utama & Alamat (1 Col on lg) */}
+                      <div className="space-y-6 lg:col-span-1">
+                          {/* Identitas Diri (Read-only / Melekat) */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                                  <h4 className="font-extrabold text-gray-800 text-sm flex items-center">
+                                      <User size={16} className="mr-2 text-indigo-600"/> Identitas Pribadi
+                                  </h4>
+                              </div>
+                              <div className="space-y-3 text-xs">
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Tinggi Badan (cm)</label>
-                                      <input type="number" value={profileData.height || 0} onChange={e => handleProfileChange('height', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Nama Lengkap</label>
+                                      <input type="text" value={profileData.name || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NIS</label>
+                                          <input type="text" value={profileData.nis || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NISN</label>
+                                          <input type="text" value={profileData.nisn || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">NIK</label>
+                                          <input type="text" value={profileData.nik || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Jenis Kelamin</label>
+                                          <select value={profileData.gender || 'L'} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none">
+                                              <option value="L">Laki-laki</option>
+                                              <option value="P">Perempuan</option>
+                                          </select>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Tempat Lahir</label>
+                                          <input type="text" value={profileData.birthPlace || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Tanggal Lahir</label>
+                                          <input type="text" value={profileData.birthDate ? (() => { const p = profileData.birthDate.split('T')[0].split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : profileData.birthDate; })() : ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
+                                      </div>
                                   </div>
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Berat Badan (kg)</label>
-                                      <input type="number" value={profileData.weight || 0} onChange={e => handleProfileChange('weight', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
-                                  </div>
-                                  <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Golongan Darah</label>
-                                      <input type="text" value={profileData.bloodType || ''} onChange={e => handleProfileChange('bloodType', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
-                                  </div>
-                                  <div className="md:col-span-2">
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Riwayat Penyakit / Catatan Kesehatan</label>
-                                      <textarea rows={2} value={profileData.healthNotes || ''} onChange={e => handleProfileChange('healthNotes', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Agama</label>
+                                      <input type="text" value={profileData.religion || ''} disabled={true} className="w-full border p-2.5 rounded-xl bg-gray-100 text-gray-700 font-semibold cursor-not-allowed outline-none"/>
                                   </div>
                               </div>
                           </div>
 
-                          <div>
-                              <h4 className="text-xs font-bold text-indigo-600 uppercase mb-2 border-b border-indigo-100 pb-1">Minat & Impian</h4>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-2">
+                          {/* Alamat & Kontak */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <MapPin size={16} className="mr-2 text-indigo-600"/> Alamat & Kontak
+                              </h4>
+                              <div className="space-y-3 text-xs">
                                   <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Hobi</label>
-                                      <input type="text" value={profileData.hobbies || ''} onChange={e => handleProfileChange('hobbies', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                      <label className="block font-bold text-gray-500 mb-1">Alamat Jalan / Rumah</label>
+                                      <textarea rows={2} value={profileData.address || ''} onChange={e => handleProfileChange('address', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"/>
                                   </div>
-                                  <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-1">Cita-cita</label>
-                                      <input type="text" value={profileData.ambition || ''} onChange={e => handleProfileChange('ambition', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-lg bg-white disabled:bg-gray-50 disabled:text-gray-500 outline-none focus:ring-2 focus:ring-indigo-500"/>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">RT / RW</label>
+                                          <input type="text" value={profileData.rt || ''} onChange={e => handleProfileChange('rt', e.target.value)} disabled={!isEditingProfile} placeholder="001 / 002" className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kelurahan / Desa</label>
+                                          <input type="text" value={profileData.kelurahan || ''} onChange={e => handleProfileChange('kelurahan', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kecamatan</label>
+                                          <input type="text" value={profileData.kecamatan || ''} onChange={e => handleProfileChange('kecamatan', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Kode Pos</label>
+                                          <input type="text" value={profileData.kodePos || ''} onChange={e => handleProfileChange('kodePos', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">No. HP Siswa</label>
+                                          <input type="text" value={profileData.hp || ''} onChange={e => handleProfileChange('hp', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Email Siswa</label>
+                                          <input type="email" value={profileData.email || ''} onChange={e => handleProfileChange('email', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
                                   </div>
                               </div>
                           </div>
+                      </div>
+
+                      {/* Right Column: Orang Tua, Fisik, Hobi & Dapodik (2 Cols on lg) */}
+                      <div className="space-y-6 lg:col-span-2">
+                          
+                          {/* Data Orang Tua & Wali */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <HeartHandshake size={16} className="mr-2 text-indigo-600"/> Data Orang Tua & Wali
+                              </h4>
+                              
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {/* Ayah */}
+                                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 space-y-3">
+                                      <h5 className="font-extrabold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center justify-between">
+                                          <span>Data Ayah Kandung</span>
+                                      </h5>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Ayah</label>
+                                          <input type="text" value={profileData.fatherName || ''} onChange={e => handleProfileChange('fatherName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Tahun Lahir</label>
+                                              <input type="text" value={profileData.fatherBirthYear || ''} onChange={e => handleProfileChange('fatherBirthYear', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pendidikan</label>
+                                              <input type="text" value={profileData.fatherEducation || ''} onChange={e => handleProfileChange('fatherEducation', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pekerjaan</label>
+                                              <input type="text" value={profileData.fatherJob || ''} onChange={e => handleProfileChange('fatherJob', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
+                                              <div className="relative flex items-center"><span className="absolute left-2.5 text-gray-400 font-bold text-xs select-none">Rp.</span><input type="text" value={profileData.fatherIncome || ''} onChange={e => handleProfileChange('fatherIncome', e.target.value)} disabled={!isEditingProfile} placeholder="0" className="w-full border pl-9 pr-2.5 py-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
+                                          </div>
+                                      </div>
+                                  </div>
+
+                                  {/* Ibu */}
+                                  <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200/60 space-y-3">
+                                      <h5 className="font-extrabold text-indigo-900 border-b border-indigo-100 pb-1.5 flex items-center justify-between">
+                                          <span>Data Ibu Kandung</span>
+                                      </h5>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Ibu</label>
+                                          <input type="text" value={profileData.motherName || ''} onChange={e => handleProfileChange('motherName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Tahun Lahir</label>
+                                              <input type="text" value={profileData.motherBirthYear || ''} onChange={e => handleProfileChange('motherBirthYear', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pendidikan</label>
+                                              <input type="text" value={profileData.motherEducation || ''} onChange={e => handleProfileChange('motherEducation', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                      </div>
+                                      <div className="grid grid-cols-2 gap-2">
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Pekerjaan</label>
+                                              <input type="text" value={profileData.motherJob || ''} onChange={e => handleProfileChange('motherJob', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                          </div>
+                                          <div>
+                                              <label className="block font-bold text-gray-500 mb-1">Penghasilan</label>
+                                              <div className="relative flex items-center"><span className="absolute left-2.5 text-gray-400 font-bold text-xs select-none">Rp.</span><input type="text" value={profileData.motherIncome || ''} onChange={e => handleProfileChange('motherIncome', e.target.value)} disabled={!isEditingProfile} placeholder="0" className="w-full border pl-9 pr-2.5 py-2 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/></div>
+                                          </div>
+                                      </div>
+                                  </div>
+                              </div>
+
+                              {/* Wali & No WA */}
+                              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100 space-y-3 text-xs">
+                                  <h5 className="font-extrabold text-emerald-900 border-b border-emerald-200 pb-1.5">Data Wali / Kontak Orang Tua</h5>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">Nama Wali / Kepala Keluarga</label>
+                                          <input type="text" value={profileData.parentName || ''} onChange={e => handleProfileChange('parentName', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                      <div>
+                                          <label className="block font-bold text-gray-500 mb-1">No. WA Orang Tua / Wali</label>
+                                          <input type="text" value={profileData.parentPhone || ''} onChange={e => handleProfileChange('parentPhone', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-white disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+
+                          {/* Data Fisik, Kesehatan & Hobi */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <Activity size={16} className="mr-2 text-indigo-600"/> Data Fisik, Kesehatan & Impian
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Tinggi Badan (cm)</label>
+                                      <input type="number" value={profileData.height || 0} onChange={e => handleProfileChange('height', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Berat Badan (kg)</label>
+                                      <input type="number" value={profileData.weight || 0} onChange={e => handleProfileChange('weight', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Lingkar Kepala (cm)</label>
+                                      <input type="number" value={profileData.lingkarKepala || 0} onChange={e => handleProfileChange('lingkarKepala', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Golongan Darah</label>
+                                      <input type="text" value={profileData.bloodType || ''} onChange={e => handleProfileChange('bloodType', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Hobi</label>
+                                      <input type="text" value={profileData.hobbies || ''} onChange={e => handleProfileChange('hobbies', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Cita-cita</label>
+                                      <input type="text" value={profileData.ambition || ''} onChange={e => handleProfileChange('ambition', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                              <div className="text-xs">
+                                  <label className="block font-bold text-gray-500 mb-1">Riwayat Penyakit / Catatan Kesehatan</label>
+                                  <textarea rows={2} value={profileData.healthNotes || ''} onChange={e => handleProfileChange('healthNotes', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none resize-none"/>
+                              </div>
+                          </div>
+
+                          {/* Data Periodik & Registrasi Lainnya */}
+                          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
+                              <h4 className="font-extrabold text-gray-800 text-sm flex items-center border-b border-gray-100 pb-3">
+                                  <FileText size={16} className="mr-2 text-indigo-600"/> Data Periodik & Registrasi Dapodik
+                              </h4>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Anak Ke-</label>
+                                      <input type="text" value={profileData.anakKe || ''} onChange={e => handleProfileChange('anakKe', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Jumlah Saudara</label>
+                                      <input type="number" value={profileData.jmlSaudaraKandung || 0} onChange={e => handleProfileChange('jmlSaudaraKandung', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Jarak Rumah (km)</label>
+                                      <input type="number" value={profileData.jarakRumahKm || 0} onChange={e => handleProfileChange('jarakRumahKm', Number(e.target.value))} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">No. KK</label>
+                                      <input type="text" value={profileData.noKk || ''} onChange={e => handleProfileChange('noKk', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">Sekolah Asal</label>
+                                      <input type="text" value={profileData.sekolahAsal || ''} onChange={e => handleProfileChange('sekolahAsal', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                                  <div>
+                                      <label className="block font-bold text-gray-500 mb-1">No. Reg Akta Lahir</label>
+                                      <input type="text" value={profileData.noRegistrasiAktaLahir || ''} onChange={e => handleProfileChange('noRegistrasiAktaLahir', e.target.value)} disabled={!isEditingProfile} className="w-full border p-2.5 rounded-xl bg-gray-50/50 disabled:bg-gray-50 disabled:text-gray-700 font-semibold focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                                  </div>
+                              </div>
+                          </div>
+
                       </div>
                   </div>
               </div>
           )}
 
-          {/* --- CHARACTER TAB (Separated with Toggle Buttons) --- */}
+          {/* --- CHARACTER TAB: JURNAL HARIAN 7 KAIH --- */}
           {activeTab === 'character' && (
-              <div className="space-y-6">
-                  <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-gray-800 flex items-center text-lg">
-                              <HeartHandshake size={20} className="mr-2 text-pink-500"/> 7 Kebiasaan Anak Indonesia Hebat
-                          </h3>
-                          <button 
-                            onClick={handleSaveKarakterLocal}
-                            disabled={isSavingKarakter}
-                            className="bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-bold shadow hover:bg-emerald-600 transition-colors flex items-center disabled:opacity-70"
-                          >
-                              {isSavingKarakter ? <Loader2 size={16} className="animate-spin mr-1"/> : <Save size={16} className="mr-2"/>}
-                              Simpan Penilaian
-                          </button>
-                      </div>
+              <div className="space-y-6 animate-fade-in">
+                  {/* Top Bar & Date Picker */}
+                  <div className="bg-gradient-to-r from-sky-600 via-blue-700 to-indigo-800 p-4 sm:p-6 rounded-3xl text-white shadow-lg relative overflow-hidden">
+                      <div className="absolute top-0 right-0 transform translate-x-1/4 -translate-y-1/4 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
                       
-                      {/* NEW: Attractive Toggle List Layout */}
-                      <div className="grid grid-cols-1 gap-4">
-                          {(Object.keys(KARAKTER_INDICATORS) as KarakterIndicatorKey[]).map((key) => {
-                              const value = karakterForm[key];
-                              return (
-                                  <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200 transition-all hover:border-blue-200 hover:shadow-sm">
-                                      <span className="font-bold text-gray-700 text-sm mb-3 sm:mb-0 flex items-center">
-                                          <div className="w-2 h-2 rounded-full bg-blue-400 mr-3"></div>
-                                          {KARAKTER_INDICATORS[key]}
-                                      </span>
-                                      
-                                      <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm w-full sm:w-auto">
-                                          <button
-                                              onClick={() => handleKarakterChange(key, 'Terbiasa')}
-                                              className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-xs font-bold transition-all ${
-                                                  value === 'Terbiasa'
-                                                  ? 'bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-600'
-                                                  : 'text-gray-500 hover:bg-gray-50'
-                                              }`}
-                                          >
-                                              <CheckCircle size={14} className={`mr-1.5 ${value === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/> 
-                                              Terbiasa
-                                          </button>
-                                          <button
-                                              onClick={() => handleKarakterChange(key, 'Belum Terbiasa')}
-                                              className={`flex-1 flex items-center justify-center px-4 py-2 rounded-md text-xs font-bold transition-all ml-1 ${
-                                                  value === 'Belum Terbiasa'
-                                                  ? 'bg-amber-500 text-white shadow-sm ring-1 ring-amber-600'
-                                                  : 'text-gray-500 hover:bg-gray-50'
-                                              }`}
-                                          >
-                                              <XCircle size={14} className={`mr-1.5 ${value === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/> 
-                                              Belum
-                                          </button>
-                                      </div>
-                                  </div>
-                              );
-                          })}
-                      </div>
-                      
-                      <div className="mt-6">
-                          <label className="block text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Catatan Tambahan (Opsional)</label>
-                          <textarea
-                              rows={2}
-                              value={karakterForm.catatan || ''}
-                              onChange={(e) => setKarakterForm({...karakterForm, catatan: e.target.value})}
-                              className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none bg-gray-50 focus:bg-white transition-colors"
-                              placeholder="Tulis catatan refleksi..."
-                          />
-                      </div>
-
-                      {karakterForm.catatan && (
-                          <div className="mt-4 p-3 bg-yellow-50 rounded-xl border border-yellow-100 text-sm text-yellow-800 flex items-start">
-                              <Sparkles size={16} className="mr-2 mt-0.5 text-yellow-600"/>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+                          <div className="flex items-center gap-3 sm:gap-4">
+                              <div className="p-1.5 sm:p-2 bg-white rounded-2xl shadow-md shrink-0 flex items-center justify-center border border-white/40">
+                                  <Logo7Kaih className="w-12 h-12 sm:w-16 sm:h-16" imgClassName="rounded-xl" />
+                              </div>
                               <div>
-                                  <strong>Catatan Guru:</strong> {karakterForm.catatan}
+                                  <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-white/20 text-[10px] sm:text-xs font-bold uppercase tracking-wider backdrop-blur-md mb-1 sm:mb-2">
+                                      <HeartHandshake size={14} className="mr-1.5 text-sky-200 shrink-0"/> Jurnal Pembiasaan Karakter
+                                  </span>
+                                  <h3 className="text-xl sm:text-2xl font-black tracking-tight leading-tight">7 Kebiasaan Anak Indonesia Hebat</h3>
+                                  <p className="text-sky-100 text-[11px] sm:text-xs mt-0.5 sm:mt-1">Isi jurnal harian ini setiap hari untuk membangun karakter hebatmu!</p>
                               </div>
                           </div>
+
+                          {/* Date Selector */}
+                          <div className="w-full sm:w-auto bg-white/10 backdrop-blur-md p-1.5 sm:p-2 rounded-2xl border border-white/20 flex items-center justify-between sm:justify-start gap-2">
+                              <div className="flex items-center gap-2">
+                                  <Calendar size={18} className="text-sky-200 ml-1 shrink-0" />
+                                  <input 
+                                    type="date" 
+                                    value={selectedJournalDate}
+                                    onChange={(e) => setSelectedJournalDate(e.target.value)}
+                                    className="bg-white text-gray-800 font-bold text-xs px-2.5 py-1.5 rounded-xl outline-none shadow-sm focus:ring-2 focus:ring-sky-300"
+                                  />
+                              </div>
+                              <button 
+                                onClick={() => setSelectedJournalDate(getLocalISODate())}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                                  selectedJournalDate === getLocalISODate() 
+                                    ? 'bg-white text-indigo-700 shadow-md' 
+                                    : 'bg-white/20 text-white hover:bg-white/30'
+                                }`}
+                              >
+                                Hari Ini
+                              </button>
+                          </div>
+                      </div>
+
+                      {/* Daily Score Summary Card */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-6 pt-6 border-t border-white/20 relative z-10">
+                          {(() => {
+                            const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as const;
+                            const score = habits.filter(h => (dailyJournalForm[h] as string) === 'Terbiasa').length;
+                            const pct = Math.round((score / 7) * 100);
+
+                            return (
+                              <>
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Capaian Hari Ini</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{score} <span className="text-xs font-medium text-sky-200">/ 7 Kebiasaan</span></p>
+                                  </div>
+                                  <div className="w-10 h-10 rounded-xl bg-white text-indigo-700 flex items-center justify-center font-black text-xs shadow-md">
+                                    {pct}%
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Status Jurnal</p>
+                                    <p className="text-sm font-bold text-white mt-1">
+                                      {score === 7 ? '🎉 Sempurna 7/7' : score > 0 ? '👍 Terisi Sebagian' : '⚠️ Belum Diisi'}
+                                    </p>
+                                  </div>
+                                  <div className="p-2 bg-emerald-400 text-indigo-950 rounded-xl shadow-md">
+                                    <Sparkles size={18} />
+                                  </div>
+                                </div>
+
+                                <div className="bg-white/15 backdrop-blur-sm rounded-2xl p-3 border border-white/20 flex items-center justify-between">
+                                  <div>
+                                    <p className="text-[10px] font-bold text-sky-200 uppercase">Total Jurnal Semester</p>
+                                    <p className="text-xl font-black text-white mt-0.5">{studentJournalHistory.length} <span className="text-xs font-medium text-sky-200">Hari</span></p>
+                                  </div>
+                                  <div className="p-2 bg-sky-300 text-indigo-950 rounded-xl shadow-md">
+                                    <Trophy size={18} />
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()}
+                      </div>
+                  </div>
+
+                  {/* 7 Habit Interactive List */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+                          <div className="flex items-center gap-3">
+                            <Logo7Kaih className="w-9 h-9 shrink-0" imgClassName="rounded-lg border border-gray-100 shadow-2xs" />
+                            <div>
+                              <h4 className="font-extrabold text-gray-800 text-lg leading-tight">
+                                Daftar Pembiasaan 7 KAIH
+                              </h4>
+                              <p className="text-xs font-bold text-sky-700 mt-0.5">
+                                {formatDateID(selectedJournalDate)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <button 
+                            onClick={handleSaveDailyJournal}
+                            disabled={isSavingJournal}
+                            className="bg-emerald-600 text-white px-5 py-2.5 rounded-2xl text-xs font-extrabold shadow-md hover:bg-emerald-700 transition-all flex items-center disabled:opacity-70 transform active:scale-95"
+                          >
+                            {isSavingJournal ? <Loader2 size={16} className="animate-spin mr-2"/> : <Save size={16} className="mr-2"/>}
+                            Simpan Jurnal
+                          </button>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3">
+                        {[
+                          { key: 'bangunPagi', label: '1. Bangun Pagi', desc: 'Bangun tepat waktu sebelum Subuh / pkl 05:00 pagi.', icon: '⏰' },
+                          { key: 'beribadah', label: '2. Beribadah', desc: 'Melaksanakan ibadah / sholat 5 waktu tepat waktu.', icon: '🕌' },
+                          { key: 'berolahraga', label: '3. Berolahraga', desc: 'Olahraga, senam, atau aktif bergerak minimal 15-30 menit.', icon: '🏃' },
+                          { key: 'makanSehat', label: '4. Makan Sehat & Bergizi', desc: 'Makan makanan sehat, bergizi seimbang, makan buah & sayur.', icon: '🍎' },
+                          { key: 'gemarBelajar', label: '5. Gemar Belajar / Membaca', desc: 'Membaca buku cerita/pengetahuan atau belajar mandiri.', icon: '📚' },
+                          { key: 'bermasyarakat', label: '6. Bermasyarakat', desc: 'Membantu orang tua di rumah, bersikap sopan & gotong royong.', icon: '🤝' },
+                          { key: 'tidurAwal', label: '7. Tidur Lebih Awal', desc: 'Tidur malam tepat waktu (sebelum pkl 21:30) agar tubuh fit.', icon: '🌙' },
+                        ].map((item) => {
+                          const hKey = item.key as 'bangunPagi' | 'beribadah' | 'berolahraga' | 'makanSehat' | 'gemarBelajar' | 'bermasyarakat' | 'tidurAwal';
+                          const val = (dailyJournalForm[hKey] || '') as string;
+
+                          return (
+                            <div key={item.key} className="flex flex-col p-4 bg-slate-50/70 rounded-2xl border border-slate-200/80 hover:bg-white hover:border-indigo-200 transition-all hover:shadow-sm gap-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="flex items-start gap-3">
+                                  <span className="text-2xl p-2 bg-white rounded-xl shadow-xs border border-slate-100">{item.icon}</span>
+                                  <div>
+                                    <h5 className="font-bold text-gray-800 text-sm">{item.label}</h5>
+                                    <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
+                                  </div>
+                                </div>
+
+                                <div className="flex bg-white rounded-xl p-1 border border-gray-200 shadow-xs w-full sm:w-auto min-w-[200px] shrink-0">
+                                  <button
+                                    onClick={() => handleDailyHabitToggle(hKey, 'Terbiasa')}
+                                    className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                                      val === 'Terbiasa'
+                                        ? 'bg-emerald-500 text-white shadow-sm ring-2 ring-emerald-300'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <CheckCircle size={14} className={`mr-1.5 ${val === 'Terbiasa' ? 'text-white' : 'text-emerald-500'}`}/>
+                                    Terbiasa
+                                  </button>
+                                  
+                                  <button
+                                    onClick={() => handleDailyHabitToggle(hKey, 'Belum Terbiasa')}
+                                    className={`flex-1 flex items-center justify-center px-4 py-2 rounded-lg text-xs font-bold transition-all ml-1 ${
+                                      val === 'Belum Terbiasa'
+                                        ? 'bg-amber-500 text-white shadow-sm ring-2 ring-amber-300'
+                                        : 'text-gray-500 hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <XCircle size={14} className={`mr-1.5 ${val === 'Belum Terbiasa' ? 'text-white' : 'text-amber-500'}`}/>
+                                    Belum
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Input Keterangan Kegiatan Spesifik per Kebiasaan */}
+                              <div className="pt-2 border-t border-slate-200/60">
+                                {item.key === 'bangunPagi' && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">Pukul:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['bangunPagi'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), bangunPagi: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Pukul (contoh: 04.30 WIB)..."
+                                      className="w-full sm:max-w-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'beribadah' && (() => {
+                                  const allPrayers = ['Subuh', 'Dhuhur', 'Asyar', 'Magrib', 'Isya'];
+                                  const currentDetail = dailyJournalForm.details?.['beribadah'] || '';
+                                  const selectedPrayers = currentDetail ? currentDetail.split(', ').map(s => s.trim()) : [];
+
+                                  const togglePrayer = (prayer: string) => {
+                                    let next: string[];
+                                    if (selectedPrayers.includes(prayer)) {
+                                      next = selectedPrayers.filter(p => p !== prayer);
+                                    } else {
+                                      next = [...selectedPrayers, prayer];
+                                    }
+                                    const sorted = allPrayers.filter(p => next.includes(p));
+                                    const newDetails = { ...(dailyJournalForm.details || {}), beribadah: sorted.join(', ') };
+                                    setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                  };
+
+                                  return (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap mr-1">Sholat 5 Waktu:</span>
+                                      {allPrayers.map((prayer) => {
+                                        const isChecked = selectedPrayers.includes(prayer);
+                                        return (
+                                          <button
+                                            key={prayer}
+                                            type="button"
+                                            onClick={() => togglePrayer(prayer)}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1 select-none ${
+                                              isChecked
+                                                ? 'bg-sky-500 text-white border-sky-600 shadow-2xs'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                                            }`}
+                                          >
+                                            <span>{isChecked ? '✓' : '○'}</span>
+                                            <span>{prayer}</span>
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+                                  );
+                                })()}
+
+                                {item.key === 'berolahraga' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Jenis Olahraga:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['berolahraga'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), berolahraga: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Masukkan jenis olahraga (contoh: Senam pagi, Bulutangkis, Jogging)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'makanSehat' && (() => {
+                                  const raw = dailyJournalForm.details?.['makanSehat'] || '';
+                                  const getSubMenu = (label: string) => {
+                                    const match = raw.match(new RegExp(`${label}:\\s*(?:\\[([^\\]]+)\\]|([^|]+))`));
+                                    if (match) {
+                                      return (match[1] || match[2] || '').trim().replace(/^\[|\]$/g, '');
+                                    }
+                                    return '';
+                                  };
+
+                                  const pagi = getSubMenu('Pagi');
+                                  const siang = getSubMenu('Siang');
+                                  const malam = getSubMenu('Malam');
+
+                                  const updateMenu = (pagiVal: string, siangVal: string, malamVal: string) => {
+                                    const parts = [];
+                                    const cleanPagi = pagiVal.replace(/[\[\]]/g, '').trim();
+                                    const cleanSiang = siangVal.replace(/[\[\]]/g, '').trim();
+                                    const cleanMalam = malamVal.replace(/[\[\]]/g, '').trim();
+
+                                    if (cleanPagi) parts.push(`Pagi: ${cleanPagi}`);
+                                    if (cleanSiang) parts.push(`Siang: ${cleanSiang}`);
+                                    if (cleanMalam) parts.push(`Malam: ${cleanMalam}`);
+                                    const newDetails = { ...(dailyJournalForm.details || {}), makanSehat: parts.join(' | ') };
+                                    setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                  };
+
+                                  return (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 w-full">
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Pagi:</span>
+                                        <input
+                                          type="text"
+                                          value={pagi}
+                                          onChange={(e) => updateMenu(e.target.value, siang, malam)}
+                                          placeholder="Menu sarapan..."
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Siang:</span>
+                                        <input
+                                          type="text"
+                                          value={siang}
+                                          onChange={(e) => updateMenu(pagi, e.target.value, malam)}
+                                          placeholder="Menu makan siang..."
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                      <div className="flex items-center gap-2 bg-amber-50/50 p-2 rounded-xl border border-amber-200/80">
+                                        <span className="text-[11px] font-bold text-amber-900 whitespace-nowrap shrink-0">Menu Malam:</span>
+                                        <input
+                                          type="text"
+                                          value={malam}
+                                          onChange={(e) => updateMenu(pagi, siang, e.target.value)}
+                                          placeholder="Menu makan malam..."
+                                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                                {item.key === 'gemarBelajar' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Mapel yang Dipelajari:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['gemarBelajar'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), gemarBelajar: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Mata pelajaran yang dipelajari (contoh: Matematika, IPA)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'bermasyarakat' && (
+                                  <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap shrink-0">Kegiatan di Lingkungan:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['bermasyarakat'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), bermasyarakat: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Kegiatan di lingkungan (contoh: Membantu warga, Kerja bakti)..."
+                                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+
+                                {item.key === 'tidurAwal' && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-bold text-slate-700 whitespace-nowrap">Pukul:</span>
+                                    <input
+                                      type="text"
+                                      value={dailyJournalForm.details?.['tidurAwal'] || ''}
+                                      onChange={(e) => {
+                                        const newDetails = { ...(dailyJournalForm.details || {}), tidurAwal: e.target.value };
+                                        setDailyJournalForm({ ...dailyJournalForm, details: newDetails });
+                                      }}
+                                      placeholder="Pukul (contoh: 20.30 WIB)..."
+                                      className="w-full sm:max-w-xs bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-sky-500 shadow-2xs"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Daily Student Reflection */}
+                      <div className="mt-6 pt-6 border-t border-gray-100">
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center gap-1.5">
+                          <MessageSquare size={14} className="text-indigo-600" />
+                          Catatan Refleksi Diri Hari Ini (Opsional)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={dailyJournalForm.catatan || ''}
+                          onChange={(e) => setDailyJournalForm({ ...dailyJournalForm, catatan: e.target.value })}
+                          className="w-full border border-gray-200 rounded-2xl p-3 text-xs text-gray-800 focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50/50 focus:bg-white transition-all resize-none"
+                          placeholder="Tuliskan pengalaman atau kebaikan yang kamu lakukan hari ini..."
+                        />
+                      </div>
+
+                      {/* Teacher Feedback Display */}
+                      {dailyJournalForm.catatanGuru && (
+                        <div className="mt-4 p-4 bg-amber-50/80 rounded-2xl border border-amber-200/80 text-xs text-amber-900 flex items-start gap-3">
+                          <Sparkles size={18} className="text-amber-600 mt-0.5 shrink-0" />
+                          <div>
+                            <span className="font-bold text-amber-800 uppercase block mb-0.5">Catatan & Umpan Balik Guru:</span>
+                            <p className="italic">"{dailyJournalForm.catatanGuru}"</p>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Journal History Log */}
+                  <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
+                      <h4 className="font-extrabold text-gray-800 text-md mb-4 flex items-center">
+                        <History size={18} className="mr-2 text-indigo-600" />
+                        Riwayat Jurnal 7 KAIH Saya Semester Ini
+                      </h4>
+
+                      {studentJournalHistory.length === 0 ? (
+                        <div className="p-8 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-gray-400 text-xs">
+                          Belum ada riwayat jurnal yang disimpan. Silakan isi jurnal hari ini di atas!
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border border-gray-100 rounded-2xl">
+                          <table className="w-full text-xs text-left border-collapse">
+                            <thead className="bg-slate-50 text-slate-700 font-bold border-b border-gray-200">
+                              <tr>
+                                <th className="p-3 w-28">Tanggal</th>
+                                <th className="p-3 text-center w-24">Skor KAIH</th>
+                                <th className="p-3">Kebiasaan Terlaksana</th>
+                                <th className="p-3">Catatan Siswa</th>
+                                <th className="p-3">Umpan Balik Guru</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {studentJournalHistory
+                                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                                .slice(0, 15)
+                                .map((j) => {
+                                  const habits = ['bangunPagi', 'beribadah', 'berolahraga', 'makanSehat', 'gemarBelajar', 'bermasyarakat', 'tidurAwal'] as (keyof DailyKAIHJournal)[];
+                                  const score = habits.filter(h => j[h] === 'Terbiasa').length;
+
+                                  return (
+                                    <tr key={j.date} className="hover:bg-slate-50 transition-colors">
+                                      <td className="p-3 font-bold text-gray-800">{j.date}</td>
+                                      <td className="p-3 text-center">
+                                        <span className="px-2 py-1 bg-indigo-100 text-indigo-800 font-extrabold rounded-lg">
+                                          {score} / 7
+                                        </span>
+                                      </td>
+                                      <td className="p-3 text-gray-600">
+                                        <div className="flex gap-1 flex-wrap">
+                                          {j.bangunPagi === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Bangun Pagi</span>}
+                                          {j.beribadah === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Beribadah</span>}
+                                          {j.berolahraga === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Olahraga</span>}
+                                          {j.makanSehat === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Makan Sehat</span>}
+                                          {j.gemarBelajar === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Gemar Belajar</span>}
+                                          {j.bermasyarakat === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Bermasyarakat</span>}
+                                          {j.tidurAwal === 'Terbiasa' && <span className="px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200 text-[10px]">Tidur Awal</span>}
+                                        </div>
+                                      </td>
+                                      <td className="p-3 text-gray-600 italic">{j.catatan || '-'}</td>
+                                      <td className="p-3 text-amber-800 font-semibold">{j.catatanGuru || '-'}</td>
+                                    </tr>
+                                  );
+                                })}
+                            </tbody>
+                          </table>
+                        </div>
                       )}
                   </div>
               </div>
@@ -2891,6 +3604,26 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                           </div>
                       </div>
 
+                      {/* NOTIFICATION BANNER FOR EMBEDDED MATERIALS */}
+                      {hasEmbeddedMaterialsNotification && (
+                          <div className="mb-6 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl shadow-sm flex items-start gap-3.5">
+                              <div className="p-2.5 bg-amber-500 text-white rounded-xl shadow-md shrink-0">
+                                  <Bell size={20} className="animate-bounce" />
+                              </div>
+                              <div className="flex-1">
+                                  <div className="flex items-center justify-between">
+                                      <h4 className="font-black text-amber-900 text-sm flex items-center gap-1.5">
+                                          <span>Notifikasi Materi & Tugas Disematkan Guru</span>
+                                          <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] uppercase font-bold">Baru</span>
+                                      </h4>
+                                  </div>
+                                  <p className="text-xs text-amber-800 font-medium leading-relaxed mt-1">
+                                      Bapak/Ibu Guru telah menyematkan materi pelajaran, tugas, atau instruksi khusus pada jadwal pelajaran. Periksa kartu mata pelajaran di bawah untuk langsung membuka materi!
+                                  </p>
+                              </div>
+                          </div>
+                      )}
+
                       {isLoadingSchedule ? (
                           <div className="flex flex-col items-center justify-center p-24 bg-gray-50/30 rounded-3xl border border-dashed border-gray-200">
                               <Loader2 className="animate-spin text-indigo-300 mb-4" size={40} />
@@ -2919,44 +3652,172 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   );
                                   const isTeacherPresent = journalEntry?.isTeacherPresent;
                                   const teacherName = journalEntry?.teacherName;
+
+                                  // Match attached materials
+                                  const attachedMats = (item.attachedMaterialIds || [])
+                                      .map(id => materials.find(m => m.id === id))
+                                      .filter(Boolean) as Material[];
                                   
                                   return (
                                       <div key={item.id || idx} className="relative group">
                                           {/* Timeline Point */}
                                           <div className={`absolute -left-[33px] sm:-left-[41px] top-6 w-4 h-4 rounded-full border-2 border-white shadow-sm z-10 transition-transform group-hover:scale-125 ${
-                                              isBreak ? 'bg-slate-400' : 'bg-indigo-500'
+                                              isBreak ? 'bg-slate-400' : (attachedMats.length > 0 || item.attachedNotes ? 'bg-amber-500 animate-pulse' : 'bg-indigo-500')
                                           }`}></div>
                                           
                                           {/* Card Item */}
-                                          <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md hover:translate-x-1 ${colorClass}`}>
-                                              <div className="flex items-center gap-4 mb-3 sm:mb-0">
-                                                  <div className={`p-3 rounded-xl shadow-sm bg-white/40 shrink-0`}>
-                                                      {isBreak ? <Coffee size={24} className="text-slate-600" /> : <BookOpen size={24} className="text-indigo-600" />}
-                                                  </div>
-                                                  <div className="min-w-0">
-                                                      <h4 className={`text-lg font-black leading-tight ${isBreak ? 'italic' : ''}`}>
-                                                          {item.subject}
-                                                      </h4>
-                                                      <div className="flex items-center mt-1">
-                                                           <Clock size={12} className="mr-1.5 opacity-60" />
-                                                           <span className="text-xs font-bold opacity-80">{item.time}</span>
+                                          <div className={`flex flex-col p-5 rounded-2xl shadow-sm border transition-all hover:shadow-md ${colorClass}`}>
+                                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                                  <div className="flex items-center gap-4">
+                                                      <div className={`p-3 rounded-xl shadow-sm bg-white/40 shrink-0`}>
+                                                          {isBreak ? <Coffee size={24} className="text-slate-600" /> : <BookOpen size={24} className="text-indigo-600" />}
                                                       </div>
-                                                      {isTeacherPresent && teacherName && (
-                                                          <div className="flex items-center mt-2 bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-md w-fit">
-                                                              <CheckCircle size={12} className="mr-1.5" />
-                                                              <span className="text-[10px] font-black tracking-tight">Diajar oleh: {teacherName}</span>
+                                                      <div className="min-w-0">
+                                                          <div className="flex items-center gap-2 flex-wrap">
+                                                              <h4 className={`text-lg font-black leading-tight ${isBreak ? 'italic' : ''}`}>
+                                                                  {item.subject}
+                                                              </h4>
+                                                              {attachedMats.length > 0 && (
+                                                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-white shadow-sm animate-pulse">
+                                                                      <Paperclip size={11} />
+                                                                      <span>{attachedMats.length} Materi/Tugas</span>
+                                                                  </span>
+                                                              )}
                                                           </div>
+                                                          <div className="flex items-center mt-1">
+                                                               <Clock size={12} className="mr-1.5 opacity-60" />
+                                                               <span className="text-xs font-bold opacity-80">{item.time}</span>
+                                                          </div>
+                                                          {!isBreak && (item.meetUrl || item.zoomUrl) && (
+                                                              <div className="flex flex-wrap gap-1.5 mt-2">
+                                                                  {item.meetUrl && (
+                                                                      <a 
+                                                                          href={item.meetUrl.startsWith('http') ? item.meetUrl : `https://${item.meetUrl}`}
+                                                                          target="_blank"
+                                                                          rel="noopener noreferrer"
+                                                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                      >
+                                                                          <Video size={11} />
+                                                                          <span>Meet</span>
+                                                                      </a>
+                                                                  )}
+                                                                  {item.zoomUrl && (
+                                                                      <a 
+                                                                          href={item.zoomUrl.startsWith('http') ? item.zoomUrl : `https://${item.zoomUrl}`}
+                                                                          target="_blank"
+                                                                          rel="noopener noreferrer"
+                                                                          className="inline-flex items-center gap-1 px-2.5 py-1 bg-sky-500 hover:bg-sky-600 text-white text-[10px] font-black rounded-lg shadow-sm transition-all hover:scale-105"
+                                                                      >
+                                                                          <Video size={11} />
+                                                                          <span>Zoom</span>
+                                                                      </a>
+                                                                  )}
+                                                              </div>
+                                                          )}
+                                                          {isTeacherPresent && teacherName && (
+                                                              <div className="flex items-center mt-2 bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-md w-fit">
+                                                                  <CheckCircle size={12} className="mr-1.5" />
+                                                                  <span className="text-[10px] font-black tracking-tight">Diajar oleh: {teacherName}</span>
+                                                              </div>
+                                                          )}
+                                                      </div>
+                                                  </div>
+                                                  
+                                                  <div className="flex items-center gap-2 self-start sm:self-auto">
+                                                      {isBreak ? (
+                                                           <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Waktu Istirahat</span>
+                                                      ) : (
+                                                           <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Jam Pembelajaran</span>
                                                       )}
                                                   </div>
                                               </div>
-                                              
-                                              <div className="flex items-center gap-2">
-                                                  {isBreak ? (
-                                                       <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Waktu Istirahat</span>
-                                                  ) : (
-                                                       <span className="px-3 py-1 bg-black/5 rounded-lg text-[10px] font-black uppercase tracking-tighter">Jam Pembelajaran</span>
-                                                  )}
-                                              </div>
+
+                                              {/* TEACHER INSTRUCTIONS / NOTES */}
+                                              {item.attachedNotes && (
+                                                  <div className="mt-4 p-3 bg-amber-50/90 rounded-xl border border-amber-200 text-amber-900 text-xs font-medium flex items-start gap-2.5 shadow-sm">
+                                                      <FileText size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                                      <div className="min-w-0">
+                                                          <span className="font-extrabold text-[10px] uppercase tracking-wider text-amber-800 block">Catatan & Instruksi Guru:</span>
+                                                          <p className="leading-relaxed text-xs mt-0.5 whitespace-pre-wrap">{item.attachedNotes}</p>
+                                                      </div>
+                                                  </div>
+                                              )}
+
+                                              {/* ATTACHED MATERIALS & TASKS */}
+                                              {attachedMats.length > 0 && (
+                                                  <div className="mt-4 pt-3 border-t border-black/5 space-y-2">
+                                                      <div className="flex items-center justify-between">
+                                                          <span className="text-xs font-black text-gray-800 flex items-center gap-1.5">
+                                                              <Paperclip size={14} className="text-indigo-600" />
+                                                              Materi & Tugas Disematkan ({attachedMats.length})
+                                                          </span>
+                                                      </div>
+                                                      <div className="grid grid-cols-1 gap-2">
+                                                          {attachedMats.map(mat => (
+                                                              <div key={mat.id} className="p-3 bg-white/90 backdrop-blur-sm rounded-xl border border-indigo-100/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:border-indigo-300 transition-all">
+                                                                  <div className="min-w-0">
+                                                                      <div className="flex items-center gap-1.5 flex-wrap mb-1">
+                                                                          <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 text-[10px] font-black uppercase border border-indigo-100">
+                                                                              {mat.subjectId || 'Materi'}
+                                                                          </span>
+                                                                          {(mat.taskLink || mat.taskFile || mat.taskTitle) && (
+                                                                              <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[10px] font-black uppercase border border-amber-200">
+                                                                                  Ada Tugas
+                                                                              </span>
+                                                                          )}
+                                                                      </div>
+                                                                      <p className="font-bold text-xs text-gray-800 line-clamp-1">{mat.title}</p>
+                                                                      {mat.description && (
+                                                                          <p className="text-[11px] text-gray-500 line-clamp-1 mt-0.5">{mat.description}</p>
+                                                                      )}
+                                                                  </div>
+                                                                  <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-auto">
+                                                                      {mat.videoLink && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => handleOpenVideo(mat.videoLink!)}
+                                                                              className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <Youtube size={12} /> Video
+                                                                          </button>
+                                                                      )}
+                                                                      {(mat.taskLink || mat.taskFile || mat.taskTitle) && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => setViewingTask(mat)}
+                                                                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <ClipboardList size={12} /> Tugas
+                                                                          </button>
+                                                                      )}
+                                                                      {mat.infographic && (
+                                                                          <button 
+                                                                              type="button"
+                                                                              onClick={() => setViewingPoster(mat)}
+                                                                              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
+                                                                          >
+                                                                              <ImageIcon size={12} /> Poster
+                                                                          </button>
+                                                                      )}
+                                                                      <button 
+                                                                          type="button"
+                                                                          onClick={() => {
+                                                                              if (mat.link) {
+                                                                                  setViewingMaterialLink(mat.link);
+                                                                              } else {
+                                                                                  setActiveTab('materi');
+                                                                              }
+                                                                          }}
+                                                                          className="px-2.5 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-[10px] font-bold flex items-center gap-1 border border-indigo-200 transition-all"
+                                                                      >
+                                                                          <BookOpen size={12} /> Materi
+                                                                      </button>
+                                                                  </div>
+                                                              </div>
+                                                          ))}
+                                                      </div>
+                                                  </div>
+                                              )}
                                           </div>
                                       </div>
                                   );
@@ -3098,7 +3959,7 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
                                   
                                   <div className="hidden print:block mb-8 border-b-4 border-black pb-4 text-black text-center">
                                       <h1 className="text-2xl font-black">{schoolProfile?.name?.toUpperCase() || 'SEKOLAH KAMI'}</h1>
-                                      <p className="text-sm">{schoolProfile?.address || 'Alamat Sekolah'}</p>
+                                      <p className="text-sm">{schoolProfile?.jalan || schoolProfile?.address || 'Alamat Sekolah'}</p>
                                   </div>
                                   
                                   <div className="space-y-1">

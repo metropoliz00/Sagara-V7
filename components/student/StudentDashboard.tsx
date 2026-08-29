@@ -1,5 +1,6 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import CustomModal from '../CustomModal';
 import { useNavigate } from 'react-router-dom';
 import { Student, SchoolProfileData, TeacherProfileData, ViewState } from '../../types';
 import { BarChart2, Calendar, Users, Briefcase, GraduationCap, Heart, Sparkles, DollarSign, Trophy, AlertTriangle, Bell, Activity, Printer } from 'lucide-react';
@@ -23,6 +24,17 @@ const NEGATIVE_COLOR = '#ef4444'; // red
 
 const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttendanceRecords, schoolProfile, teacherProfile, hasNewMessages = false, unreadMessageCount = 0 }) => {
     const navigate = useNavigate();
+    const [modalConfig, setModalConfig] = useState<{
+        isOpen: boolean;
+        type: 'alert' | 'confirm' | 'success' | 'error';
+        title?: string;
+        message: string;
+    }>({
+        isOpen: false,
+        type: 'alert',
+        title: '',
+        message: ''
+    });
 
     const handlePrintCard = (cardName: string) => {
         const classId = students[0]?.classId || "-";
@@ -282,7 +294,12 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
 
         const printWindow = window.open('', '_blank', 'width=1200,height=800');
         if (!printWindow) {
-            alert('Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir.');
+            setModalConfig({
+                isOpen: true,
+                type: 'alert',
+                title: 'Pop-Up Diblokir',
+                message: 'Gagal membuka jendela cetak. Pastikan pop-up tidak diblokir oleh peramban Anda.'
+            });
             return;
         }
 
@@ -948,6 +965,15 @@ const StudentDashboard: React.FC<StudentDashboardProps> = ({ students, allAttend
                     </div>
                 </div>
             </div>
+
+            <CustomModal
+                isOpen={modalConfig.isOpen}
+                type={modalConfig.type}
+                title={modalConfig.title}
+                message={modalConfig.message}
+                onConfirm={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+                onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

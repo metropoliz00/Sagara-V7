@@ -57,6 +57,7 @@ import GraduatesView from './components/GraduatesView';
 import AgendaView from './components/AgendaView';
 import MaterialsView from './components/MaterialsView';
 import SumatifView from './components/SumatifView';
+import FormatifView from './components/FormatifView';
 import PerformanceAssessmentView from './components/PerformanceAssessmentView';
 import MailManagementView from './components/MailManagementView';
 import StaffLeaveView from './components/StaffLeaveView';
@@ -123,7 +124,9 @@ const AppContent: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
       try {
           const saved = localStorage.getItem('sagara_user');
-          return saved ? JSON.parse(saved) : null;
+          if (!saved || saved === 'undefined' || saved === 'null') return null;
+          const parsed = JSON.parse(saved);
+          return (parsed && typeof parsed === 'object' && parsed.id && parsed.role) ? parsed : null;
       } catch (e) { return null; }
   });
 
@@ -375,7 +378,7 @@ const AppContent: React.FC = () => {
           setFetchingSchools(true);
           const { data, error: err } = await masterSupabase
             .from('school_databases')
-            .select('*')
+            .select('id, school_name, supabase_url, supabase_anon_key')
             .order('school_name', { ascending: true });
           if (!err && data) {
             setSchoolsList(data);
@@ -782,7 +785,7 @@ const AppContent: React.FC = () => {
     combinedSet.delete('ALL');
     combinedSet.delete('');
     combinedSet.delete('-');
-    return Array.from(combinedSet).sort((a, b) => {
+    const arr = Array.from(combinedSet).sort((a, b) => {
         const strA = String(a || '');
         const strB = String(b || '');
         const numA = parseInt(strA.replace(/\D/g, '')) || 0;
@@ -790,7 +793,11 @@ const AppContent: React.FC = () => {
         if (numA !== numB) return numA - numB;
         return strA.localeCompare(strB);
     });
-  }, [students, users]);
+    if (currentUser?.role === 'admin') {
+      arr.unshift('ALL');
+    }
+    return arr;
+  }, [students, users, currentUser]);
   
   const activeClassId = useMemo(() => {
     if (!currentUser) return '';
@@ -799,7 +806,11 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     if (currentUser) {
-        if (canSelectClass) {
+        if (currentUser.role === 'admin') {
+            if (!selectedClassId || !availableClasses.includes(selectedClassId)) {
+                setSelectedClassId('ALL');
+            }
+        } else if (canSelectClass) {
             const currentStr = String(selectedClassId || '');
             const isValid = selectedClassId && availableClasses.some(c => String(c).toUpperCase() === currentStr.toUpperCase());
             if (!isValid && availableClasses.length > 0 && !selectedClassId) {
@@ -870,6 +881,7 @@ const AppContent: React.FC = () => {
   const isClassMatch = (id1?: string, id2?: string) => {
       const s1 = String(id1 || '').trim().toLowerCase();
       const s2 = String(id2 || '').trim().toLowerCase();
+      if (s2 === 'all' || s2 === 'semua') return true;
       return s1 === s2;
   };
 
@@ -933,10 +945,10 @@ const AppContent: React.FC = () => {
   }, [liaisonLogs, activeClassId, students]);
 
   const pendingPermissions = useMemo(() => {
-      const raw = permissionRequests.filter(p => p.status === 'Pending');
+      const raw = permissionRequests.filter(p => (p.status || '').toLowerCase() === 'pending');
       if (currentUser?.role === 'admin' || currentUser?.role === 'Kepala Sekolah') return raw; 
-      return raw.filter(p => isClassMatch(p.classId, activeClassId));
-  }, [permissionRequests, activeClassId, currentUser]);
+      return raw.filter(p => isRecordMatchClass(p, activeClassId) || isClassMatch(p.classId, activeClassId));
+  }, [permissionRequests, activeClassId, currentUser, students]);
 
   // NEW: Check for unread liaison messages for teachers
   const unreadLiaisonCount = useMemo(() => {
@@ -1776,34 +1788,55 @@ const AppContent: React.FC = () => {
       const typeStr = records[0]?.status; 
       const typeLabel = typeStr === 'sick' ? 'Sakit' : typeStr === 'dispensation' ? 'Dispensasi' : 'Ijin'; 
       
+      const newReqs = records.map(rec => ({
+          id: `perm-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+          studentId: rec.studentId,
+          classId: rec.classId,
+          date: date,
+          type: rec.status,
+          reason: rec.notes,
+          status: 'Pending' as const,
+          studentName: students.find(s => String(s.id).trim() === String(rec.studentId).trim())?.name || 'Siswa'
+      }));
+
+      // Optimistic state update immediately so history in StudentPortal and notification in Teacher Dashboard show instantly
+      setPermissionRequests(prev => {
+          const updated = [...newReqs, ...prev];
+          cacheService.set('permissionRequests', updated);
+          return updated;
+      });
+
       if (isDemoMode) { 
-          handleShowNotification(`Pengajuan ${typeLabel} tersimpan (Demo).`, 'success'); 
+          handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
           return; 
       } 
       
-      for (const rec of records) { 
-          await apiService.savePermissionRequest({ 
-              studentId: rec.studentId, 
-              classId: rec.classId, 
-              date: date, 
-              type: rec.status, 
-              reason: rec.notes 
-          }); 
-      } 
-      
-      // Automatically add to attendance
-      const attendanceRecords = records.map(rec => ({
-          studentId: rec.studentId,
-          status: rec.status,
-          notes: rec.notes
-      }));
-      await apiService.saveAttendance(date, attendanceRecords.map(r => ({...r, classId: records[0].classId})));
-
-      handleShowNotification(`Pengajuan ${typeLabel} dikirim dan dicatat di absensi.`, 'success'); 
-      const reqs = await apiService.getPermissionRequests(currentUser); 
-      setPermissionRequests(reqs); 
-      const att = await apiService.getAttendance(currentUser);
-      setAllAttendanceRecords(att);
+      try {
+          for (const rec of records) { 
+              await apiService.savePermissionRequest({ 
+                  studentId: rec.studentId, 
+                  classId: rec.classId, 
+                  date: date, 
+                  type: rec.status, 
+                  reason: rec.notes 
+              }); 
+          } 
+          
+          handleShowNotification(`Pengajuan ${typeLabel} berhasil dikirim dan menunggu konfirmasi guru.`, 'success'); 
+          const reqs = await apiService.getPermissionRequests(currentUser); 
+          if (reqs && reqs.length > 0) {
+              const currentStudents = students || [];
+              const hydratedPermissions = reqs.map((p: any) => ({
+                  ...p,
+                  studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
+              }));
+              setPermissionRequests(hydratedPermissions);
+              cacheService.set('permissionRequests', hydratedPermissions);
+          }
+      } catch (err) {
+          console.error("Error saving permission request:", err);
+          handleShowNotification(`Gagal mengirim pengajuan ${typeLabel} ke database cloud.`, 'error');
+      }
   };
 
   // Support Docs
@@ -2172,10 +2205,11 @@ const AppContent: React.FC = () => {
           }
       }
       
-      if (fPermissions !== null && fStudents !== null) {
+      if (fPermissions !== null) {
+          const currentStudents = (Array.isArray(fStudents) ? fStudents : (students || [])) as Student[];
           const hydratedPermissions = (fPermissions as PermissionRequest[]).map((p: any) => ({
               ...p,
-              studentName: (fStudents as Student[]).find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || 'Siswa Tidak Dikenal'
+              studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
           }));
           setPermissionRequests(hydratedPermissions);
           cacheService.set('permissionRequests', hydratedPermissions);
@@ -2281,6 +2315,8 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
        fetchData();
+    } else {
+       setLoading(false);
     }
   }, [currentUser, activeClassId]);
 
@@ -2346,7 +2382,7 @@ const AppContent: React.FC = () => {
               className="w-full h-full object-contain drop-shadow-xl"
             />
          </div>
-         <h2 className="text-xl font-bold text-slate-700 mb-2">Menyiapkan Data Kelas...</h2>
+         <h2 className="text-xl font-bold text-slate-700 mb-2">Proses sinkronisasi data...</h2>
          <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-[#5AB2FF] rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
             <div className="w-2 h-2 bg-[#5AB2FF] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
@@ -2400,7 +2436,6 @@ const AppContent: React.FC = () => {
             {canSelectClass && (
                 <div className="hidden lg:flex items-center bg-[#CAF4FF]/40 border border-[#A0DEFF] hover:border-[#5AB2FF] rounded-xl px-3.5 py-1.5 shadow-xs transition-all">
                     <GraduationCap size={18} className="text-[#0066CC] mr-2 shrink-0 animate-pulse" />
-                    <span className="text-xs font-extrabold text-gray-600 uppercase tracking-wider mr-2">Pilih Kelas:</span>
                     <select 
                         value={selectedClassId} 
                         onChange={(e) => setSelectedClassId(e.target.value)}
@@ -2551,7 +2586,6 @@ const AppContent: React.FC = () => {
         {canSelectClass && (
             <div className="lg:hidden bg-white border-b border-gray-100 px-4 py-2 flex items-center justify-center shadow-xs relative z-20">
                 <GraduationCap size={18} className="text-[#0066CC] mr-1.5 shrink-0" />
-                <span className="text-xs font-extrabold text-gray-600 uppercase mr-2 tracking-wider">Kelas Aktif:</span>
                 <select 
                     value={selectedClassId} 
                     onChange={(e) => setSelectedClassId(e.target.value)}
@@ -3008,7 +3042,7 @@ const AppContent: React.FC = () => {
                     isStudentRole ? <Navigate to="/buku-penghubung-siswa" replace /> :
                     <LiaisonBookView
                         logs={filteredLiaison}
-                        students={students} 
+                        students={filteredStudents} 
                         onReply={handleSaveLiaison}
                         onUpdateStatus={handleUpdateLiaisonStatus}
                         classId={activeClassId}
@@ -3139,6 +3173,14 @@ const AppContent: React.FC = () => {
                         onShowNotification={handleShowNotification}
                         isAdminOrSuperadmin={currentUser.role === 'superadmin'}
                         userRole={currentUser.role}
+                    />
+                } />
+                <Route path="/formatif" element={
+                    <FormatifView 
+                        currentUser={currentUser} 
+                        activeClassId={activeClassId} 
+                        students={filteredStudents} 
+                        onShowNotification={handleShowNotification} 
                     />
                 } />
                 <Route path="/sumatif" element={

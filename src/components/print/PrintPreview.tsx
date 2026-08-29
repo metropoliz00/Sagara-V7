@@ -42,15 +42,58 @@ export const PrintPreview: React.FC<PrintPreviewProps> = ({
       styleTag.id = 'sagara-dynamic-print-style';
       document.head.appendChild(styleTag);
     }
-    styleTag.innerHTML = `@media print { @page { size: A4 ${currentOrientation}; margin: 10mm; } }`;
+    styleTag.innerHTML = `@media print { @page { size: A4 ${currentOrientation}; margin: 5mm 8mm; } }`;
+
+    // Target the A4 sheet element inside PrintPreview
+    const sheetElement = document.querySelector('.sagara-a4-sheet') || document.getElementById('print-area');
+    if (sheetElement) {
+      // Sync form input values to attributes before cloning
+      sheetElement.querySelectorAll('input, select, textarea').forEach((el) => {
+        if (el instanceof HTMLInputElement) {
+          el.setAttribute('value', el.value);
+          if (el.type === 'checkbox' || el.type === 'radio') {
+            if (el.checked) el.setAttribute('checked', 'checked');
+            else el.removeAttribute('checked');
+          }
+        } else if (el instanceof HTMLTextAreaElement) {
+          el.textContent = el.value;
+        } else if (el instanceof HTMLSelectElement) {
+          const selectedOption = el.options[el.selectedIndex];
+          if (selectedOption) {
+            selectedOption.setAttribute('selected', 'selected');
+          }
+        }
+      });
+
+      let standaloneContainer = document.getElementById('sagara-standalone-print-container');
+      if (!standaloneContainer) {
+        standaloneContainer = document.createElement('div');
+        standaloneContainer.id = 'sagara-standalone-print-container';
+        document.body.appendChild(standaloneContainer);
+      }
+      standaloneContainer.innerHTML = '';
+      const clonedContent = sheetElement.cloneNode(true) as HTMLElement;
+      clonedContent.id = 'sagara-cloned-print-content';
+      clonedContent.className = `sagara-print-content print-page ${
+        currentOrientation === 'landscape' ? 'print-landscape' : 'print-portrait'
+      }`;
+      standaloneContainer.appendChild(clonedContent);
+      document.body.classList.add('has-standalone-print');
+    }
 
     window.print();
 
     const cleanup = () => {
       if (title) document.title = originalTitle;
       document.body.classList.remove('print-orientation-landscape');
+      document.body.classList.remove('has-standalone-print');
+      const containerToRemove = document.getElementById('sagara-standalone-print-container');
+      if (containerToRemove) {
+        containerToRemove.innerHTML = '';
+      }
       window.removeEventListener('afterprint', cleanup);
     };
+
     window.addEventListener('afterprint', cleanup);
     setTimeout(cleanup, 2000);
   };

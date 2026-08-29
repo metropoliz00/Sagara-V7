@@ -1098,48 +1098,79 @@ const SumatifEditor: React.FC<{
     const template = [
       {
         No: 1,
-        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda',
         Tipe: 'PG',
         Bobot: 1,
-        Opsi_A: 'Pilihan A',
-        Opsi_B: 'Pilihan B',
-        Opsi_C: 'Pilihan C',
-        Opsi_D: 'Pilihan D',
-        Jawaban_Benar: 'A',
-        Gambar_URL: '',
-        Keterangan_Gambar: ''
+        'Gambar URL/Teks Wacana': '',
+        Keterangan: '',
+        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda',
+        'OPSI A': 'Pilihan A',
+        'Opsi B': 'Pilihan B',
+        'Opsi C': 'Pilihan C',
+        'Opsi D': 'Pilihan D',
+        'Pernyataan 1': '',
+        'Pernyataan 2': '',
+        'Pernyataan 3': '',
+        'Jawaban Benar': 'A'
       },
       {
         No: 2,
-        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda Kompleks',
         Tipe: 'PGK',
         Bobot: 1,
-        Opsi_A: 'Pilihan A',
-        Opsi_B: 'Pilihan B',
-        Opsi_C: 'Pilihan C',
-        Opsi_D: 'Pilihan D',
-        Jawaban_Benar: 'A, B',
-        Gambar_URL: '',
-        Keterangan_Gambar: ''
+        'Gambar URL/Teks Wacana': '',
+        Keterangan: '',
+        Pertanyaan: 'Contoh Pertanyaan Pilihan Ganda Kompleks',
+        'OPSI A': 'Pilihan A',
+        'Opsi B': 'Pilihan B',
+        'Opsi C': 'Pilihan C',
+        'Opsi D': 'Pilihan D',
+        'Pernyataan 1': '',
+        'Pernyataan 2': '',
+        'Pernyataan 3': '',
+        'Jawaban Benar': 'A, B'
       },
       {
         No: 3,
-        Pertanyaan: 'Contoh Pertanyaan Benar Salah',
         Tipe: 'BS',
         Bobot: 1,
-        Pernyataan_1: 'Pernyataan 1',
-        Pernyataan_2: 'Pernyataan 2',
-        Pernyataan_3: 'Pernyataan 3',
-        Jawaban_Benar: 'B, S, B',
-        Gambar_URL: '',
-        Keterangan_Gambar: ''
+        'Gambar URL/Teks Wacana': '',
+        Keterangan: '',
+        Pertanyaan: 'Contoh Pertanyaan Benar Salah',
+        'OPSI A': '',
+        'Opsi B': '',
+        'Opsi C': '',
+        'Opsi D': '',
+        'Pernyataan 1': 'Pernyataan 1',
+        'Pernyataan 2': 'Pernyataan 2',
+        'Pernyataan 3': 'Pernyataan 3',
+        'Jawaban Benar': 'B, S, B'
+      },
+      {
+        No: 4,
+        Tipe: 'Uraian',
+        Bobot: 2,
+        'Gambar URL/Teks Wacana': '',
+        Keterangan: '',
+        Pertanyaan: 'Contoh Pertanyaan Uraian / Essay',
+        'OPSI A': '',
+        'Opsi B': '',
+        'Opsi C': '',
+        'Opsi D': '',
+        'Pernyataan 1': '',
+        'Pernyataan 2': '',
+        'Pernyataan 3': '',
+        'Jawaban Benar': 'Kunci jawaban uraian (opsional)'
       }
     ];
 
     const ws = XLSX.utils.json_to_sheet(template);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Template Soal');
-    XLSX.writeFile(wb, 'Template_Soal_Sumatif.xlsx');
+    
+    const mapel = MOCK_SUBJECTS.find(s => s.id === formData.subjectId)?.name || 'Mapel';
+    const judul = formData.title || 'Judul';
+    const safeFilename = `Templet_Soal_Sumatif_${mapel}_${judul}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+    
+    XLSX.writeFile(wb, `${safeFilename}.xlsx`);
   };
 
   const handleUploadExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1161,22 +1192,39 @@ const SumatifEditor: React.FC<{
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         const newQuestions: Question[] = data.map((row) => {
-            const rawType = String(row.Tipe || 'PG').trim().toUpperCase();
-            const type = (rawType === 'PGK' ? 'pgk' : rawType === 'BS' ? 'bs' : 'pg') as QuestionType;
+            const getValue = (keys: string[]) => {
+              const lowerKeys = keys.map(k => k.toLowerCase());
+              for (const rowKey of Object.keys(row)) {
+                if (lowerKeys.includes(rowKey.trim().toLowerCase())) {
+                  return row[rowKey];
+                }
+              }
+              return '';
+            };
+
+            const rawTypeStr = getValue(['Tipe']);
+            const rawType = String(rawTypeStr || 'PG').trim().toUpperCase();
+            const type = (rawType === 'PGK' ? 'pgk' : rawType === 'BS' ? 'bs' : rawType === 'URAIAN' || rawType === 'ESSAY' ? 'uraian' : 'pg') as QuestionType;
+
             const q: Question = {
               id: Math.random().toString(36).substr(2, 9),
-              text: row.Pertanyaan || '',
+              text: getValue(['Pertanyaan']),
               type,
-              points: parseInt(row.Bobot) || 1,
-              imageUrl: row.Gambar_URL || '',
-              imageCaption: row.Keterangan_Gambar || '',
-              correctAnswer: '',
+              points: parseInt(getValue(['Bobot'])) || 1,
+              imageUrl: getValue(['Gambar URL/Teks Wacana', 'Gambar_URL']),
+              imageCaption: getValue(['Keterangan', 'Keterangan_Gambar']),
+              correctAnswer: type === 'uraian' ? getValue(['Jawaban Benar', 'Jawaban_Benar']) : '',
               options: [],
               subQuestions: []
             };
   
             if (type === 'pg' || type === 'pgk') {
-              const rawOptions = [row.Opsi_A, row.Opsi_B, row.Opsi_C, row.Opsi_D].map(o => String(o || '').trim());
+              const rawOptions = [
+                getValue(['OPSI A', 'Opsi_A']), 
+                getValue(['Opsi B', 'Opsi_B']), 
+                getValue(['Opsi C', 'Opsi_C']), 
+                getValue(['Opsi D', 'Opsi_D'])
+              ].map(o => String(o || '').trim());
               q.options = rawOptions.map(opt => {
                  const isUrl = opt.startsWith('http://') || opt.startsWith('https://') || opt.startsWith('data:image/');
                  return {
@@ -1186,41 +1234,41 @@ const SumatifEditor: React.FC<{
                  };
               });
             
-            const mapAnsToId = (ans: any) => {
-              if (!ans) return '';
-              const a = String(ans).trim().toUpperCase();
-              if (a === 'A') return q.options![0]?.id;
-              if (a === 'B') return q.options![1]?.id;
-              if (a === 'C') return q.options![2]?.id;
-              if (a === 'D') return q.options![3]?.id;
-              
-              // Fallback to text match
-              const found = q.options!.find(o => o.text && o.text.toUpperCase() === a);
-              return found ? found.id : '';
-            };
+              const mapAnsToId = (ans: any) => {
+                if (!ans) return '';
+                const a = String(ans).trim().toUpperCase();
+                if (a === 'A') return q.options![0]?.id;
+                if (a === 'B') return q.options![1]?.id;
+                if (a === 'C') return q.options![2]?.id;
+                if (a === 'D') return q.options![3]?.id;
+                
+                // Fallback to text match
+                const found = q.options!.find(o => o.text && o.text.toUpperCase() === a);
+                return found ? found.id : '';
+              };
 
-            if (type === 'pg') {
-              q.correctAnswer = mapAnsToId(row.Jawaban_Benar) || "";
-            } else {
-              q.correctAnswer = String(row.Jawaban_Benar || '').split(',').map(s => mapAnsToId(s)).filter(id => id);
+              if (type === 'pg') {
+                q.correctAnswer = mapAnsToId(getValue(['Jawaban Benar', 'Jawaban_Benar'])) || "";
+              } else {
+                q.correctAnswer = String(getValue(['Jawaban Benar', 'Jawaban_Benar']) || '').split(',').map(s => mapAnsToId(s)).filter(id => id);
+              }
+            } else if (type === 'bs') {
+              const bsAnswers = String(getValue(['Jawaban Benar', 'Jawaban_Benar']) || '').split(',').map(s => s.trim().toUpperCase());
+              const getBsAns = (idx: number) => {
+                const val = bsAnswers[idx];
+                if (val === 'B' || val === 'BENAR') return 'Benar';
+                if (val === 'S' || val === 'SALAH') return 'Salah';
+                return 'Benar'; // Default
+              };
+
+              q.subQuestions = [
+                { id: 'sq1', text: getValue(['Pernyataan 1', 'Pernyataan_1']), correctAnswer: getBsAns(0) as any },
+                { id: 'sq2', text: getValue(['Pernyataan 2', 'Pernyataan_2']), correctAnswer: getBsAns(1) as any },
+                { id: 'sq3', text: getValue(['Pernyataan 3', 'Pernyataan_3']), correctAnswer: getBsAns(2) as any }
+              ].filter(sq => sq.text.trim() !== '');
             }
-          } else if (type === 'bs') {
-            const bsAnswers = String(row.Jawaban_Benar || '').split(',').map(s => s.trim().toUpperCase());
-            const getBsAns = (idx: number) => {
-              const val = bsAnswers[idx];
-              if (val === 'B') return 'Benar';
-              if (val === 'S') return 'Salah';
-              return 'Benar'; // Default
-            };
 
-            q.subQuestions = [
-              { id: 'sq1', text: row.Pernyataan_1 || '', correctAnswer: getBsAns(0) as any },
-              { id: 'sq2', text: row.Pernyataan_2 || '', correctAnswer: getBsAns(1) as any },
-              { id: 'sq3', text: row.Pernyataan_3 || '', correctAnswer: getBsAns(2) as any }
-            ].filter(sq => sq.text.trim() !== ''); // Hanya ambil pernyataan yang ada isinya
-          }
-
-          return q;
+            return q;
         });
 
         setFormData({ ...formData, questions: [...formData.questions, ...newQuestions] });

@@ -1110,14 +1110,7 @@ const SumatifEditor: React.FC<{
         'Pernyataan 1': '',
         'Pernyataan 2': '',
         'Pernyataan 3': '',
-        'Jawaban Benar': 'A',
-        Gambar_URL: '',
-        Keterangan_Gambar: '',
-        Opsi_A: 'Pilihan A',
-        Opsi_B: 'Pilihan B',
-        Opsi_C: 'Pilihan C',
-        Opsi_D: 'Pilihan D',
-        Jawaban_Benar: 'A'
+        'Jawaban Benar': 'A'
       },
       {
         No: 2,
@@ -1133,14 +1126,7 @@ const SumatifEditor: React.FC<{
         'Pernyataan 1': '',
         'Pernyataan 2': '',
         'Pernyataan 3': '',
-        'Jawaban Benar': 'A, B',
-        Gambar_URL: '',
-        Keterangan_Gambar: '',
-        Opsi_A: 'Pilihan A',
-        Opsi_B: 'Pilihan B',
-        Opsi_C: 'Pilihan C',
-        Opsi_D: 'Pilihan D',
-        Jawaban_Benar: 'A, B'
+        'Jawaban Benar': 'A, B'
       },
       {
         No: 3,
@@ -1156,17 +1142,7 @@ const SumatifEditor: React.FC<{
         'Pernyataan 1': 'Pernyataan 1',
         'Pernyataan 2': 'Pernyataan 2',
         'Pernyataan 3': 'Pernyataan 3',
-        'Jawaban Benar': 'B, S, B',
-        Gambar_URL: '',
-        Keterangan_Gambar: '',
-        Opsi_A: '',
-        Opsi_B: '',
-        Opsi_C: '',
-        Opsi_D: '',
-        Jawaban_Benar: 'B, S, B',
-        Pernyataan_1: 'Pernyataan 1',
-        Pernyataan_2: 'Pernyataan 2',
-        Pernyataan_3: 'Pernyataan 3'
+        'Jawaban Benar': 'B, S, B'
       },
       {
         No: 4,
@@ -1182,17 +1158,7 @@ const SumatifEditor: React.FC<{
         'Pernyataan 1': '',
         'Pernyataan 2': '',
         'Pernyataan 3': '',
-        'Jawaban Benar': 'Kunci jawaban uraian (opsional)',
-        Gambar_URL: '',
-        Keterangan_Gambar: '',
-        Opsi_A: '',
-        Opsi_B: '',
-        Opsi_C: '',
-        Opsi_D: '',
-        Jawaban_Benar: 'Kunci jawaban uraian (opsional)',
-        Pernyataan_1: '',
-        Pernyataan_2: '',
-        Pernyataan_3: ''
+        'Jawaban Benar': 'Kunci jawaban uraian (opsional)'
       }
     ];
 

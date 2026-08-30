@@ -3441,7 +3441,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                         onChange={(e) => handleTimeAllocationChange(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                       >
-                        {['1 JP (1 x 35 Menit)', '2 JP (2 x 35 Menit)', '3 JP (3 x 35 Menit)', '4 JP (4 x 35 Menit)', '5 JP (5 x 35 Menit)'].map(opt => (
+                        {['1 JP (1 x 35 Menit)', '2 JP (2 x 35 Menit)', '3 JP (3 x 35 Menit)', '4 JP (4 x 35 Menit)', '5 JP (5 x 35 Menit)', '6 JP (6 x 35 Menit)', '7 JP (7 x 35 Menit)'].map(opt => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>

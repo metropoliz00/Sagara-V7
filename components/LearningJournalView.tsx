@@ -668,7 +668,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
       if (onShowNotification) {
         onShowNotification('Kolom materi belum diisi. Isi materi terlebih dahulu.', 'warning');
       } else {
-        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'warning');
+        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'alert');
       }
       return;
     }
@@ -731,7 +731,7 @@ Ketentuan Penting:
       if (onShowNotification) {
         onShowNotification('Kolom materi belum diisi. Isi materi terlebih dahulu.', 'warning');
       } else {
-        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'warning');
+        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'alert');
       }
       return;
     }

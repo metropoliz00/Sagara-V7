@@ -4311,8 +4311,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                                 className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:bg-white text-justify leading-relaxed whitespace-pre-wrap font-sans"
                                 required
                               />
-                              <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">
-                                <span>Format: 2-3 butir kegiatan operasional dengan penomoran 1., 2., 3. per baris</span>
+                              <div className="flex justify-end items-center text-[10px] text-slate-400 px-1">
                                 <span className={`font-semibold ${lineCount >= 2 ? 'text-emerald-600' : 'text-amber-600'}`}>
                                   {lineCount} Butir Kegiatan
                                 </span>

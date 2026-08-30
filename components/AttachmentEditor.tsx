@@ -1557,20 +1557,7 @@ Sertakan:
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setShowApiKeyModal(true)}
-                  className={`p-1.5 rounded transition border cursor-pointer ${
-                    isAiConnected 
-                      ? 'text-slate-600 hover:bg-slate-200 border-transparent hover:border-slate-300' 
-                      : 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-300'
-                  }`}
-                  title={isAiConnected ? "Pengaturan Gemini API Key (Terkoneksi)" : "Gemini API Key Belum Dikonfigurasi (Klik untuk Mengatur)"}
-                >
-                  <KeyRound className="w-3.5 h-3.5" />
-                </button>
 
-                <div className="w-[1px] h-5 bg-gray-200 mx-1" />
 
                 <button
                   type="button"

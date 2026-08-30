@@ -21,7 +21,16 @@ export default defineConfig(({ mode }) => {
       'process.env': JSON.stringify(env)
     },
     build: {
-      chunkSizeWarningLimit: 1600, // Menaikkan batas peringatan ukuran chunk menjadi 1600 kB
+      chunkSizeWarningLimit: 2000, // Menaikkan batas peringatan ukuran chunk menjadi 2000 kB
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              return 'vendor';
+            }
+          }
+        }
+      }
     },
   }
 })

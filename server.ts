@@ -1,6 +1,6 @@
 import express from "express";
 import path from "path";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { cleanAiText } from "./utils/textParser";
 
 
@@ -73,9 +73,9 @@ function parseGeminiError(error: any): string {
 }
 
 const FALLBACK_MODELS = [
-  "gemini-3.7-flash",
   "gemini-3.1-flash-lite",
   "gemini-flash-latest",
+  "gemini-3.7-flash",
 ];
 
 async function generateWithFallback(
@@ -87,54 +87,45 @@ async function generateWithFallback(
 
   for (let i = 0; i < FALLBACK_MODELS.length; i++) {
     const model = FALLBACK_MODELS[i];
-    // Allow an automatic retry on rate limit or 503 for non-quick-check calls
-    const maxAttempts = options?.isQuickCheck ? 1 : 2;
+    try {
+      const config: any = {};
+      if (model.startsWith("gemini-3")) {
+        config.thinkingConfig = { thinkingLevel: ThinkingLevel.LOW };
+      }
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        const response = await ai.models.generateContent({
-          model,
-          contents: prompt,
-        });
+      const response = await ai.models.generateContent({
+        model,
+        contents: prompt,
+        config: Object.keys(config).length > 0 ? config : undefined,
+      });
 
-        const text = response.text || "";
-        if (text || options?.isQuickCheck) {
-          return { text, modelUsed: model };
-        }
-      } catch (err: any) {
-        lastError = err;
-        const raw = err?.message || (typeof err === "string" ? err : JSON.stringify(err));
+      const text = response.text || "";
+      if (text || options?.isQuickCheck) {
+        return { text, modelUsed: model };
+      }
+    } catch (err: any) {
+      lastError = err;
+      const raw = err?.message || (typeof err === "string" ? err : JSON.stringify(err));
 
-        // If authentication or permission fails, switching models or retrying won't resolve it; throw immediately
-        if (
-          raw.includes("401") ||
-          raw.includes("UNAUTHENTICATED") ||
-          raw.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") ||
-          raw.includes("403") ||
-          raw.includes("API_KEY_SERVICE_BLOCKED")
-        ) {
-          throw err;
-        }
+      // If authentication or permission fails, switching models won't resolve it; throw immediately
+      if (
+        raw.includes("401") ||
+        raw.includes("UNAUTHENTICATED") ||
+        raw.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") ||
+        raw.includes("403") ||
+        raw.includes("API_KEY_SERVICE_BLOCKED")
+      ) {
+        throw err;
+      }
 
-        const isRateLimit = /rate\s*exceeded|resource_exhausted|429|quota|too\s*many\s*requests/i.test(raw);
-        const isServerBusy = raw.includes("503") || raw.includes("high demand") || raw.includes("UNAVAILABLE") || raw.includes("overloaded");
+      const isRateLimit = /rate\s*exceeded|resource_exhausted|429|quota|too\s*many\s*requests/i.test(raw);
+      const isServerBusy = raw.includes("503") || raw.includes("high demand") || raw.includes("UNAVAILABLE") || raw.includes("overloaded");
 
-        const statusLabel = isRateLimit ? '429 Rate Limit' : (isServerBusy ? '503 High Demand' : raw.slice(0, 80));
-        console.warn(`[AI Fallback] Model '${model}' (Percobaan ${attempt}) mengalami kendala (${statusLabel}).`);
+      const statusLabel = isRateLimit ? '429 Rate Limit' : (isServerBusy ? '503 High Demand' : raw.slice(0, 80));
+      console.warn(`[AI Fast Fallback] Model '${model}' mengalami kendala (${statusLabel}), langsung mencoba model alternatif...`);
 
-        // If rate limited or server overloaded on this model, wait with backoff before retry attempt
-        if (attempt < maxAttempts && (isRateLimit || isServerBusy)) {
-          const retryWait = isRateLimit ? 2000 : 1200;
-          await new Promise(res => setTimeout(res, retryWait));
-          continue;
-        }
-
-        // When switching to the next model, pause so rate limit token bucket or server queue has time to recover
-        if (i < FALLBACK_MODELS.length - 1) {
-          const switchWait = isRateLimit ? 1500 : (isServerBusy ? 1000 : 350);
-          await new Promise(res => setTimeout(res, switchWait));
-        }
-        break; // break inner attempt loop to proceed to next model
+      if (i < FALLBACK_MODELS.length - 1) {
+        await new Promise(res => setTimeout(res, 200));
       }
     }
   }

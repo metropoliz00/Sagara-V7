@@ -52,7 +52,7 @@ const CustomModal: React.FC<CustomModalProps> = ({
   const config = getConfig();
 
   return (
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[10100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden transform transition-all scale-100 border border-[#CAF4FF]">
         <div className="p-6 flex flex-col items-center text-center">
           <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${config.bgIcon} shadow-sm`}>

@@ -30,6 +30,8 @@ export const parseRichText = (text: string): ParsedBlock[] => {
     temp = temp.replace(/!\[.*?\]\((.*?)\)/g, '<img src="$1" style="max-height: 250px; max-width: 100%; border-radius: 4px; display: inline-block; vertical-align: middle; margin: 4px 0;" />');
     // Markdown links: [Title](URL) - negative lookbehind for !
     temp = temp.replace(/(?<!\!)\[([^\]]+)\]\((https?:\/\/[^\s)]+|data:image\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" style="color: #4f46e5; text-decoration: underline; font-weight: 500;">$1</a>');
+    // Clean any stray asterisks, hashtags, or at-symbols that are not part of tags or links
+    temp = temp.replace(/[*#@]/g, '');
     return temp;
   };
 
@@ -197,12 +199,9 @@ export const parseRichText = (text: string): ParsedBlock[] => {
       blocks.push({ type: 'image', content: lineText, key: i, align: currentAlign, lineHeight: currentLineHeight });
     } else if (lineText === '') {
       blocks.push({ type: 'paragraph', content: '', key: i, align: currentAlign, lineHeight: currentLineHeight });
-    } else if (lineText.startsWith('# ')) {
-      blocks.push({ type: 'heading', content: format(lineText.substring(2)), key: i, align: currentAlign, lineHeight: currentLineHeight });
-    } else if (lineText.startsWith('## ')) {
-      blocks.push({ type: 'heading', content: format(lineText.substring(3)), key: i, align: currentAlign, lineHeight: currentLineHeight });
-    } else if (lineText.startsWith('### ')) {
-      blocks.push({ type: 'heading', content: format(lineText.substring(4)), key: i, align: currentAlign, lineHeight: currentLineHeight });
+    } else if (/^#{1,6}\s+/.test(lineText)) {
+      const headingContent = lineText.replace(/^#{1,6}\s+/, '');
+      blocks.push({ type: 'heading', content: format(headingContent), key: i, align: currentAlign, lineHeight: currentLineHeight });
     } else if (lineText.startsWith('1. ') || /^\d+\.\s/.test(lineText) || /^\d+\)\s/.test(lineText)) {
       const match = lineText.match(/^(\d+)(\.|\))\s/);
       const startIndex = match ? parseInt(match[1], 10) : 1;
@@ -214,8 +213,9 @@ export const parseRichText = (text: string): ParsedBlock[] => {
       const startIndex = char.charCodeAt(0) - 96;
       const content = lineText.replace(/^([a-zA-Z]\.|[a-zA-Z]\))\s/, '');
       blocks.push({ type: 'numbered', listStyle: 'lower-alpha', startIndex, content: format(content), key: i, align: currentAlign, lineHeight: currentLineHeight });
-    } else if (lineText.startsWith('- ')) {
-      blocks.push({ type: 'bullet', listStyle: 'disc', content: format(lineText.substring(2)), key: i, align: currentAlign, lineHeight: currentLineHeight });
+    } else if (lineText.startsWith('- ') || lineText.startsWith('* ') || lineText.startsWith('• ')) {
+      const bulletContent = lineText.replace(/^([-*•])\s+/, '');
+      blocks.push({ type: 'bullet', listStyle: 'disc', content: format(bulletContent), key: i, align: currentAlign, lineHeight: currentLineHeight });
     } else {
       blocks.push({ type: 'paragraph', content: format(lineText), key: i, align: currentAlign, lineHeight: currentLineHeight });
     }
@@ -545,20 +545,90 @@ export const htmlToMarkdown = (html: string): string => {
   return markdown.replace(/\n{3,}/g, '\n\n').trim();
 };
 
+export const cleanAiAttachmentText = (text: string): string => {
+  if (!text) return '';
+  let cleaned = text.trim();
+
+  // 1. Remove markdown code block wrappers (```markdown ... ``` or ``` ...)
+  cleaned = cleaned.replace(/^```[a-z0-9_-]*\s*\n?/i, '').replace(/\n?```\s*$/i, '');
+  cleaned = cleaned.replace(/```[a-z0-9_-]*/gi, '').replace(/```/g, '');
+
+  // 2. Remove conversational introductory filler phrases and sign-offs
+  cleaned = cleaned.replace(/^(?:Tentu,?\s*|Baik,?\s*)?(?:berikut\s+adalah|berikut\s+ini\s+adalah|berikut\s+rancangan|berikut\s+lampiran|berikut\s+paket|berikut\s+merupakan|di\s+bawah\s+ini\s+adalah|ini\s+adalah)[^.\n]*[:.\n]+/i, '');
+  cleaned = cleaned.replace(/\n+(?:Semoga\s+membantu|Demikian\s+lampiran|Catatan:\s+Guru\s+dapat\s+menyesuaikan|Selamat\s+mengajar)[^\n]*$/i, '');
+
+  // 3. Process line-by-line for headings (#), bullet asterisks (*), and decorative symbols
+  const lines = cleaned.split('\n');
+  const processedLines = lines.map(line => {
+    let l = line.trimEnd();
+
+    // Remove markdown heading hashes (#, ##, ###, ####, etc.) at the start of the line
+    l = l.replace(/^\s*#{1,6}\s+/, '');
+    l = l.replace(/^\s*#{1,6}\s*/, '');
+    // Remove trailing hashes e.g. "Judul ###"
+    l = l.replace(/\s+#{1,6}$/, '');
+
+    // Convert asterisk bullets (* item or * 1. item or * a. item)
+    // If line starts with "* 1. " or "* a. ", turn into "1. " or "a. "
+    l = l.replace(/^\s*\*\s+(\d+[\.\)])\s*/, '$1 ');
+    l = l.replace(/^\s*\*\s+([a-zA-Z][\.\)])\s*/, '$1 ');
+    // If line starts with "* " or decorative bullet, convert to clean "- "
+    l = l.replace(/^\s*[\*•✦★❖►■▲●▪]\s+/, '- ');
+
+    // If line starts with indented bullet "  * ", turn into "  - "
+    l = l.replace(/^(\s+)[\*•✦★❖►■▲●▪]\s+/, '$1- ');
+
+    // Remove bold/italic markdown asterisks inside text:
+    // e.g. ***teks*** -> teks, **teks** -> teks, *teks* -> teks
+    l = l.replace(/\*{3,}(.*?)\*{3,}/g, '$1');
+    l = l.replace(/\*{2}(.*?)\*{2}/g, '$1');
+    l = l.replace(/\*([^\*]+?)\*/g, '$1');
+
+    // Remove any remaining stray asterisks (*)
+    l = l.replace(/\*/g, '');
+
+    // Remove any stray hashes (#) e.g. "#1" -> "No. 1" or remove "#"
+    l = l.replace(/#(\d+)/g, 'No. $1');
+    l = l.replace(/#/g, '');
+
+    // Remove "@" characters: e.g. "@guru" -> "guru", "@CO2" -> "CO2", stray "@" -> ""
+    l = l.replace(/@+(\w+)/g, '$1');
+    l = l.replace(/@+/g, '');
+
+    // Remove backticks (`) and tildes (~)
+    l = l.replace(/[`~]/g, '');
+
+    return l;
+  });
+
+  cleaned = processedLines.join('\n');
+
+  // 4. Clean any multiple asterisks or horizontal lines like "* * *" or "- - -"
+  cleaned = cleaned.replace(/^\s*[\*\-_](\s*[\*\-_]){2,}\s*$/gm, '');
+
+  // 5. Normalize excessive blank lines and formatting
+  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+};
+
 export const cleanAiText = (text: string): string => {
   if (!text) return '';
   let cleaned = text.trim();
-  // Remove markdown code block wrappers if present (e.g. ```markdown ... ```)
+  // Remove markdown code block wrappers if present (e.g. ```json ... ``` or ```markdown ... ```)
   if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```[a-z]*\s*/i, '').replace(/\s*```$/, '');
+    cleaned = cleaned.replace(/^```[a-z0-9_-]*\s*/i, '').replace(/\s*```$/, '');
   }
   cleaned = cleaned.trim();
   
+  // If it's a JSON response, don't strip formatting that might break JSON syntax
+  if ((cleaned.startsWith('{') && cleaned.endsWith('}')) || (cleaned.startsWith('[') && cleaned.endsWith(']'))) {
+    return cleaned;
+  }
+
   // Remove unwanted introductory conversational filler phrases
   cleaned = cleaned.replace(/^(berikut\s+adalah|berikut\s+ini\s+adalah|berikut\s+rancangan|berikut\s+lampiran|berikut\s+paket)[^.\n]*[.\n]+/i, '');
   
-  // Normalize excessive blank lines and formatting
-  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
-  return cleaned.trim();
+  // Clean all attachment formatting symbols (*, #, @, dsb)
+  return cleanAiAttachmentText(cleaned);
 };
 

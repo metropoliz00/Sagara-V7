@@ -10,7 +10,7 @@ import {
   Save, Calendar, Printer, Plus, Trash2, Loader2, 
   ChevronLeft, ChevronRight, NotebookPen, RefreshCw,
   LayoutList, CalendarRange, Coffee, CheckCircle, MessageSquare,
-  Upload, Download, FileSpreadsheet
+  Upload, Download, FileSpreadsheet, Sparkles
 } from 'lucide-react';
 
 interface LearningJournalViewProps {
@@ -62,6 +62,7 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'rekap'>('daily');
+  const [generatingAi, setGeneratingAi] = useState<{ index: number; field: 'reflection' | 'followUp' } | null>(null);
   
   // Custom states for Subject Teacher Recap (PAI & PJOK)
   const isEligibleForRekap = useMemo(() => {
@@ -472,6 +473,15 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
   // --- Helper Functions ---
 
   const getDayName = (dateStr: string) => {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return WEEKDAYS_ID[d.getDay()];
+    }
     const d = new Date(dateStr);
     return WEEKDAYS_ID[d.getDay()];
   };
@@ -551,20 +561,24 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     });
 
     if (rows.length === 0) {
-        rows.push({
-            id: `default-${targetDate}`,
-            classId,
-            date: targetDate,
-            day: dayName,
-            timeSlot: '07:30 - 09:00',
-            subject: 'Tematik / Pembelajaran Umum',
-            topic: '-',
-            activities: generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
-            evaluation: 'Kuis singkat',
-            reflection: '',
-            followUp: '',
-            isTeacherPresent: true
-        });
+        const isSun = dayName === 'Minggu';
+        const hol = holidays.find(h => h.date === targetDate);
+        if (!isSun && !hol) {
+            rows.push({
+                id: `default-${targetDate}`,
+                classId,
+                date: targetDate,
+                day: dayName,
+                timeSlot: '07:30 - 09:00',
+                subject: 'Tematik / Pembelajaran Umum',
+                topic: '-',
+                activities: generateActivitiesString(PENDEKATAN_OPTIONS[0], MODEL_OPTIONS[0], [METODE_OPTIONS[0]]),
+                evaluation: 'Kuis singkat',
+                reflection: '',
+                followUp: '',
+                isTeacherPresent: true
+            });
+        }
     }
 
     return rows.sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''));
@@ -643,6 +657,133 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
     newData[index] = updatedRow;
 
     setDraftData(newData);
+  };
+
+  const handleGenerateRefleksi = async (idx: number) => {
+    const row = draftData[idx];
+    if (!row) return;
+
+    const topicText = (row.topic || '').trim();
+    if (!topicText || topicText === '-') {
+      if (onShowNotification) {
+        onShowNotification('Kolom materi belum diisi. Isi materi terlebih dahulu.', 'warning');
+      } else {
+        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'warning');
+      }
+      return;
+    }
+
+    setGeneratingAi({ index: idx, field: 'reflection' });
+    try {
+      const prompt = `Anda adalah Asisten AI Guru profesional di sekolah dasar/menengah di Indonesia.
+Buatkan teks Refleksi Guru yang ringkas (1-2 kalimat) dan profesional dalam Bahasa Indonesia berdasarkan data kegiatan pembelajaran berikut:
+- Mata Pelajaran: ${row.subject || 'Umum'}
+- Materi / Topik: ${topicText}
+- Kegiatan Pembelajaran: ${row.activities || '-'} (Model: ${row.model || '-'}, Pendekatan: ${row.pendekatan || '-'}, Metode: ${(row.metode || []).join(', ') || '-'})
+- Evaluasi: ${row.evaluation || '-'}
+- Keadaan Pemahaman Murid: Sebagian besar siswa menyimak pembelajaran dengan penuh perhatian, antusias mengikuti kegiatan, dan mampu mengikuti evaluasi dengan pemahaman materi yang memadai.
+
+Ketentuan Penting:
+1. HANYA hasilkan 1-2 kalimat teks refleksi saja, tanpa tanda kutip, tanpa kata pengantar, tanpa judul/penomoran.
+2. Gambarkan bagaimana proses pembelajaran berlangsung dan respon/pemahaman siswa secara objektif.`;
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          apiKey: localStorage.getItem('GEMINI_API_KEY') || '' 
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Gagal menghasilkan teks refleksi');
+      }
+
+      const generatedText = (data.text || '').trim();
+      if (generatedText) {
+        updateDraft(idx, 'reflection', generatedText);
+        if (onShowNotification) {
+          onShowNotification('Refleksi berhasil diisi oleh Asisten AI!', 'success');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error generating reflection:', err);
+      const msg = err.message || 'Gagal membuat refleksi dengan AI.';
+      if (onShowNotification) {
+        onShowNotification(msg, 'error');
+      } else {
+        showAlert(msg, 'error');
+      }
+    } finally {
+      setGeneratingAi(null);
+    }
+  };
+
+  const handleGenerateTindakLanjut = async (idx: number) => {
+    const row = draftData[idx];
+    if (!row) return;
+
+    const topicText = (row.topic || '').trim();
+    if (!topicText || topicText === '-') {
+      if (onShowNotification) {
+        onShowNotification('Kolom materi belum diisi. Isi materi terlebih dahulu.', 'warning');
+      } else {
+        showAlert('Kolom materi belum diisi. Silakan isi materi pelajaran terlebih dahulu.', 'warning');
+      }
+      return;
+    }
+
+    setGeneratingAi({ index: idx, field: 'followUp' });
+    try {
+      const prompt = `Anda adalah Asisten AI Guru profesional di sekolah dasar/menengah di Indonesia.
+Tindak lanjut merupakan upaya yang akan dilakukan guru setelah mendapatkan informasi dari refleksi pembelajaran.
+Buatkan 1-2 kalimat Tindak Lanjut perbaikan/pengayaan pembelajaran yang konkret dan praktis dalam Bahasa Indonesia berdasarkan data berikut:
+- Mata Pelajaran: ${row.subject || 'Umum'}
+- Materi / Topik: ${topicText}
+- Kegiatan Pembelajaran: ${row.activities || '-'}
+- Evaluasi: ${row.evaluation || '-'}
+- Refleksi Guru: ${row.reflection || 'Siswa menunjukkan antusiasme belajar yang baik dan pemahaman materi terpantau optimal.'}
+
+Ketentuan Penting:
+1. HANYA hasilkan 1-2 kalimat teks tindak lanjut saja, tanpa tanda kutip, tanpa kata pengantar, tanpa judul.
+2. Jelaskan upaya tindak lanjut nyata (misalnya: bimbingan/remedial individu bagi siswa yang belum paham, atau soal tantangan/pengayaan untuk pemantapan materi di pertemuan selanjutnya).`;
+
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          apiKey: localStorage.getItem('GEMINI_API_KEY') || '' 
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        throw new Error(data.error || 'Gagal menghasilkan teks tindak lanjut');
+      }
+
+      const generatedText = (data.text || '').trim();
+      if (generatedText) {
+        updateDraft(idx, 'followUp', generatedText);
+        if (onShowNotification) {
+          onShowNotification('Tindak lanjut berhasil diisi oleh Asisten AI!', 'success');
+        }
+      }
+    } catch (err: any) {
+      console.error('Error generating followUp:', err);
+      const msg = err.message || 'Gagal membuat tindak lanjut dengan AI.';
+      if (onShowNotification) {
+        onShowNotification(msg, 'error');
+      } else {
+        showAlert(msg, 'error');
+      }
+    } finally {
+      setGeneratingAi(null);
+    }
   };
 
   const handleTogglePresence = async (index: number) => {
@@ -1326,13 +1467,6 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
         {/* --- DAILY VIEW --- */}
         {viewMode === 'daily' && (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto print-container relative overflow-hidden">
-                {holidayOnThisDate && (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden z-20 select-none">
-                        <div className="text-rose-600/10 text-5xl sm:text-7xl md:text-8xl font-black uppercase tracking-widest -rotate-12 whitespace-normal max-w-full text-center px-4 leading-normal select-none">
-                            LIBUR: {holidayOnThisDate.description}
-                        </div>
-                    </div>
-                )}
                 <div className="hidden print-only p-4 text-center border-b">
                     <h2 className="text-xl font-bold uppercase">JURNAL PEMBELAJARAN KELAS</h2>
                     <p className="text-sm">Hari/Tanggal: {getDayName(currentDate)}, {new Date(currentDate).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
@@ -1354,7 +1488,24 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                     </thead>
                     <tbody className="align-top">
                         {draftData.length === 0 ? (
-                            <tr><td colSpan={9} className="p-8 text-center text-gray-400 italic">Tidak ada jadwal atau jurnal untuk hari ini.</td></tr>
+                            <tr>
+                                <td colSpan={isReadOnly ? 8 : 9} className="p-16 text-center bg-white border">
+                                    <div className="flex flex-col items-center justify-center py-10 gap-2">
+                                        <span className="text-3xl sm:text-4xl md:text-5xl font-black tracking-widest text-red-600 uppercase select-none">
+                                            {getDayName(currentDate) === 'Minggu'
+                                                ? 'LIBUR MINGGU'
+                                                : holidayOnThisDate
+                                                    ? (holidayOnThisDate.description.toLowerCase().startsWith('libur')
+                                                        ? holidayOnThisDate.description.toUpperCase()
+                                                        : `LIBUR: ${holidayOnThisDate.description.toUpperCase()}`)
+                                                    : 'LIBUR / TIDAK ADA JADWAL'}
+                                        </span>
+                                        <span className="text-xs text-red-400 font-semibold italic">
+                                            (Tidak ada jadwal pembelajaran)
+                                        </span>
+                                    </div>
+                                </td>
+                            </tr>
                         ) : (
                             draftData.map((row, idx) => {
                                 const subjectLower = row.subject?.toLowerCase() || '';
@@ -1400,12 +1551,72 @@ const LearningJournalView: React.FC<LearningJournalViewProps> = ({
                                             ))}
                                         </select>
                                     }</td>
-                                    <td className="p-3 border">{isSpecialActivity ? <span className="text-gray-400">-</span> : 
-                                        <textarea value={row.reflection || ''} onChange={e => updateDraft(idx, 'reflection', e.target.value)} className="w-full bg-transparent outline-none resize-none text-gray-700 placeholder-gray-300 h-full min-h-[40px]" placeholder="Refleksi..." rows={5} disabled={disabled}/>
-                                    }</td>
-                                    <td className="p-3 border">{isSpecialActivity ? <span className="text-gray-400">-</span> : 
-                                        <textarea value={row.followUp || ''} onChange={e => updateDraft(idx, 'followUp', e.target.value)} className="w-full bg-transparent outline-none resize-none text-gray-700 placeholder-gray-300 h-full min-h-[40px]" placeholder="Tindak Lanjut..." rows={5} disabled={disabled}/>
-                                    }</td>
+                                    <td className="p-3 border">{isSpecialActivity ? <span className="text-gray-400">-</span> : (
+                                        <div className="relative group/cell w-full h-full min-h-[90px]">
+                                            <textarea 
+                                                value={row.reflection || ''} 
+                                                onChange={e => updateDraft(idx, 'reflection', e.target.value)} 
+                                                className="w-full bg-transparent outline-none resize-none text-gray-700 placeholder-gray-300 h-full min-h-[80px] p-1 text-xs" 
+                                                placeholder="Refleksi..." 
+                                                rows={5} 
+                                                disabled={disabled}
+                                            />
+                                            {!disabled && Boolean(row.topic && row.topic.trim() !== '' && row.topic.trim() !== '-') && (!row.reflection || row.reflection.trim() === '' || (generatingAi?.index === idx && generatingAi?.field === 'reflection')) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleGenerateRefleksi(idx)}
+                                                    disabled={generatingAi !== null}
+                                                    className="absolute bottom-1.5 right-1.5 flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 bg-white/90 hover:bg-indigo-50 border border-indigo-200/80 rounded-md shadow-xs transition-all opacity-80 hover:opacity-100 disabled:opacity-50 cursor-pointer"
+                                                    title="Isi Refleksi otomatis dengan Asisten AI"
+                                                >
+                                                    {generatingAi?.index === idx && generatingAi?.field === 'reflection' ? (
+                                                        <>
+                                                            <Loader2 size={12} className="animate-spin text-indigo-600" />
+                                                            <span className="text-[10px] text-indigo-600 font-semibold">Proses AI...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles size={12} className="text-indigo-500" />
+                                                            <span>Asisten AI</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}</td>
+                                    <td className="p-3 border">{isSpecialActivity ? <span className="text-gray-400">-</span> : (
+                                        <div className="relative group/cell w-full h-full min-h-[90px]">
+                                            <textarea 
+                                                value={row.followUp || ''} 
+                                                onChange={e => updateDraft(idx, 'followUp', e.target.value)} 
+                                                className="w-full bg-transparent outline-none resize-none text-gray-700 placeholder-gray-300 h-full min-h-[80px] p-1 text-xs" 
+                                                placeholder="Tindak Lanjut..." 
+                                                rows={5} 
+                                                disabled={disabled}
+                                            />
+                                            {!disabled && Boolean(row.topic && row.topic.trim() !== '' && row.topic.trim() !== '-') && (!row.followUp || row.followUp.trim() === '' || (generatingAi?.index === idx && generatingAi?.field === 'followUp')) && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleGenerateTindakLanjut(idx)}
+                                                    disabled={generatingAi !== null}
+                                                    className="absolute bottom-1.5 right-1.5 flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-indigo-600 hover:text-indigo-800 bg-white/90 hover:bg-indigo-50 border border-indigo-200/80 rounded-md shadow-xs transition-all opacity-80 hover:opacity-100 disabled:opacity-50 cursor-pointer"
+                                                    title="Isi Tindak Lanjut otomatis dengan Asisten AI"
+                                                >
+                                                    {generatingAi?.index === idx && generatingAi?.field === 'followUp' ? (
+                                                        <>
+                                                            <Loader2 size={12} className="animate-spin text-indigo-600" />
+                                                            <span className="text-[10px] text-indigo-600 font-semibold">Proses AI...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Sparkles size={12} className="text-indigo-500" />
+                                                            <span>Asisten AI</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}</td>
                                     <td className="p-3 border text-center no-print align-middle">
                                         <div className="flex flex-col items-center gap-2">
                                             {row.supervisionFeedback && (

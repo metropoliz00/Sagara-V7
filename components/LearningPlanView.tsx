@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import html2pdf from 'html2pdf.js';
 import { 
   Plus, Edit2, Trash2, Printer, CheckSquare, Square, 
-  BookText, History, Settings, FilePlus, ChevronRight, Save, Undo, Eye, BookOpen, AlertCircle, Sparkles,
+  BookText, History, Settings, FilePlus, ChevronRight, Save, Undo, Eye, BookOpen, AlertCircle, Sparkles, Loader2,
   Clock, RefreshCw, ArrowLeft
 } from 'lucide-react';
 import { User, SchoolProfileData, LearningPlan, Attachment } from '../types';
@@ -100,78 +100,78 @@ const getPhaseFromGrade = (gradeValue: string): string => {
 // Sintaks/Phases template per model
 const MODEL_SINTAKS_TEMPLATES: Record<string, { phase: string; description: string }[]> = {
   'Problem Based Learning (PBL)': [
-    { phase: 'A. Orientasi pada masalah', description: '[Memahami] 1. Murid mengamati gambar, video, teks, atau fenomena nyata yang disajikan guru melalui media digital di lingkungan belajar secara seksama.\n2. Murid mengidentifikasi informasi penting yang ditemukan pada permasalahan secara kritis menggunakan strategi pembelajaran yang aktif.\n3. Murid menyampaikan tanggapan awal terhadap masalah dengan pendekatan pembelajaran relevan seperti saintifik atau diferensiasi.' },
-    { phase: 'B. Mengorganisasi peserta didik', description: '1. Murid membentuk kelompok belajar secara kolaboratif sesuai bimbingan guru demi terlaksananya strategi diferensiasi proses.\n2. Murid membagi peran dan tugas tanggung jawab spesifik dalam kelompok.\n3. Murid merumuskan pertanyaan penyelidikan yang akan diselidiki melalui metode diskusi kelompok.' },
-    { phase: 'C. Membimbing penyelidikan', description: '[Mengaplikasikan] 1. Murid mencari informasi pendukung dari berbagai sumber belajar digital dan literatur yang relevan.\n2. Murid melakukan observasi, eksperimen sederhana, atau pengumpulan data yang diperlukan di lingkungan sekitar.\n3. Murid mencatat dan mengorganisasikan hasil temuan untuk dianalisis bersama kelompok menggunakan metode kolaboratif.' },
-    { phase: 'D. Mengembangkan dan menyajikan hasil karya', description: '[Mengaplikasikan] 1. Murid mendiskusikan alternatif solusi berdasarkan data dan temuan yang diperoleh.\n2. Murid menyusun laporan, poster, atau media presentasi kreatif di Canva atau platform digital lainnya.\n3. Murid mempresentasikan hasil pemecahan masalah materi pelajaran secara berkelompok di depan kelas dengan penuh percaya diri.' },
-    { phase: 'E. Menganalisis dan mengevaluasi proses pemecahan masalah', description: '[Merefleksi] 1. Murid memberikan tanggapan apresiatif dan masukan konstruktif terhadap presentasi kelompok lain.\n2. Murid bersama guru mengevaluasi kelebihan dan kekurangan solusi pemecahan masalah yang dihasilkan.\n3. Murid menuliskan refleksi pembelajaran mandiri mengenai konsep esensial yang berhasil dikuasai.' }
+    { phase: 'A. Orientasi pada masalah', description: '[Memahami] 1. Murid mengamati gambar, video, atau fenomena nyata yang disajikan guru melalui media digital secara seksama.\n2. Murid mengidentifikasi fakta penting dan merumuskan masalah kontekstual dengan rasa ingin tahu.' },
+    { phase: 'B. Mengorganisasi peserta didik', description: '[Memahami] 1. Murid membentuk kelompok belajar heterogen sesuai panduan guru demi kelancaran strategi pembelajaran.\n2. Murid membagi peran dan tanggung jawab kerja kelompok serta mencermati panduan LKPD.' },
+    { phase: 'C. Membimbing penyelidikan', description: '[Mengaplikasikan] 1. Murid mencari informasi pendukung dari berbagai sumber belajar digital dan literatur relevan.\n2. Murid melakukan observasi, pengumpulan data, atau pengujian terarah di lingkungan belajar dengan pendampingan guru.\n3. Murid mencatat dan mengorganisasikan data temuan kelompok untuk dianalisis bersama.' },
+    { phase: 'D. Mengembangkan dan menyajikan hasil karya', description: '[Mengaplikasikan] 1. Murid mendiskusikan alternatif solusi dan menyusun karya kreatif/laporan ringkas bersama kelompok.\n2. Murid mempresentasikan hasil pemecahan masalah materi di depan kelas dengan penuh percaya diri.' },
+    { phase: 'E. Menganalisis dan mengevaluasi proses pemecahan masalah', description: '[Merefleksi] 1. Murid saling memberikan apresiasi dan tanggapan konstruktif terhadap presentasi kelompok lain.\n2. Murid bersama guru menyimpulkan konsep esensial yang dipelajari dan melakukan refleksi diri.' }
   ],
   'Project Based Learning (PjBL)': [
-    { phase: 'A. Pertanyaan mendasar', description: '[Memahami] 1. Murid mengamati fenomena atau permasalahan kontekstual yang diberikan guru lewat tayangan media interaktif.\n2. Murid mengidentifikasi masalah nyata yang menantang untuk dijadikan proyek pembelajaran yang bermakna.\n3. Murid mengajukan pertanyaan terkait rancangan proyek yang akan dibuat sesuai pendekatan penemuan.' },
-    { phase: 'B. Mendesain perencanaan proyek', description: '[Mengaplikasikan] 1. Murid menentukan target dan tujuan proyek yang akan dicapai secara terukur.\n2. Murid menyusun rencana langkah-langkah pengerjaan proyek secara sistematis sesuai strategi aktif.\n3. Murid menentukan alat, bahan, and media digital yang diperlukan di lingkungan kelas.' },
-    { phase: 'C. Menyusun jadwal', description: '[Mengaplikasikan] 1. Murid membagi tugas dan peran anggota kelompok secara adil sesuai minatnya.\n2. Murid menentukan alokasi waktu pelaksanaan setiap tahapan pengerjaan proyek.\n3. Murid menyepakati target penyelesaian (milestones) proyek bersama guru.' },
-    { phase: 'D. Memonitor kemajuan proyek', description: '[Mengaplikasikan] 1. Murid melaksanakan pengerjaan proyek secara aktif sesuai rencana yang telah disusun bersama kelompok.\n2. Murid mencatat perkembangan pengerjaan proyek secara berkala.\n3. Murid mendiskusikan dan memperbaiki hambatan yang ditemukan selama proses pengerjaan dengan bimbingan guru.' },
-    { phase: 'E. Menguji hasil', description: '[Mengaplikasikan] 1. Murid memeriksa kualitas dan kesesuaian produk akhir yang dihasilkan.\n2. Murid menguji fungsi atau manfaat dari produk yang dibuat sesuai tujuan awal proyek.\n3. Murid melakukan revisi atau perbaikan produk berdasarkan hasil pengujian awal.' },
-    { phase: 'F. Evaluasi pengalaman', description: '[Merefleksi] 1. Murid mempresentasikan hasil proyek dan menunjukkan unjuk karya di depan kelas secara komunikatif.\n2. Murid menerima masukan berharga serta umpan balik dari guru dan teman.\n3. Murid merefleksikan seluruh pengalaman belajar yang diperoleh selama merencanakan dan menyelesaikan proyek.' }
+    { phase: 'A. Pertanyaan mendasar', description: '[Memahami] 1. Murid mengamati fenomena kontekstual lewat tayangan media interaktif yang disajikan guru.\n2. Murid mengajukan pertanyaan mendasar dan menyepakati topik proyek nyata yang akan dibuat.' },
+    { phase: 'B. Mendesain perencanaan proyek', description: '[Mengaplikasikan] 1. Murid merancang desain produk serta menentukan alat, bahan, dan media digital yang dibutuhkan.\n2. Guru memvalidasi dan memberikan masukan terhadap rencana langkah kerja kelompok.' },
+    { phase: 'C. Menyusun jadwal', description: '[Mengaplikasikan] 1. Murid membagi tugas peran kelompok dan menyusun estimasi alokasi waktu setiap tahapan proyek.\n2. Murid menyepakati target penyelesaian (milestones) proyek bersama guru.' },
+    { phase: 'D. Memonitor kemajuan proyek', description: '[Mengaplikasikan] 1. Murid melaksanakan pembuatan proyek secara aktif sesuai jadwal yang telah disepakati.\n2. Guru memantau keterlibatan dan mendampingi kelompok yang menghadapi kendala teknis.\n3. Murid mencatat progres perkembangan pengerjaan proyek secara berkala.' },
+    { phase: 'E. Menguji hasil', description: '[Mengaplikasikan] 1. Murid menguji fungsi, kelayakan, dan kesesuaian produk akhir dengan tujuan proyek.\n2. Murid melakukan penyempurnaan akhir produk berdasarkan masukan guru dan hasil uji coba.' },
+    { phase: 'F. Evaluasi pengalaman', description: '[Merefleksi] 1. Murid mempresentasikan unjuk karya hasil proyek di depan kelas dan menerima apresiasi rekan sekelas.\n2. Murid bersama guru merefleksikan seluruh proses pembuatan proyek dan menyimpulkan pemahaman esensial.' }
   ],
   'Discovery Learning': [
-    { phase: 'A. Stimulation', description: '[Memahami] 1. Murid mengamati media gambar, video, atau alat peraga yang disajikan guru secara menarik.\n2. Murid mencatat hal-hal penting atau fenomena unik yang menarik perhatian panca indra.\n3. Murid menghubungkan pengamatan awal tersebut dengan pengalaman belajar mereka sebelumnya.' },
-    { phase: 'B. Problem Statement', description: '[Memahami] 1. Murid mengajukan berbagai pertanyaan kritis berdasarkan hasil pengamatan fenomena.\n2. Murid mengidentifikasi masalah utama yang akan dikaji lebih dalam.\n3. Murid merumuskan permasalahan tersebut secara sederhana dalam bentuk pertanyaan penelitian.' },
-    { phase: 'C. Data Collection', description: '[Mengaplikasikan] 1. Murid mencari informasi terpercaya dari buku, internet, atau sumber belajar digital lainnya.\n2. Murid melakukan pengamatan atau percobaan sederhana di lingkungan belajar sekolah.\n3. Murid mengumpulkan dan mendata informasi yang relevan untuk menjawab rumusan masalah.' },
-    { phase: 'D. Data Processing', description: '[Mengaplikasikan] 1. Murid mengelompokkan dan mengklasifikasikan data yang telah diperoleh secara logis.\n2. Murid membandingkan kebenaran informasi yang didapat dari berbagai sumber rujukan.\n3. Murid mendiskusikan hasil analisis temuan data bersama kelompok kecil.' },
-    { phase: 'E. Verification', description: '[Mengaplikasikan] 1. Murid memeriksa kembali kebenaran dan kevalidan data yang telah diperoleh.\n2. Murid membandingkan hasil temuan data kelompok mereka dengan teori atau konsep ilmiah terkait.\n3. Murid memperbaiki draf hasil analisis atau simpulan apabila ditemukan ketidaksesuaian.' },
-    { phase: 'F. Generalization', description: '[Merefleksi] 1. Murid menyusun kesimpulan akhir berdasarkan data yang telah dianalisis dan dibuktikan.\n2. Murid menyampaikan/mempresentasikan hasil penemuan baru kepada teman-teman kelas.\n3. Murid menuliskan konsep esensial yang berhasil ditemukan sebagai pemahaman bermakna.' }
+    { phase: 'A. Stimulation', description: '[Memahami] 1. Murid mengamati media visual, video, atau peragaan yang disajikan guru secara cermat.\n2. Murid mencatat fenomena unik yang memicu rasa ingin tahu dan daya kritis mereka.' },
+    { phase: 'B. Problem Statement', description: '[Memahami] 1. Murid merumuskan berbagai pertanyaan kritis berdasarkan fenomena yang diamati.\n2. Murid menentukan masalah utama dan merumuskan dugaan sementara (hipotesis) dipandu guru.' },
+    { phase: 'C. Data Collection', description: '[Mengaplikasikan] 1. Murid mencari informasi rujukan dari buku ajar dan sumber belajar digital terpercaya.\n2. Murid melakukan observasi di lingkungan kelas atau eksperimen sederhana terarah.\n3. Murid mendata seluruh temuan fakta secara teratur bersama rekan kelompok.' },
+    { phase: 'D. Data Processing', description: '[Mengaplikasikan] 1. Murid mengelompokkan dan mengolah data temuan kelompok secara gotong royong.\n2. Murid menafsirkan hasil olah data untuk menjawab rumusan masalah awal.' },
+    { phase: 'E. Verification', description: '[Mengaplikasikan] 1. Murid mencocokkan hasil analisis data dengan teori/sumber terpercaya untuk membuktikan hipotesis.\n2. Guru memberikan konfirmasi dan penguatan konsep esensial materi.' },
+    { phase: 'F. Generalization', description: '[Merefleksi] 1. Murid bersama guru menarik kesimpulan umum mengenai konsep materi yang telah dibuktikan.\n2. Perwakilan kelompok mempresentasikan simpulan penemuan dan mencatat refleksi bermakna.' }
   ],
   'Inquiry Learning': [
-    { phase: 'A. Orientasi', description: '[Memahami] 1. Murid mengamati fenomena alam, sosial, atau teks yang disajikan sebagai stimulus oleh guru.\n2. Murid mengidentifikasi fakta-fakta penting yang ditemukan dari pengamatan tersebut.\n3. Murid menyampaikan pendapat atau gagasan awal mengenai fenomena menarik tersebut.' },
-    { phase: 'B. Merumuskan masalah', description: '[Memahami] 1. Murid menentukan fokus atau ruang lingkup masalah yang akan diselidiki.\n2. Murid menyusun pertanyaan penelitian sederhana yang menuntut pembuktian ilmiah.\n3. Murid mendiskusikan kriteria masalah tersebut bersama teman kelompok.' },
-    { phase: 'C. Merumuskan hipotesis', description: '[Mengaplikasikan] 1. Murid mengemukakan dugaan atau jawaban sementara terhadap masalah secara logis.\n2. Murid menuliskan argumen atau alasan rasional yang mendukung dugaan tersebut.\n3. Murid menyepakati rumusan hipotesis kelompok yang siap diuji.' },
-    { phase: 'D. Mengumpulkan data', description: '[Mengaplikasikan] 1. Murid melakukan observasi terarah atau eksperimen sederhana secara cermat.\n2. Murid mencari informasi pendukung tambahan dari berbagai sumber rujukan terpercaya.\n3. Murid mencatat seluruh data dan fakta empiris yang diperoleh dari proses penyelidikan.' },
-    { phase: 'E. Menguji hipotesis', description: '[Mengaplikasikan] 1. Murid membandingkan temuan data di lapangan dengan hipotesis yang telah dibuat sebelumnya.\n2. Murid menganalisis keselarasan dan kesesuaian antara data aktual dengan dugaan awal.\n3. Murid menentukan keputusan apakah hipotesis mereka diterima atau ditolak berdasarkan bukti.' },
-    { phase: 'F. Menarik kesimpulan', description: '[Merefleksi] 1. Murid menyusun simpulan terperinci berdasarkan hasil pembuktian data.\n2. Murid mempresentasikan hasil penyelidikan ilmiah mereka secara lisan di depan kelas.\n3. Murid refleksi seluruh proses pembelajaran dan penyelidikan yang telah dilalui.' }
+    { phase: 'A. Orientasi', description: '[Memahami] 1. Murid mengamati stimulus fenomena nyata yang disajikan guru melalui media pembelajaran.\n2. Murid mengidentifikasi fakta menarik dan menyiapkan diri untuk melakukan penyelidikan.' },
+    { phase: 'B. Merumuskan masalah', description: '[Memahami] 1. Murid menentukan fokus penyelidikan yang relevan dengan topik pembelajaran.\n2. Murid merumuskan pertanyaan penyelidikan terarah yang menuntut pembuktian ilmiah.' },
+    { phase: 'C. Merumuskan hipotesis', description: '[Mengaplikasikan] 1. Murid mengemukakan dugaan sementara (hipotesis) secara logis bersama kelompok.\n2. Murid menyepakati rumusan hipotesis yang siap diuji kebenarannya.' },
+    { phase: 'D. Mengumpulkan data', description: '[Mengaplikasikan] 1. Murid melakukan observasi terarah atau penyelidikan langsung di lingkungan belajar didukung media digital.\n2. Murid mencatat data pengamatan secara akurat dan objektif bersama kelompok.' },
+    { phase: 'E. Menguji hipotesis', description: '[Mengaplikasikan] 1. Murid membandingkan temuan data di lapangan dengan dugaan awal secara bernalar kritis.\n2. Guru memfasilitasi diskusi dalam membimbing penarikan inferensi ilmiah yang tepat.' },
+    { phase: 'F. Menarik kesimpulan', description: '[Merefleksi] 1. Murid menyusun simpulan hasil penyelidikan ilmiah dan mempresentasikannya di depan kelas.\n2. Murid merefleksikan seluruh proses investigasi guna mengukuhkan pemahaman konsep.' }
   ],
   'Cooperative Learning': [
-    { phase: 'A. Menyampaikan tujuan dan motivasi', description: '[Memahami] 1. Murid mendengarkan penjelasan guru mengenai tujuan pembelajaran serta indikator ketercapaian secara saksama.\n2. Murid menyiapkan diri secara mental dan fisik untuk mengikuti seluruh rangkaian kegiatan belajar.\n3. Murid merespons pertanyaan pemantik/apersepsi yang diajukan guru dengan antusias.' },
-    { phase: 'B. Menyajikan informasi', description: '[Memahami] 1. Murid mengamati pemaparan materi pembelajaran yang disampaikan oleh guru melalui media visual/audio.\n2. Murid membuat catatan ringkas mengenai informasi esensial yang didapatkan.\n3. Murid mengajukan pertanyaan klarifikasi jika terdapat konsep materi yang belum dipahami secara tuntas.' },
-    { phase: 'C. Mengorganisasi kelompok', description: '[Mengaplikasikan] 1. Murid membentuk kelompok belajar kecil yang heterogen sesuai koordinasi guru.\n2. Murid menentukan pembagian peran, hak, dan tanggung jawab kerja spesifik bagi setiap anggota.\n3. Murid memahami bersama instruksi dan tugas kelompok pada lembar kerja.' },
-    { phase: 'D. Membimbing kerja kelompok', description: '[Mengaplikasikan] 1. Murid berdiskusi aktif dan berkolaborasi dalam menyelesaikan tugas atau lembar kegiatan.\n2. Murid saling membantu memberi penjelasan kepada sesama anggota yang belum memahami materi.\n3. Murid menyusun draf hasil diskusi kelompok secara tertulis dan rapi.' },
-    { phase: 'E. Evaluasi', description: '[Mengaplikasikan] 1. Murid mempresentasikan hasil kerja kelompok mereka secara bergantian dengan percaya diri.\n2. Murid memberikan tanggapan berupa apresiasi atau pertanyaan konstruktif terhadap kelompok lain.\n3. Murid memperbaiki draf hasil diskusi kelompok berdasarkan masukan tepercaya.' },
-    { phase: 'F. Pemberian penghargaan', description: '[Merefleksi] 1. Murid menerima apresiasi lisan atau penghargaan khusus dari guru atas kinerja terbaik kelompoknya.\n2. Murid memberikan tepuk tangan atau apresiasi balik kepada kelompok lain yang sukses tampil.\n3. Murid termotivasi untuk terus meningkatkan hasil belajar dan soliditas kerja sama kelompok.' }
+    { phase: 'A. Menyampaikan tujuan dan motivasi', description: '[Memahami] 1. Murid mendengarkan tujuan pembelajaran dan penjelasan indikator keberhasilan dari guru.\n2. Murid termotivasi untuk aktif bekerja sama dalam kelompok setelah menyimak stimulus pemantik.' },
+    { phase: 'B. Menyajikan informasi', description: '[Memahami] 1. Murid mengamati pemaparan materi pokok yang disampaikan guru melalui media audio-visual.\n2. Murid mencatat poin-poin penting dan mengajukan pertanyaan klarifikasi jika diperlukan.' },
+    { phase: 'C. Mengorganisasi kelompok', description: '[Mengaplikasikan] 1. Murid membentuk tim belajar kooperatif heterogen sesuai bimbingan guru.\n2. Murid membagi peran dan tanggung jawab serta mencermati instruksi penugasan kelompok.' },
+    { phase: 'D. Membimbing kerja kelompok', description: '[Mengaplikasikan] 1. Murid berdiskusi aktif dan bergotong royong menyelesaikan tugas pada lembar kerja.\n2. Murid yang telah paham membantu rekan dalam kelompoknya untuk memahami konsep materi.\n3. Guru memantau, memfasilitasi, dan memberikan bimbingan bagi kelompok yang membutuhkan arahan.' },
+    { phase: 'E. Evaluasi', description: '[Mengaplikasikan] 1. Setiap kelompok mempresentasikan hasil kerja di depan kelas dan kelompok lain memberikan tanggapan.\n2. Guru memberikan penguatan konsep dan meluruskan potensi miskonsepsi.' },
+    { phase: 'F. Pemberian penghargaan', description: '[Merefleksi] 1. Guru dan murid saling memberikan apresiasi atas partisipasi aktif dan kekompakan tim.\n2. Murid menyimpulkan inti pembelajaran dan mencatat refleksi pengalaman belajar.' }
   ],
   'Problem Solving': [
-    { phase: 'A. Identifikasi masalah', description: '[Memahami] 1. Murid mengamati masalah yang diberikan guru lewat contoh studi kasus nyata.\n2. Murid mengidentifikasi penyebab masalah serta latar belakang timbulnya kasus.\n3. Murid menentukan fokus masalah yang akan diselesaikan secara berkelompok.' },
-    { phase: 'B. Analisis masalah', description: '[Memahami] 1. Murid mengumpulkan informasi terkait masalah dari berbagai rujukan.\n2. Murid mendiskusikan faktor-faktor yang memengaruhi masalah secara mendalam.\n3. Murid mencatat dan memetakan draf hasil analisis kelompok.' },
-    { phase: 'C. Menentukan alternatif solusi', description: '[Mengaplikasikan] 1. Murid mengemukakan beberapa ide solusi kreatif yang mungkin dapat dilakukan.\n2. Murid mendiskusikan kelebihan dan kekurangan dari setiap solusi yang ditawarkan.\n3. Murid menyusun daftar urutan alternatif solusi kelompok.' },
-    { phase: 'D. Memilih solusi terbaik', description: '[Mengaplikasikan] 1. Murid membandingkan setiap alternatif solusi secara kritis.\n2. Murid menentukan solusi yang paling efektif dan efisien.\n3. Murid menyepakati keputusan solusi utama yang akan digunakan.' },
-    { phase: 'E. Melaksanakan solusi', description: '[Mengaplikasikan] 1. Murid menerapkan rancangan solusi terpilih ke dalam situasi pembiasaan atau studi kasus nyata.\n2. Murid mencatat perkembangan dan respons dari hasil pelaksanaan tindakan solusi tersebut.\n3. Murid bekerja sama secara sinergis dalam menuntaskan penyelesaian masalah.' },
-    { phase: 'F. Evaluasi hasil', description: '[Merefleksi] 1. Murid menilai keberhasilan dan dampak dari solusi yang telah dijalankan kelompok.\n2. Murid mengidentifikasi sisa kendala atau hambatan baru yang sekiranya masih muncul.\n3. Murid menyusun draf rekomendasi perbaikan agar solusi tersebut dapat berjalan lebih sempurna.' }
+    { phase: 'A. Identifikasi masalah', description: '[Memahami] 1. Murid mengamati studi kasus masalah nyata yang disajikan guru melalui contoh kontekstual.\n2. Murid mengidentifikasi penyebab masalah dan merumuskan fokus masalah utama secara kritis.' },
+    { phase: 'B. Analisis masalah', description: '[Memahami] 1. Murid mengumpulkan informasi pendukung terkait masalah dari berbagai rujukan relevan.\n2. Murid mendiskusikan faktor penyebab dan memetakan hasil analisis kelompok secara terstruktur.' },
+    { phase: 'C. Menentukan alternatif solusi', description: '[Mengaplikasikan] 1. Murid mengemukakan berbagai gagasan ide solusi inovatif dan kreatif untuk memecahkan masalah.\n2. Murid mendiskusikan kelebihan serta kelemahan dari setiap opsi solusi kelompok.' },
+    { phase: 'D. Memilih solusi terbaik', description: '[Mengaplikasikan] 1. Murid membandingkan tingkat kelayakan tiap alternatif solusi secara kritis dan menyepakati solusi terbaik.\n2. Guru memvalidasi dan memberikan arahan penguatan terhadap pilihan solusi kelompok.' },
+    { phase: 'E. Melaksanakan solusi', description: '[Mengaplikasikan] 1. Murid menerapkan rancangan tindakan solusi terpilih ke dalam simulasi atau skenario nyata.\n2. Murid bekerja sama secara gotong royong dan mencatat perkembangan hasil pelaksanaan solusi.' },
+    { phase: 'F. Evaluasi hasil', description: '[Merefleksi] 1. Murid menilai keberhasilan dampak solusi yang telah dijalankan dan merumuskan saran perbaikan.\n2. Murid menyimpulkan konsep bermakna materi dan merefleksikan hasil pemecahan masalah.' }
   ],
   'Experiential Learning': [
-    { phase: 'A. Concrete Experience', description: '[Memahami] 1. Murid mengikuti kegiatan praktik, simulasi langsung, atau petualangan belajar di lingkungan sekitar.\n2. Murid mengamat secara aktif seluruh proses kejadian yang berlangsung selama eksperimen nyata.\n3. Murid mencatat detail pengalaman berharga atau temuan fisik yang diperoleh secara empiris.' },
-    { phase: 'B. Reflective Observation', description: '[Merefleksi] 1. Murid menceritakan kembali secara tertulis atau lisan mengenai petualangan pengalaman yang dialami.\n2. Murid mengidentifikasi hal menarik atau momen penting dari aktivitas yang sudah dikerjakannya.\n3. Murid mendiskusikan hasil refleksi pengamatan pribadi mereka bersama teman kelompok.' },
-    { phase: 'C. Abstract Conceptualization', description: '[Mengaplikasikan] 1. Murid menghubungkan fakta pengalaman nyata yang didapatkan dengan konsep atau teori ilmiah.\n2. Murid menemukan prinsip mendasar, hakikat, atau aturan umum yang menjelaskan fenomena tersebut.\n3. Murid menyusun peta konsep atau pemahaman baru yang bermakna berdasarkan pengalaman kongret.' },
-    { phase: 'D. Active Experimentation', description: '[Mengaplikasikan] 1. Murid mencoba menerapkan pemahaman dan konsep baru tersebut dalam memecahkan situasi teka-teki lain.\n2. Murid melakukan praktik lanjutan secara mandiri untuk mengasah keterampilan nyata mereka.\n3. Murid mengevaluasi hasil efektivitas penerapan konsep baru tersebut dalam menyelesaikan tugas meluas.' }
+    { phase: 'A. Concrete Experience', description: '[Memahami] 1. Murid mengikuti kegiatan praktik langsung, simulasi, atau eksplorasi nyata di lingkungan belajar.\n2. Murid mengamati fenomena secara langsung dan mencatat pengalaman konkret yang didapatkan.' },
+    { phase: 'B. Reflective Observation', description: '[Merefleksi] 1. Murid menceritakan kembali pengalaman yang dialaminya selama aktivitas secara lisan maupun tertulis.\n2. Murid mendiskusikan hal-hal penting dan hasil refleksi pengamatan pribadi bersama rekan kelompok.' },
+    { phase: 'C. Abstract Conceptualization', description: '[Mengaplikasikan] 1. Murid menghubungkan fakta pengalaman nyata dengan teori dan konsep ilmiah materi pelajaran.\n2. Guru membimbing murid menyusun peta konsep atau rangkuman bermakna dari pengalaman tersebut.' },
+    { phase: 'D. Active Experimentation', description: '[Mengaplikasikan] 1. Murid mencoba menerapkan konsep baru tersebut ke dalam situasi permasalahan lain yang relevan secara kreatif.\n2. Murid bersama guru mengevaluasi keberhasilan penerapan konsep untuk mengukuhkan pemahaman.' }
   ],
   'Flipped Classroom': [
-    { phase: 'A. Belajar mandiri sebelum kelas', description: '[Memahami] 1. Murid menyimak materi pelajaran secara mandiri di rumah melalui video pembelajaran interaktif yang dikirim guru sebelum kelas.\n2. Murid membaca rangkuman materi atau bahan ajar secara mandiri di rumah.\n3. Murid mencatat pertanyaan krusial mengenai konsep yang dirasa masih sulit atau belum dipahami.' },
-    { phase: 'B. Diskusi dan klarifikasi', description: '[Memahami] 1. Murid mengajukan pertanyaan terarah terkait konsep materi mandiri yang sempat dipelajari di rumah.\n2. Murid berdiskusi aktif dengan guru serta teman sekelas guna memperoleh kejelasan konsep.\n3. Murid mengklarifikasi pemahaman teoretis yang masih keliru di bawah bimbingan guru.' },
-    { phase: 'C. Aktivitas kolaboratif', description: '[Mengaplikasikan] 1. Murid bekerja sama dalam kelompok belajar untuk menyelesaikan lembar kerja praktik di kelas.\n2. Murid memecahkan tantangan tugas terapan atau analisis studi kasus yang diberikan secara tim.\n3. Murid membagikan gagasan orisinal, ide solusi, dan curah pendapat bersama teman.' },
-    { phase: 'D. Presentasi hasil', description: '[Mengaplikasikan] 1. Murid menyampaikan paparan hasil diskusi dan kesepakatan kelompok di depan kelas.\n2. Murid menjelaskan logika berpikir, alasan, atau rincian langkah pengerjaan tugas kelompok mereka.\n3. Murid menanggapi secara santun setiap pertanyaan dan sanggahan yang didapat dari kelompok lain.' },
-    { phase: 'E. Refleksi dan evaluasi', description: '[Merefleksi] 1. Murid menuliskan simpulan esensial mengenai konsep paling bermakna yang dipelajari hari ini.\n2. Murid mengevaluasi pemahaman mereka sendiri terhadap penguasaan kompetensi materi tersebut.\n3. Murid menyusun draf rencana aksi perbaikan belajar mandiri untuk memperkuat kompetensi di masa depan.' }
+    { phase: 'A. Belajar mandiri sebelum kelas', description: '[Memahami] 1. Murid telah menyimak materi pelajaran secara mandiri melalui video pembelajaran interaktif sebelum kelas.\n2. Murid mencatat ringkasan poin inti serta pertanyaan seputar konsep yang masih sulit dipahami.' },
+    { phase: 'B. Diskusi dan klarifikasi', description: '[Memahami] 1. Murid mengajukan pertanyaan terarah terkait konsep materi yang telah dipelajari mandiri di rumah.\n2. Guru memfasilitasi diskusi kelas untuk mengklarifikasi pemahaman teoretis dan meluruskan miskonsepsi.' },
+    { phase: 'C. Aktivitas kolaboratif', description: '[Mengaplikasikan] 1. Murid bekerja sama dalam kelompok kecil di kelas untuk menyelesaikan lembar kerja aplikatif.\n2. Murid memecahkan tantangan tugas terapan secara gotong royong dan saling bertukar ide solusi.\n3. Guru berkeliling mendampingi dinamika kolaborasi kelompok.' },
+    { phase: 'D. Presentasi hasil', description: '[Mengaplikasikan] 1. Setiap kelompok mempresentasikan hasil pengerjaan tugas di depan kelas secara percaya diri.\n2. Murid dari kelompok lain memberikan tanggapan santun dan masukan konstruktif.' },
+    { phase: 'E. Refleksi dan evaluasi', description: '[Merefleksi] 1. Murid bersama guru menyimpulkan konsep esensial materi yang telah dipraktikkan.\n2. Murid menuliskan refleksi pemahaman diri serta rencana tindak lanjut belajar.' }
   ],
   'Direct Instruction': [
-    { phase: 'A. Menyampaikan tujuan', description: '[Memahami] 1. Murid mendengarkan dengan konsentrasi penuh target tujuan pembelajaran yang dipaparkan guru.\n2. Murid memahami kompetensi kognitif atau psikomotorik yang wajib dikuasai di akhir sesi.\n3. Murid menyiapkan seluruh peralatan belajar dan alat bantu yang diperlukan.' },
-    { phase: 'B. Demonstrasi', description: '[Memahami] 1. Murid mengamati peragaan terstruktur atau model pengerjaan tugas yang dipraktikkan langsung oleh guru.\n2. Murid mencatat urutan langkah-langkah prosedural penting secara cermat.\n3. Murid mengajukan pertanyaan klarifikasi mengenai detail teknik demonstrasi tersebut.' },
-    { phase: 'C. Latihan terbimbing', description: '[Mengaplikasikan] 1. Murid meniru langkah pengerjaan bersama-sama di bawah panduan intensif dari guru.\n2. Murid mencoba menyelesaikan beberapa soal latihan bertahap menggunakan bimbingan langsung.\n3. Murid memperbaiki kesalahan taktis pengerjaan berdasarkan asistensi atau arahan guru.' },
-    { phase: 'D. Pengecekan pemahaman', description: '[Mengaplikasikan] 1. Murid menjawab umpan balik kuis cepat atau soal spontan yang diajukan oleh guru.\n2. Murid menunjukkan draf hasil latihan mandiri mereka yang sedang berjalan untuk divalidasi.\n3. Murid menerima umpan balik korektif dan penjelasan penguatan materi dari guru.' },
-    { phase: 'E. Latihan mandiri', description: '[Mengaplikasikan] 1. Murid mengerjakan lembar kerja secara mandiri dan disiplin guna mematangkan kebiasaan.\n2. Murid mendiseminasikan atau menerapkan konsep yang terserap dalam pengerjaan beragam tingkat kesulitan tugas.\n3. Murid mengumpulkan lembar portofolio hasil kerja mandiri mereka kepada guru untuk dinilai.' }
+    { phase: 'A. Menyampaikan tujuan', description: '[Memahami] 1. Murid mendengarkan dengan konsentrasi target tujuan pembelajaran dan garis besar kegiatan yang dipaparkan guru.\n2. Murid menyiapkan peralatan belajar dan merespons pertanyaan apersepsi guru.' },
+    { phase: 'B. Demonstrasi', description: '[Memahami] 1. Murid mengamati peragaan langkah-langkah atau konsep materi yang didemonstrasikan langsung oleh guru melalui media.\n2. Murid mencatat urutan prosedur penting dan mengajukan pertanyaan klarifikasi jika diperlukan.' },
+    { phase: 'C. Latihan terbimbing', description: '[Mengaplikasikan] 1. Murid meniru langkah pengerjaan materi bersama-sama di bawah panduan intensif dari guru.\n2. Guru memberikan bimbingan langsung, membetulkan kesalahan taktis, dan memberikan umpan balik korektif.' },
+    { phase: 'D. Pengecekan pemahaman', description: '[Mengaplikasikan] 1. Murid menjawab kuis cepat atau pertanyaan spontan yang diajukan oleh guru terkait materi.\n2. Guru memeriksa hasil pengerjaan latihan murid dan memberikan penguatan konsep.' },
+    { phase: 'E. Latihan mandiri', description: '[Mengaplikasikan] 1. Murid mengerjakan lembar kerja secara mandiri dan disiplin guna mematangkan penguasaan kompetensi.\n2. Murid mengumpulkan hasil kerja kepada guru serta merefleksikan pencapaian belajar.' }
   ],
   'Contextual Teaching and Learning (CTL)': [
-    { phase: 'A. Konstruktivisme', description: '[Memahami] 1. Murid secara aktif menghubungkan materi baru yang dipelajari dengan pengalaman sehari-hari dan pengetahuan yang sudah mereka miliki sebelumnya.\n2. Murid mengemukakan pengetahuan awal atau persepsi yang berkembang di lingkungannya tentang materi.\n3. Murid membangun pemahaman konsep baru yang kokoh berdasarkan jembatan pengalaman riil tersebut.' },
-    { phase: 'B. Inquiry', description: '[Memahami] 1. Murid melakukan penyelidikan terhadap permasalahan nyata yang diberikan untuk menemukan sendiri konsep inti dari materi tersebut.\n2. Murid mengobservasi secara langsung stimulus masalah kontekstual yang disajikan di lingkungan.\n3. Murid menemukan konsep mandiri melalui penguraian masalah dan penelaahan mandiri.' },
-    { phase: 'C. Questioning', description: '[Mengaplikasikan] 1. Murid mengajukan pertanyaan untuk menggali informasi lebih dalam dan menjawab pertanyaan teman atau guru untuk memperluas cakrawala berpikir.\n2. Murid memberikan jawaban atas pertanyaan yang ditanyakan oleh guru atau rekan sebahaya.\n3. Murid memperdalam pemahaman rasional konsep materi melalui aktivitas tanya jawab dua arah.' },
-    { phase: 'D. Learning Community', description: '[Mengaplikasikan] 1. Murid berdiskusi, bekerja sama, dan saling bertukar pikiran dengan anggota kelompok lainnya untuk memecahkan masalah bersama.\n2. Murid saling berbagi modalitas pengalaman, keahlian, dan informasi guna memecahkan ketidaktahuan.\n3. Murid berkolaborasi menuntaskan lembar pemecahan masalah dengan bersandar pada kontribusi tim.' },
-    { phase: 'E. Modelling', description: '[Mengaplikasikan] 1. Murid mengamati contoh penerapan nyata dari konsep yang sedang dipelajari baik melalui guru maupun sumber belajar lainnya.\n2. Murid menirukan dan menerapkan langkah/pola tersistem yang telah dicontohkan tersebut secara saksama.' }
+    { phase: 'A. Konstruktivisme', description: '[Memahami] 1. Murid menghubungkan materi baru dengan pengalaman kehidupan nyata sehari-hari di lingkungan sekitar.\n2. Murid mengemukakan pengetahuan awal dan membangun pemahaman konsep baru yang bermakna.' },
+    { phase: 'B. Inquiry', description: '[Memahami] 1. Murid melakukan observasi dan eksplorasi terhadap masalah kontekstual menggunakan sumber belajar yang ada.\n2. Guru memfasilitasi proses penemuan murid dengan memberikan pertanyaan penuntun.' },
+    { phase: 'C. Questioning', description: '[Mengaplikasikan] 1. Murid mengajukan pertanyaan kritis untuk menggali informasi mendalam mengenai materi pembelajaran.\n2. Murid saling menjawab dan menanggapi pertanyaan dalam interaksi kelas yang dinamis.' },
+    { phase: 'D. Learning Community', description: '[Mengaplikasikan] 1. Murid berkolaborasi dalam kelompok belajar untuk menyelesaikan LKPD pemecahan masalah kontekstual.\n2. Murid bergotong royong saling berbagi pengetahuan dan menyusun laporan hasil kerja bersama.\n3. Guru mendampingi jalannya kerja kelompok.' },
+    { phase: 'E. Modelling', description: '[Merefleksi] 1. Murid mengamati demonstrasi penerapan nyata dari konsep materi dan menampilkan karya kelompok.\n2. Murid bersama guru menyimpulkan inti pembelajaran dan melakukan refleksi diri.' }
   ]
 };
 
@@ -335,14 +335,18 @@ const formatAktivitasAwalItemText = (item: string, learningGoals: string[]): str
 };
 
 const extractLabel = (desc: string) => {
-  const match = desc.match(/^\s*\[(Memahami|Mengaplikasi|Mengaplikasikan|Merefleksi)\]\s*(.*)/i);
+  if (!desc) return { label: null, description: '' };
+  const match = desc.match(/^\s*\[(Memahami|Mengaplikasi|Mengaplikasikan|Merefleksi|Menganalisis|Mengevaluasi|Mencipta)\]\s*([\s\S]*)/i);
   if (match) {
+    let rawLabel = match[1];
+    if (rawLabel.toLowerCase().includes('aplikasi')) rawLabel = 'Mengaplikasikan';
+    else rawLabel = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1).toLowerCase();
     return {
-      label: match[1],
-      description: match[2]
+      label: rawLabel,
+      description: match[2].trim()
     };
   }
-  return { label: null, description: desc };
+  return { label: null, description: desc.trim() };
 };
 
 const parseTotalMinutes = (allocation: string): number => {
@@ -368,6 +372,462 @@ const getPrintPlanDurations = (p: LearningPlan) => {
   const loadedPenutup = p.durasiPenutup !== undefined && p.durasiPenutup > 0 ? p.durasiPenutup : (totalMin === 35 ? 5 : totalMin >= 140 ? 15 : 10);
   const loadedInti = p.durasiInti !== undefined && p.durasiInti > 0 ? p.durasiInti : (Math.max(0, totalMin - loadedAwal - loadedPenutup) || 50);
   return { awal: loadedAwal, inti: loadedInti, penutup: loadedPenutup };
+};
+
+export const generateTailoredIntiTemplate = (
+  modelName: string,
+  topic: string,
+  goalsList: string[],
+  pendekatan: string,
+  strategi: string,
+  metode: string | string[],
+  digital: string,
+  lingkungan: string,
+  dimensions: string[],
+  existingPhases?: { phase: string; description: string }[]
+): { phase: string; description: string }[] => {
+  const tMateri = (topic && topic.trim()) ? topic.trim() : '[Topik Bahasan]';
+  const tModel = modelName || 'Problem Based Learning (PBL)';
+  const tPendekatan = (pendekatan && pendekatan.trim()) ? pendekatan.trim() : 'Diferensiasi';
+  const tStrategi = (strategi && strategi.trim()) ? strategi.trim() : 'Active Learning';
+  const tMetode = (Array.isArray(metode) ? (metode.length > 0 ? metode.join(', ') : 'Diskusi') : (metode || 'Diskusi'));
+  const tDigital = (digital && digital.trim()) ? digital.trim() : 'Media Digital';
+  const tLingkungan = (lingkungan && lingkungan.trim()) ? lingkungan.trim() : 'Ruang kelas';
+  const tDimensi = dimensions && dimensions.length > 0 ? dimensions.join(', ') : 'Penalaran Kritis, Kolaborasi, Kreativitas, Kemandirian';
+  const tTP = goalsList && goalsList[0] ? `"${goalsList[0]}"` : '"memahami materi pembelajaran"';
+
+  const checkModel = (match: string) => tModel.toLowerCase().includes(match.toLowerCase());
+  const isPBL = checkModel('pbl') || checkModel('problem based');
+  const isPjBL = checkModel('pjbl') || checkModel('project based');
+  const isDiscovery = checkModel('discovery');
+  const isInquiry = checkModel('inquiry');
+  const isCooperative = checkModel('cooperative');
+  const isProblemSolving = checkModel('problem solving');
+  const isExperiential = checkModel('experiential');
+  const isFlipped = checkModel('flipped');
+  const isDirect = checkModel('direct instruction');
+  const isCTL = checkModel('ctl') || checkModel('contextual');
+
+  // PBL
+  if (isPBL) {
+    return [
+      {
+        phase: 'A. Orientasi pada masalah',
+        description: `[Memahami] 1. Guru menyajikan stimulus masalah kontekstual materi ${tMateri} melalui tayangan media ${tDigital} di ${tLingkungan}.\n2. Murid mengamati fenomena permasalahan dengan bernalar kritis (${tDimensi}) serta merumuskan pertanyaan inti bersama bimbingan guru.`
+      },
+      {
+        phase: 'B. Mengorganisasi peserta didik',
+        description: `[Memahami] 1. Guru membagi murid ke dalam kelompok belajar heterogen sesuai kesiapan belajar (pendekatan ${tPendekatan}).\n2. Murid membagi peran kerja kelompok dan mencermati petunjuk LKPD materi ${tMateri} sesuai strategi ${tStrategi}.`
+      },
+      {
+        phase: 'C. Membimbing penyelidikan',
+        description: `[Mengaplikasikan] 1. Murid secara aktif mencari dan menghimpun informasi pendukung dari sumber digital ${tDigital} dan bahan ajar di ${tLingkungan}.\n2. Murid melakukan eksplorasi data atau observasi terarah secara gotong royong (${tDimensi}) dengan fasilitasi guru.\n3. Murid mencatat dan mengorganisasikan data temuan kelompok untuk dianalisis bersama menggunakan metode ${tMetode}.`
+      },
+      {
+        phase: 'D. Mengembangkan dan menyajikan hasil karya',
+        description: `[Mengaplikasikan] 1. Murid mendiskusikan alternatif solusi masalah materi ${tMateri} dan menuangkannya ke dalam laporan ringkas atau media presentasi digital ${tDigital}.\n2. Setiap kelompok mempresentasikan hasil karya pemecahan masalah di depan kelas secara komunikatif dan percaya diri.`
+      },
+      {
+        phase: 'E. Menganalisis dan mengevaluasi proses pemecahan masalah',
+        description: `[Merefleksi] 1. Murid dari kelompok lain memberikan apresiasi dan tanggapan konstruktif terhadap presentasi temannya.\n2. Murid bersama guru menyimpulkan konsep esensial materi ${tMateri} dan merefleksikan proses pemecahan masalah guna mencapai target: ${tTP}.`
+      }
+    ];
+  }
+
+  // PjBL
+  if (isPjBL) {
+    return [
+      {
+        phase: 'A. Pertanyaan mendasar',
+        description: `[Memahami] 1. Guru memaparkan stimulus tantangan riil terkait ${tMateri} lewat media interaktif ${tDigital} di ${tLingkungan}.\n2. Murid mengamati fenomena, mengajukan pertanyaan mendasar secara kritis (${tDimensi}), dan menyepakati topik proyek bermakna.`
+      },
+      {
+        phase: 'B. Mendesain perencanaan proyek',
+        description: `[Mengaplikasikan] 1. Murid bersama kelompok merancang desain dan langkah kerja proyek bertema ${tMateri} didukung pendekatan ${tPendekatan}.\n2. Murid menentukan alat, bahan, dan media digital ${tDigital} yang dibutuhkan sesuai arahan guru.`
+      },
+      {
+        phase: 'C. Menyusun jadwal',
+        description: `[Mengaplikasikan] 1. Murid membagi tugas dan peran setiap anggota kelompok secara adil (${tDimensi}) menggunakan metode ${tMetode}.\n2. Murid bersama guru menyepakati linimasa dan target penyelesaian (milestones) proyek di ${tLingkungan}.`
+      },
+      {
+        phase: 'D. Memonitor kemajuan proyek',
+        description: `[Mengaplikasikan] 1. Murid melaksanakan pengerjaan proyek secara aktif bersama kelompok sesuai jadwal dan strategi ${tStrategi}.\n2. Guru memantau keterlibatan, perkembangan proyek, dan membimbing penyelesaian kendala teknis kelompok.\n3. Murid mencatat perkembangan berkala pengerjaan proyek menggunakan lembar kerja atau media ${tDigital}.`
+      },
+      {
+        phase: 'E. Menguji hasil',
+        description: `[Mengaplikasikan] 1. Murid bersama kelompok menguji fungsi, kelayakan, dan kesesuaian produk materi ${tMateri} dengan tujuan proyek.\n2. Murid menyempurnakan produk karya berdasarkan umpan balik korektif dari guru secara kreatif (${tDimensi}).`
+      },
+      {
+        phase: 'F. Evaluasi pengalaman',
+        description: `[Merefleksi] 1. Murid mempresentasikan unjuk karya hasil proyek materi ${tMateri} di depan kelas dengan percaya diri.\n2. Murid bersama guru mendiskusikan pengalaman belajar dan merefleksikan ketercapaian target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Discovery Learning
+  if (isDiscovery) {
+    return [
+      {
+        phase: 'A. Stimulation',
+        description: `[Memahami] 1. Guru menyajikan stimulus visual/video edukatif ${tDigital} terkait materi ${tMateri} di ${tLingkungan}.\n2. Murid mengamati tayangan dengan seksama dan mencatat fenomena unik yang memantik daya kritis (${tDimensi}).`
+      },
+      {
+        phase: 'B. Problem Statement',
+        description: `[Memahami] 1. Murid berdiskusi merumuskan masalah utama dan pertanyaan penyelidikan terkait materi ${tMateri}.\n2. Guru memfasilitasi murid menyusun dugaan sementara (hipotesis) bersandarkan pendekatan ${tPendekatan}.`
+      },
+      {
+        phase: 'C. Data Collection',
+        description: `[Mengaplikasikan] 1. Murid melacak dan menghimpun informasi relevan dari buku ajar dan sumber digital ${tDigital}.\n2. Murid melakukan observasi di ${tLingkungan} atau eksperimen terarah menggunakan metode ${tMetode}.\n3. Murid mendata seluruh temuan fakta secara teratur bersama rekan kelompok.`
+      },
+      {
+        phase: 'D. Data Processing',
+        description: `[Mengaplikasikan] 1. Murid mengelompokkan, mengolah, dan menganalisis data temuan kelompok secara gotong royong (${tDimensi}) sesuai strategi ${tStrategi}.\n2. Guru berkeliling mendampingi pengolahan data untuk menjawab rumusan masalah materi ${tMateri}.`
+      },
+      {
+        phase: 'E. Verification',
+        description: `[Mengaplikasikan] 1. Murid memeriksa kevalidan data dan mencocokkan hasil analisis dengan teori/sumber terpercaya untuk membuktikan hipotesis.\n2. Guru memberikan konfirmasi dan penguatan konsep esensial materi ${tMateri}.`
+      },
+      {
+        phase: 'F. Generalization',
+        description: `[Merefleksi] 1. Murid bersama guru menarik kesimpulan umum mengenai konsep esensial materi ${tMateri}.\n2. Perwakilan kelompok mempresentasikan simpulan hasil penemuan dan mencatat refleksi bermakna untuk menguasai target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Inquiry Learning
+  if (isInquiry) {
+    return [
+      {
+        phase: 'A. Orientasi',
+        description: `[Memahami] 1. Guru memaparkan stimulus fenomena nyata terkait ${tMateri} memanfaatkan media ${tDigital} di ${tLingkungan}.\n2. Murid mengamati fenomena dengan cermat dan mengidentifikasi hal-hal penting yang memicu rasa ingin tahu.`
+      },
+      {
+        phase: 'B. Merumuskan masalah',
+        description: `[Memahami] 1. Murid menentukan fokus penyelidikan yang relevan dengan topik ${tMateri}.\n2. Murid menyusun rumusan pertanyaan penelitian terarah sesuai pendekatan ${tPendekatan}.`
+      },
+      {
+        phase: 'C. Merumuskan hipotesis',
+        description: `[Mengaplikasikan] 1. Murid mengemukakan dugaan sementara (hipotesis) terhadap solusi permasalahan secara bernalar kritis (${tDimensi}).\n2. Setiap kelompok menyepakati rumusan hipotesis yang siap diuji kebenarannya menggunakan metode ${tMetode}.`
+      },
+      {
+        phase: 'D. Mengumpulkan data',
+        description: `[Mengaplikasikan] 1. Murid melakukan observasi terarah atau uji coba langsung di ${tLingkungan} didukung media ${tDigital}.\n2. Guru memfasilitasi penyelidikan dan murid mencatat seluruh data temuan secara akurat bersama kelompok.`
+      },
+      {
+        phase: 'E. Menguji hipotesis',
+        description: `[Mengaplikasikan] 1. Murid membandingkan data aktual hasil penyelidikan dengan hipotesis awal sesuai strategi ${tStrategi}.\n2. Murid menganalisis apakah bukti empiris mendukung atau menolak hipotesis kelompok dipandu arahan guru.`
+      },
+      {
+        phase: 'F. Menarik kesimpulan',
+        description: `[Merefleksi] 1. Murid menyusun simpulan terperinci hasil penyelidikan ilmiah tentang ${tMateri} dan mempresentasikannya di depan kelas.\n2. Murid merefleksikan seluruh proses investigasi guna mengukuhkan pemahaman target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Cooperative Learning
+  if (isCooperative) {
+    return [
+      {
+        phase: 'A. Menyampaikan tujuan dan motivasi',
+        description: `[Memahami] 1. Guru menyampaikan tujuan pembelajaran materi ${tMateri} dan indikator keberhasilan yang harus dicapai.\n2. Murid menyimak dengan seksama dan termotivasi untuk aktif bergotong royong dalam tim (${tDimensi}).`
+      },
+      {
+        phase: 'B. Menyajikan informasi',
+        description: `[Memahami] 1. Guru memaparkan materi pembelajaran ${tMateri} melalui media audio-visual ${tDigital} di ${tLingkungan}.\n2. Murid mencatat poin-poin esensial dan mengajukan pertanyaan klarifikasi mengenai konsep materi.`
+      },
+      {
+        phase: 'C. Mengorganisasi kelompok',
+        description: `[Mengaplikasikan] 1. Guru mengelompokkan murid ke dalam tim belajar kooperatif heterogen berdasarkan pendekatan ${tPendekatan}.\n2. Murid membagi peran tanggung jawab spesifik dan mencermati instruksi tugas kelompok bertema ${tMateri}.`
+      },
+      {
+        phase: 'D. Membimbing kerja kelompok',
+        description: `[Mengaplikasikan] 1. Murid berdiskusi aktif dan bergotong royong (${tDimensi}) menyelesaikan lembar kerja menggunakan metode ${tMetode}.\n2. Murid yang telah paham membantu rekan dalam kelompoknya untuk menguasai materi ${tMateri} sesuai strategi ${tStrategi}.\n3. Guru memantau, memfasilitasi, dan memberikan pendampingan bagi kelompok yang membutuhkan.`
+      },
+      {
+        phase: 'E. Evaluasi',
+        description: `[Mengaplikasikan] 1. Setiap kelompok mempresentasikan hasil kerja kelompok materi ${tMateri} di depan kelas secara bergantian.\n2. Murid dari kelompok lain memberikan apresiasi konstruktif dan guru memberikan penguatan konsep.`
+      },
+      {
+        phase: 'F. Pemberian penghargaan',
+        description: `[Merefleksi] 1. Guru memberikan apresiasi dan penghargaan atas kekompakan serta pencapaian kinerja terbaik kelompok.\n2. Murid menyimpulkan inti pembelajaran materi ${tMateri} dan mencatat refleksi diri untuk mewujudkan target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Problem Solving
+  if (isProblemSolving) {
+    return [
+      {
+        phase: 'A. Identifikasi masalah',
+        description: `[Memahami] 1. Guru menyajikan studi kasus masalah nyata terkait materi ${tMateri} lewat media ${tDigital} di ${tLingkungan}.\n2. Murid mengamati masalah dan merumuskan fokus masalah utama secara bernalar kritis (${tDimensi}).`
+      },
+      {
+        phase: 'B. Analisis masalah',
+        description: `[Memahami] 1. Murid menghimpun informasi pendukung masalah ${tMateri} dari beragam rujukan melalui metode ${tMetode}.\n2. Murid mendiskusikan hubungan sebab-akibat dan memetakan hasil analisis kelompok secara terstruktur.`
+      },
+      {
+        phase: 'C. Menentukan alternatif solusi',
+        description: `[Mengaplikasikan] 1. Murid mengemukakan berbagai gagasan ide solusi inovatif dan kreatif (${tDimensi}) untuk memecahkan masalah ${tMateri}.\n2. Murid menganalisis kelebihan serta kelemahan tiap opsi solusi bersama rekan kelompok.`
+      },
+      {
+        phase: 'D. Memilih solusi terbaik',
+        description: `[Mengaplikasikan] 1. Murid membandingkan kelayakan tiap opsi solusi bersandar pada strategi ${tStrategi} dan menyepakati solusi terbaik.\n2. Guru memvalidasi dan memberikan arahan penguatan terhadap pilihan solusi kelompok.`
+      },
+      {
+        phase: 'E. Melaksanakan solusi',
+        description: `[Mengaplikasikan] 1. Murid menerapkan rancangan tindakan solusi terpilih ke dalam simulasi atau skenario nyata materi ${tMateri} di ${tLingkungan}.\n2. Murid bekerjasama secara gotong royong (${tDimensi}) dan mencatat perkembangan hasil pelaksanaan solusi.`
+      },
+      {
+        phase: 'F. Evaluasi hasil',
+        description: `[Merefleksi] 1. Murid menilai keberhasilan serta dampak solusi yang telah dijalankan dan merumuskan perbaikan jika diperlukan.\n2. Murid menyimpulkan konsep bermakna materi ${tMateri} guna memenuhi capaian target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Experiential Learning
+  if (isExperiential) {
+    return [
+      {
+        phase: 'A. Concrete Experience',
+        description: `[Memahami] 1. Guru memfasilitasi murid mengikuti kegiatan praktik langsung atau simulasi nyata materi ${tMateri} di ${tLingkungan}.\n2. Murid mengamati secara langsung fenomena yang terjadi dan mencatat pengalaman konkret yang didapatkan.`
+      },
+      {
+        phase: 'B. Reflective Observation',
+        description: `[Merefleksi] 1. Murid menceritakan kembali secara tertulis atau lisan mengenai pengalaman aktivitas ${tMateri} yang dialaminya.\n2. Murid mendiskusikan momen penting dan hasil pengamatan pribadi bersama rekan kelompok menggunakan metode ${tMetode}.`
+      },
+      {
+        phase: 'C. Abstract Conceptualization',
+        description: `[Mengaplikasikan] 1. Murid menghubungkan fakta pengalaman nyata dengan teori dan konsep ilmiah materi ${tMateri} sesuai strategi ${tStrategi}.\n2. Guru membimbing murid menyusun peta konsep atau rangkuman bermakna menggunakan media ${tDigital}.`
+      },
+      {
+        phase: 'D. Active Experimentation',
+        description: `[Mengaplikasikan] 1. Murid menerapkan konsep baru materi ${tMateri} tersebut ke dalam situasi permasalahan lain yang relevan secara kreatif (${tDimensi}).\n2. Murid bersama guru mengevaluasi efektivitas penerapan konsep guna memastikan ketercapaian target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Flipped Classroom
+  if (isFlipped) {
+    return [
+      {
+        phase: 'A. Belajar mandiri sebelum kelas',
+        description: `[Memahami] 1. Murid telah menyimak materi pelajaran ${tMateri} secara mandiri melalui video pembelajaran interaktif ${tDigital} sebelum sesi kelas.\n2. Murid mencatat ringkasan poin inti serta pertanyaan seputar konsep yang masih memerlukan penjelasan.`
+      },
+      {
+        phase: 'B. Diskusi dan klarifikasi',
+        description: `[Memahami] 1. Murid mengajukan pertanyaan terarah terkait konsep materi ${tMateri} yang telah dipelajari mandiri di rumah.\n2. Guru memfasilitasi diskusi kelas untuk mengklarifikasi pemahaman teoretis dan meluruskan potensi miskonsepsi.`
+      },
+      {
+        phase: 'C. Aktivitas kolaboratif',
+        description: `[Mengaplikasikan] 1. Murid bekerja sama dalam kelompok kecil di ${tLingkungan} untuk menyelesaikan lembar kerja aplikatif bertema ${tMateri}.\n2. Murid memecahkan tantangan tugas terapan secara gotong royong (${tDimensi}) sesuai strategi ${tStrategi}.\n3. Guru berkeliling mendampingi dinamika kolaborasi kelompok.`
+      },
+      {
+        phase: 'D. Presentasi hasil',
+        description: `[Mengaplikasikan] 1. Setiap kelompok mempresentasikan hasil pengerjaan tugas materi ${tMateri} di depan kelas secara percaya diri.\n2. Kelompok lain menanggapi secara santun dengan mengajukan pertanyaan atau masukan konstruktif.`
+      },
+      {
+        phase: 'E. Refleksi dan evaluasi',
+        description: `[Merefleksi] 1. Murid bersama guru menyimpulkan inti konsep materi ${tMateri} yang telah dipraktikkan.\n2. Murid mengevaluasi pemahaman diri serta menyusun rencana tindak lanjut belajar guna mencapai target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Direct Instruction
+  if (isDirect) {
+    return [
+      {
+        phase: 'A. Menyampaikan tujuan',
+        description: `[Memahami] 1. Guru menyampaikan target tujuan pembelajaran materi ${tMateri} dan langkah-langkah kegiatan yang akan dilakukan.\n2. Murid mendengarkan dengan konsentrasi penuh dan menyiapkan perlengkapan belajar di ${tLingkungan}.`
+      },
+      {
+        phase: 'B. Demonstrasi',
+        description: `[Memahami] 1. Guru mendemonstrasikan prosedur pengerjaan atau konsep materi ${tMateri} secara bertahap menggunakan media ${tDigital}.\n2. Murid mengamati contoh peragaan secara seksama dan mencatat langkah-langkah operasional penting.`
+      },
+      {
+        phase: 'C. Latihan terbimbing',
+        description: `[Mengaplikasikan] 1. Murid mempraktikkan langkah pengerjaan materi ${tMateri} bersama-sama di bawah bimbingan intensif guru.\n2. Guru memberikan pendampingan langsung, membetulkan kesalahan taktis, dan memberikan umpan balik korektif.`
+      },
+      {
+        phase: 'D. Pengecekan pemahaman',
+        description: `[Mengaplikasikan] 1. Murid merespons kuis singkat atau pertanyaan acak yang diajukan guru terkait materi ${tMateri}.\n2. Guru memvalidasi hasil pengerjaan latihan murid dan memberikan penguatan konsep.`
+      },
+      {
+        phase: 'E. Latihan mandiri',
+        description: `[Merefleksi] 1. Murid mengerjakan tugas/lembar kerja secara mandiri dan disiplin (${tDimensi}) menggunakan metode ${tMetode}.\n2. Murid mengumpulkan portofolio hasil kerja kepada guru serta merefleksikan pencapaian target: ${tTP}.`
+      }
+    ];
+  }
+
+  // CTL (Contextual Teaching and Learning)
+  if (isCTL) {
+    return [
+      {
+        phase: 'A. Konstruktivisme',
+        description: `[Memahami] 1. Guru memantik murid mengaitkan materi baru ${tMateri} dengan pengalaman kehidupan nyata sehari-hari di ${tLingkungan}.\n2. Murid mengemukakan pengetahuan awal dan membangun pemahaman konsep baru yang bermakna.`
+      },
+      {
+        phase: 'B. Inquiry',
+        description: `[Memahami] 1. Murid melakukan observasi dan eksplorasi terhadap masalah kontekstual materi ${tMateri} menggunakan sarana ${tDigital}.\n2. Guru memfasilitasi proses penemuan murid untuk menemukan prinsip esensial materi.`
+      },
+      {
+        phase: 'C. Questioning',
+        description: `[Mengaplikasikan] 1. Murid mengajukan pertanyaan kritis (${tDimensi}) untuk memperdalam pemahaman mengenai materi ${tMateri}.\n2. Murid saling menjawab dan memperluas wawasan melalui interaksi tanya jawab dua arah secara aktif.`
+      },
+      {
+        phase: 'D. Learning Community',
+        description: `[Mengaplikasikan] 1. Murid berkolaborasi dalam kelompok belajar di ${tLingkungan} untuk menyelesaikan LKPD bertema ${tMateri}.\n2. Murid saling berbagi pengalaman dan bergotong royong (${tDimensi}) menyusun laporan hasil kerja dengan metode ${tMetode}.\n3. Guru mendampingi jalannya kolaborasi kelompok.`
+      },
+      {
+        phase: 'E. Modelling',
+        description: `[Merefleksi] 1. Murid mengamati contoh penerapan nyata dari konsep ${tMateri} dan menampilkan karya kelompok di depan kelas.\n2. Murid bersama guru menyimpulkan inti pembelajaran dan melakukan refleksi diri guna mencapai target: ${tTP}.`
+      }
+    ];
+  }
+
+  // Generic / Custom Model handler:
+  const phases = existingPhases && existingPhases.length > 0
+    ? existingPhases
+    : [
+        { phase: 'Fase 1: Pengenalan Konsep & Stimulus', description: '' },
+        { phase: 'Fase 2: Eksplorasi & Kolaborasi Kelompok', description: '' },
+        { phase: 'Fase 3: Penerapan & Penyajian Hasil', description: '' },
+        { phase: 'Fase 4: Evaluasi & Refleksi Pembelajaran', description: '' }
+      ];
+
+  return phases.map((p, idx) => {
+    if (idx === 0) {
+      return {
+        phase: p.phase,
+        description: `[Memahami] 1. Guru menyajikan stimulus kontekstual mengenai materi ${tMateri} melalui tayangan media ${tDigital} di ${tLingkungan}.\n2. Murid mengamati dengan rasa ingin tahu dan bernalar kritis (${tDimensi}) serta merumuskan pemahaman awal dipandu guru.`
+      };
+    } else if (idx === 1) {
+      return {
+        phase: p.phase,
+        description: `[Mengaplikasikan] 1. Guru mengorganisasikan murid ke dalam kelompok kolaboratif sesuai kesiapan belajar (strategi ${tStrategi}).\n2. Murid membagi tugas peran kerja kelompok untuk menyelidiki materi ${tMateri} melalui metode ${tMetode}.\n3. Murid menghimpun dan mencatat data temuan dari sumber belajar di ${tLingkungan}.`
+      };
+    } else if (idx === phases.length - 1) {
+      return {
+        phase: p.phase,
+        description: `[Merefleksi] 1. Murid bersama guru mengevaluasi proses pembelajaran dan menarik kesimpulan komprehensif materi ${tMateri}.\n2. Murid menuliskan refleksi pengalaman belajar guna memastikan tercapainya target: ${tTP}.`
+      };
+    } else {
+      return {
+        phase: p.phase,
+        description: `[Mengaplikasikan] 1. Murid mengolah data temuan materi ${tMateri} dan menyusun hasil karya bersama kelompok secara gotong royong (${tDimensi}).\n2. Murid mempresentasikan hasil karya di hadapan teman sekelas dengan percaya diri dan menerima tanggapan apresiatif.`
+      };
+    }
+  });
+};
+
+export const formatAndEnforce2to3Activities = (
+  rawDesc: string,
+  phaseName: string,
+  phaseIndex: number,
+  totalPhases: number,
+  context: {
+    topic: string;
+    model: string;
+    pendekatan: string;
+    strategi: string;
+    metode: string;
+    digital: string;
+    lingkungan: string;
+    dimensi: string;
+    goals: string[];
+  }
+): string => {
+  if (!rawDesc) {
+    rawDesc = '';
+  }
+
+  // 1. Determine or extract cognitive tag
+  let tag = 'Memahami';
+  const tagMatch = rawDesc.match(/\[(Memahami|Mengaplikasi|Mengaplikasikan|Merefleksi|Menganalisis|Mengevaluasi|Mencipta)\]/i);
+  if (tagMatch) {
+    const rawTag = tagMatch[1];
+    if (rawTag.toLowerCase().includes('aplikasi')) tag = 'Mengaplikasikan';
+    else tag = rawTag.charAt(0).toUpperCase() + rawTag.slice(1).toLowerCase();
+  } else {
+    const lowerName = phaseName.toLowerCase();
+    if (lowerName.includes('evaluasi') || lowerName.includes('refleksi') || lowerName.includes('generali') || lowerName.includes('penutup') || phaseIndex === totalPhases - 1) {
+      tag = 'Merefleksi';
+    } else if (lowerName.includes('penyelidikan') || lowerName.includes('data') || lowerName.includes('proyek') || lowerName.includes('kerja') || lowerName.includes('karya') || lowerName.includes('uji') || lowerName.includes('bimbing') || lowerName.includes('kolaboratif') || phaseIndex >= 1) {
+      tag = 'Mengaplikasikan';
+    } else {
+      tag = 'Memahami';
+    }
+  }
+
+  // 2. Strip existing cognitive tag
+  const cleanContent = rawDesc.replace(/^\s*\[(Memahami|Mengaplikasi|Mengaplikasikan|Merefleksi|Menganalisis|Mengevaluasi|Mencipta)\]\s*/gi, '').trim();
+
+  // 3. Extract items by checking lines and numbering patterns
+  let items: string[] = [];
+
+  const rawLines = cleanContent.split('\n').map(l => l.trim()).filter(Boolean);
+  const numberedLines = rawLines.filter(l => /^[1-9][\s.)-]+\s*/.test(l));
+
+  if (numberedLines.length >= 2) {
+    items = numberedLines.map(l => l.replace(/^[1-9][\s.)-]+\s*/, '').trim());
+  } else {
+    // Try splitting on inline numbering: e.g. "1. Guru... 2. Murid... 3. Murid..."
+    const inlineSplits = cleanContent.split(/(?:^|\s+)(?=[1-9][.)]\s+)/).map(s => s.trim()).filter(Boolean);
+    if (inlineSplits.length >= 2) {
+      items = inlineSplits.map(s => s.replace(/^[1-9][.)]\s*/, '').trim());
+    } else if (rawLines.length >= 2) {
+      // Multiple lines without numbers or with bullet points
+      items = rawLines.map(l => l.replace(/^[-*•]\s*/, '').trim());
+    } else if (cleanContent.length > 0) {
+      // Single block of text - check if multiple sentences exist
+      const sentences = cleanContent.split(/(?<=[.!?])\s+(?=[A-Z])/).map(s => s.trim()).filter(Boolean);
+      if (sentences.length >= 2) {
+        items = sentences.map(s => s.replace(/^[1-9][\s.)-]+\s*/, '').trim());
+      } else {
+        items = [cleanContent.replace(/^[1-9][\s.)-]+\s*/, '').trim()];
+      }
+    }
+  }
+
+  // 4. Ensure we have between 2 and 3 items!
+  const activeTopic = context.topic || 'topik materi pembelajaran';
+  const activeDigital = context.digital || 'media digital interaktif';
+  const activeLingkungan = context.lingkungan || 'ruang kelas';
+  const activePendekatan = context.pendekatan || 'Diferensiasi';
+  const activeStrategi = context.strategi || 'Active Learning';
+  const activeMetode = context.metode || 'Diskusi dan Tanya Jawab';
+  const activeDimensi = context.dimensi || 'Penalaran Kritis, Kolaborasi, Kemandirian';
+
+  const lowerName = phaseName.toLowerCase();
+  const isSubstantive = lowerName.includes('penyelidikan') || lowerName.includes('data') || lowerName.includes('proyek') || lowerName.includes('kerja') || lowerName.includes('karya') || lowerName.includes('uji') || lowerName.includes('bimbing') || lowerName.includes('kolaboratif') || phaseIndex === 2;
+
+  if (items.length < 2) {
+    const item1 = items[0] || `Guru menyajikan stimulus kontekstual mengenai materi ${activeTopic} memanfaatkan ${activeDigital} di ${activeLingkungan}.`;
+    items = [item1];
+
+    if (lowerName.includes('evaluasi') || lowerName.includes('refleksi') || phaseIndex === totalPhases - 1) {
+      items.push(`Murid bersama guru menyimpulkan inti materi ${activeTopic} dan merefleksikan proses belajar (${activeDimensi}) guna mencapai target tujuan pembelajaran.`);
+    } else if (isSubstantive) {
+      items.push(`Guru mendampingi kelompok yang memerlukan bimbingan sesuai pendekatan ${activePendekatan} dan strategi ${activeStrategi}.`);
+      items.push(`Murid mencatat, mengolah, dan memverifikasi data temuan kelompok materi ${activeTopic} menggunakan metode ${activeMetode} secara gotong royong (${activeDimensi}).`);
+    } else {
+      items.push(`Murid mengamati secara aktif dengan rasa ingin tahu dan bernalar kritis (${activeDimensi}) serta merumuskan pertanyaan inti bersama bimbingan guru.`);
+    }
+  } else if (items.length === 2 && isSubstantive) {
+    // If it's a substantive/deep exploration phase with only 2 items, add 3rd item
+    items.push(`Murid mencatat dan mengorganisasikan data temuan kelompok materi ${activeTopic} untuk dianalisis bersama menggunakan metode ${activeMetode}.`);
+  }
+
+  // Cap at 3 items max
+  if (items.length > 3) {
+    items = items.slice(0, 3);
+  }
+
+  // Clean each item from leftover prefixes
+  items = items.map(it => it.replace(/^[1-9][\s.)-]+\s*/, '').trim());
+
+  // Format with explicit 1., 2., 3. on separate lines
+  const numberedBody = items.map((it, i) => `${i + 1}. ${it}`).join('\n');
+  return `[${tag}] ${numberedBody}`;
 };
 
 const DEFAULT_PLANS: LearningPlan[] = [];
@@ -606,6 +1066,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const [isCustomModelMode, setIsCustomModelMode] = useState(false);
   const [isCustomStrategiMode, setIsCustomStrategiMode] = useState(false);
   const [customMetodeInput, setCustomMetodeInput] = useState('');
+  const [isGeneratingAiAwalPenutup, setIsGeneratingAiAwalPenutup] = useState(false);
 
   const handleAddCustomMetode = () => {
     const trimmed = customMetodeInput.trim();
@@ -621,73 +1082,181 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const [digital, setDigital] = useState('Google Maps, YouTube, Canva, Quizizz');
   const [lingkungan, setLingkungan] = useState('Ruang kelas, Perpustakaan sekolah');
 
-  // Helper templates for Kegiatan Awal and Kegiatan Penutup
+  // Helper to remove any category headers or prefixes from generated strings
+  const stripPengantarPrefix = (str: string): string => {
+    if (!str) return '';
+    let cleaned = str.trim().replace(/^\d+[\.\)]\s*/, '');
+    cleaned = cleaned.replace(/^(salam dan pembukaan|lagu wajib|lagu nasional|menyanyikan lagu wajib|membangun suasana belajar|apersepsi|motivasi|penyampaian tujuan pembelajaran|asesmen diagnostik awal|evaluasi dan refleksi|apresiasi dan umpan balik|tindak lanjut dan penutup)\s*[:\.\-–—]\s*/i, '');
+    cleaned = cleaned.replace(/^\d+[\.\)]\s*/, '');
+    return cleaned.trim();
+  };
+
+  // Helper templates for Kegiatan Awal and Kegiatan Penutup (Langsung 'Guru ...' / 'Murid ...' tanpa pengantar)
   const getAwalTemplate = (t: string, goals: string[], m: string) => {
-    const tMateri = t ? t.trim() : '[Materi Pokok / Bahasan]';
-    const firstGoal = (goals && goals[0] && goals[0].trim()) ? goals[0].trim() : '[Tujuan pembelajaran]';
-    const tModel = m ? m.trim() : '[Model Pembelajaran]';
+    const tMateri = t ? t.trim() : '[Topik Bahasan]';
+    const firstGoal = (goals && goals[0] && goals[0].trim()) ? goals[0].trim() : `materi ${tMateri}`;
+    const tModel = m ? m.trim() : 'Problem Based Learning (PBL)';
 
     return [
-      'Guru mengucapkan salam, berdoa, dan mengecek kehadiran murid',
-      'Murid bersama guru menyanyikan lagu wajib "Indonesia Raya"',
-      `Murid mengikuti kegiatan apersepsi tentang ${tMateri} dan menjawab pertanyaan pemantik yang diajukan guru: 1. Apa yang kamu ketahui tentang ${tMateri}? 2. Bagaimana cara kamu untuk belajar tentang ${tMateri}?`,
-      `Murid menyimak penjelasan guru mengenai tujuan pembelajaran hari ini, yaitu ${goals.map((g, gi) => `${gi + 1}. ${g}`).join('\n')}`,
-      `Murid menerima motivasi mengenai relevansi materi terhadap kehidupan sehari-hari dan memahami garis besar kegiatan yang akan dilakukan menggunakan model ${tModel}`
+      'Guru memberi salam dan menyapa murid dengan ramah, mengajak murid berdoa sebelum memulai pembelajaran, serta memeriksa kehadiran dan kesiapan murid.',
+      'Guru mengajak murid menyanyikan lagu wajib "Indonesia Raya".',
+      'Guru mengajak murid melakukan aktivitas singkat/ice breaking untuk membangun semangat dan fokus belajar, serta memastikan kondisi kelas tertib, nyaman, dan siap mengikuti pembelajaran.',
+      `Guru mengajukan pertanyaan pemantik kontekstual terkait materi ${tMateri} dalam kehidupan sehari-hari, memberi kesempatan murid untuk menjawab dan menyampaikan pendapat, lalu Guru menghubungkan jawaban murid dengan materi yang akan dipelajari.`,
+      `Guru menjelaskan manfaat mempelajari materi ${tMateri} dalam kehidupan sehari-hari serta menyampaikan permasalahan kontekstual untuk membangkitkan rasa ingin tahu murid.`,
+      `Guru menyampaikan tujuan pembelajaran (${firstGoal}) dengan bahasa yang sederhana dan mudah dipahami, serta menjelaskan secara singkat garis besar kegiatan menggunakan model ${tModel}.`,
+      `Guru memberikan pertanyaan singkat untuk mengetahui pemahaman awal murid terkait materi ${tMateri}, lalu menggunakan hasil respons murid sebagai dasar untuk menyesuaikan kegiatan pembelajaran.`
     ];
   };
 
-  const getPenutupTemplate = (t: string, m: string) => {
-    const tMateri = t ? t.trim() : '[Materi Pokok / Bahasan]';
-    const tModel = m ? m.trim() : '[Model Pembelajaran]';
+  const getPenutupTemplate = (t: string, _m?: string) => {
+    const tMateri = t ? t.trim() : '[Topik Bahasan]';
 
     return [
-      `Evaluasi dan Refleksi: Murid bersama guru menyimpulkan hasil pemecahan masalah terkait [materi ${tMateri}], kemudian Murid melakukan refleksi terhadap proses pembelajaran yang telah dilakukan dengan mengungkapkan perasaan serta hambatan yang dialami selama diskusi kelompok.`,
-      `Apresiasi dan Umpan Balik: Murid menerima apresiasi atas partisipasi aktif dalam kegiatan ${tMateri} yang disajikan, serta murid mendapatkan umpan balik konstruktif terhadap hasil presentasi yang telah dipaparkan oleh masing-masing kelompok.`,
-      `Tindak Lanjut dan Penutup: Murid mendapatkan informasi mengenai rencana pembelajaran pada pertemuan berikutnya, kemudian Murid mengakhiri kegiatan dengan doa bersama dan salam penutup sebagai bentuk syukur atas kelancaran proses belajar.`
+      `Murid bersama guru menyimpulkan inti materi ${tMateri} dan melakukan refleksi singkat terhadap proses serta perasaan selama pembelajaran.`,
+      'Guru memberikan apresiasi atas keaktifan dan partisipasi murid serta memberikan umpan balik konstruktif terhadap hasil kegiatan.',
+      'Guru menginformasikan rencana materi pembelajaran pada pertemuan berikutnya, lalu murid bersama guru mengakhiri kegiatan dengan doa bersama dan salam penutup.'
     ];
   };
 
-  const syncKegiatanAwalDanPenutup = () => {
-    const activeTopic = topic || '[Topik Bahasan]';
+  const syncKegiatanAwalDanPenutup = async () => {
+    if (isGeneratingAiAwalPenutup) return;
+
+    const activeTopic = (topic && topic.trim()) ? topic.trim() : '[Topik Bahasan]';
     const goalsList = (goalsInput && goalsInput.length > 0)
       ? goalsInput.filter(g => g.trim() !== '')
       : ['[Tujuan pembelajaran]'];
     const activeModel = model || 'Problem Based Learning (PBL)';
 
-    const synchedAwal = [
-      'Guru mengucapkan salam, berdoa, dan mengecek kehadiran murid',
-      'Murid bersama guru menyanyikan lagu wajib "Indonesia Raya"',
-      `Murid mengikuti kegiatan apersepsi terkait materi ${activeTopic} dan menjawab pertanyaan pemantik:\n1. Apa yang kamu ketahui tentang ${activeTopic}?\n2. Bagaimana cara kamu untuk belajar tentang ${activeTopic}?`,
-      `Murid menyimak penjelasan guru mengenai tujuan pembelajaran hari ini, yaitu:\n${goalsList.map((g, gi) => `${gi + 1}. ${g}`).join('\n')}`,
-      `Murid menerima motivasi mengenai relevansi materi terhadap kehidupan sehari-hari dan memahami garis besar kegiatan yang akan dilakukan menggunakan model ${activeModel}`
-    ];
+    setIsGeneratingAiAwalPenutup(true);
+    onShowNotification('Asisten AI sedang menyusun kegiatan awal & penutup...', 'warning');
 
-    const synchedPenutup = [
-      `Evaluasi dan Refleksi: Murid bersama guru menyimpulkan hasil pemecahan masalah terkait ${activeTopic}, kemudian Murid melakukan refleksi terhadap proses pembelajaran yang telah dilakukan dengan mengungkapkan perasaan serta hambatan yang dialami selama diskusi kelompok.`,
-      `Apresiasi dan Umpan Balik: Murid menerima apresiasi atas partisipasi aktif dalam kegiatan pembelajaran ${activeTopic} yang disajikan, serta murid mendapatkan umpan balik konstruktif terhadap hasil presentasi yang telah dipaparkan oleh masing-masing kelompok.`,
-      `Tindak Lanjut dan Penutup: Murid mendapatkan informasi mengenai rencana pembelajaran pada pertemuan berikutnya, kemudian Murid mengakhiri kegiatan dengan doa bersama dan salam penutup sebagai bentuk syukur atas kelancaran proses belajar.`
-    ];
+    // Retrieve effective API Key from schoolProfile or localStorage cache
+    let effectiveKey = (schoolProfile?.geminiApiKey || '').trim();
+    if (!effectiveKey && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('school_profile_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.geminiApiKey) effectiveKey = parsed.geminiApiKey.trim();
+        }
+        if (!effectiveKey) {
+          effectiveKey = (localStorage.getItem('gemini_custom_api_key') || '').trim();
+        }
+      } catch {}
+    }
 
-    setAwalInput(synchedAwal);
-    setPenutupInput(synchedPenutup);
-    onShowNotification('Kegiatan Awal & Penutup berhasil disinkronkan otomatis dengan Topik, TP & Model!', 'success');
+    const prompt = `Anda adalah asisten kurikulum pembelajaran yang cerdas dan cepat.
+Tugas: Buat teks "kegiatanAwal" (persis 7 butir ringkas) dan "kegiatanPenutup" (persis 3 butir ringkas) untuk RPP/RPM.
+
+ATURAN WAJIB:
+1. DILARANG mencantumkan judul/label seperti "Apersepsi:", "Motivasi:", "Evaluasi:", dsb.
+2. Setiap butir kalimat HARUS LANGSUNG DIMULAI dengan subjek "Guru ..." atau "Murid ...".
+3. Butir ke-2 kegiatanAwal WAJIB: "Guru mengajak murid menyanyikan lagu wajib \\"Indonesia Raya\\"."
+
+Topik Pembelajaran: ${activeTopic}
+Tujuan Pembelajaran: ${goalsList.slice(0, 3).join('; ')}
+Model Pembelajaran: ${activeModel}
+
+KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN):
+{
+  "kegiatanAwal": [
+    "Guru memberi salam dan menyapa murid dengan ramah, mengajak murid berdoa sebelum memulai pembelajaran, serta memeriksa kehadiran dan kesiapan murid.",
+    "Guru mengajak murid menyanyikan lagu wajib \\"Indonesia Raya\\".",
+    "Guru mengajak murid melakukan aktivitas singkat/ice breaking untuk membangun semangat dan fokus belajar, serta memastikan kondisi kelas tertib, nyaman, dan siap belajar.",
+    "Guru mengajukan pertanyaan pemantik kontekstual mengenai materi ${activeTopic} dalam kehidupan sehari-hari, murid diberi kesempatan menjawab dan berpendapat, lalu Guru menghubungkannya dengan materi.",
+    "Guru menjelaskan manfaat mempelajari materi ${activeTopic} dalam kehidupan sehari-hari dan menyampaikan situasi kontekstual untuk membangkitkan rasa ingin tahu murid.",
+    "Guru menyampaikan tujuan pembelajaran dengan bahasa yang sederhana dan mudah dipahami, serta menjelaskan secara singkat garis besar kegiatan menggunakan model ${activeModel}.",
+    "Guru memberikan pertanyaan singkat untuk mengetahui pemahaman awal murid terhadap materi ${activeTopic}, lalu menggunakan hasilnya sebagai dasar penyesuaian kegiatan pembelajaran."
+  ],
+  "kegiatanPenutup": [
+    "Murid bersama guru menyimpulkan inti materi ${activeTopic} dan melakukan refleksi singkat terhadap proses serta perasaan selama pembelajaran.",
+    "Guru memberikan apresiasi atas keaktifan murid serta memberikan umpan balik konstruktif terhadap hasil kegiatan atau presentasi.",
+    "Guru menyampaikan rencana pembelajaran pada pertemuan berikutnya, lalu murid bersama guru mengakhiri kegiatan dengan doa bersama dan salam penutup."
+  ]
+}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          apiKey: effectiveKey || undefined 
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.text || '';
+      
+      let parsed = null;
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {
+        // parsing failed
+      }
+
+      if (parsed && Array.isArray(parsed.kegiatanAwal) && parsed.kegiatanAwal.length >= 5 && Array.isArray(parsed.kegiatanPenutup)) {
+        let cleanedAwal: string[] = (parsed.kegiatanAwal as any[]).map((item: any) => stripPengantarPrefix(String(item || '')));
+        const cleanedPenutup: string[] = (parsed.kegiatanPenutup as any[]).map((item: any) => stripPengantarPrefix(String(item || '')));
+
+        // Ensure "Guru mengajak murid menyanyikan lagu wajib "Indonesia Raya"." is included
+        const hasIndonesiaRaya = cleanedAwal.some((item: string) => item.toLowerCase().includes('indonesia raya'));
+        if (!hasIndonesiaRaya) {
+          cleanedAwal.splice(1, 0, 'Guru mengajak murid menyanyikan lagu wajib "Indonesia Raya".');
+        }
+
+        setAwalInput(cleanedAwal);
+        setPenutupInput(cleanedPenutup);
+        onShowNotification('Kegiatan Awal & Penutup berhasil disusun oleh Asisten AI!', 'success');
+      } else {
+        // Fallback to the concise curated template
+        const fallbackAwal = getAwalTemplate(activeTopic, goalsList, activeModel);
+        const fallbackPenutup = getPenutupTemplate(activeTopic, activeModel);
+        setAwalInput(fallbackAwal);
+        setPenutupInput(fallbackPenutup);
+        onShowNotification('Kegiatan Awal & Penutup berhasil disusun langsung!', 'success');
+      }
+    } catch (err: any) {
+      console.warn('AI call encountered issue, using curated points model:', err);
+      const fallbackAwal = getAwalTemplate(activeTopic, goalsList, activeModel);
+      const fallbackPenutup = getPenutupTemplate(activeTopic, activeModel);
+      setAwalInput(fallbackAwal);
+      setPenutupInput(fallbackPenutup);
+      onShowNotification('Kegiatan Awal & Penutup berhasil disusun langsung!', 'success');
+    } finally {
+      setIsGeneratingAiAwalPenutup(false);
+    }
   };
 
   // Pengalaman Pembelajaran
   const [awalInput, setAwalInput] = useState<string[]>([
-    'Guru mengucapkan salam, berdoa, dan mengecek kehadiran murid',
-    'Murid bersama guru menyanyikan lagu wajib "Indonesia Raya"',
-    `Murid mengikuti kegiatan apersepsi terkait materi ${topic || '[Topik]'} dan menjawab pertanyaan pemantik:\n1. Apa yang kamu ketahui tentang ${topic || '[Topik]'}?\n2. Bagaimana cara kamu untuk belajar tentang ${topic || '[Topik]'}?`,
-    `Murid menyimak penjelasan guru mengenai tujuan pembelajaran hari ini, yaitu:\n${goalsInput.map((g, gi) => `${gi + 1}. ${g}`).join('\n')}`,
-    `Murid menerima motivasi mengenai relevansi materi terhadap kehidupan sehari-hari dan memahami garis besar kegiatan yang akan dilakukan menggunakan model ${model || 'Problem Based Learning (PBL)'}`
+    'Guru memberi salam dan menyapa murid dengan ramah, mengajak murid berdoa sebelum pembelajaran, serta memeriksa kehadiran dan kesiapan murid.',
+    'Guru mengajak murid menyanyikan lagu wajib "Indonesia Raya".',
+    'Guru mengajak murid melakukan aktivitas singkat/ice breaking untuk membangun semangat dan fokus belajar, serta memastikan kondisi kelas tertib, nyaman, dan siap belajar.',
+    `Guru mengajukan pertanyaan pemantik kontekstual terkait materi ${topic || '[Topik]'} dalam kehidupan sehari-hari, memberi kesempatan murid untuk menjawab dan menyampaikan pendapat, lalu Guru menghubungkan jawaban murid dengan materi yang akan dipelajari.`,
+    `Guru menjelaskan manfaat mempelajari materi ${topic || '[Topik]'} dalam kehidupan sehari-hari dan menyampaikan permasalahan kontekstual untuk membangkitkan rasa ingin tahu murid.`,
+    `Guru menyampaikan tujuan pembelajaran dengan bahasa yang sederhana dan mudah dipahami, serta menjelaskan garis besar kegiatan menggunakan model ${model || 'Problem Based Learning (PBL)'}.`,
+    `Guru memberikan pertanyaan singkat untuk mengetahui pemahaman awal murid terkait materi ${topic || '[Topik]'}, lalu menggunakan hasil respons murid sebagai dasar untuk menyesuaikan kegiatan pembelajaran.`
   ]);
   const [intiInput, setIntiInput] = useState<{ phase: string; description: string }[]>(
     JSON.parse(JSON.stringify(MODEL_SINTAKS_TEMPLATES['Problem Based Learning (PBL)'] || []))
   );
   const [penutupInput, setPenutupInput] = useState<string[]>([
-    'Evaluasi dan Refleksi: Murid bersama guru menyimpulkan hasil pemecahan masalah terkait materi yang dipelajari, kemudian Murid melakukan refleksi terhadap proses pembelajaran yang telah dilakukan dengan mengungkapkan perasaan.',
-    'Apresiasi dan Umpan Balik: Murid menerima apresiasi atas partisipasi aktif dalam kegiatan pembelajaran, serta murid mendapatkan umpan balik konstruktif terhadap hasil presentasi yang telah dipaparkan.',
-    'Tindak Lanjut dan Penutup: Murid mendapatkan informasi mengenai rencana pembelajaran pada pertemuan berikutnya, kemudian Murid mengakhiri kegiatan dengan doa bersama dan salam penutup.'
+    'Murid bersama guru menyimpulkan inti materi yang dipelajari dan melakukan refleksi singkat terhadap proses serta perasaan selama pembelajaran.',
+    'Guru memberikan apresiasi atas keaktifan dan partisipasi murid serta memberikan umpan balik konstruktif terhadap hasil kegiatan.',
+    'Guru menginformasikan rencana materi pembelajaran pada pertemuan berikutnya, lalu murid bersama guru mengakhiri kegiatan dengan doa bersama dan salam penutup.'
   ]);
 
   // Asesmen
@@ -707,11 +1276,201 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const [tempDegree, setTempDegree] = useState('dengan tepat');
   const [customGeneratedText, setCustomGeneratedText] = useState('');
 
-  // Kegiatan Inti Assistant States
-  const [selectedSintaksIndex, setSelectedSintaksIndex] = useState<number | null>(null);
-  const [tempSintaksText, setTempSintaksText] = useState('');
+  // Kegiatan Inti Assistant States & Handlers
+  const [isGeneratingAiInti, setIsGeneratingAiInti] = useState(false);
+
+  const handleGenerateAiKegiatanInti = async () => {
+    if (isGeneratingAiInti) return;
+
+    const activeTopic = (topic && topic.trim()) ? topic.trim() : '[Topik Bahasan]';
+    const goalsList = (goalsInput && goalsInput.length > 0)
+      ? goalsInput.filter((g) => g.trim() !== '')
+      : ['[Tujuan pembelajaran]'];
+    const activeModel = (model && model.trim()) ? model.trim() : 'Problem Based Learning (PBL)';
+    const activePendekatan = (pendekatan && pendekatan.trim()) ? pendekatan.trim() : 'Diferensiasi';
+    const activeStrategi = (strategi && strategi.trim()) ? strategi.trim() : 'Active Learning';
+    const activeMetode = Array.isArray(metode) ? (metode.length > 0 ? metode.join(', ') : 'Diskusi, Tanya Jawab') : (metode || 'Diskusi');
+    const activeDigital = (digital && digital.trim()) ? digital.trim() : 'Media Digital';
+    const activeLingkungan = (lingkungan && lingkungan.trim()) ? lingkungan.trim() : 'Ruang kelas';
+    const activeDimensi = selectedDimensions.length > 0 ? selectedDimensions.join(', ') : 'Penalaran Kritis, Kolaborasi, Kreativitas, Kemandirian';
+
+    setIsGeneratingAiInti(true);
+    onShowNotification('Asisten AI sedang menyusun seluruh sintak kegiatan inti sesuai data input...', 'warning');
+
+    // Retrieve effective API Key from schoolProfile or localStorage cache
+    let effectiveKey = (schoolProfile?.geminiApiKey || '').trim();
+    if (!effectiveKey && typeof localStorage !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('school_profile_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.geminiApiKey) effectiveKey = parsed.geminiApiKey.trim();
+        }
+        if (!effectiveKey) {
+          effectiveKey = (localStorage.getItem('gemini_custom_api_key') || '').trim();
+        }
+      } catch {}
+    }
+
+    // Determine current base phases
+    const basePhases = (intiInput && intiInput.length > 0)
+      ? intiInput
+      : (MODEL_SINTAKS_TEMPLATES[activeModel] || MODEL_SINTAKS_TEMPLATES['Problem Based Learning (PBL)']);
+
+    const prompt = `Anda adalah asisten kurikulum pembelajaran Kurikulum Merdeka yang cerdas, praktis, dan profesional.
+Tugas: Buat teks "kegiatanInti" (fase dan deskripsi langkah kegiatan operasional Guru & Murid) untuk modul ajar / RPP.
+
+DATA INPUT PEMBELAJARAN:
+- Mata Pelajaran: ${subject || 'Mata Pelajaran'}
+- Topik / Materi: ${activeTopic}
+- Tujuan Pembelajaran: ${goalsList.slice(0, 4).join('; ')}
+- Model Pembelajaran: ${activeModel}
+- Pendekatan: ${activePendekatan}
+- Strategi: ${activeStrategi}
+- Metode: ${activeMetode}
+- Media Digital: ${activeDigital}
+- Lingkungan Belajar: ${activeLingkungan}
+- Dimensi Karakter: ${activeDimensi}
+
+DAFTAR SINTAKS MODEL (${basePhases.length} Fase):
+${basePhases.map((p, idx) => `${idx + 1}. ${p.phase}`).join('\n')}
+
+ATURAN WAJIB FORMAT & KONTEN:
+1. JUMLAH KEGIATAN: Setiap sintaks WAJIB memiliki 2 sampai 3 BUTIR KEGIATAN OPERASIONAL (DILARANG HANYA 1 KEGIATAN!).
+   - Untuk fase pengenalan, stimulus, orientasi masalah, perumusan, evaluasi, atau refleksi: susun 2 butir operasional padat dan bermakna.
+   - Untuk fase penyelidikan mendalam, eksplorasi data, pengerjaan proyek, atau kolaborasi kelompok: susun 2 sampai 3 butir operasional mencakup bimbingan guru dan aksi aktif murid.
+2. FORMAT NUMBERING KE BAWAH: Wajib menggunakan penomoran berurutan ke bawah dengan baris baru (\\n):
+1. [Aksi operasional Guru / Murid...]
+2. [Aksi operasional Guru / Murid...]
+(dan jika diperlukan):
+3. [Aksi operasional Guru / Murid...]
+3. TAG KOGNITIF: Setiap deskripsi fase WAJIB diawali tag kognitif: [Memahami], [Mengaplikasikan], atau [Merefleksi].
+   Contoh format:
+   "[Memahami] 1. Guru menyajikan stimulus masalah kontekstual materi ${activeTopic} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan bernalar kritis (${activeDimensi}) serta merumuskan pertanyaan inti bersama bimbingan guru."
+4. DIKEMBANGKAN SESUAI DATA INPUT:
+   Setiap butir kegiatan HARUS dikembangkan secara kontekstual menghubungkan materi "${activeTopic}", media "${activeDigital}", lingkungan "${activeLingkungan}", pendekatan "${activePendekatan}", strategi "${activeStrategi}", metode "${activeMetode}", dan dimensi "${activeDimensi}".
+
+KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA PENJELASAN LAIN):
+{
+  "kegiatanInti": [
+    ${basePhases.map((p, idx) => {
+      const isSubstantive = idx === 2 || p.phase.toLowerCase().includes('penyelidikan') || p.phase.toLowerCase().includes('data') || p.phase.toLowerCase().includes('proyek') || p.phase.toLowerCase().includes('kolaboratif') || p.phase.toLowerCase().includes('bimbing');
+      const sampleDesc = isSubstantive
+        ? `[Mengaplikasikan] 1. Murid melakukan eksplorasi data dan penyelidikan materi ${activeTopic} di ${activeLingkungan} didukung media ${activeDigital}.\\n2. Guru mendampingi kelompok yang membutuhkan bimbingan sesuai pendekatan ${activePendekatan} dan strategi ${activeStrategi}.\\n3. Murid mencatat dan memverifikasi data temuan kelompok menggunakan metode ${activeMetode}.`
+        : `[Memahami] 1. Guru menyajikan stimulus kontekstual mengenai ${activeTopic} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan merumuskan masalah inti dipandu bimbingan guru.`;
+      return `{ "phase": "${p.phase.replace(/"/g, '\\"')}", "description": "${sampleDesc}" }`;
+    }).join(',\n    ')}
+  ]
+}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          apiKey: effectiveKey || undefined 
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data.text || '';
+
+      let parsed: any = null;
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        }
+      } catch (e) {}
+
+      if (parsed && Array.isArray(parsed.kegiatanInti) && parsed.kegiatanInti.length > 0) {
+        const cleanedInti = parsed.kegiatanInti.map((item: any, idx: number) => {
+          const phaseName = String(item.phase || basePhases[idx]?.phase || `Fase ${idx + 1}`);
+          const rawDesc = String(item.description || '');
+          const formattedDesc = formatAndEnforce2to3Activities(
+            rawDesc,
+            phaseName,
+            idx,
+            parsed.kegiatanInti.length,
+            {
+              topic: activeTopic,
+              model: activeModel,
+              pendekatan: activePendekatan,
+              strategi: activeStrategi,
+              metode: activeMetode,
+              digital: activeDigital,
+              lingkungan: activeLingkungan,
+              dimensi: activeDimensi,
+              goals: goalsList
+            }
+          );
+          return {
+            phase: phaseName,
+            description: formattedDesc
+          };
+        });
+        setIntiInput(cleanedInti);
+        onShowNotification('Seluruh sintak Kegiatan Inti berhasil disusun Asisten AI (2-3 butir per sintaks dengan penomoran 1., 2., 3.)!', 'success');
+      } else {
+        const fallbackInti = generateTailoredIntiTemplate(
+          activeModel, activeTopic, goalsList, activePendekatan, activeStrategi,
+          activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases
+        );
+        setIntiInput(fallbackInti);
+        onShowNotification('Sintak Kegiatan Inti berhasil disesuaikan dengan data input & sintaks model (2-3 butir per fase).', 'success');
+      }
+    } catch (err: any) {
+      console.warn('AI call for Kegiatan Inti encountered issue, using curated tailored engine:', err);
+      const fallbackInti = generateTailoredIntiTemplate(
+        activeModel, activeTopic, goalsList, activePendekatan, activeStrategi,
+        activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases
+      );
+      setIntiInput(fallbackInti);
+      onShowNotification('Sintak Kegiatan Inti berhasil disesuaikan dengan data input & sintaks model (2-3 butir per fase).', 'warning');
+    } finally {
+      setIsGeneratingAiInti(false);
+    }
+  };
+
+  const handleAddIntiPhase = () => {
+    const nextNum = intiInput.length + 1;
+    setIntiInput([
+      ...intiInput,
+      {
+        phase: `Fase ${nextNum}: Aktivitas Pembelajaran Tambahan`,
+        description: `[Mengaplikasikan] 1. Guru mendampingi murid dalam kegiatan penguatan konsep materi ${topic || 'pembelajaran'}.\n2. Murid mempraktikkan keterampilan dan mendiskusikan pemecahan masalah bersama kelompok.\n3. Murid mencatat hasil pengerjaan pada lembar kerja.`
+      }
+    ]);
+  };
+
+  const handleRemoveIntiPhase = (index: number) => {
+    if (intiInput.length <= 1) {
+      onShowNotification('Minimal harus terdapat 1 sintaks pada Kegiatan Inti.', 'warning');
+      return;
+    }
+    setIntiInput(intiInput.filter((_, i) => i !== index));
+  };
 
   const getSintaksSuggestion = (sIdx: number) => {
+    const tTopic = topic || '[Topik Bahasan]';
+    const tGoals = goalsInput.length > 0 ? goalsInput : ['[Tujuan pembelajaran]'];
+    const res = generateTailoredIntiTemplate(
+      model, tTopic, tGoals, pendekatan, strategi, metode, digital, lingkungan, selectedDimensions, intiInput
+    );
+    return res[sIdx]?.description || '';
+  };
+
+  const _oldGetSintaksSuggestion = (sIdx: number) => {
     const tMateri = topic || '[Topik Bahasan]';
     const tModel = model || '[Model Pembelajaran]';
     const tPendekatan = pendekatan || 'Diferensiasi';
@@ -1264,17 +2023,19 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     setDigital('');
     setLingkungan('');
     setAwalInput([
-      'Guru mengucapkan salam, berdoa, dan mengecek kehadiran murid.',
+      'Guru memberi salam dan menyapa murid dengan ramah, mengajak murid berdoa sebelum pembelajaran, serta memeriksa kehadiran dan kesiapan murid.',
       'Guru mengajak murid menyanyikan lagu wajib "Indonesia Raya".',
-      'Guru melakukan apersepsi {sesuaikan dengan materi} dan guru menggali pengalaman murid terkait materi yang akan diajarkan dengan mengajukan pertanyaan pemantik:\n1. [Isi sesuaikan dengan materi]',
-      'Guru menyampaikan tujuan pembelajaran hari ini, yaitu:\n1. [sesuaikan dengan Tujuan pembelajaran]',
-      'Guru memberikan motivasi dengan menjelaskan relevansi materi terhadap kehidupan sehari-hari dan menyampaikan garis besar kegiatan yang akan dilakukan selama proses pembelajaran menggunakan [sesuai dengan model pembelajaran]'
+      'Guru mengajak murid melakukan aktivitas singkat/ice breaking untuk membangun semangat dan fokus belajar, serta memastikan kondisi kelas tertib, nyaman, dan siap belajar.',
+      'Guru mengajukan pertanyaan pemantik kontekstual terkait materi dalam kehidupan sehari-hari, memberi kesempatan murid untuk menjawab dan menyampaikan pendapat, lalu Guru menghubungkan jawaban murid dengan materi yang akan dipelajari.',
+      'Guru menjelaskan manfaat mempelajari materi dalam kehidupan sehari-hari dan menyampaikan permasalahan kontekstual untuk membangkitkan rasa ingin tahu murid.',
+      'Guru menyampaikan tujuan pembelajaran dengan bahasa yang sederhana dan mudah dipahami, serta menjelaskan secara singkat garis besar kegiatan menggunakan model yang dipilih.',
+      'Guru memberikan pertanyaan singkat untuk mengetahui pemahaman awal murid terkait materi sebagai dasar penyesuaian kegiatan pembelajaran.'
     ]);
     setIntiInput(JSON.parse(JSON.stringify(MODEL_SINTAKS_TEMPLATES['Problem Based Learning (PBL)'] || [])));
     setPenutupInput([
-      'Evaluasi dan Refleksi: Murid bersama guru menyimpulkan hasil pemecahan masalah terkait [sesuaikan dengan materi], kemudian murid melakukan refleksi terhadap proses pembelajaran yang telah dilakukan dengan mengungkapkan perasaan serta hambatan yang dialami selama diskusi kelompok.',
-      'Apresiasi dan Umpan Balik: Guru memberikan apresiasi atas partisipasi aktif murid dalam [sesuai dengan kegiatan pembelajaran] yang disajikan, serta memberikan umpan balik konstruktif terhadap hasil presentasi yang telah dipaparkan oleh masing-masing kelompok.',
-      'Tindak Lanjut dan Penutup: Murid mendapatkan informasi mengenai rencana pembelajaran pada pertemuan berikutnya, kemudian kegiatan diakhiri dengan doa bersama and salam penutup sebagai bentuk syukur atas kelancaran proses belajar.'
+      'Murid bersama guru menyimpulkan inti materi yang dipelajari dan melakukan refleksi singkat terhadap proses serta perasaan selama pembelajaran.',
+      'Guru memberikan apresiasi atas keaktifan dan partisipasi murid serta memberikan umpan balik konstruktif terhadap hasil kegiatan.',
+      'Guru menginformasikan rencana materi pembelajaran pada pertemuan berikutnya, lalu murid bersama guru mengakhiri kegiatan dengan doa bersama dan salam penutup.'
     ]);
     setAsesmenAwal('Pertanyaan pemantik lisan, Kuis singkat (Diagnostik Kognitif)');
     setAsesmenProses('Observasi Profil Lulusan, Kinerja Kelompok');
@@ -2912,7 +3673,10 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                                 setIsCustomModelMode(false);
                                 setModel(val);
                                 if (MODEL_SINTAKS_TEMPLATES[val]) {
-                                  setIntiInput(JSON.parse(JSON.stringify(MODEL_SINTAKS_TEMPLATES[val])));
+                                  const tailored = generateTailoredIntiTemplate(
+                                    val, topic, goalsInput, pendekatan, strategi, metode, digital, lingkungan, selectedDimensions
+                                  );
+                                  setIntiInput(tailored);
                                 }
                               }
                             }}
@@ -3190,7 +3954,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                                 type="text"
                                 value={goal}
                                 onChange={(e) => handleGoalChange(gIdx, e.target.value)}
-                                placeholder={`Tuliskan tujuan pembelajaran ke-${gIdx + 1} (atau gunakan asisten generator di sebelah kanan...)`}
+                                placeholder={`Tuliskan tujuan pembelajaran ke-${gIdx + 1} (atau klik Atur TP di sebelah kanan...)`}
                                 className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                                 required
                               />
@@ -3211,7 +3975,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                                 }`}
                               >
                                 <Sparkles size={12} />
-                                <span>{selectedGoalIndex === gIdx ? 'Tutup Asisten' : 'Asisten TP'}</span>
+                                <span>{selectedGoalIndex === gIdx ? 'Tutup' : 'Atur TP'}</span>
                               </button>
 
                               {goalsInput.length > 1 && (
@@ -3236,7 +4000,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                                 <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
                                   <div className="flex items-center gap-1.5 text-indigo-700 font-extrabold text-xs uppercase">
                                     <Sparkles size={14} className="text-[#5AB2FF]" />
-                                    <span>Asisten Instan Tujuan Pembelajaran Sagara</span>
+                                    <span>Atur Tujuan Pembelajaran Sagara</span>
                                   </div>
                                   <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
                                     Semi-Otomatis
@@ -3407,11 +4171,12 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                           <button
                             type="button"
                             onClick={syncKegiatanAwalDanPenutup}
-                            className="bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border border-[#5AB2FF]/30 px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all"
-                            title="Sesuaikan otomatis isi kegiatan awal & penutup berdasarkan Topik, TP, dan Model Pembelajaran"
+                            disabled={isGeneratingAiAwalPenutup}
+                            className={`${isGeneratingAiAwalPenutup ? 'opacity-50 cursor-not-allowed' : ''} bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border border-[#5AB2FF]/30 px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all`}
+                            title="Gunakan Asisten AI untuk menyusun otomatis kegiatan awal & penutup berdasarkan Topik, TP, dan Model Pembelajaran"
                           >
-                            <Sparkles size={11} className="text-amber-500" />
-                            Sesuaikan Otomatis
+                            {isGeneratingAiAwalPenutup ? <Loader2 size={11} className="animate-spin text-[#5AB2FF]" /> : <Sparkles size={11} className="text-amber-500" />}
+                            Asisten AI
                           </button>
                           <button
                             type="button"
@@ -3462,116 +4227,99 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                             className="bg-white border border-slate-200 hover:border-slate-300 focus:border-[#5AB2FF] rounded-xl px-3 py-1 text-xs font-black text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF] w-64 shadow-xs"
                             placeholder="Kegiatan Inti"
                           />
+                          <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-xl shadow-xs">
+                            <Clock size={12} className="text-[#5AB2FF] shrink-0" />
+                            <input
+                              type="number"
+                              value={durasiInti || ''}
+                              onChange={(e) => handleManualChange('inti', parseInt(e.target.value))}
+                              className="w-12 text-center bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-800 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF]"
+                              min="0"
+                              required
+                            />
+                            <span className="text-[10px] font-extrabold text-slate-500 pr-0.5">Mnt</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-xl shadow-xs self-start sm:self-auto">
-                          <Clock size={12} className="text-[#5AB2FF] shrink-0" />
-                          <input
-                            type="number"
-                            value={durasiInti || ''}
-                            onChange={(e) => handleManualChange('inti', parseInt(e.target.value))}
-                            className="w-12 text-center bg-white border border-slate-200 rounded-lg text-xs font-black text-slate-800 py-0.5 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF]"
-                            min="0"
-                            required
-                          />
-                          <span className="text-[10px] font-extrabold text-slate-500 pr-0.5">Mnt</span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={handleGenerateAiKegiatanInti}
+                            disabled={isGeneratingAiInti}
+                            className={`${isGeneratingAiInti ? 'opacity-50 cursor-not-allowed' : ''} bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border border-[#5AB2FF]/30 px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all shadow-xs`}
+                            title="Gunakan Asisten AI untuk menyusun seluruh sintak kegiatan inti berdasarkan Model, Topik, Pendekatan, Strategi, Media, dan Lingkungan"
+                          >
+                            {isGeneratingAiInti ? <Loader2 size={11} className="animate-spin text-[#5AB2FF]" /> : <Sparkles size={11} className="text-amber-500" />}
+                            <span>{isGeneratingAiInti ? 'Menyusun...' : 'Asisten AI'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleAddIntiPhase}
+                            className="text-[#5AB2FF] border border-[#5AB2FF]/30 hover:bg-indigo-50 px-3 py-1 rounded-xl text-[11px] font-extrabold flex items-center gap-1 shadow-xs"
+                            title="Tambah sintaks/fase baru"
+                          >
+                            <Plus size={12} />
+                            Tambah Sintaks
+                          </button>
                         </div>
                       </div>
 
                       <div className="space-y-4">
-                        {intiInput.map((phaseItem, sIdx) => (
-                          <div key={sIdx} className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200/60 shadow-sm">
-                            <div className="flex justify-between items-center mb-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[11px] font-extrabold text-indigo-700 uppercase block leading-relaxed">{phaseItem.phase}</span>
-                                {extractLabel(phaseItem.description).label && (
-                                  <span className="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-sky-100 text-sky-700 uppercase">
-                                    {extractLabel(phaseItem.description).label}
+                        {intiInput.map((phaseItem, sIdx) => {
+                          const extracted = extractLabel(phaseItem.description);
+                          const lineCount = extracted.description.split('\n').filter(l => l.trim()).length;
+                          return (
+                            <div key={sIdx} className="space-y-2 bg-white p-3.5 rounded-2xl border border-slate-200/60 shadow-sm transition-all hover:border-slate-300">
+                              <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-[11px] font-extrabold text-indigo-700 uppercase block leading-relaxed">
+                                    {phaseItem.phase}
                                   </span>
+                                  <select
+                                    value={extracted.label || 'Memahami'}
+                                    onChange={(e) => {
+                                      const newTag = e.target.value;
+                                      const body = extracted.description;
+                                      const next = [...intiInput];
+                                      next[sIdx].description = `[${newTag}] ${body}`;
+                                      setIntiInput(next);
+                                    }}
+                                    className="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 uppercase cursor-pointer focus:outline-none focus:ring-1 focus:ring-sky-300"
+                                    title="Pilih Tag Kognitif Fase"
+                                  >
+                                    <option value="Memahami">Memahami</option>
+                                    <option value="Mengaplikasikan">Mengaplikasikan</option>
+                                    <option value="Merefleksi">Merefleksi</option>
+                                  </select>
+                                </div>
+                                {intiInput.length > 1 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveIntiPhase(sIdx)}
+                                    className="text-slate-400 hover:text-red-500 hover:bg-red-50 p-1 rounded-lg transition-colors"
+                                    title="Hapus sintaks ini"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
                                 )}
                               </div>
-                              
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (selectedSintaksIndex === sIdx) {
-                                    setSelectedSintaksIndex(null);
-                                  } else {
-                                    setSelectedSintaksIndex(sIdx);
-                                    setTempSintaksText(getSintaksSuggestion(sIdx));
-                                  }
-                                }}
-                                className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold flex items-center gap-1 transition-all border shrink-0 ${
-                                  selectedSintaksIndex === sIdx
-                                    ? 'bg-indigo-600 text-white border-indigo-700'
-                                    : 'bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border-[#5AB2FF]/30'
-                                }`}
-                              >
-                                <Sparkles size={11} />
-                                <span>{selectedSintaksIndex === sIdx ? 'Tutup Asisten' : 'Asisten Kegiatan Inti'}</span>
-                              </button>
-                            </div>
 
-                            <textarea 
-                              value={extractLabel(phaseItem.description).description}
-                              onChange={(e) => handleIntiDescChange(sIdx, e.target.value)}
-                              rows={3}
-                              placeholder="Deskripsikan langkah kegiatan pada bagian ini..."
-                              className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:bg-white text-justify"
-                              required
-                            />
-
-                            {/* Dropdown collapsible for Sintaks Core Activity suggestion */}
-                            {selectedSintaksIndex === sIdx && (
-                              <div className="mt-2 bg-indigo-50/50 rounded-xl border border-indigo-100 p-3.5 space-y-3.5 animate-fadeIn text-left">
-                                <div className="flex items-center justify-between border-b border-indigo-150 pb-1.5">
-                                  <div className="flex items-center gap-1 text-indigo-700 font-extrabold text-[10px] uppercase">
-                                    <Sparkles size={12} className="text-[#5AB2FF]" />
-                                    <span>Asisten Penulisan Kegiatan Inti Sagara</span>
-                                  </div>
-                                  <span className="text-[9px] bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">
-                                    Integrasi Data
-                                  </span>
-                                </div>
-                                
-                                <p className="text-[10px] text-slate-600 leading-relaxed bg-white/60 p-2.5 rounded-lg border border-slate-100 italic">
-                                  Menyesuaikan secara otomatis terhadap: Model <strong className="text-indigo-900 font-bold">{model}</strong>, Pendekatan <strong className="text-indigo-900 font-bold">{pendekatan}</strong>, Strategi <strong className="text-indigo-900 font-bold">{strategi}</strong>, Lingkungan <strong className="text-indigo-900 font-bold">{lingkungan || 'Ruang kelas'}</strong>, and Media <strong className="text-indigo-900 font-bold">{digital || 'YouTube / Canva'}</strong>.
-                                </p>
-
-                                <div className="space-y-1">
-                                  <label className="text-[9px] font-bold text-slate-400 uppercase block">Usulan Deskripsi Guru & Murid (Bebas disunting):</label>
-                                  <textarea
-                                    value={tempSintaksText}
-                                    onChange={(e) => setTempSintaksText(e.target.value)}
-                                    rows={4}
-                                    className="w-full bg-white text-xs text-slate-800 p-2 border border-indigo-100 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5AB2FF] text-justify"
-                                  />
-                                </div>
-
-                                <div className="flex justify-end gap-1.5 text-[10px] pt-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => setSelectedSintaksIndex(null)}
-                                    className="px-2.5 py-1.5 border border-slate-200 text-slate-500 rounded-lg font-bold bg-white hover:bg-slate-50"
-                                  >
-                                    Batal
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      handleIntiDescChange(sIdx, tempSintaksText);
-                                      setSelectedSintaksIndex(null);
-                                      onShowNotification('Saran skenario dipasang di Kegiatan Inti!', 'success');
-                                    }}
-                                    className="px-3.5 py-1.5 bg-[#5AB2FF] text-white rounded-lg font-black hover:opacity-95 transition-all shadow-sm shadow-[#5AB2FF]/10 flex items-center gap-1"
-                                  >
-                                    <Save size={10} />
-                                    Terapkan ke Kegiatan Inti
-                                  </button>
-                                </div>
+                              <textarea 
+                                value={extracted.description}
+                                onChange={(e) => handleIntiDescChange(sIdx, e.target.value)}
+                                rows={4}
+                                placeholder="1. Guru ...&#10;2. Murid ...&#10;3. Murid ..."
+                                className="w-full bg-slate-50 border border-slate-150 rounded-xl px-3 py-2 text-xs text-slate-800 focus:outline-none focus:bg-white text-justify leading-relaxed whitespace-pre-wrap font-sans"
+                                required
+                              />
+                              <div className="flex justify-between items-center text-[10px] text-slate-400 px-1">
+                                <span>Format: 2-3 butir kegiatan operasional dengan penomoran 1., 2., 3. per baris</span>
+                                <span className={`font-semibold ${lineCount >= 2 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  {lineCount} Butir Kegiatan
+                                </span>
                               </div>
-                            )}
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -3604,11 +4352,12 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
                           <button
                             type="button"
                             onClick={syncKegiatanAwalDanPenutup}
-                            className="bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border border-[#5AB2FF]/30 px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all"
-                            title="Sesuaikan otomatis isi kegiatan awal & penutup berdasarkan Topik, TP, dan Model Pembelajaran"
+                            disabled={isGeneratingAiAwalPenutup}
+                            className={`${isGeneratingAiAwalPenutup ? 'opacity-50 cursor-not-allowed' : ''} bg-indigo-50 hover:bg-indigo-100 text-[#5AB2FF] border border-[#5AB2FF]/30 px-3 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all`}
+                            title="Gunakan Asisten AI untuk menyusun otomatis kegiatan awal & penutup berdasarkan Topik, TP, dan Model Pembelajaran"
                           >
-                            <Sparkles size={11} className="text-amber-500" />
-                            Sesuaikan Otomatis
+                            {isGeneratingAiAwalPenutup ? <Loader2 size={11} className="animate-spin text-[#5AB2FF]" /> : <Sparkles size={11} className="text-amber-500" />}
+                            Asisten AI
                           </button>
                           <button
                             type="button"

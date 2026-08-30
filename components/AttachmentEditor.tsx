@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Attachment, LearningPlan } from '../types';
 import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, Edit2, X, Image, Bold, Italic, Underline, Heading1, Heading2, Heading3, List, ListOrdered, Table, Link2, Eye, EyeOff, PenTool, AlignLeft, AlignCenter, AlignRight, AlignJustify, Sparkles, Loader2, CheckCircle2, AlertCircle, ExternalLink, KeyRound, Check, Clock, RotateCcw } from 'lucide-react';
-import { parseRichText, markdownToHtml, htmlToMarkdown, cleanAiText } from '../utils/textParser';
+import { parseRichText, markdownToHtml, htmlToMarkdown, cleanAiText, cleanAiAttachmentText } from '../utils/textParser';
 import { ContentModal } from './ContentModal';
 import CustomModal from './CustomModal';
 
@@ -37,6 +37,28 @@ const ALL_ATTACHMENT_TYPES: Attachment['type'][] = [
   'Proses',
   'Akhir'
 ];
+
+export const DPL_OPTIONS: string[] = [
+  'Keimanan dan Ketakwaan terhadap Tuhan YME',
+  'Kewargaan',
+  'Penalaran Kritis',
+  'Kreativitas',
+  'Kolaborasi',
+  'Kemandirian',
+  'Kesehatan',
+  'Komunikasi'
+];
+
+const SIKAP_KEY_TO_DPL: Record<string, string> = {
+  keimanan: 'Keimanan dan Ketakwaan terhadap Tuhan YME',
+  kewargaan: 'Kewargaan',
+  penalaranKritis: 'Penalaran Kritis',
+  kreativitas: 'Kreativitas',
+  kolaborasi: 'Kolaborasi',
+  kemandirian: 'Kemandirian',
+  kesehatan: 'Kesehatan',
+  komunikasi: 'Komunikasi',
+};
 
 export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments = [], onChange, planData, geminiApiKey }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -89,6 +111,69 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     bs: 0,
     uraian: 5
   });
+
+  // Dimensi Profil Lulusan (DPL) Observasi Sikap Configuration
+  const [selectedDplList, setSelectedDplList] = useState<string[]>([]);
+
+  // Sync selected DPL from planData (RPM) or Observasi Sikap class config cache
+  useEffect(() => {
+    // 1. Prioritaskan dimensi yang dipilih pada RPM (planData.profileDimensions)
+    if (planData?.profileDimensions && Array.isArray(planData.profileDimensions) && planData.profileDimensions.length > 0) {
+      const normalized = planData.profileDimensions.map(d => {
+        if (d.toLowerCase().includes('keiman')) return 'Keimanan dan Ketakwaan terhadap Tuhan YME';
+        return d;
+      });
+      setSelectedDplList(normalized);
+      return;
+    }
+
+    // 2. Cek apakah ada konfigurasi indikator DPL yang tersimpan dari observasi sikap
+    try {
+      let foundDpl: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('class_config_')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed?.dpl_indicators && Array.isArray(parsed.dpl_indicators) && parsed.dpl_indicators.length > 0) {
+              foundDpl = parsed.dpl_indicators;
+              break;
+            }
+          }
+        }
+      }
+      if (foundDpl.length > 0) {
+        const mapped = foundDpl.map(k => SIKAP_KEY_TO_DPL[k] || k).filter(Boolean);
+        if (mapped.length > 0) {
+          setSelectedDplList(mapped);
+          return;
+        }
+      }
+    } catch {}
+
+    // 3. Fallback default dimensi esensial
+    setSelectedDplList(prev => prev.length > 0 ? prev : ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian', 'Kreativitas']);
+  }, [planData?.profileDimensions]);
+
+  const isDplSelected = (dplName: string) => {
+    return selectedDplList.some(d => 
+      d === dplName || 
+      (dplName.toLowerCase().includes('keiman') && d.toLowerCase().includes('keiman'))
+    );
+  };
+
+  const handleToggleDpl = (dplName: string) => {
+    setSelectedDplList(prev => {
+      const isSelected = prev.some(d => d === dplName || (dplName.toLowerCase().includes('keiman') && d.toLowerCase().includes('keiman')));
+      if (isSelected) {
+        if (prev.length <= 1) return prev; // Pertahankan minimal 1 DPL
+        return prev.filter(d => !(d === dplName || (dplName.toLowerCase().includes('keiman') && d.toLowerCase().includes('keiman'))));
+      } else {
+        return [...prev, dplName];
+      }
+    });
+  };
 
   useEffect(() => {
     fetch('/api/ai/status')
@@ -269,12 +354,12 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const t = topic || '[Topik]';
     const s = subject || '[Mata Pelajaran]';
     
-    let generated = `\n# Asesmen Sumatif: ${t}\n`;
+    let generated = `\nASESMEN SUMATIF: ${t}\n\n`;
     
     let currentNumber = 1;
 
     if (sumatifCounts.pg > 0) {
-      generated += `\n## Pilihan Ganda\n`;
+      generated += `Bagian A: Pilihan Ganda\n`;
       generated += Array.from({ length: sumatifCounts.pg }, () => {
         const str = `\n${currentNumber}. [Pertanyaan Pilihan Ganda nomor ${currentNumber} tentang ${t}...]\n` +
           `   a. [Pilihan A]\n` +
@@ -287,7 +372,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     }
 
     if (sumatifCounts.isian > 0) {
-      generated += `\n## Isian Singkat\n`;
+      generated += `\nBagian B: Isian Singkat\n`;
       generated += Array.from({ length: sumatifCounts.isian }, () => {
         const str = `\n${currentNumber}. [Pertanyaan isian singkat nomor ${currentNumber}...]\n`;
         currentNumber++;
@@ -296,7 +381,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     }
 
     if (sumatifCounts.bs > 0) {
-      generated += `\n## Benar - Salah\n`;
+      generated += `\nBagian C: Benar - Salah\n`;
       generated += Array.from({ length: sumatifCounts.bs }, () => {
         const str = `\n${currentNumber}. [Pernyataan untuk nomor ${currentNumber} - Benar/Salah]\n`;
         currentNumber++;
@@ -305,7 +390,7 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     }
 
     if (sumatifCounts.uraian > 0) {
-      generated += `\n## Uraian / Essay\n`;
+      generated += `\nBagian D: Uraian / Essay\n`;
       generated += Array.from({ length: sumatifCounts.uraian }, () => {
         const str = `\n${currentNumber}. Jelaskan secara mendalam mengenai penerapan ${t} dalam studi ${s}!\n`;
         currentNumber++;
@@ -321,8 +406,15 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     const topic = planData?.topic || '[Materi Pokok]';
     const subject = planData?.subject || '[Mata Pelajaran]';
     const classSem = planData?.classSemester || '[Kelas/Semester]';
+    const timeAllocation = planData?.timeAllocation || '[Alokasi Waktu]';
 
-    const basePrefix = "Berikan HANYA isi materi atau butir soal secara langsung TANPA mengulang judul kategori atau materi pokok di awal, TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.\n\n";
+    const basePrefix = "Berikan HANYA isi materi atau butir soal secara langsung TANPA mengulang judul kategori atau materi pokok di awal, TANPA kalimat pengantar, TANPA sapaan, dan TANPA penjelasan awal.\n" +
+      "ATURAN FORMAT DOKUMEN RESMI (SANGAT KETAT):\n" +
+      "1. DILARANG KERAS menggunakan karakter bintang (*) sama sekali. Jangan gunakan format tebal/miring markdown (* atau ** atau ***). Jangan gunakan bintang untuk poin daftar.\n" +
+      "2. DILARANG KERAS menggunakan karakter pagar (#, ##, ###) untuk judul. Tulis judul/subjudul bagian langsung menggunakan huruf kapital atau teks bersih (misal: 'A. Konsep Utama', 'B. Petunjuk Belajar').\n" +
+      "3. DILARANG menggunakan karakter at (@), backtick (`), atau tilde (~).\n" +
+      "4. Untuk butir daftar atau rincian poin, gunakan penomoran angka (1., 2., 3.), huruf (a., b., c.), atau tanda strip minus biasa (-).\n" +
+      "5. Jangan sertakan karakter * # @ dsb dalam teks hasil generate.\n\n";
 
     switch (categoryType) {
       case 'Ringkasan Materi':
@@ -347,14 +439,60 @@ Susun dengan format terstruktur:
 3. Tabel Lembar Pengamatan / Isian Data Hasil Investigasi Murid
 4. Pertanyaan Refleksi, Analisis Masalah, dan Kesimpulan Murid.`;
 
-      case 'Rubrik Penilaian':
-        return basePrefix + `Buatkan Rubrik Penilaian Kinerja, Asesmen Autentik, dan Observasi Sikap/Profil Lulusan untuk mata pelajaran ${subject}, ${classSem}, materi "${topic}".
-Sajikan dalam format tabel matriks dengan kriteria tingkatan:
-- Sangat Baik (Skor 4)
-- Baik (Skor 3)
-- Cukup (Skor 2)
-- Perlu Bimbingan (Skor 1)
-Lengkap dengan deskriptor indikator capaian yang jelas, terukur, dan operasional.`;
+      case 'Rubrik Penilaian': {
+        const activeDpls = selectedDplList.length > 0 
+          ? selectedDplList 
+          : (planData?.profileDimensions && planData.profileDimensions.length > 0 
+              ? planData.profileDimensions 
+              : ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian', 'Kreativitas']);
+
+        const dplFormattedList = activeDpls.map((d, i) => `${i + 1}. Dimensi Profil Lulusan (DPL): ${d}`).join('\n');
+
+        return basePrefix + `TUGAS: Susun Rubrik Penilaian Observasi Sikap - Dimensi Profil Lulusan (DPL) secara operasional, terukur, dan kontekstual untuk mata pelajaran ${subject}, ${classSem}, materi pokok "${topic}".
+
+INFORMASI PENILAIAN OBSERVASI SIKAP (DPL):
+- Mata Pelajaran: ${subject}
+- Kelas / Semester: ${classSem}
+- Materi Pokok: ${topic}
+- Alokasi Waktu: ${timeAllocation}
+- Teknik Penilaian: Observasi Sikap / Proses Pembelajaran (Asesmen Formatif)
+- Bentuk Instrumen: Rubrik Penilaian Dimensi Profil Lulusan (DPL) & Jurnal Catatan Pengamatan Guru
+
+DIMENSI PROFIL LULUSAN (DPL) YANG DIPILIH DARI RPM UNTUK DIOBSERVASI:
+${dplFormattedList}
+
+PEDOMAN TINGKATAN PREDIKAT & PENSKORAN RESMI (OBSERVASI SIKAP DPL):
+- Skor 4: Sangat Baik (SB) -> Konsisten memperlihatkan perilaku, mandiri, dan menjadi teladan bagi rekan kelompok selama proses belajar.
+- Skor 3: Baik (B) -> Sudah memperlihatkan perilaku secara teratur dan mandiri dalam kegiatan belajar.
+- Skor 2: Cukup (C) -> Mulai memperlihatkan perilaku namun sesekali masih membutuhkan arahan atau pengingat guru.
+- Skor 1: Kurang (K) / Perlu Bimbingan (PB) -> Belum memperlihatkan perilaku dan membutuhkan pendampingan intensif guru.
+- Konversi Nilai Formatif: Nilai Formatif Observasi Sikap = Rata-Rata Skor DPL x 25 (Skala 100).
+  Kriteria Rentang Predikat: 3.51 - 4.00 = SB, 2.51 - 3.50 = B, 1.51 - 2.50 = C, 1.00 - 1.50 = K.
+  Nilai hasil observasi ini otomatis tersinkron ke Penilaian Formatif (Observasi Sikap) dan Rekap Formatif.
+
+SUSUNAN KONTEN DOKUMEN (FORMAT LENGKAP):
+1. PETUNJUK OBSERVASI SIKAP:
+   Panduan ringkas bagi guru dalam mengamati perilaku murid selama proses pembelajaran materi ${topic}.
+
+2. TABEL MATRIKS RUBRIK OBSERVASI SIKAP (DPL):
+   Sajikan dalam format tabel markdown dengan kolom persis:
+   | Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB) [Skor 4] | Baik (B) [Skor 3] | Cukup (C) [Skor 2] | Kurang (K) [Skor 1] |
+   | :--- | :--- | :--- | :--- | :--- | :--- |
+   
+   WAJIB memuat baris terpisah untuk setiap Dimensi Profil Lulusan (DPL) yang dipilih (${activeDpls.join(', ')}). Deskriptor pada setiap tingkatan skor harus jelas, terukur, dan operasional sesuai aktivitas pembelajaran materi ${topic}.
+
+3. LEMBAR CATATAN OBSERVASI SIKAP KELAS (JURNAL PENGAMATAN FORMATIF):
+   Sajikan format tabel pengamatan guru dengan kolom:
+   | No | Nama Murid | ${activeDpls.slice(0, 4).map(d => `${d} (1-4)`).join(' | ')} | Rata-Rata DPL | Predikat (SB/B/C/K) | Formatif (Skala 100) | Catatan Anekdot Guru |
+   | :--- | :--- | ${activeDpls.slice(0, 4).map(() => ':---:').join(' | ')} | :---: | :---: | :---: | :--- |
+   | 1. | [Nama Murid 1] | ${activeDpls.slice(0, 4).map(() => '').join(' | ')} | | | | |
+   | 2. | [Nama Murid 2] | ${activeDpls.slice(0, 4).map(() => '').join(' | ')} | | | | |
+
+4. PANDUAN TINDAK LANJUT OBSERVASI:
+   Strategi pembinaan dan umpan balik bagi murid yang memperoleh predikat Sangat Baik (penguatan karakter) maupun Kurang/Cukup (bimbingan personal).
+
+PENTING: Jangan sertakan karakter tanda pagar (#), asterisk (*), atau at (@) dalam teks agar rendering bersih dan rapi.`;
+      }
 
       case 'Soal Sumatif': {
         const totalSoal = sumatifCounts.pg + sumatifCounts.isian + sumatifCounts.bs + sumatifCounts.uraian;
@@ -401,7 +539,7 @@ Sertakan:
   };
 
   const handleDirectAiGenerate = async () => {
-    if (isGeneratingAi) return;
+    if (isGeneratingAi || selectedType === 'Media') return;
 
     const effectiveKey = (customKeyInput.trim() || geminiApiKey || '').trim();
     if (!effectiveKey && !serverAiConfigured) {
@@ -437,7 +575,7 @@ Sertakan:
         }
         const { GoogleGenAI } = await import('@google/genai');
         const aiClient = new GoogleGenAI({ apiKey: effectiveKey });
-        const modelsToTry = ["gemini-3.7-flash", "gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-2.5-flash"];
+        const modelsToTry = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.7-flash"];
         let generatedText = "";
         let lastErr: any = null;
         for (const m of modelsToTry) {
@@ -463,14 +601,14 @@ Sertakan:
       if (data && data.text) {
         setIsRateLimited(false);
         setRateLimitCountdown(0);
-        const cleaned = cleanAiText(data.text);
+        const cleaned = cleanAiAttachmentText(data.text);
         
         const topic = planData?.topic || '[Materi Pokok]';
         const subject = planData?.subject || '[Mata Pelajaran]';
         const classSem = planData?.classSemester || '[Kelas/Semester]';
 
         let header = '';
-        switch (selectedType) {
+        switch (selectedType as string) {
           case 'Ringkasan Materi':
             header = `RINGKASAN MATERI\nMateri Pokok: ${topic}\n`;
             break;
@@ -481,7 +619,7 @@ Sertakan:
             header = `LEMBAR KERJA MURID (LKM)\nMata Pelajaran: ${subject}\nKelas / Semester: ${classSem}\nMateri Pokok: ${topic}\n`;
             break;
           case 'Rubrik Penilaian':
-            header = `RUBRIK PENILAIAN\nMateri Pokok: ${topic}\n`;
+            header = `RUBRIK PENILAIAN OBSERVASI SIKAP (DIMENSI PROFIL LULUSAN - DPL)\nMata Pelajaran: ${subject}\nKelas / Semester: ${classSem}\nMateri Pokok: ${topic}\nTeknik: Observasi Proses Pembelajaran (Formatif)\n`;
             break;
           case 'Soal Sumatif':
             header = `ASESMEN SUMATIF AKHIR\nMateri Pokok: ${topic}\n`;
@@ -504,6 +642,11 @@ Sertakan:
         
         // Otomatis isi kolom teks dengan hasil AI
         setContent(combinedContent);
+        if (selectedType === 'Rubrik Penilaian') {
+          if (!title.trim() || title === 'Rubrik Penilaian' || title.startsWith('Rubrik Penilaian -')) {
+            setTitle(`Rubrik Observasi Sikap (DPL) - ${topic}`);
+          }
+        }
         if (editorRef.current) {
           editorRef.current.innerHTML = generatedHtml;
         }
@@ -711,26 +854,34 @@ Sertakan:
       case 'Ringkasan Materi':
         return {
           title: `Ringkasan Materi - ${t}`,
-          content: `# RINGKASAN MATERI\nMateri Pokok: ${t}\n\n| Sub-Materi | Penjelasan Singkat | Contoh / Penerapan |\n| :--- | :--- | :--- |\n| [Konsep Utama 1] | [Penjelasan atau definisi singkat] | [Contoh dalam kehidupan nyata] |\n| [Konsep Utama 2] | [Penjelasan atau definisi singkat] | [Contoh dalam kehidupan nyata] |`
+          content: `RINGKASAN MATERI\nMateri Pokok: ${t}\n\n| Sub-Materi | Penjelasan Singkat | Contoh / Penerapan |\n| :--- | :--- | :--- |\n| [Konsep Utama 1] | [Penjelasan atau definisi singkat] | [Contoh dalam kehidupan nyata] |\n| [Konsep Utama 2] | [Penjelasan atau definisi singkat] | [Contoh dalam kehidupan nyata] |`
         };
       case 'LKM':
         return {
           title: `LKM - ${t}`,
-          content: `LEMBAR KERJA MURID (LKM)\n\n| Informasi Pembelajaran | Detail Kelas |\n| :--- | :--- |\n| Mata Pelajaran | ${s} |\n| Kelas / Semester | ${cs} |\n| Materi Pokok | ${t} |\n| Alokasi Waktu | ${ta} |\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Murid] | | Ketua Kelompok |\n| 2. [Nama Murid] | | Notulis |\n| 3. [Nama Murid] | | Anggota |\n| 4. [Nama Murid] | | Anggota |\n| 5. [Nama Murid] | | Anggota |\n\n# Petunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\n# Pertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
+          content: `LEMBAR KERJA MURID (LKM)\n\n| Informasi Pembelajaran | Detail Kelas |\n| :--- | :--- |\n| Mata Pelajaran | ${s} |\n| Kelas / Semester | ${cs} |\n| Materi Pokok | ${t} |\n| Alokasi Waktu | ${ta} |\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Murid] | | Ketua Kelompok |\n| 2. [Nama Murid] | | Notulis |\n| 3. [Nama Murid] | | Anggota |\n| 4. [Nama Murid] | | Anggota |\n| 5. [Nama Murid] | | Anggota |\n\nPetunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\nPertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
         };
       case 'Rubrik Penilaian':
-        const selectedDims = profileDimensions && profileDimensions.length > 0 ? profileDimensions : ['Keimanan dan Ketakwaan terhadap Tuhan YME', 'Penalaran Kritis', 'Kolaborasi'];
+        const selectedDims = selectedDplList.length > 0
+          ? selectedDplList
+          : (profileDimensions && profileDimensions.length > 0 ? profileDimensions : ['Penalaran Kritis', 'Kolaborasi', 'Kemandirian']);
+
         const rubrikRows = selectedDims.map(dim => 
-          `| Dimensi: ${dim} | Menunjukkan pemahaman mendalam, inisiatif tinggi, dan konsistensi luar biasa dalam aspek ${dim} | Menunjukkan sikap aktif, kooperatif, dan mandiri dalam aspek ${dim} | Menunjukkan partisipasi yang cukup namun masih membutuhkan motivasi sesekali dalam aspek ${dim} | Belum menunjukkan ketertarikan atau memerlukan bimbingan penuh dalam aspek ${dim} |`
+          `| ${dim} | Menunjukkan sikap dan penerapan ${dim} dalam kegiatan pembelajaran materi ${t} | Menunjukkan konsistensi luar biasa, mandiri, dan menjadi teladan bagi rekan sekelas | Menunjukkan sikap aktif, teratur, dan mampu bertindak mandiri | Mulai menunjukkan sikap ${dim} namun sesekali masih membutuhkan pengingat guru | Belum menunjukkan sikap ${dim} dan memerlukan pendampingan intensif dari guru |`
         ).join('\n');
+
+        const studentHeaderCols = selectedDims.slice(0, 4).map(d => `${d} (1-4)`).join(' | ');
+        const studentDummyCols = selectedDims.slice(0, 4).map(() => '').join(' | ');
+        const studentAlignCols = selectedDims.slice(0, 4).map(() => ':---:').join(' | ');
+
         return {
-          title: `Rubrik Penilaian - ${t}`,
-          content: `RUBRIK PENILAIAN SIKAP & PROFIL LULUSAN\n\n| Dimensi Profil Lulusan | Sangat Baik (SB) | Baik (B) | Cukup (C) | Perlu Bimbingan (PB) |\n| :--- | :--- | :--- | :--- | :--- |\n${rubrikRows}\n\n| Aspek Penilaian Umum | Sangat Baik (SB) | Baik (B) | Cukup (C) | Perlu Bimbingan (PB) |\n| :--- | :--- | :--- | :--- | :--- |\n| [Aspek Kognitif] | Mampu menjelaskan seluruh konsep secara detail dan terstruktur dengan sangat tepat | Mampu menjelaskan konsep dengan benar tapi kurang terstruktur | Hanya menjelaskan sebagian kecil konsep | Belum mampu menjelaskan konsep |\n| [Aspek Keterampilan] | Mampu mempraktikkan keterampilan dengan sangat lancar dan kreatif | Mempraktikkan keterampilan secara mandiri dengan lancar | Berlatih dengan bantuan minimal dari teman / guru | Membutuhkan bimbingan penuh dari guru |`
+          title: `Rubrik Observasi Sikap (DPL) - ${t}`,
+          content: `RUBRIK OBSERVASI SIKAP - DIMENSI PROFIL LULUSAN (DPL)\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nAlokasi Waktu: ${ta}\nTeknik Penilaian: Observasi Proses Pembelajaran (Formatif)\n\nPetunjuk Penilaian:\n1. Guru mengamati perilaku murid selama proses pembelajaran materi ${t}.\n2. Berikan skor 1 sampai 4 pada setiap Dimensi Profil Lulusan (DPL) yang diamati:\n   - 4: Sangat Baik (SB)\n   - 3: Baik (B)\n   - 2: Cukup (C)\n   - 1: Kurang (K) / Perlu Bimbingan (PB)\n3. Nilai Formatif (Skala 100) = Rata-Rata Skor DPL x 25. Nilai tersinkron ke Buku Nilai Formatif Observasi Sikap.\n\n| Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB) [Skor 4] | Baik (B) [Skor 3] | Cukup (C) [Skor 2] | Kurang (K) [Skor 1] |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rubrikRows}\n\nLEMBAR CATATAN OBSERVASI SIKAP KELAS (JURNAL FORMATIF)\n\n| No | Nama Murid | ${studentHeaderCols} | Rata-Rata DPL | Predikat | Formatif (x25) | Catatan Anekdot Guru |\n| :--- | :--- | ${studentAlignCols} | :---: | :---: | :---: | :--- |\n| 1. | [Nama Murid 1] | ${studentDummyCols} | | | | |\n| 2. | [Nama Murid 2] | ${studentDummyCols} | | | | |\n| 3. | [Nama Murid 3] | ${studentDummyCols} | | | | |`
         };
       case 'Soal Sumatif':
         return {
           title: `Soal Sumatif - ${t}`,
-          content: `ASESMEN SUMATIF AKHIR\n\n| Lembar Jawab Murid | | Nilai |\n| :--- | :--- | :--- |\n| Nama Siswa | : _______________________________ | |\n| No. Absen / Kelas | : ________ / _________ | |\n| Hari / Tanggal | : _______________________________ | |\n\n# Bagian A: Pilihan Ganda\n1. [Tuliskan pertanyaan nomor 1 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\n2. [Tuliskan pertanyaan nomor 2 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\n# Bagian B: Uraian / Essai\n1. [Tuliskan soal uraian nomor 1 di sini...]\n2. [Tuliskan soal uraian nomor 2 di sini...]`
+          content: `ASESMEN SUMATIF AKHIR\n\n| Lembar Jawab Murid | | Nilai |\n| :--- | :--- | :--- |\n| Nama Siswa | : _______________________________ | |\n| No. Absen / Kelas | : ________ / _________ | |\n| Hari / Tanggal | : _______________________________ | |\n\nBagian A: Pilihan Ganda\n1. [Tuliskan pertanyaan nomor 1 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\n2. [Tuliskan pertanyaan nomor 2 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\nBagian B: Uraian / Essai\n1. [Tuliskan soal uraian nomor 1 di sini...]\n2. [Tuliskan soal uraian nomor 2 di sini...]`
         };
       case 'Asesmen Awal':
         return {
@@ -750,7 +901,7 @@ Sertakan:
       case 'Media':
         return {
           title: `Media - ${t}`,
-          content: `# MEDIA PEMBELAJARAN\nSilakan masukkan link gambar/foto media pembelajaran di bawah ini (setiap link di baris terpisah atau menggunakan format markdown):\n\nhttps://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800`
+          content: `MEDIA PEMBELAJARAN\nSilakan masukkan link gambar/foto media pembelajaran di bawah ini (setiap link di baris terpisah atau menggunakan format markdown):\n\nhttps://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800`
         };
       default:
         return { title: '', content: '' };
@@ -883,6 +1034,110 @@ Sertakan:
                     onChange={(e) => setSumatifCounts({ ...sumatifCounts, uraian: parseInt(e.target.value) || 0 })}
                     className="w-full p-2 bg-white border border-purple-300 rounded-lg font-semibold text-purple-950 focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-2xs"
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Konfigurasi DPL Observasi Sikap untuk Rubrik Penilaian */}
+          {selectedType === 'Rubrik Penilaian' && (
+            <div className="bg-amber-50/80 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in duration-200 shadow-2xs">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    Dimensi Profil Lulusan (DPL) Observasi Sikap
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {planData?.profileDimensions && planData.profileDimensions.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const normalized = planData.profileDimensions!.map(d => d.includes('Keiman') ? 'Keimanan dan Ketakwaan terhadap Tuhan YME' : d);
+                        setSelectedDplList(normalized);
+                      }}
+                      className="text-[10px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                      title="Kembalikan ke dimensi yang dicentang pada form RPM"
+                    >
+                      Sesuai Pilihan RPM
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (selectedDplList.length === DPL_OPTIONS.length) {
+                        setSelectedDplList(planData?.profileDimensions && planData.profileDimensions.length > 0 ? planData.profileDimensions : ['Penalaran Kritis', 'Kolaborasi']);
+                      } else {
+                        setSelectedDplList([...DPL_OPTIONS]);
+                      }
+                    }}
+                    className="text-[10px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                  >
+                    {selectedDplList.length === DPL_OPTIONS.length ? 'Pilih Sebagian' : 'Pilih Semua (8 DPL)'}
+                  </button>
+                  <span className="text-[10px] bg-amber-200/80 text-amber-900 font-bold px-2.5 py-0.5 rounded-full">
+                    {selectedDplList.length} DPL Terpilih
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-amber-800 leading-relaxed">
+                Pilih dimensi sikap yang akan diobservasi saat pembelajaran. Hasil generate AI akan menyusun indikator dan matriks rubrik dengan istilah resmi DPL di RPM, skala skor 1–4, predikat SB/B/C/K, dan rumus konversi formatif ke buku nilai observasi sikap.
+              </p>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-0.5">
+                {DPL_OPTIONS.map(dpl => {
+                  const selected = isDplSelected(dpl);
+                  return (
+                    <button
+                      key={dpl}
+                      type="button"
+                      onClick={() => handleToggleDpl(dpl)}
+                      className={`p-2 rounded-lg border text-left text-xs font-semibold flex items-center gap-2 transition cursor-pointer ${
+                        selected 
+                          ? 'bg-amber-600 text-white border-amber-700 shadow-2xs' 
+                          : 'bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50'
+                      }`}
+                    >
+                      <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] shrink-0 ${
+                        selected ? 'bg-white text-amber-700 font-bold' : 'border border-slate-300 bg-slate-50'
+                      }`}>
+                        {selected ? '✓' : ''}
+                      </span>
+                      <span className="truncate text-[11px] leading-tight" title={dpl}>{dpl}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-amber-200/60 text-[11px] text-amber-900">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold">Predikat Observasi Sikap:</span>
+                  <span className="bg-white/80 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-semibold">SB (4)</span>
+                  <span className="bg-white/80 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-semibold">B (3)</span>
+                  <span className="bg-white/80 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-semibold">C (2)</span>
+                  <span className="bg-white/80 px-2 py-0.5 rounded border border-amber-200 text-[10px] font-semibold">K (1)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const tmpl = getTemplate('Rubrik Penilaian');
+                      setContent(tmpl.content);
+                      setTitle(tmpl.title);
+                      if (editorRef.current) {
+                        editorRef.current.innerHTML = markdownToHtml(tmpl.content);
+                      }
+                    }}
+                    className="text-[10px] text-amber-900 bg-white/90 hover:bg-white px-2 py-1 rounded border border-amber-300 font-bold transition cursor-pointer shadow-2xs"
+                    title="Isi teks editor dengan format template tabel DPL yang dipilih saat ini"
+                  >
+                    Terapkan Template DPL
+                  </button>
+                  <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full border border-emerald-200">
+                    ✓ Sinkron ke Formatif (Observasi Sikap)
+                  </span>
                 </div>
               </div>
             </div>
@@ -1269,36 +1524,38 @@ Sertakan:
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleDirectAiGenerate}
-                  disabled={isGeneratingAi}
-                  className={`px-3 py-1 rounded text-xs font-bold border flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
-                    isGeneratingAi
-                      ? 'bg-indigo-700 text-white border-indigo-800'
-                      : isRateLimited && rateLimitCountdown > 0
-                        ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-700'
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700'
-                  }`}
-                  title={`Klik untuk otomatis mengisi teks ${selectedType} dengan hasil AI`}
-                >
-                  {isGeneratingAi ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>Sedang Generate AI...</span>
-                    </>
-                  ) : isRateLimited && rateLimitCountdown > 0 ? (
-                    <>
-                      <Clock className="w-3.5 h-3.5 animate-pulse" />
-                      <span>Tunggu ({rateLimitCountdown}s)</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                      <span>Generate AI</span>
-                    </>
-                  )}
-                </button>
+                {selectedType !== 'Media' && (
+                  <button
+                    type="button"
+                    onClick={handleDirectAiGenerate}
+                    disabled={isGeneratingAi}
+                    className={`px-3 py-1 rounded text-xs font-bold border flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                      isGeneratingAi
+                        ? 'bg-indigo-700 text-white border-indigo-800'
+                        : isRateLimited && rateLimitCountdown > 0
+                          ? 'bg-amber-600 hover:bg-amber-700 text-white border-amber-700'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700'
+                    }`}
+                    title={`Klik untuk otomatis mengisi teks ${selectedType} dengan hasil AI`}
+                  >
+                    {isGeneratingAi ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>Sedang Generate AI...</span>
+                      </>
+                    ) : isRateLimited && rateLimitCountdown > 0 ? (
+                      <>
+                        <Clock className="w-3.5 h-3.5 animate-pulse" />
+                        <span>Tunggu ({rateLimitCountdown}s)</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Generate AI</span>
+                      </>
+                    )}
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -1501,10 +1758,17 @@ Sertakan:
         onCancel={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
       />
 
-      {/* API Key Modal */}
+      {/* API Key Modal - Di atas pop up lampiran (z-[10050] > ContentModal z-[9999]) */}
       {showApiKeyModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5 space-y-4 border border-slate-200 animate-in zoom-in-95 duration-150">
+        <div 
+          className="fixed inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-[10050] p-4 animate-fade-in"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowApiKeyModal(false);
+            }
+          }}
+        >
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-5 space-y-4 border border-slate-200 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 bg-indigo-100 text-indigo-700 rounded-xl">

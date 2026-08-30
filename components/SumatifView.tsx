@@ -813,7 +813,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         </select>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
         {filteredSumatifs.length === 0 ? (
           <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-slate-200">
             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -832,70 +832,76 @@ const SumatifView: React.FC<SumatifViewProps> = ({
             return (
               <div 
                 key={s.id} 
-                className={`flex flex-col justify-between bg-gradient-to-br ${decoration.gradient} rounded-3xl border-2 ${decoration.borderColor} p-4 shadow-sm ${decoration.shadow} hover:shadow-lg transition-all duration-300 aspect-video overflow-hidden group relative`}
+                className={`flex flex-col justify-between bg-gradient-to-br ${decoration.gradient} rounded-3xl border-2 ${decoration.borderColor} p-6 shadow-sm ${decoration.shadow} hover:shadow-xl transition-all duration-300 min-h-[260px] overflow-hidden group relative`}
               >
                 {/* Ambient Large Floating Symbol in the Background */}
-                <div className="absolute -right-6 -bottom-6 text-6xl opacity-[0.06] select-none pointer-events-none transform rotate-12 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-45">
+                <div className="absolute -right-6 -bottom-6 text-7xl opacity-[0.06] select-none pointer-events-none transform rotate-12 transition-transform duration-500 group-hover:scale-125 group-hover:rotate-45">
                   {decoration.emoji}
                 </div>
 
-                <div className="flex-1 flex flex-col justify-between min-h-0">
+                <div className="flex-1 flex flex-col justify-between gap-4 relative z-10">
                   {/* Header Row */}
-                  <div className="flex justify-between items-center mb-2 relative z-10">
-                    <div className="flex items-center space-x-1.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                        s.isActive ? 'bg-green-100/90 text-green-700 border border-green-200/50 backdrop-blur-sm' : 'bg-slate-100 text-slate-500 border border-slate-200/50 backdrop-blur-sm'
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                        s.isActive ? 'bg-green-100 text-green-700 border border-green-200 backdrop-blur-sm' : 'bg-slate-100 text-slate-500 border border-slate-200 backdrop-blur-sm'
                       }`}>
                         {s.isActive ? '🔴 Aktif' : '⚪ Draft'}
                       </span>
                       {isTeacher && (
-                        <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase ${
-                          s.isVisible ? 'bg-blue-100/90 text-blue-700 border border-blue-200/50' : 'bg-amber-100 text-amber-600 border border-amber-200'
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                          s.isVisible ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-amber-100 text-amber-600 border border-amber-200'
                         }`}>
                           {s.isVisible ? '👁️ Terlihat' : '🔒 Sembunyi'}
                         </span>
                       )}
                     </div>
                     {/* Jenis Sumatif di Pojok Kanan Atas */}
-                    <span className="text-[8px] font-black uppercase bg-white/80 px-2 py-0.5 rounded-full border border-slate-200/40 shadow-sm text-slate-600 backdrop-blur-sm">
+                    <span className="text-xs font-bold uppercase bg-white/90 px-2.5 py-1 rounded-full border border-slate-200/60 shadow-sm text-slate-700 backdrop-blur-sm">
                       {s.type.toUpperCase()}
                     </span>
                   </div>
 
-                  {/* Middle Row with Split Layout */}
-                  <div className="flex justify-between items-center gap-3 relative z-10 min-h-0 my-1">
-                    {/* Left: Detail Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <div className={`p-1 rounded-lg ${decoration.accentColor} shrink-0`}>
-                          <IconComponent size={12} className="stroke-[2.5]" />
+                  {/* Middle Section: Subject & Title & Details */}
+                  <div className="flex justify-between items-start gap-4">
+                    {/* Left Info Column */}
+                    <div className="flex-1 min-w-0 space-y-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className={`p-1.5 rounded-lg ${decoration.accentColor} shrink-0 shadow-sm`}>
+                          <IconComponent size={16} className="stroke-[2.5]" />
                         </div>
-                        <span className={`inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${decoration.badgeBg} truncate max-w-full`}>
+                        <span className={`inline-flex items-center gap-1 text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-full ${decoration.badgeBg} truncate max-w-full`}>
                           {MOCK_SUBJECTS.find(sub => sub.id === s.subjectId)?.name || s.subjectId}
                         </span>
                       </div>
 
-                      <h3 className={`text-xs font-black ${decoration.textColor} leading-tight tracking-tight group-hover:text-blue-600 transition-colors line-clamp-2`}>
+                      <h3 className={`text-base md:text-lg font-black ${decoration.textColor} leading-snug tracking-tight group-hover:text-blue-600 transition-colors line-clamp-2`}>
                         {s.title}
                       </h3>
 
-                      <div className="flex flex-col gap-0.5 text-[9px] font-semibold text-slate-500 mt-1">
-                        <div>⏱️ Durasi: {s.duration} Menit</div>
-                        <div>📝 Jumlah soal: {s.questions.length} Soal</div>
+                      <div className="flex flex-col gap-1.5 text-xs font-medium text-slate-600 pt-1">
+                        <div className="flex items-center gap-2">
+                          <Clock size={14} className="text-slate-400 shrink-0" />
+                          <span>Durasi: {s.duration} Menit</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <BookOpen size={14} className="text-slate-400 shrink-0" />
+                          <span>Jumlah soal: {s.questions.length} Soal</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Right: Token (Middle Right) - Enlarged by 50% */}
+                    {/* Right Info Column: Token Code Box */}
                     {isTeacher && s.token && (
-                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/95 border border-slate-200/85 p-2 rounded-2xl shadow-md text-center min-w-[105px] max-w-[125px]">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">TOKEN</span>
+                      <div className="flex flex-col items-center justify-center shrink-0 bg-white/95 border border-slate-200/80 p-2.5 rounded-2xl shadow-md text-center min-w-[110px] max-w-[130px]">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">TOKEN</span>
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(s.token || '');
                             onShowNotification('Token disalin', 'success');
                           }}
-                          className="font-mono font-black text-rose-600 text-base md:text-lg bg-rose-50 px-2 py-1 rounded-xl border-2 border-rose-100 hover:bg-rose-100/70 transition-all tracking-widest cursor-pointer w-full text-center hover:scale-105 active:scale-95"
+                          className="font-mono font-black text-rose-600 text-base md:text-lg bg-rose-50 px-2.5 py-1 rounded-xl border-2 border-rose-100 hover:bg-rose-100/70 transition-all tracking-widest cursor-pointer w-full text-center hover:scale-105 active:scale-95"
                           title="Klik untuk menyalin token"
                         >
                           {s.token}
@@ -905,15 +911,52 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 pt-2 border-t border-slate-200/30 mt-auto relative z-10 w-full text-[10px]">
+                {/* Bottom Row Actions */}
+                <div className="flex flex-col gap-3 pt-4 border-t border-slate-200/40 mt-4 relative z-10 w-full">
                   {isTeacher ? (
-                    <div className="flex flex-wrap gap-1">
-                      <button onClick={() => handleToggleVisibility(s)} title={s.isVisible ? 'Sembunyikan' : 'Tampilkan'} className={`p-1 rounded ${s.isVisible ? 'bg-blue-100 text-blue-600' : 'bg-slate-100'}`}><Eye size={10} /></button>
-                      <button onClick={() => handleToggleActive(s)} title={s.isActive ? 'Nonaktifkan' : 'Aktifkan'} className={`p-1 rounded ${s.isActive ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}><Play size={10} /></button>
-                      <button onClick={() => { setCurrentSumatif(s); setIsEditing(true); }} className="p-1 bg-blue-100 text-blue-600 rounded"><Edit2 size={10} /></button>
-                      <button onClick={() => handleViewResults(s)} className="p-1 bg-purple-100 text-purple-600 rounded"><BarChart2 size={10} /></button>
-                      <button onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} className="p-1 bg-orange-100 text-orange-600 rounded"><List size={10} /></button>
-                      <button onClick={() => handleDeleteSumatif(s.id)} className="p-1 bg-red-100 text-red-600 rounded"><Trash2 size={10} /></button>
+                    <div className="flex flex-wrap gap-2 items-center justify-start">
+                      <button 
+                        onClick={() => handleToggleVisibility(s)} 
+                        title={s.isVisible ? 'Sembunyikan dari Siswa' : 'Tampilkan ke Siswa'} 
+                        className={`p-2.5 rounded-xl border transition-all ${s.isVisible ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleToggleActive(s)} 
+                        title={s.isActive ? 'Nonaktifkan Sumatif' : 'Aktifkan Sumatif'} 
+                        className={`p-2.5 rounded-xl border transition-all ${s.isActive ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}
+                      >
+                        <Play size={16} />
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentSumatif(s); setIsEditing(true); }} 
+                        title="Edit Soal"
+                        className="p-2.5 bg-indigo-50 text-indigo-600 border border-indigo-200 rounded-xl hover:bg-indigo-100 transition-all"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleViewResults(s)} 
+                        title="Hasil & Analisis Nilai"
+                        className="p-2.5 bg-purple-50 text-purple-600 border border-purple-200 rounded-xl hover:bg-purple-100 transition-all"
+                      >
+                        <BarChart2 size={16} />
+                      </button>
+                      <button 
+                        onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} 
+                        title="Pembahasan Soal"
+                        className="p-2.5 bg-orange-50 text-orange-600 border border-orange-200 rounded-xl hover:bg-orange-100 transition-all"
+                      >
+                        <List size={16} />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteSumatif(s.id)} 
+                        title="Hapus Sumatif"
+                        className="p-2.5 bg-rose-50 text-rose-600 border border-rose-200 rounded-xl hover:bg-rose-100 transition-all ml-auto"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   ) : (
                     <button
@@ -927,11 +970,11 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         if (s.token) setIsEnteringToken(true);
                         else setIsTaking(true);
                       }}
-                      className={`w-full py-1 rounded font-bold text-[10px] ${
-                        s.isActive ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'
+                      className={`w-full py-3 px-6 rounded-xl font-bold text-sm tracking-wider transition-all duration-200 transform active:scale-95 text-center ${
+                        s.isActive ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                       }`}
                     >
-                      {s.isActive ? 'Mulai' : 'Belum Aktif'}
+                      {s.isActive ? 'Mulai Ujian Sumatif' : 'Belum Aktif'}
                     </button>
                   )}
                 </div>

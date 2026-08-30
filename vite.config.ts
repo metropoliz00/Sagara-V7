@@ -26,7 +26,27 @@ export default defineConfig(({ mode }) => {
         output: {
           manualChunks(id) {
             if (id.includes('node_modules')) {
+              if (id.includes('react-pdf') || id.includes('pdfjs-dist')) {
+                return 'react-pdf';
+              }
+              if (id.includes('xlsx')) {
+                return 'xlsx';
+              }
+              if (id.includes('jspdf') || id.includes('html2pdf')) {
+                return 'jspdf';
+              }
+              if (id.includes('recharts') || id.includes('d3')) {
+                return 'recharts';
+              }
+              if (id.includes('react-dom') || id.includes('react-router') || id.includes('framer-motion')) {
+                return 'framework';
+              }
               return 'vendor';
+            }
+            if (id.includes('/components/')) {
+              const parts = id.split('/components/');
+              const name = parts[parts.length - 1].split('.')[0].replace(/[\/\\\s]/g, '-').toLowerCase();
+              return `comp-${name}`;
             }
           }
         }

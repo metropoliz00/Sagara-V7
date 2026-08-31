@@ -23,8 +23,12 @@ const EmergencyAlert: React.FC<EmergencyAlertProps> = ({ currentUser }) => {
 
     fetchActiveAlert();
 
-    // Polling fallback (every 10 seconds) just in case realtime is not enabled
-    const interval = setInterval(fetchActiveAlert, 10000);
+    // Polling fallback (gentle fallback every 5 minutes only if tab is visible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchActiveAlert();
+      }
+    }, 5 * 60 * 1000);
 
     // Subscribe to real-time changes
     if (supabase) {

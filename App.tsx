@@ -95,15 +95,6 @@ const getClassLabelWithIcon = (cls: string) => {
 };
 
 const App: React.FC = () => {
-  useEffect(() => {
-    // Auto refresh the browser every 30 minutes (30 * 60 * 1000 ms)
-    const refreshInterval = setInterval(() => {
-      window.location.reload();
-    }, 30 * 60 * 1000);
-
-    return () => clearInterval(refreshInterval);
-  }, []);
-
   return (
     <BrowserRouter>
       <AppContent />
@@ -724,13 +715,30 @@ const AppContent: React.FC = () => {
   };
 
   const handleLoginSuccess = (user: User) => {
-      clearAllStatesAndCache();
-      setLoading(true);
+      const prevUserRaw = localStorage.getItem('sagara_user');
+      let isSameUser = false;
+      try {
+        if (prevUserRaw) {
+          const prevUser = JSON.parse(prevUserRaw);
+          if (prevUser?.id === user.id) isSameUser = true;
+        }
+      } catch (e) {}
+
+      // If switching user account, clear old cached states
+      if (!isSameUser && prevUserRaw) {
+        clearAllStatesAndCache();
+      }
+      
       setCurrentUser(user);
+      localStorage.setItem('sagara_user', JSON.stringify(user));
+      const hasCache = !!cacheService.get('students');
+      setLoading(!hasCache);
   };
 
   const handleLogout = () => {
-      clearAllStatesAndCache();
+      // Clear user session only, preserving cached school master data to save Supabase egress
+      localStorage.removeItem('sagara_user');
+      localStorage.removeItem('sagara_classId');
       setCurrentUser(null);
       setLoading(false);
       navigate('/login');
@@ -775,29 +783,69 @@ const AppContent: React.FC = () => {
     };
   }, [currentUser]);
 
-  // Auto-refresh effect (optimized: polling reduced to 15 minutes, only active tab)
+  // Background sync for dynamic data only (attendance, permissions, liaison, agendas)
+  // Saves over 80% egress compared to refetching all 25 tables!
+  const fetchDynamicData = async () => {
+    if (!currentUser || !apiService.isConfigured()) return;
+    try {
+      const [fAttendance, fPermissions, fLiaison, fAgendas] = await Promise.all([
+        apiService.getAttendance(currentUser).catch(() => null),
+        apiService.getPermissionRequests(currentUser).catch(() => null),
+        apiService.getLiaisonLogs(currentUser).catch(() => null),
+        apiService.getAgendas(currentUser).catch(() => null),
+      ]);
+
+      if (fAttendance !== null && Array.isArray(fAttendance)) {
+        setAllAttendanceRecords(fAttendance);
+        cacheService.set('allAttendanceRecords', fAttendance);
+      }
+      if (fPermissions !== null && Array.isArray(fPermissions)) {
+        const currentStudents = (students || []) as Student[];
+        const hydratedPermissions = fPermissions.map((p: any) => ({
+          ...p,
+          studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
+        }));
+        setPermissionRequests(hydratedPermissions);
+        cacheService.set('permissionRequests', hydratedPermissions);
+      }
+      if (fLiaison !== null && Array.isArray(fLiaison)) {
+        setLiaisonLogs(fLiaison as LiaisonLog[]);
+        cacheService.set('liaisonLogs', fLiaison);
+      }
+      if (fAgendas !== null && Array.isArray(fAgendas)) {
+        const sorted = (fAgendas as AgendaItem[]).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setAgendas(sorted);
+        cacheService.set('agendas', sorted);
+      }
+      lastFetchTimeRef.current = Date.now();
+    } catch (e) {
+      console.warn("Dynamic background sync error:", e);
+    }
+  };
+
+  // Auto-refresh dynamic data every 15 minutes (active tab only)
   useEffect(() => {
     if (!currentUser) return;
     const interval = setInterval(() => {
         if (document.visibilityState === 'visible') {
-            fetchData(false, true);
+            fetchDynamicData();
         }
-    }, 15 * 60 * 1000); // 15 minutes interval to heavily save Supabase Disk IO budget
+    }, 15 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [currentUser]);
+  }, [currentUser, students]);
 
-  // Window Focus Refresh effect (optimized: refetch only if data is older than 10 minutes when switching tab)
+  // Window Focus Refresh effect: only refresh dynamic daily data if older than 10 minutes
   useEffect(() => {
     if (!currentUser) return;
     const handleFocus = () => {
       const tenMinutes = 10 * 60 * 1000;
       if (Date.now() - lastFetchTimeRef.current >= tenMinutes) {
-        fetchData(false, true);
+        fetchDynamicData();
       }
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
-  }, [currentUser]);
+  }, [currentUser, students]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -1013,7 +1061,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveLearningDocumentation(doc);
-      await fetchData(); // Refresh to get server-side IDs
+      
     } catch (error) {
       setLearningDocumentation(oldDocs);
       handleShowNotification('Gagal menyimpan dokumentasi.', 'error');
@@ -1054,7 +1102,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveBOS(transaction);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setBosTransactions(oldTransactions);
       cacheService.set('bosTransactions', oldTransactions);
@@ -1151,7 +1199,7 @@ const AppContent: React.FC = () => {
                   setRejectPermissionModalData({ isOpen: false, id: "" });
                   setPermissionRejectionReason("");
               }
-              await fetchData();
+              
           }
       } catch (e) { handleShowNotification('Gagal memproses ijin.', 'error'); } finally { setProcessingPermissionId(null); }
   };
@@ -1200,7 +1248,7 @@ const AppContent: React.FC = () => {
     try { 
       const res = await apiService.createStudentBatch(batchWithClass); 
       if (res && (res.status === 'success' || Array.isArray(res))) { 
-        await fetchData(); 
+        
         handleShowNotification(`Berhasil menambahkan ${newStudents.length} siswa!`, 'success'); 
       } else {
         handleShowNotification('Gagal upload batch siswa', 'error');
@@ -1627,13 +1675,47 @@ const AppContent: React.FC = () => {
     try { 
       await apiService.saveHolidayBatch(holidaysToAdd); 
       handleShowNotification("Hari libur berhasil disimpan!", "success"); 
-      await fetchData(); 
+      
     } catch (e) { 
       handleShowNotification("Gagal menyimpan hari libur.", "error"); 
     } 
   };
-  const handleUpdateHoliday = async (updatedHoliday: Holiday) => { if (isDemoMode) { setHolidays(prev => prev.map(h => h.id === updatedHoliday.id ? updatedHoliday : h).sort((a,b) => a.date.localeCompare(b.date))); handleShowNotification("Hari libur diperbarui (Demo).", "success"); return; } try { await apiService.updateHoliday(updatedHoliday); handleShowNotification("Hari libur berhasil diperbarui.", "success"); await fetchData(); } catch(e) { handleShowNotification("Gagal memperbarui hari libur.", "error"); } };
-  const handleDeleteHoliday = async (id: string) => { showConfirm('Hapus hari libur ini?', async () => { if (isDemoMode) { setHolidays(prev => prev.filter(h => h.id !== id)); handleShowNotification("Hari libur dihapus (Demo).", "success"); return; } try { await apiService.deleteHoliday(id); handleShowNotification("Hari libur berhasil dihapus.", "success"); await fetchData(); } catch (e) { handleShowNotification("Gagal menghapus hari libur.", "error"); } }); };
+  const handleUpdateHoliday = async (updatedHoliday: Holiday) => {
+    setHolidays(prev => {
+      const updated = prev.map(h => h.id === updatedHoliday.id ? updatedHoliday : h).sort((a,b) => a.date.localeCompare(b.date));
+      cacheService.set('holidays', updated);
+      return updated;
+    });
+    if (isDemoMode) {
+      handleShowNotification("Hari libur diperbarui (Demo).", "success");
+      return;
+    }
+    try {
+      await apiService.updateHoliday(updatedHoliday);
+      handleShowNotification("Hari libur berhasil diperbarui.", "success");
+    } catch(e) {
+      handleShowNotification("Gagal memperbarui hari libur.", "error");
+    }
+  };
+  const handleDeleteHoliday = async (id: string) => {
+    showConfirm('Hapus hari libur ini?', async () => {
+      setHolidays(prev => {
+        const updated = prev.filter(h => h.id !== id);
+        cacheService.set('holidays', updated);
+        return updated;
+      });
+      if (isDemoMode) {
+        handleShowNotification("Hari libur dihapus (Demo).", "success");
+        return;
+      }
+      try {
+        await apiService.deleteHoliday(id);
+        handleShowNotification("Hari libur berhasil dihapus.", "success");
+      } catch (e) {
+        handleShowNotification("Gagal menghapus hari libur.", "error");
+      }
+    });
+  };
   const handleSaveSikap = async (studentId: string, assessment: Omit<SikapAssessment, 'studentId' | 'classId'>) => { setSikapAssessments(prev => { const existing = prev.find(a => String(a.studentId).trim() === String(studentId).trim()); if (existing) return prev.map(a => String(a.studentId).trim() === String(studentId).trim() ? { ...existing, ...assessment } : a); return [...prev, { studentId, classId: activeClassId, ...assessment }]; }); if (!isDemoMode) await apiService.saveSikapAssessment(studentId, activeClassId, assessment); };
   const handleSaveKarakter = async (studentId: string, assessment: Omit<KarakterAssessment, 'studentId' | 'classId'>) => { setKarakterAssessments(prev => { const existing = prev.find(a => String(a.studentId).trim() === String(studentId).trim()); if (existing) return prev.map(a => String(a.studentId).trim() === String(studentId).trim() ? { ...existing, ...assessment } : a); return [...prev, { studentId, classId: activeClassId, ...assessment }]; }); if (!isDemoMode) await apiService.saveKarakterAssessment(studentId, activeClassId, assessment); };
   
@@ -1664,7 +1746,20 @@ const AppContent: React.FC = () => {
       handleShowNotification('Gagal menambahkan akun.', 'error');
     }
   };
-  const handleBatchAddUserAccount = async (users: Omit<User, 'id'>[]) => { if (isDemoMode) { const newUsers = users.map((u, i) => ({ ...u, id: `user-${Date.now()}-${i}` })); setUsers(prev => [...prev, ...newUsers as User[]]); handleShowNotification('Akun ditambahkan (Mode Demo).', 'success'); return; } await apiService.saveUserBatch(users); handleShowNotification(`Berhasil menambahkan ${users.length} akun!`, 'success'); await fetchData(); };
+  const handleBatchAddUserAccount = async (users: Omit<User, 'id'>[]) => {
+    const newUsers = users.map((u, i) => ({ ...u, id: `user-${Date.now()}-${i}` }));
+    setUsers(prev => {
+      const updated = [...prev, ...newUsers as User[]];
+      cacheService.set('users', updated);
+      return updated;
+    });
+    if (isDemoMode) {
+      handleShowNotification('Akun ditambahkan (Mode Demo).', 'success');
+      return;
+    }
+    await apiService.saveUserBatch(users);
+    handleShowNotification(`Berhasil menambahkan ${users.length} akun!`, 'success');
+  };
   const handleUpdateUserAccount = async (user: User) => {
     const oldUsers = users;
     const newUsers = oldUsers.map(u => u.id === user.id ? user : u);
@@ -1741,7 +1836,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveEmploymentLink(link);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setEmploymentLinks(oldLinks);
       cacheService.set('employmentLinks', oldLinks);
@@ -1788,7 +1883,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveLearningReport(newReport);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setLearningReports(oldReports);
       cacheService.set('learningReports', oldReports);
@@ -1891,7 +1986,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveSupportDocument(doc);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setSupportDocuments(oldDocs);
       cacheService.set('supportDocuments', oldDocs);
@@ -1934,7 +2029,7 @@ const AppContent: React.FC = () => {
 
     try {
       await apiService.saveSchoolAsset(asset);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setSchoolAssets(oldAssets);
       cacheService.set('schoolAssets', oldAssets);
@@ -2037,7 +2132,7 @@ const AppContent: React.FC = () => {
       }
 
       await apiService.saveBookLoan(loan);
-      await fetchData(); // Refresh for server-side ID
+      
     } catch (error) {
       setBookLoans(oldLoans);
       cacheService.set('bookLoans', oldLoans);
@@ -2077,7 +2172,7 @@ const AppContent: React.FC = () => {
               }
               
               await apiService.deleteBookLoan(id);
-              await fetchData(); // Refresh data
+              
           } catch (error) {
               setBookLoans(oldLoans);
               cacheService.set('bookLoans', oldLoans);
@@ -2093,6 +2188,13 @@ const AppContent: React.FC = () => {
     if (!currentUser) return;
 
     const isCacheEmpty = !cacheService.get('students');
+
+    // Optimasi Egress: Gunakan local storage jika data sudah ada dan tidak dipaksa refresh
+    if (!forceRefresh && !isCacheEmpty) {
+      if (!silent) setLoading(false);
+      return;
+    }
+
     if ((isCacheEmpty || forceRefresh) && !silent) {
       setLoading(true);
     }
@@ -2346,9 +2448,12 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const prevClassIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (currentUser) {
-       fetchData();
+       const isClassChange = prevClassIdRef.current !== null && prevClassIdRef.current !== activeClassId;
+       prevClassIdRef.current = activeClassId;
+       fetchData(isClassChange);
     } else {
        setLoading(false);
     }

@@ -325,18 +325,19 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     fetchSumatifs();
   }, [activeClassId]);
 
-  // Realtime polling for active test results viewing
+  // Polling for active test results viewing (30s interval, only when tab is visible)
   useEffect(() => {
     let interval: any;
     if (viewingResults) {
       interval = setInterval(async () => {
+        if (document.visibilityState !== 'visible') return;
         try {
           const data = await apiService.getSumatifResults(viewingResults.id);
           setResults(data);
         } catch (error) {
           console.error("Realtime fetch error:", error);
         }
-      }, 5000); // Poll every 5 seconds
+      }, 30000); // Poll every 30 seconds
     }
     return () => {
       if (interval) clearInterval(interval);

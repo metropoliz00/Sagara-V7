@@ -623,7 +623,7 @@ export interface SumatifResult {
   startedAt?: string;
   createdAt?: string;
   submittedAt: string;
-  status_tes?: 'mulai' | 'selesai';
+  status_tes?: 'mulai' | 'sedang mengerjakan' | 'selesai';
   needsGrading?: boolean; // True if there are ungraded 'uraian' questions
 }
 

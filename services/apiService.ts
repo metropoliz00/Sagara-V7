@@ -3517,7 +3517,7 @@ export const apiService = {
     try {
       const { data, error } = await supabase
         .from('sumatif_results')
-        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at, created_at')
+        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at')
         .eq('sumatif_id', sumatifId);
       if (error) {
         console.error("Error fetching sumatif results:", error);
@@ -3531,8 +3531,7 @@ export const apiService = {
         submittedAt: r.submitted_at,
         status_tes: r.status_tes,
         needsGrading: r.needs_grading,
-        manualScores: r.manual_scores,
-        createdAt: r.created_at
+        manualScores: r.manual_scores
       }));
     } catch (err) {
       console.warn("getSumatifResults failed, using local fallback:", err);

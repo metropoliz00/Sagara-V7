@@ -325,6 +325,24 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     fetchSumatifs();
   }, [activeClassId]);
 
+  // Realtime polling for active test results viewing
+  useEffect(() => {
+    let interval: any;
+    if (viewingResults) {
+      interval = setInterval(async () => {
+        try {
+          const data = await apiService.getSumatifResults(viewingResults.id);
+          setResults(data);
+        } catch (error) {
+          console.error("Realtime fetch error:", error);
+        }
+      }, 5000); // Poll every 5 seconds
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [viewingResults]);
+
   const fetchSumatifs = async () => {
     setLoading(true);
     const isDemo = !apiService.isConfigured();
@@ -2272,6 +2290,20 @@ const SumatifTaking: React.FC<{
       localStorage.setItem('sumatif_scale_mode', mode);
     } catch (e) {}
   };
+
+  useEffect(() => {
+    // Notify server that student is currently taking the test
+    apiService.submitSumatifResult({
+      sumatifId: sumatif.id,
+      studentId: studentId,
+      score: 0,
+      answers: {},
+      status_tes: 'sedang mengerjakan',
+      needsGrading: false,
+      manualScores: {},
+      submittedAt: new Date().toISOString()
+    }).catch(console.error);
+  }, [sumatif.id, studentId]);
 
   useEffect(() => {
     localStorage.setItem(`${ATTEMPT_KEY}_idx`, currentQuestionIdx.toString());
@@ -4385,9 +4417,10 @@ const SumatifResultsView: React.FC<{
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`text-lg font-bold ${
+                        r.status_tes !== 'selesai' ? 'text-slate-400' :
                         r.score >= 75 ? 'text-green-600' : r.score >= 60 ? 'text-amber-600' : 'text-red-600'
                       }`}>
-                        {r.score}
+                        {r.status_tes !== 'selesai' ? '-' : r.score}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-slate-500">
@@ -4395,7 +4428,7 @@ const SumatifResultsView: React.FC<{
                     </td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                        r.status_tes === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                        r.status_tes === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700 animate-pulse'
                       }`}>
                         {r.status_tes || 'Mulai'}
                       </span>

@@ -127,13 +127,15 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     }
   }, [isOpen, isDemo]);
 
-  if (!currentUser) return null;
+  // Do not display online users widget on student portal or for student users
+  if (!currentUser || currentUser.role === 'siswa' || pathname === '/dashboard-student' || pathname === '/ringkasan') {
+    return null;
+  }
 
   // Filter based on roles
   // Admin sees all
   // Kepala Sekolah (supervisor) sees Guru & Siswa
   // Guru sees Siswa
-  // Siswa sees all online users (to encourage connection and check active teachers/students)
   let visibleRoles: string[] = [];
   if (currentUser.role === 'admin') {
     visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
@@ -141,8 +143,6 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     visibleRoles = ['guru', 'siswa'];
   } else if (currentUser.role === 'guru') {
     visibleRoles = ['siswa'];
-  } else if (currentUser.role === 'siswa') {
-    visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
   }
 
   if (visibleRoles.length === 0) return null;

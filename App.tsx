@@ -3485,15 +3485,17 @@ const AppContent: React.FC = () => {
         onCancel={modalConfig.onCancel || (() => setModalConfig(prev => ({...prev, isOpen: false})))}
       />
 
-      {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ONLY ON DASHBOARD) --- */}
+      {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ONLY ON TEACHER/ADMIN DASHBOARD) --- */}
       {(location.pathname === '/dashboard' || location.pathname === '/dashboard-student') && (
         <>
-          <OnlineUsersWidget 
-            currentUser={currentUser} 
-            students={students} 
-            ttsEnabled={schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined}
-            pathname={location.pathname}
-          />
+          {location.pathname === '/dashboard' && !isStudentRole && currentUser?.role !== 'siswa' && (
+            <OnlineUsersWidget 
+              currentUser={currentUser} 
+              students={students} 
+              ttsEnabled={schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined}
+              pathname={location.pathname}
+            />
+          )}
           {/* --- TEXT TO SPEECH ACCESSIBILITY --- */}
           {(schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined) && (
             <TextToSpeechAccessibility pathname={location.pathname} />

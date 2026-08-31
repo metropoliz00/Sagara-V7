@@ -741,6 +741,40 @@ const AppContent: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  // Auto-logout after 15 minutes of inactivity
+  useEffect(() => {
+    let inactivityTimer: any;
+    const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
+
+    const resetTimer = () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      if (currentUser) {
+        inactivityTimer = setTimeout(() => {
+          handleShowNotification('Sesi berakhir. Anda telah logout otomatis karena tidak ada aktivitas selama 15 menit.', 'warning');
+          handleLogout();
+        }, INACTIVITY_LIMIT);
+      }
+    };
+
+    if (currentUser) {
+      resetTimer();
+      window.addEventListener('mousemove', resetTimer);
+      window.addEventListener('mousedown', resetTimer);
+      window.addEventListener('keypress', resetTimer);
+      window.addEventListener('scroll', resetTimer, true);
+      window.addEventListener('touchstart', resetTimer);
+    }
+
+    return () => {
+      if (inactivityTimer) clearTimeout(inactivityTimer);
+      window.removeEventListener('mousemove', resetTimer);
+      window.removeEventListener('mousedown', resetTimer);
+      window.removeEventListener('keypress', resetTimer);
+      window.removeEventListener('scroll', resetTimer, true);
+      window.removeEventListener('touchstart', resetTimer);
+    };
+  }, [currentUser]);
+
   // Auto-refresh effect (optimized: polling reduced to 15 minutes, only active tab)
   useEffect(() => {
     if (!currentUser) return;

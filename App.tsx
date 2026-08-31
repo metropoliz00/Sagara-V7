@@ -73,7 +73,7 @@ import OnlineUsersWidget from './components/OnlineUsersWidget';
 import { DeveloperInfoView } from './components/DeveloperInfoView';
 import { TextToSpeechAccessibility } from './components/TextToSpeechAccessibility';
 import { MasterDatabaseManagement } from './components/MasterDatabaseManagement';
-import { masterSupabase, setTemporarySupabase } from './services/supabaseClient';
+import { masterSupabase, setTemporarySupabase, supabase } from './services/supabaseClient';
 import { ViewState, Student, AgendaItem, Material, Extracurricular, BehaviorLog, GradeRecord, TeacherProfileData, SchoolProfileData, User, Holiday, SikapAssessment, KarakterAssessment, EmploymentLink, LearningReport, LiaisonLog, PermissionRequest, LearningJournalEntry, SupportDocument, InventoryItem, SchoolAsset, BOSTransaction, LearningDocumentation, BookLoan, BookInventory, Sumatif, GtkRecord, PerformanceAssessment, MutasiMasukRecord, MutasiKeluarRecord } from './types';
 import { MOCK_SUBJECTS, MOCK_STUDENTS, MOCK_EXTRACURRICULARS } from './constants';
 import { apiService } from './services/apiService';
@@ -2478,6 +2478,37 @@ const AppContent: React.FC = () => {
     }
   }, [currentUser, activeClassId, liaisonLogs]);
 
+  // Silent presence tracking for students (background only, no widget UI rendered)
+  useEffect(() => {
+    if (!supabase || !currentUser || currentUser.role !== 'siswa') return;
+
+    const channel = supabase.channel('online-users', {
+      config: {
+        presence: {
+          key: currentUser.id,
+        },
+      },
+    });
+
+    channel.subscribe(async (status: string) => {
+      if (status === 'SUBSCRIBED') {
+        const studentRecord = students.find(s => String(s.id) === String(currentUser.studentId));
+        await channel.track({
+          id: currentUser.id,
+          name: currentUser.fullName,
+          role: 'siswa',
+          photo: currentUser.photo || studentRecord?.photo || '',
+          gender: studentRecord?.gender || 'L',
+          onlineAt: new Date().toISOString(),
+        });
+      }
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUser, students]);
+
   if (!currentUser) {
       return <Login onLoginSuccess={handleLoginSuccess} />;
   }
@@ -3485,22 +3516,22 @@ const AppContent: React.FC = () => {
         onCancel={modalConfig.onCancel || (() => setModalConfig(prev => ({...prev, isOpen: false})))}
       />
 
-      {/* --- FLOATING ACCESSIBILITY & ONLINE USERS WIDGET (ONLY ON TEACHER/ADMIN DASHBOARD) --- */}
-      {(location.pathname === '/dashboard' || location.pathname === '/dashboard-student') && (
-        <>
-          {location.pathname === '/dashboard' && !isStudentRole && currentUser?.role !== 'siswa' && (
-            <OnlineUsersWidget 
-              currentUser={currentUser} 
-              students={students} 
-              ttsEnabled={schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined}
-              pathname={location.pathname}
-            />
-          )}
-          {/* --- TEXT TO SPEECH ACCESSIBILITY --- */}
-          {(schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined) && (
-            <TextToSpeechAccessibility pathname={location.pathname} />
-          )}
-        </>
+      {/* --- FLOATING ONLINE USERS WIDGET (ADMIN, KEPALA SEKOLAH, GURU - ONLY ON DASHBOARD MENU) --- */}
+      {currentUser && !isStudentRole && currentUser.role !== 'siswa' && (location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/supervisi') && (
+        <OnlineUsersWidget 
+          currentUser={currentUser} 
+          students={students} 
+          ttsEnabled={schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined}
+          widgetEnabled={schoolProfile?.onlineUsersWidgetEnabled !== false}
+          pathname={location.pathname}
+        />
+      )}
+
+      {/* --- TEXT TO SPEECH ACCESSIBILITY --- */}
+      {(location.pathname === '/dashboard' || location.pathname === '/dashboard-student' || location.pathname === '/supervisi') && (
+        (schoolProfile?.ttsEnabled === true || schoolProfile?.ttsEnabled === undefined) && (
+          <TextToSpeechAccessibility pathname={location.pathname} />
+        )
       )}
 
       {/* --- CHANGE PASSWORD DIALOG --- */}

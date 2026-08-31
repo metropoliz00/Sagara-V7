@@ -385,6 +385,7 @@ export interface SchoolProfileData {
   studentMitigationAccess?: boolean;
   primaryColor?: string;
   ttsEnabled?: boolean;
+  onlineUsersWidgetEnabled?: boolean;
   geminiApiKey?: string;
 }
 

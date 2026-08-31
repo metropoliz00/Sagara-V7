@@ -8,6 +8,7 @@ interface OnlineUsersWidgetProps {
   currentUser: User | null;
   students?: Student[];
   ttsEnabled?: boolean;
+  widgetEnabled?: boolean;
   pathname?: string;
 }
 
@@ -20,7 +21,7 @@ interface PresenceState {
   onlineAt: string;
 }
 
-const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, students = [], ttsEnabled = true, pathname }) => {
+const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, students = [], ttsEnabled = true, widgetEnabled = true, pathname }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<PresenceState[]>([]);
   const [isDemo, setIsDemo] = useState(false);
@@ -127,46 +128,34 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
     }
   }, [isOpen, isDemo]);
 
-  // Do not display online users widget on student portal or for student users
-  if (!currentUser || currentUser.role === 'siswa' || pathname === '/dashboard-student' || pathname === '/ringkasan') {
+  // Do not display online users widget if disabled in school settings, or on student portal, or if not on dashboard menu
+  const isStudent = (currentUser?.role || '').toLowerCase() === 'siswa' || pathname === '/dashboard-student' || pathname === '/ringkasan';
+  const isDashboardPage = pathname === '/' || pathname === '/dashboard' || pathname === '/supervisi';
+  if (!currentUser || isStudent || widgetEnabled === false || !isDashboardPage) {
     return null;
   }
 
-  // Filter based on roles
-  // Admin sees all
-  // Kepala Sekolah (supervisor) sees Guru & Siswa
-  // Guru sees Siswa
-  let visibleRoles: string[] = [];
-  if (currentUser.role === 'admin') {
-    visibleRoles = ['admin', 'Kepala Sekolah', 'guru', 'siswa'];
-  } else if (currentUser.role === 'Kepala Sekolah') {
-    visibleRoles = ['guru', 'siswa'];
-  } else if (currentUser.role === 'guru') {
-    visibleRoles = ['siswa'];
-  }
-
-  if (visibleRoles.length === 0) return null;
-
-  const filteredUsers = onlineUsers.filter(u => visibleRoles.includes(u.role) && u.id !== currentUser.id);
+  // Staff (Admin, Superadmin, Kepala Sekolah, Supervisor, Guru) can see all active staff and students
+  const visibleRoles = ['admin', 'superadmin', 'kepala sekolah', 'supervisor', 'guru', 'siswa'];
+  const isRoleMatch = (role: string) => visibleRoles.includes((role || '').toLowerCase());
+  const filteredUsers = onlineUsers.filter(u => isRoleMatch(u.role) && u.id !== currentUser.id);
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case 'admin': return 'Admin';
-      case 'Kepala Sekolah': return 'Kepala Sekolah';
-      case 'guru': return 'Guru';
-      case 'siswa': return 'Siswa';
-      default: return role;
-    }
+    const r = (role || '').toLowerCase();
+    if (r === 'admin' || r === 'superadmin') return 'Admin';
+    if (r === 'kepala sekolah' || r === 'supervisor') return 'Kepala Sekolah';
+    if (r === 'guru') return 'Guru';
+    if (r === 'siswa') return 'Siswa';
+    return role;
   };
 
   const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-purple-100 text-purple-700 border-purple-200';
-      case 'Kepala Sekolah': return 'bg-amber-100 text-amber-700 border-amber-200';
-      case 'guru': return 'bg-blue-100 text-blue-700 border-blue-200';
-      case 'siswa': return 'bg-green-100 text-green-700 border-green-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
-    }
+    const r = (role || '').toLowerCase();
+    if (r === 'admin' || r === 'superadmin') return 'bg-purple-100 text-purple-700 border-purple-200';
+    if (r === 'kepala sekolah' || r === 'supervisor') return 'bg-amber-100 text-amber-700 border-amber-200';
+    if (r === 'guru') return 'bg-blue-100 text-blue-700 border-blue-200';
+    if (r === 'siswa') return 'bg-green-100 text-green-700 border-green-200';
+    return 'bg-gray-100 text-gray-700 border-gray-200';
   };
 
   let positionClasses = "";
@@ -178,10 +167,10 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
 
   return (
     <>
-      {/* Floating Button Button */}
+      {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed ${positionClasses} left-6 z-[200] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
+        className={`fixed ${positionClasses} left-6 lg:left-[304px] z-[99] bg-[#5AB2FF] text-white rounded-full w-14 h-14 shadow-lg hover:bg-[#4A9FE6] transition-all transform hover:-translate-y-1 active:scale-95 flex items-center justify-center group`}
         title="Lihat Status Online"
       >
         <div className="relative">
@@ -196,7 +185,7 @@ const OnlineUsersWidget: React.FC<OnlineUsersWidgetProps> = ({ currentUser, stud
 
       {/* Pop Up */}
       {isOpen && (
-        <div className="fixed inset-0 z-[210] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
+        <div className="fixed inset-0 z-[1050] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => setIsOpen(false)}>
           <div 
             className="bg-white w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl shadow-2xl h-[80vh] sm:h-auto sm:max-h-[80vh] flex flex-col transform transition-all translate-y-0"
             onClick={e => e.stopPropagation()}

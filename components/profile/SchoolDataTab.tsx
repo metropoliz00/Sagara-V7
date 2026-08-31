@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { SchoolProfileData } from '../../types';
 import { compressImage } from '../../utils/imageHelper';
-import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, ExternalLink, CheckCircle2, Clock } from 'lucide-react';
+import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, ExternalLink, CheckCircle2, Clock, Users } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
 
 interface SchoolDataTabProps {
@@ -687,6 +687,33 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
                           onChange={(e) => setSchool({...school, ttsEnabled: e.target.checked})}
                       />
                       <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-focus:ring-2 peer-focus:ring-indigo-300 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        {/* --- NEW: Online Users Widget Settings --- */}
+        <div className="md:col-span-2 bg-sky-50/50 p-5 rounded-xl border border-sky-100 mt-0">
+            <h4 className="text-sm font-bold text-sky-800 uppercase mb-4 flex items-center">
+                <Users size={16} className="mr-2"/> Widget Pengguna Online
+            </h4>
+            <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                         <p className="text-sm text-gray-700 font-medium">Tampilkan Widget Indikator Pengguna Online</p>
+                         <p className="text-xs text-gray-500 mt-1">
+                             Aktifkan untuk menampilkan tombol melayang widget indikator pengguna online bagi Admin, Kepala Sekolah, dan Guru. (Widget tidak muncul untuk akun Siswa).
+                         </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          disabled={isReadOnly}
+                          checked={school.onlineUsersWidgetEnabled !== false}
+                          onChange={(e) => setSchool({...school, onlineUsersWidgetEnabled: e.target.checked})}
+                      />
+                      <div className={`w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500 peer-focus:ring-2 peer-focus:ring-sky-300 ${isReadOnly ? 'opacity-50 cursor-not-allowed' : ''}`}></div>
                     </label>
                 </div>
             </div>

@@ -218,6 +218,56 @@ const checkCorrect = (q: Question, studentAnswer: any) => {
   return false;
 };
 
+// Helper: Kalkulasi Nilai Sumatif Otomatis
+// Rumus: (Jumlah Bobot Skor yang Didapat / Jumlah Bobot Maksimal) * 100
+export const calculateSumatifScore = (
+  questions: Question[],
+  answers: Record<string, any> = {},
+  manualScores: Record<string, number> = {}
+) => {
+  let totalPoints = 0;
+  let earnedPoints = 0;
+  let hasEssay = false;
+  const questionDetails: Record<string, { earned: number; maxPoints: number; isCorrect: boolean }> = {};
+
+  questions.forEach((q: Question) => {
+    // Bobot maksimal per soal, default 1 jika tidak diisi atau <= 0
+    const maxPoints = Number(q.points) > 0 ? Number(q.points) : 1;
+    totalPoints += maxPoints;
+    const studentAnswer = answers[q.id];
+    let earned = 0;
+    let isCorrect = false;
+
+    if (q.type === 'pg' || q.type === 'pgk' || q.type === 'bs') {
+      if (checkCorrect(q, studentAnswer)) {
+        earned = maxPoints;
+        isCorrect = true;
+      }
+    } else if (q.type === 'uraian') {
+      hasEssay = true;
+      const scoreGiven = manualScores[q.id];
+      if (scoreGiven !== undefined && scoreGiven !== null) {
+        earned = Math.min(Math.max(0, Number(scoreGiven) || 0), maxPoints);
+        isCorrect = earned > 0;
+      }
+    }
+
+    earnedPoints += earned;
+    questionDetails[q.id] = { earned, maxPoints, isCorrect };
+  });
+
+  // Rumus: (Jumlah Bobot Skor yang Didapat / Jumlah Bobot Maksimal) * 100
+  const finalScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+
+  return {
+    totalPoints,
+    earnedPoints,
+    finalScore,
+    hasEssay,
+    questionDetails
+  };
+};
+
 const renderFormattedText = (text: string | null | undefined) => {
   if (!text) return null;
   const formattedText = text
@@ -1466,6 +1516,10 @@ const SumatifEditor: React.FC<{
             </label>
 
             <div className="flex items-center space-x-2 border-l border-slate-200 pl-4 ml-2">
+              <div className="px-3 py-1.5 bg-blue-50/80 border border-blue-100 rounded-xl flex items-center space-x-1.5 text-xs text-slate-700 font-bold">
+                <span className="text-slate-400 font-normal">Total Bobot:</span>
+                <span className="text-[#5AB2FF] font-black">{formData.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0)} Poin</span>
+              </div>
               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden lg:inline">Bobot Massal:</span>
               <div className="flex items-center bg-blue-50 rounded-xl border border-blue-100 px-2 py-1">
                 <input
@@ -2354,25 +2408,12 @@ const SumatifTaking: React.FC<{
     if (isSubmitting) return;
     setIsSubmitting(true);
 
-    let totalPoints = 0;
-    let earnedPoints = 0;
-    let hasEssay = false;
-
-    shuffledQuestions.forEach((q: Question) => {
-      const qPoints = Number(q.points) || 0;
-      totalPoints += qPoints;
-      const studentAnswer = answers[q.id];
-      
-      if (q.type === 'pg' || q.type === 'pgk' || q.type === 'bs') {
-        if (checkCorrect(q, studentAnswer)) {
-          earnedPoints += qPoints;
-        }
-      } else if (q.type === 'uraian') {
-        hasEssay = true;
-      }
-    });
-
-    const finalScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
+    // Kalkulasi Nilai Otomatis: (Jumlah Bobot Skor Didapat / Jumlah Bobot Maksimal) * 100
+    const { earnedPoints, totalPoints, finalScore, hasEssay } = calculateSumatifScore(
+      shuffledQuestions,
+      answers,
+      {}
+    );
 
     try {
       const finalStudentId = studentId || `GUEST-${Date.now()}`;
@@ -2389,7 +2430,7 @@ const SumatifTaking: React.FC<{
       
       const successMessage = hasEssay 
         ? 'Jawaban Anda telah berhasil dikirim. Nilai pengerjaan soal uraian akan muncul setelah dikoreksi oleh guru.' 
-        : `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore}`;
+        : `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore} (Bobot: ${earnedPoints}/${totalPoints})`;
 
       setModal({
         isOpen: true,
@@ -3848,26 +3889,15 @@ const SumatifManualGrading: React.FC<{
   const currentQuestion = essayQuestions[currentQuestionIdx];
   const isLastQuestion = currentQuestionIdx === essayQuestions.length - 1;
 
+  // Real-time calculation using formula: (Jumlah Bobot Didapat / Jumlah Bobot Maksimal) * 100
+  const currentCalc = calculateSumatifScore(
+    sumatif.questions,
+    result.answers || {},
+    manualScores
+  );
+
   const handleSave = () => {
-    // Recalculate total score
-    let totalPoints = 0;
-    let earnedPoints = 0;
-
-    sumatif.questions.forEach(q => {
-      const qPoints = Number(q.points) || 0;
-      totalPoints += qPoints;
-      
-      if (q.type === 'pg' || q.type === 'pgk' || q.type === 'bs') {
-        if (checkCorrect(q, result.answers[q.id])) {
-          earnedPoints += qPoints;
-        }
-      } else if (q.type === 'uraian') {
-        earnedPoints += (manualScores[q.id] || 0);
-      }
-    });
-
-    const finalScore = totalPoints > 0 ? Math.round((earnedPoints / totalPoints) * 100) : 0;
-    onSave(manualScores, finalScore);
+    onSave(manualScores, currentCalc.finalScore);
   };
 
   if (!currentQuestion) return null;
@@ -3888,6 +3918,29 @@ const SumatifManualGrading: React.FC<{
           <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
             <X size={24} />
           </button>
+        </div>
+
+        {/* Real-time Calculation Summary Bar */}
+        <div className="bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border-b border-blue-100 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-xl bg-white shadow-xs border border-blue-100 flex items-center justify-center text-[#5AB2FF] font-black text-xs">
+              %
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-0.5">Kalkulasi Nilai Otomatis</span>
+              <span className="text-xs text-slate-700 font-semibold">
+                (Bobot Didapat: <strong className="text-blue-600 font-bold">{currentCalc.earnedPoints}</strong> / Total Bobot: <strong className="text-slate-800 font-bold">{currentCalc.totalPoints}</strong>) × 100
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 bg-white px-4 py-1.5 rounded-xl border border-blue-100 shadow-xs">
+            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir:</span>
+            <span className={`text-xl font-black ${
+              currentCalc.finalScore >= 75 ? 'text-green-600' : currentCalc.finalScore >= 60 ? 'text-amber-600' : 'text-red-600'
+            }`}>
+              {currentCalc.finalScore}
+            </span>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide flex flex-col">
@@ -4182,9 +4235,17 @@ const SumatifStudentResultPrint: React.FC<{
                           <div className="flex"><span className="w-24 font-bold shrink-0">DURASI</span><span className="mr-2">:</span><span>{durationStr}</span></div>
                         </div>
                         
-                        <div className="flex flex-col items-center justify-center gap-2">
+                        <div className="flex flex-col items-center justify-center gap-1">
                           <span className="font-black text-xl text-slate-800">NILAI</span>
                           <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
+                          {(() => {
+                            const printCalc = calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {});
+                            return (
+                              <span className="text-[11px] text-slate-500 font-bold mt-0.5">
+                                Bobot: {printCalc.earnedPoints}/{printCalc.totalPoints}
+                              </span>
+                            );
+                          })()}
                         </div>
 
                         <div className="flex flex-col gap-4 items-end">
@@ -4329,6 +4390,12 @@ const SumatifResultsView: React.FC<{
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
 
+  const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
+  const decoration = SUBJECT_DECORATIONS[sumatif.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS.default;
+  const SubjectIcon = decoration.icon;
+
+  const totalMaxPoints = sumatif.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0);
+
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative">
       <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -4337,7 +4404,13 @@ const SumatifResultsView: React.FC<{
             <ChevronLeft size={24} />
           </button>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Hasil: {sumatif.title}</h2>
+            <div className="flex items-center space-x-3 flex-wrap gap-y-1">
+              <h2 className="text-xl font-bold text-slate-800">Hasil: {sumatif.title}</h2>
+              <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border ${decoration.badgeBg} shadow-xs`}>
+                <SubjectIcon size={14} className="shrink-0" />
+                <span>{subject?.name || sumatif.subjectId}</span>
+              </span>
+            </div>
             <p className="text-sm text-slate-500">{results.length} Siswa telah mengerjakan</p>
           </div>
         </div>
@@ -4363,6 +4436,21 @@ const SumatifResultsView: React.FC<{
             <Save size={20} />
             <span>Input ke Buku Nilai</span>
           </button>
+        </div>
+      </div>
+
+      {/* Formula & Weight Summary Banner */}
+      <div className="px-6 py-3 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-b border-blue-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center space-x-2 text-slate-700 font-medium">
+          <span className="bg-[#5AB2FF] text-white px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide">Rumus Nilai Otomatis</span>
+          <span className="text-slate-600 font-semibold">
+            Nilai = (Jumlah Bobot Skor Didapat / Jumlah Bobot Maksimal) × 100
+          </span>
+        </div>
+        <div className="flex items-center space-x-4 font-semibold text-slate-600">
+          <span>Jumlah Soal: <strong className="text-slate-800">{sumatif.questions.length}</strong></span>
+          <span>•</span>
+          <span>Bobot Maksimal: <strong className="text-[#5AB2FF]">{totalMaxPoints} Poin</strong></span>
         </div>
       </div>
 
@@ -4417,12 +4505,22 @@ const SumatifResultsView: React.FC<{
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center">
-                      <span className={`text-lg font-bold ${
-                        r.status_tes !== 'selesai' ? 'text-slate-400' :
-                        r.score >= 75 ? 'text-green-600' : r.score >= 60 ? 'text-amber-600' : 'text-red-600'
-                      }`}>
-                        {r.status_tes !== 'selesai' ? '-' : r.score}
-                      </span>
+                      {(() => {
+                        if (r.status_tes !== 'selesai') return <span className="text-slate-400 font-bold">-</span>;
+                        const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
+                        return (
+                          <div className="flex flex-col items-center">
+                            <span className={`text-lg font-bold ${
+                              r.score >= 75 ? 'text-green-600' : r.score >= 60 ? 'text-amber-600' : 'text-red-600'
+                            }`}>
+                              {r.score}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              Bobot: {studentCalc.earnedPoints}/{totalMaxPoints}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-4 text-center text-sm text-slate-500">
                       {(r.status_tes === 'selesai' && r.submittedAt) ? format(new Date(r.submittedAt), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}
@@ -4487,9 +4585,10 @@ const SumatifResultsView: React.FC<{
             <thead>
               <tr className="bg-slate-50/50">
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">Siswa</th>
-                {sumatif.questions.map((_, idx) => (
+                {sumatif.questions.map((q, idx) => (
                   <th key={idx} className="px-3 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
-                    S{idx + 1}
+                    <div>S{idx + 1}</div>
+                    <div className="text-[9px] text-slate-400 font-normal font-mono">({q.points || 1}p)</div>
                   </th>
                 ))}
                 <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Skor</th>

@@ -2449,7 +2449,7 @@ const SumatifTaking: React.FC<{
       
       const successMessage = hasEssay 
         ? 'Jawaban Anda telah berhasil dikirim. Nilai pengerjaan soal uraian akan muncul setelah dikoreksi oleh guru.' 
-        : `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore} (Bobot: ${earnedPoints}/${totalPoints})`;
+        : `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore} (${earnedPoints}/${totalPoints})`;
 
       setModal({
         isOpen: true,
@@ -3934,31 +3934,18 @@ const SumatifManualGrading: React.FC<{
               <p className="text-sm text-slate-500">{student.name} • {sumatif.title}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
-            <X size={24} />
-          </button>
-        </div>
-
-        {/* Real-time Calculation Summary Bar */}
-        <div className="bg-gradient-to-r from-blue-50/90 to-indigo-50/80 border-b border-blue-100 px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-xl bg-white shadow-xs border border-blue-100 flex items-center justify-center text-[#5AB2FF] font-black text-xs">
-              %
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block leading-none mb-0.5">Kalkulasi Nilai Otomatis</span>
-              <span className="text-xs text-slate-700 font-semibold">
-                (Bobot Didapat: <strong className="text-blue-600 font-bold">{currentCalc.earnedPoints}</strong> / Total Bobot: <strong className="text-slate-800 font-bold">{currentCalc.totalPoints}</strong>) × 100
+            <div className="flex items-center space-x-2 bg-slate-50 px-3.5 py-1.5 rounded-xl border border-slate-200">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir:</span>
+              <span className={`text-xl font-black ${
+                currentCalc.finalScore >= 75 ? 'text-green-600' : currentCalc.finalScore >= 60 ? 'text-amber-600' : 'text-red-600'
+              }`}>
+                {currentCalc.finalScore}
               </span>
             </div>
-          </div>
-          <div className="flex items-center space-x-2 bg-white px-4 py-1.5 rounded-xl border border-blue-100 shadow-xs">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Nilai Akhir:</span>
-            <span className={`text-xl font-black ${
-              currentCalc.finalScore >= 75 ? 'text-green-600' : currentCalc.finalScore >= 60 ? 'text-amber-600' : 'text-red-600'
-            }`}>
-              {currentCalc.finalScore}
-            </span>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400">
+              <X size={24} />
+            </button>
           </div>
         </div>
 
@@ -4262,7 +4249,7 @@ const SumatifStudentResultPrint: React.FC<{
                               <>
                                 <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{printCalc.finalScore}</span>
                                 <span className="text-[11px] text-slate-500 font-bold mt-0.5">
-                                  Bobot: {printCalc.earnedPoints}/{printCalc.totalPoints}
+                                  {printCalc.earnedPoints}/{printCalc.totalPoints}
                                 </span>
                               </>
                             );
@@ -4523,7 +4510,7 @@ const SumatifResultsView: React.FC<{
                               {finalScore}
                             </span>
                             <span className="text-[10px] text-slate-400 font-medium">
-                              Bobot: {studentCalc.earnedPoints}/{totalMaxPoints}
+                              {studentCalc.earnedPoints}/{totalMaxPoints}
                             </span>
                           </div>
                         );

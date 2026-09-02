@@ -2367,6 +2367,12 @@ const SumatifTaking: React.FC<{
 
   useEffect(() => {
     // Notify server that student is currently taking the test
+    let storedStartTime = localStorage.getItem(`${ATTEMPT_KEY}_start_time`);
+    if (!storedStartTime) {
+      storedStartTime = new Date().toISOString();
+      localStorage.setItem(`${ATTEMPT_KEY}_start_time`, storedStartTime);
+    }
+
     apiService.submitSumatifResult({
       sumatifId: sumatif.id,
       studentId: studentId,
@@ -2375,6 +2381,7 @@ const SumatifTaking: React.FC<{
       status_tes: 'sedang mengerjakan',
       needsGrading: false,
       manualScores: {},
+      startedAt: storedStartTime,
       submittedAt: new Date().toISOString()
     }).catch(console.error);
   }, [sumatif.id, studentId]);
@@ -2399,6 +2406,7 @@ const SumatifTaking: React.FC<{
     localStorage.removeItem(`${ATTEMPT_KEY}_questions`);
     localStorage.removeItem(`${ATTEMPT_KEY}_answers`);
     localStorage.removeItem(`${ATTEMPT_KEY}_time`);
+    localStorage.removeItem(`${ATTEMPT_KEY}_start_time`);
     localStorage.removeItem(`${ATTEMPT_KEY}_idx`);
     localStorage.removeItem(`${ATTEMPT_KEY}_flags`);
   };
@@ -2436,6 +2444,7 @@ const SumatifTaking: React.FC<{
 
     try {
       const finalStudentId = studentId || `GUEST-${Date.now()}`;
+      const storedStartTime = localStorage.getItem(`${ATTEMPT_KEY}_start_time`);
       
       await apiService.submitSumatifResult({
         sumatifId: sumatif.id,
@@ -2443,6 +2452,7 @@ const SumatifTaking: React.FC<{
         score: finalScore,
         answers,
         needsGrading: hasEssay,
+        startedAt: storedStartTime || undefined,
         submittedAt: new Date().toISOString(),
         status_tes: 'selesai'
       });
@@ -4093,10 +4103,19 @@ const SumatifStudentResultPrint: React.FC<{
     }
   };
 
-  const startTime = result.createdAt || result.startedAt || (result as any).created_at;
-  const durationStr = result.submittedAt && startTime 
-    ? `${Math.round((new Date(result.submittedAt).getTime() - new Date(startTime).getTime()) / 60000)} Menit`
-    : '-';
+  const startTime = result.startedAt || result.createdAt || (result as any).created_at || (result as any).started_at;
+  let calculatedMins = 0;
+  if (result.submittedAt && startTime) {
+    const startMs = new Date(startTime).getTime();
+    const subMs = new Date(result.submittedAt).getTime();
+    if (!isNaN(startMs) && !isNaN(subMs) && subMs > startMs) {
+      calculatedMins = Math.max(1, Math.round((subMs - startMs) / 60000));
+    }
+  }
+
+  const durationStr = calculatedMins > 0 
+    ? `${calculatedMins} Menit` 
+    : `${sumatif.duration || 60} Menit`;
 
   const handleDownloadPDF = async () => {
     setIsGenerating(true);
@@ -4246,12 +4265,7 @@ const SumatifStudentResultPrint: React.FC<{
                           {(() => {
                             const printCalc = calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {});
                             return (
-                              <>
-                                <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{printCalc.finalScore}</span>
-                                <span className="text-[11px] text-slate-500 font-bold mt-0.5">
-                                  {printCalc.earnedPoints}/{printCalc.totalPoints}
-                                </span>
-                              </>
+                              <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{printCalc.finalScore}</span>
                             );
                           })()}
                         </div>

@@ -547,7 +547,9 @@ CREATE TABLE IF NOT EXISTS sumatif_results (
   status_tes TEXT DEFAULT 'selesai',
   needs_grading BOOLEAN DEFAULT FALSE,
   manual_scores JSONB DEFAULT '{}',
+  started_at TIMESTAMPTZ DEFAULT now(),
   submitted_at TIMESTAMPTZ DEFAULT now(),
+  created_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(sumatif_id, student_id)
 );
 

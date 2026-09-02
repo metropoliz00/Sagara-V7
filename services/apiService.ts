@@ -3515,20 +3515,32 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase
+      // First attempt: Select all columns including started_at/created_at if available
+      let res = await supabase
         .from('sumatif_results')
-        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at')
+        .select('*')
         .eq('sumatif_id', sumatifId);
-      if (error) {
-        console.error("Error fetching sumatif results:", error);
+      
+      if (res.error) {
+        // Fallback: Select explicitly defined basic columns
+        res = await supabase
+          .from('sumatif_results')
+          .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, submitted_at')
+          .eq('sumatif_id', sumatifId);
+      }
+
+      if (res.error) {
+        console.error("Error fetching sumatif results:", res.error);
         const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`);
         return cached || [];
       }
-      return data.map((r: any) => ({
+      return (res.data || []).map((r: any) => ({
         ...r,
         sumatifId: r.sumatif_id,
         studentId: r.student_id,
         submittedAt: r.submitted_at,
+        startedAt: r.started_at || r.created_at,
+        createdAt: r.created_at || r.started_at,
         status_tes: r.status_tes,
         needsGrading: r.needs_grading,
         manualScores: r.manual_scores
@@ -3546,6 +3558,7 @@ export const apiService = {
     const savedResult = {
       id: existingIndex !== -1 ? cached[existingIndex].id : 'res-' + Date.now(),
       ...result,
+      startedAt: result.startedAt || (existingIndex !== -1 ? cached[existingIndex].startedAt : undefined),
       status_tes: result.status_tes || 'selesai',
       needsGrading: result.needsGrading || false,
       manualScores: result.manualScores || {},
@@ -3562,7 +3575,7 @@ export const apiService = {
     if (!isApiConfigured()) return;
 
     try {
-      const { error } = await supabase.from('sumatif_results').upsert({
+      const payload: any = {
         sumatif_id: result.sumatifId,
         student_id: result.studentId,
         score: result.score,
@@ -3571,7 +3584,20 @@ export const apiService = {
         needs_grading: result.needsGrading || false,
         manual_scores: result.manualScores || {},
         submitted_at: result.submittedAt || new Date().toISOString()
-      }, { onConflict: 'sumatif_id,student_id' });
+      };
+      if (result.startedAt) {
+        payload.started_at = result.startedAt;
+      }
+
+      let { error } = await supabase.from('sumatif_results').upsert(payload, { onConflict: 'sumatif_id,student_id' });
+      
+      // If error occurs because started_at column doesn't exist yet, retry without started_at
+      if (error && error.code === '42703' && payload.started_at) {
+        delete payload.started_at;
+        const retry = await supabase.from('sumatif_results').upsert(payload, { onConflict: 'sumatif_id,student_id' });
+        error = retry.error;
+      }
+
       if (error) throw error;
     } catch (err) {
       console.warn("submitSumatifResult database failed:", err);

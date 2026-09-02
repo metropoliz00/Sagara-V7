@@ -6,7 +6,7 @@ import {
   HelpCircle, Check, X, ListFilter, User as UserIcon, LogIn, Monitor,
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
   Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2, FileText,
-  ArrowUp, HeartHandshake, Medal, Calculator, Compass, Music, Trophy, Book, Globe, Printer
+  ArrowUp, HeartHandshake, Medal, Award, Calculator, Compass, Music, Trophy, Book, Globe, Printer
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
 import { apiService } from '../services/apiService';
@@ -330,6 +330,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   }, [isEditing, isTaking, isEnteringToken, currentSumatif]);
   const [viewingResults, setViewingResults] = useState<Sumatif | null>(null);
   const [results, setResults] = useState<SumatifResult[]>([]);
+  const [studentResultsMap, setStudentResultsMap] = useState<Record<string, SumatifResult>>({});
+  const [viewingStudentResult, setViewingStudentResult] = useState<{ sumatif: Sumatif, result: SumatifResult } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterSubjectId, setFilterSubjectId] = useState('all');
 
@@ -367,6 +369,31 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   });
 
   const isStudent = currentUser?.role === 'siswa';
+
+  const fetchStudentResults = async (sumatifsList: Sumatif[]) => {
+    if (!isStudent || sumatifsList.length === 0) return;
+    const sId = currentUser?.studentId || currentUser?.id || students[0]?.id;
+    if (!sId) return;
+
+    try {
+      const resultsMap: Record<string, SumatifResult> = {};
+      await Promise.all(sumatifsList.map(async (s) => {
+        try {
+          const resList = await apiService.getSumatifResults(s.id);
+          const myRes = resList.find(r => 
+            String(r.studentId).trim() === String(sId).trim() || 
+            (students[0]?.id && String(r.studentId).trim() === String(students[0].id).trim())
+          );
+          if (myRes) {
+            resultsMap[s.id] = myRes;
+          }
+        } catch (e) {}
+      }));
+      setStudentResultsMap(resultsMap);
+    } catch (err) {
+      console.error("Error fetching student results:", err);
+    }
+  };
 
   const isGuru6 = useMemo(() => {
     if (!currentUser) return false;
@@ -414,10 +441,13 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     try {
       if (isDemo) {
         const cached = cacheService.get<Sumatif[]>('sumatifs') || [];
-        setSumatifs(cached.filter(s => s.classId === activeClassId));
+        const classSumatifs = cached.filter(s => s.classId === activeClassId);
+        setSumatifs(classSumatifs);
+        fetchStudentResults(classSumatifs);
       } else {
         const data = await apiService.getSumatifs(activeClassId);
         setSumatifs(data);
+        fetchStudentResults(data);
         
         // Update local cache with fetched items for this class
         const allCached = cacheService.get<Sumatif[]>('sumatifs') || [];
@@ -427,7 +457,9 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     } catch (error) {
       console.error("Gagal mengambil data sumatif:", error);
       const cached = cacheService.get<Sumatif[]>('sumatifs') || [];
-      setSumatifs(cached.filter(s => s.classId === activeClassId));
+      const classSumatifs = cached.filter(s => s.classId === activeClassId);
+      setSumatifs(classSumatifs);
+      fetchStudentResults(classSumatifs);
       onShowNotification('Gagal menyinkronkan data sumatif dengan server. Menampilkan data cache lokal.', 'warning');
     } finally {
       setLoading(false);
@@ -1047,23 +1079,54 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <button
-                      disabled={!s.isActive}
-                      type="button"
-                      onClick={async () => {
-                        const canProceed = await checkStudentAttempt(s);
-                        if (!canProceed) return;
-                        
-                        setCurrentSumatif(s);
-                        if (s.token) setIsEnteringToken(true);
-                        else setIsTaking(true);
-                      }}
-                      className={`w-full py-3 px-6 rounded-xl font-bold text-sm tracking-wider transition-all duration-200 transform active:scale-95 text-center ${
-                        s.isActive ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                      }`}
-                    >
-                      {s.isActive ? 'Mulai Ujian Sumatif' : 'Belum Aktif'}
-                    </button>
+                    (() => {
+                      const studentResult = studentResultsMap[s.id];
+                      if (studentResult && studentResult.status_tes === 'selesai') {
+                        return (
+                          <div className="flex flex-col gap-2.5 w-full">
+                            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+                              <div className="flex items-center gap-2.5">
+                                <div className="p-2 bg-emerald-100/80 text-emerald-700 rounded-xl">
+                                  <Award size={18} />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider block">Nilai Sumatif</span>
+                                  <span className="text-sm md:text-base font-black text-emerald-800">
+                                    {studentResult.needsGrading ? 'Menunggu Koreksi Guru' : `${studentResult.score} / 100`}
+                                  </span>
+                                </div>
+                              </div>
+                              <button 
+                                type="button"
+                                onClick={() => setViewingStudentResult({ sumatif: s, result: studentResult })}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                              >
+                                <Eye size={14} /> <span>Hasil & Nilai</span>
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <button
+                          disabled={!s.isActive}
+                          type="button"
+                          onClick={async () => {
+                            const canProceed = await checkStudentAttempt(s);
+                            if (!canProceed) return;
+                            
+                            setCurrentSumatif(s);
+                            if (s.token) setIsEnteringToken(true);
+                            else setIsTaking(true);
+                          }}
+                          className={`w-full py-3 px-6 rounded-xl font-bold text-sm tracking-wider transition-all duration-200 transform active:scale-95 text-center ${
+                            s.isActive ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                          }`}
+                        >
+                          {s.isActive ? 'Mulai Ujian Sumatif' : 'Belum Aktif'}
+                        </button>
+                      );
+                    })()
                   )}
                 </div>
               </div>
@@ -1071,6 +1134,15 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           })
         )}
       </div>
+
+      {viewingStudentResult && (
+        <SumatifStudentResultPrint
+          sumatif={viewingStudentResult.sumatif}
+          result={viewingStudentResult.result}
+          student={students.find(st => String(st.id).trim() === String(viewingStudentResult.result.studentId).trim()) || students[0] || ({ id: currentUser?.studentId || currentUser?.id || 'siswa', name: currentUser?.fullName || 'Siswa' } as any)}
+          onClose={() => setViewingStudentResult(null)}
+        />
+      )}
 
       <Modal 
         isOpen={modal.isOpen}

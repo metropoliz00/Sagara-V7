@@ -807,6 +807,32 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       }
   }, [karakterAssessments, student.id]);
 
+  const [localGrades, setLocalGrades] = useState<GradeRecord[]>(grades || []);
+
+  useEffect(() => {
+    if (grades && grades.length > 0) {
+      setLocalGrades(grades);
+    }
+  }, [grades]);
+
+  useEffect(() => {
+    const fetchFreshStudentGrades = async () => {
+      if (!student.id) return;
+      try {
+        const studentGrades = await apiService.getGradesForStudent(student.id);
+        if (studentGrades) {
+          setLocalGrades(prev => {
+            const filtered = prev.filter(g => String(g.studentId).trim() !== String(student.id).trim());
+            return [...filtered, studentGrades];
+          });
+        }
+      } catch (e) {
+        console.error("Gagal memuat nilai langsung siswa:", e);
+      }
+    };
+    fetchFreshStudentGrades();
+  }, [student.id, student.classId]);
+
   // NEW: Check if Recap Report is enabled and load KKTP for this class
   useEffect(() => {
       const checkConfig = async () => {
@@ -814,17 +840,20 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
               try {
                   const config = await apiService.getClassConfig(student.classId);
                   if (config) {
-                      if (config.settings?.showStudentRecap) {
-                          setShowRecapReport(true);
-                      } else {
-                          setShowRecapReport(false);
-                      }
+                      const isRecap = Boolean(
+                          config.settings?.showStudentRecap ?? 
+                          (config as any).showStudentRecap ?? 
+                          (config.settings as any)?.showRecapToStudents
+                      );
+                      setShowRecapReport(isRecap);
                       
-                      if (config.settings?.showSummativeToStudents) {
-                          setShowSummative(true);
-                      } else {
-                          setShowSummative(false);
-                      }
+                      const isSummative = Boolean(
+                          config.settings?.showSummativeToStudents ?? 
+                          (config as any).showSummativeToStudents ?? 
+                          (config.settings as any)?.showStudentSummative ??
+                          (config.settings as any)?.showSummative
+                      );
+                      setShowSummative(isSummative);
                       
                       // Load KKTP data
                       let finalKktp: Record<string, number> = {};
@@ -1265,33 +1294,44 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [permissionRequests, student]);
 
+  const effectiveGrades = useMemo(() => {
+    if (localGrades && localGrades.length > 0) return localGrades;
+    return grades || [];
+  }, [localGrades, grades]);
+
   // -- GRADES CALCULATION FOR DASHBOARD --
   const selectedGradeData = useMemo(() => {
-      const studentGrades = grades.find(g => g.studentId === student.id);
-      const subjectData = studentGrades?.subjects[selectedSubjectId] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
+      const studentGrades = effectiveGrades.find(g => String(g.studentId).trim() === String(student.id).trim());
+      const subjectData = studentGrades?.subjects?.[selectedSubjectId] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
       
-      const scores = [subjectData.sum1, subjectData.sum2, subjectData.sum3, subjectData.sum4, subjectData.sas];
+      const scores = [
+        Number(subjectData.sum1) || 0,
+        Number(subjectData.sum2) || 0,
+        Number(subjectData.sum3) || 0,
+        Number(subjectData.sum4) || 0,
+        Number(subjectData.sas) || 0
+      ];
       const filledScores = scores.filter(s => s > 0);
       const average = filledScores.length > 0 
           ? Math.round(filledScores.reduce((a, b) => a + b, 0) / filledScores.length) 
           : 0;
 
       return { ...subjectData, average };
-  }, [grades, student.id, selectedSubjectId]);
+  }, [effectiveGrades, student.id, selectedSubjectId]);
 
   // -- RECAP DATA CALCULATION (If Enabled) --
   const myRecapData = useMemo(() => {
       if (!showRecapReport) return null;
 
       // 1. Calculate scores for all students in class to determine rank
-      const classScores = grades
+      const classScores = effectiveGrades
           .filter(g => g.classId === student.classId)
           .map(record => {
               let total = 0;
               MOCK_SUBJECTS.forEach(subj => {
-                  const sData = record.subjects[subj.id];
+                  const sData = record.subjects?.[subj.id];
                   if (sData) {
-                      const vals = [sData.sum1, sData.sum2, sData.sum3, sData.sum4, sData.sas].filter(v => v > 0);
+                      const vals = [sData.sum1, sData.sum2, sData.sum3, sData.sum4, sData.sas].map(Number).filter(v => !isNaN(v) && v > 0);
                       if (vals.length > 0) {
                           total += Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
                       }
@@ -1301,14 +1341,14 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           })
           .sort((a, b) => b.total - a.total);
 
-      const myRankIndex = classScores.findIndex(s => s.studentId === student.id);
+      const myRankIndex = classScores.findIndex(s => String(s.studentId).trim() === String(student.id).trim());
       const rank = myRankIndex !== -1 ? myRankIndex + 1 : '-';
       
       // Determine class-wide active subjects (where at least one student in the class has numerical grades > 0)
-      const classGrades = grades.filter(g => g.classId === student.classId);
+      const classGrades = effectiveGrades.filter(g => g.classId === student.classId);
       const activeSubjectsInClass = MOCK_SUBJECTS.filter(subj => {
           return classGrades.some(record => {
-              const gData = record.subjects[subj.id];
+              const gData = record.subjects?.[subj.id];
               if (!gData) return false;
               const vals = [
                   Number(gData.sum1), 
@@ -1322,9 +1362,9 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
       });
 
       // 2. Prepare My Detailed Data
-      const myRecord = grades.find(g => g.studentId === student.id);
+      const myRecord = effectiveGrades.find(g => String(g.studentId).trim() === String(student.id).trim());
       const subjectsData = activeSubjectsInClass.map(subj => {
-          const sData = myRecord?.subjects[subj.id] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
+          const sData = myRecord?.subjects?.[subj.id] || { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
           const vals = [
               Number(sData.sum1), 
               Number(sData.sum2), 
@@ -1341,17 +1381,17 @@ const StudentPortal: React.FC<StudentPortalProps> = ({
           };
       });
 
-      const myTotal = classScores.find(s => s.studentId === student.id)?.total || 0;
+      const myTotal = classScores.find(s => String(s.studentId).trim() === String(student.id).trim())?.total || 0;
 
       return { subjects: subjectsData, rank, total: myTotal };
-  }, [showRecapReport, grades, student.id, student.classId]);
+  }, [showRecapReport, effectiveGrades, student.id, student.classId]);
 
 
   // -- TKA SCORE DATA FOR CLASS 6 --
   const myTkaData = useMemo(() => {
       if (!student.classId?.startsWith('6')) return null;
       
-      const studentGrades = grades.find(g => g.studentId === student.id);
+      const studentGrades = effectiveGrades.find(g => String(g.studentId).trim() === String(student.id).trim());
       const matSubject = studentGrades?.subjects?.['mat'];
       const indoSubject = studentGrades?.subjects?.['indo'];
       const ipaSubject = studentGrades?.subjects?.['ipas'];

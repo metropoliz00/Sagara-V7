@@ -1145,16 +1145,25 @@ export const apiService = {
 
   // --- Grades ---
   getGrades: async (currentUser: User | null): Promise<GradeRecord[]> => {
+    if (!isApiConfigured()) {
+      const cached = cacheService.get<GradeRecord[]>('grades');
+      return cached || [];
+    }
     let query = supabase.from('grades').select('student_id, class_id, subject_id, sum1, sum2, sum3, sum4, sas, extra_data');
     if (currentUser?.role === 'siswa') {
-      if (currentUser.id) {
-        query = query.eq('student_id', currentUser.id);
-      } else if (currentUser.classId) {
+      const studentId = currentUser.studentId || currentUser.id;
+      if (currentUser.classId) {
         query = query.eq('class_id', currentUser.classId);
+      } else if (studentId) {
+        query = query.or(`student_id.eq.${studentId},student_id.eq.${currentUser.id}`);
       }
     }
     const { data, error } = await query;
-    if (error) return [];
+    if (error) {
+      console.warn("Error fetching grades, falling back to cache:", error);
+      const cached = cacheService.get<GradeRecord[]>('grades');
+      return cached || [];
+    }
     
     const gradeMap: Record<string, GradeRecord> = {};
     data.forEach((row: any) => {

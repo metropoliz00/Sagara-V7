@@ -268,6 +268,19 @@ export const calculateSumatifScore = (
   };
 };
 
+export const normalizeSumatifResults = (questions: Question[], data: SumatifResult[]): SumatifResult[] => {
+  return (data || []).map(r => {
+    if (r.answers || r.manualScores) {
+      const calc = calculateSumatifScore(questions, r.answers || {}, r.manualScores || {});
+      return {
+        ...r,
+        score: calc.finalScore
+      };
+    }
+    return r;
+  });
+};
+
 const renderFormattedText = (text: string | null | undefined) => {
   if (!text) return null;
   const formattedText = text
@@ -383,7 +396,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         if (document.visibilityState !== 'visible') return;
         try {
           const data = await apiService.getSumatifResults(viewingResults.id);
-          setResults(data);
+          const normalized = normalizeSumatifResults(viewingResults.questions, data || []);
+          setResults(normalized);
         } catch (error) {
           console.error("Realtime fetch error:", error);
         }
@@ -592,7 +606,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     setLoading(true);
     try {
       const data = await apiService.getSumatifResults(sumatif.id);
-      setResults(data);
+      const normalized = normalizeSumatifResults(sumatif.questions, data || []);
+      setResults(normalized);
       setViewingResults(sumatif);
     } catch (error) {
       onShowNotification('Gagal mengambil hasil sumatif', 'error');
@@ -614,6 +629,9 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       for (const result of results) {
         const student = students.find(s => s.id === result.studentId);
         if (!student) continue;
+
+        const studentCalc = calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {});
+        const calculatedFinalScore = studentCalc.finalScore;
 
         let subjectGrades: any = { sum1: 0, sum2: 0, sum3: 0, sum4: 0, sas: 0 };
         
@@ -647,11 +665,11 @@ const SumatifView: React.FC<SumatifViewProps> = ({
             currentTkaScores[tkaList[0]] = subjectGrades.tka;
           }
 
-          currentTkaScores[sumatif.title] = result.score;
+          currentTkaScores[sumatif.title] = calculatedFinalScore;
           updatedGrades.tka_scores = currentTkaScores;
-          updatedGrades.tka = result.score;
+          updatedGrades.tka = calculatedFinalScore;
         } else {
-          updatedGrades[sumatif.type] = result.score;
+          updatedGrades[sumatif.type] = calculatedFinalScore;
         }
 
         if (isDemo) {
@@ -696,7 +714,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           
           // Refresh results immediately
           const updatedResults = await apiService.getSumatifResults(sumatif.id);
-          setResults(updatedResults);
+          const normalized = normalizeSumatifResults(sumatif.questions, updatedResults || []);
+          setResults(normalized);
         } catch (error) {
           onShowNotification('Gagal mereset hasil ujian', 'error');
         }
@@ -3947,12 +3966,12 @@ const SumatifManualGrading: React.FC<{
           <div className="space-y-6 pb-10 flex-col flex-1">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
-                <span className="w-8 h-8 bg-[#5AB2FF] text-white rounded-lg flex items-center justify-center font-bold text-sm">
+                <span className="px-3 py-1.5 bg-[#5AB2FF] text-white rounded-xl flex items-center justify-center font-bold text-xs tracking-wide shadow-xs shrink-0 whitespace-nowrap">
                   Soal {currentQuestionIdx + 1} / {essayQuestions.length}
                 </span>
                 <h3 className="font-bold text-slate-700">Pertanyaan Uraian</h3>
               </div>
-              <div className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-400 uppercase tracking-widest">
+              <div className="px-3 py-1.5 bg-slate-100 rounded-xl text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Bobot: {currentQuestion.points} Poin
               </div>
             </div>
@@ -4237,13 +4256,15 @@ const SumatifStudentResultPrint: React.FC<{
                         
                         <div className="flex flex-col items-center justify-center gap-1">
                           <span className="font-black text-xl text-slate-800">NILAI</span>
-                          <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{result.score}</span>
                           {(() => {
                             const printCalc = calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {});
                             return (
-                              <span className="text-[11px] text-slate-500 font-bold mt-0.5">
-                                Bobot: {printCalc.earnedPoints}/{printCalc.totalPoints}
-                              </span>
+                              <>
+                                <span className="font-black text-4xl bg-indigo-100 text-indigo-800 px-8 py-3 rounded-xl border border-indigo-200 shadow-sm">{printCalc.finalScore}</span>
+                                <span className="text-[11px] text-slate-500 font-bold mt-0.5">
+                                  Bobot: {printCalc.earnedPoints}/{printCalc.totalPoints}
+                                </span>
+                              </>
                             );
                           })()}
                         </div>
@@ -4439,21 +4460,6 @@ const SumatifResultsView: React.FC<{
         </div>
       </div>
 
-      {/* Formula & Weight Summary Banner */}
-      <div className="px-6 py-3 bg-gradient-to-r from-blue-50/80 to-indigo-50/60 border-b border-blue-100 flex flex-wrap items-center justify-between gap-3 text-xs">
-        <div className="flex items-center space-x-2 text-slate-700 font-medium">
-          <span className="bg-[#5AB2FF] text-white px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide">Rumus Nilai Otomatis</span>
-          <span className="text-slate-600 font-semibold">
-            Nilai = (Jumlah Bobot Skor Didapat / Jumlah Bobot Maksimal) × 100
-          </span>
-        </div>
-        <div className="flex items-center space-x-4 font-semibold text-slate-600">
-          <span>Jumlah Soal: <strong className="text-slate-800">{sumatif.questions.length}</strong></span>
-          <span>•</span>
-          <span>Bobot Maksimal: <strong className="text-[#5AB2FF]">{totalMaxPoints} Poin</strong></span>
-        </div>
-      </div>
-
       {gradingResult && (
         <SumatifManualGrading 
           sumatif={sumatif}
@@ -4508,12 +4514,13 @@ const SumatifResultsView: React.FC<{
                       {(() => {
                         if (r.status_tes !== 'selesai') return <span className="text-slate-400 font-bold">-</span>;
                         const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
+                        const finalScore = studentCalc.finalScore;
                         return (
                           <div className="flex flex-col items-center">
                             <span className={`text-lg font-bold ${
-                              r.score >= 75 ? 'text-green-600' : r.score >= 60 ? 'text-amber-600' : 'text-red-600'
+                              finalScore >= 75 ? 'text-green-600' : finalScore >= 60 ? 'text-amber-600' : 'text-red-600'
                             }`}>
-                              {r.score}
+                              {finalScore}
                             </span>
                             <span className="text-[10px] text-slate-400 font-medium">
                               Bobot: {studentCalc.earnedPoints}/{totalMaxPoints}
@@ -4598,6 +4605,10 @@ const SumatifResultsView: React.FC<{
             <tbody className="divide-y divide-slate-50">
               {results.map(r => {
                 const student = students.find(s => s.id === r.studentId);
+                const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
+                const subject = MOCK_SUBJECTS.find(sub => sub.id === sumatif.subjectId);
+                const kktp = subject?.kkm || 75;
+                const isPass = studentCalc.finalScore >= kktp;
                 return (
                   <tr key={r.id} className="hover:bg-slate-50/30 transition-colors">
                     <td className="px-6 py-4 font-bold text-slate-700 sticky left-0 bg-white z-10 border-r border-slate-50">
@@ -4614,21 +4625,14 @@ const SumatifResultsView: React.FC<{
                       );
                     })}
                     <td className="px-6 py-4 text-center font-black text-[#5AB2FF]">
-                      {r.score}
+                      {studentCalc.finalScore}
                     </td>
                     <td className="px-6 py-4 text-center">
-                      {(() => {
-                        const subject = MOCK_SUBJECTS.find(sub => sub.id === sumatif.subjectId);
-                        const kktp = subject?.kkm || 75;
-                        const isPass = r.score >= kktp;
-                        return (
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                            isPass ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                          }`}>
-                            {isPass ? 'Pengayaan' : 'Remidi'}
-                          </span>
-                        );
-                      })()}
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
+                        isPass ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
+                      }`}>
+                        {isPass ? 'Pengayaan' : 'Remidi'}
+                      </span>
                     </td>
                   </tr>
                 );

@@ -3646,13 +3646,6 @@ const SumatifPembahasan: React.FC<{
               <span className="hidden xs:inline">{showNavigation ? 'Sembunyikan' : 'Navigasi'}</span>
               <span className="xs:hidden">{showNavigation ? 'Tutup' : 'Nav'}</span>
             </button>
-
-            <button
-              onClick={onClose}
-              className="bg-white text-[#5AB2FF] px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-lg sm:rounded-xl font-black text-[9px] sm:text-xs md:text-sm uppercase tracking-wider hover:bg-blue-50 transition-all shadow-md active:scale-95 shrink-0"
-            >
-              Tutup
-            </button>
           </div>
         </div>
       </div>
@@ -4836,12 +4829,53 @@ const SumatifResultsView: React.FC<{
         return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
       })
       .join(' ');
-    const addressLine = [
-      schoolProfile?.jalan || schoolProfile?.address,
-      schoolProfile?.desa ? `Desa ${schoolProfile.desa}` : '',
-      schoolProfile?.kecamatan ? `Kec. ${schoolProfile.kecamatan}` : '',
-      schoolProfile?.postalCode ? `Kode Pos ${schoolProfile.postalCode}` : ''
-    ].filter(Boolean).join(', ');
+    const addrParts: string[] = [];
+    const jalanVal = (schoolProfile?.jalan || '').trim();
+    const addressVal = (schoolProfile?.address || '').trim();
+    const desaVal = (schoolProfile?.desa || '').trim();
+    const kecVal = (schoolProfile?.kecamatan || '').trim();
+    const posVal = (schoolProfile?.postalCode || '').trim();
+
+    let streetPart = '';
+    if (jalanVal) {
+      const lowerJalan = jalanVal.toLowerCase();
+      const lowerDesa = desaVal.toLowerCase();
+      if (!lowerDesa || (!lowerJalan.includes(lowerDesa) && lowerJalan !== lowerDesa)) {
+        streetPart = jalanVal;
+      }
+    } else if (addressVal) {
+      const lowerAddr = addressVal.toLowerCase();
+      const lowerDesa = desaVal.toLowerCase();
+      if (!lowerDesa || (!lowerAddr.includes(lowerDesa) && lowerAddr !== lowerDesa)) {
+        streetPart = addressVal;
+      }
+    }
+
+    if (streetPart) {
+      addrParts.push(streetPart);
+    }
+
+    if (desaVal) {
+      const formattedDesa = desaVal.toLowerCase().startsWith('desa') ? desaVal : `Desa ${desaVal}`;
+      addrParts.push(formattedDesa);
+    }
+
+    if (kecVal) {
+      let formattedKec = kecVal;
+      if (kecVal.toLowerCase().startsWith('kec.')) {
+        formattedKec = kecVal.replace(/^kec\.\s*/i, 'Kecamatan ');
+      } else if (!kecVal.toLowerCase().startsWith('kecamatan')) {
+        formattedKec = `Kecamatan ${kecVal}`;
+      }
+      addrParts.push(formattedKec);
+    }
+
+    if (posVal) {
+      const formattedPos = posVal.toLowerCase().startsWith('kode pos') ? posVal : `Kode Pos ${posVal}`;
+      addrParts.push(formattedPos);
+    }
+
+    const addressLine = addrParts.length > 0 ? addrParts.join(', ') : 'Desa Remen, Kecamatan Jenu, Kode Pos 62352';
     const contactLine = [
       schoolProfile?.email ? `Email: ${schoolProfile.email}` : 'Email: sdnremen@gmail.com'
     ].filter(Boolean).join('');
@@ -4886,7 +4920,7 @@ const SumatifResultsView: React.FC<{
                 <td style="width: 100px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Mata Pelajaran</td>
                 <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${subject?.name || sumatif.subjectId}</td>
-                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">Tahun Pelajaran</td>
+                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px 1.5px 170px; border: none; white-space: nowrap;">Tahun Pelajaran</td>
                 <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.year || '2024/2025'}</td>
               </tr>
@@ -4894,7 +4928,7 @@ const SumatifResultsView: React.FC<{
                 <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Materi</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${sumatif.title}</td>
-                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">Semester</td>
+                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 170px; border: none; white-space: nowrap;">Semester</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.semester === '2' ? '2 (Genap)' : '1 (Ganjil)'}</td>
               </tr>
@@ -4902,7 +4936,7 @@ const SumatifResultsView: React.FC<{
                 <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Kelas / Fase</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${classFaseDisplay}</td>
-                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">KKTP</td>
+                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 170px; border: none; white-space: nowrap;">KKTP</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${kktp}</td>
               </tr>

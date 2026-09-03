@@ -3360,6 +3360,8 @@ const AppContent: React.FC = () => {
                         students={filteredStudents} 
                         onShowNotification={handleShowNotification} 
                         onRefresh={() => fetchData(true)}
+                        schoolProfile={schoolProfile}
+                        teacherProfile={teacherProfile}
                     />
                 } />
                 <Route path="/penilaian-kinerja" element={

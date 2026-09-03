@@ -9,7 +9,7 @@ import {
   ArrowUp, HeartHandshake, Medal, Award, Calculator, Compass, Music, Trophy, Book, Globe, Printer,
   Radio, Users, CheckCircle2, Search, Filter
 } from 'lucide-react';
-import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
+import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult, SchoolProfileData, TeacherProfileData } from '../types';
 import { apiService } from '../services/apiService';
 import { cacheService } from '../src/services/cacheService';
 import { compressImage } from '../utils/imageHelper';
@@ -299,6 +299,8 @@ interface SumatifViewProps {
   students: Student[];
   onShowNotification: (message: string, type: 'success' | 'error' | 'warning') => void;
   onRefresh?: () => void;
+  schoolProfile?: SchoolProfileData;
+  teacherProfile?: TeacherProfileData;
 }
 
 const SumatifView: React.FC<SumatifViewProps> = ({ 
@@ -306,8 +308,38 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   activeClassId, 
   students,
   onShowNotification,
-  onRefresh
+  onRefresh,
+  schoolProfile: propSchoolProfile,
+  teacherProfile: propTeacherProfile
 }) => {
+  const schoolProfile = useMemo<SchoolProfileData>(() => {
+    if (propSchoolProfile) return propSchoolProfile;
+    try {
+      const cached = localStorage.getItem('school_profile_cache');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return {
+      name: 'SD NEGERI',
+      npsn: '',
+      address: '',
+      headmaster: '',
+      headmasterNip: '',
+      year: '2024/2025',
+      semester: '1'
+    };
+  }, [propSchoolProfile]);
+
+  const teacherProfile = useMemo<TeacherProfileData>(() => {
+    if (propTeacherProfile) return propTeacherProfile;
+    try {
+      const cached = localStorage.getItem('teacher_profile_cache');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return {
+      name: 'Guru Kelas',
+      nip: ''
+    };
+  }, [propTeacherProfile]);
   const [sumatifs, setSumatifs] = useState<Sumatif[]>([]);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(() => localStorage.getItem('sumatif_isEditing') === 'true');
@@ -879,6 +911,9 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           results={results}
           students={students}
           initialViewMode={resultsInitialTab}
+          schoolProfile={schoolProfile}
+          teacherProfile={teacherProfile}
+          classId={activeClassId || viewingResults.classId || '1'}
           onBack={() => setViewingResults(null)}
           onSync={() => handleSyncToGrades(viewingResults, results)}
           onReset={(studentId) => handleResetResult(studentId, viewingResults)}
@@ -4501,8 +4536,23 @@ const SumatifResultsView: React.FC<{
   onBack: () => void,
   onSync: () => void,
   onReset: (studentId: string) => void,
-  onSaveGrading: (resultId: string, manualScores: Record<string, number>, finalScore: number) => void
-}> = ({ sumatif, results: initialResults, students, initialViewMode = 'status', onBack, onSync, onReset, onSaveGrading }) => {
+  onSaveGrading: (resultId: string, manualScores: Record<string, number>, finalScore: number) => void,
+  schoolProfile?: SchoolProfileData,
+  teacherProfile?: TeacherProfileData,
+  classId?: string
+}> = ({ 
+  sumatif, 
+  results: initialResults, 
+  students, 
+  initialViewMode = 'status', 
+  onBack, 
+  onSync, 
+  onReset, 
+  onSaveGrading,
+  schoolProfile,
+  teacherProfile,
+  classId = '1'
+}) => {
   const [viewMode, setViewMode] = useState<'status' | 'analysis'>(initialViewMode === 'analysis' ? 'analysis' : 'status');
   const [liveResults, setLiveResults] = useState<SumatifResult[]>(initialResults);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
@@ -4513,6 +4563,13 @@ const SumatifResultsView: React.FC<{
   const [analysisFilter, setAnalysisFilter] = useState<'all' | 'pengayaan' | 'remidi' | 'selesai'>('all');
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
+  const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+  const [printPlace, setPrintPlace] = useState<string>(() => {
+    return schoolProfile?.desa || schoolProfile?.kabupaten || 'Remen';
+  });
+  const [printDate, setPrintDate] = useState<string>(() => {
+    return new Date().toISOString().split('T')[0];
+  });
 
   const subject = MOCK_SUBJECTS.find(s => s.id === sumatif.subjectId);
   const decoration = SUBJECT_DECORATIONS[sumatif.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS.default;
@@ -4753,6 +4810,284 @@ const SumatifResultsView: React.FC<{
       hardestQuestion: hardest ? `S${hardest.index + 1} (${hardest.percentage}%)` : '-'
     };
   }, [analysisRows, questionItemStats]);
+
+  const generateAnalysisPrintHtml = useCallback((placeOverride?: string, dateOverride?: string) => {
+    const desa = placeOverride || printPlace || schoolProfile?.desa || schoolProfile?.kabupaten || 'Remen';
+    const rawDate = dateOverride || printDate || new Date().toISOString().split('T')[0];
+    let formattedDate = rawDate;
+    try {
+      formattedDate = format(new Date(rawDate), 'd MMMM yyyy', { locale: id });
+    } catch (e) {
+      formattedDate = rawDate;
+    }
+
+    const regencyLogo = schoolProfile?.regencyLogo;
+    const schoolLogo = schoolProfile?.schoolLogo;
+    const kabName = (schoolProfile?.kabupaten || 'TUBAN').toUpperCase();
+    const instName = (schoolProfile?.name || 'UPT SD NEGERI').toUpperCase();
+    const addressLine = [
+      schoolProfile?.jalan || schoolProfile?.address,
+      schoolProfile?.desa ? `Desa ${schoolProfile.desa}` : '',
+      schoolProfile?.kecamatan ? `Kec. ${schoolProfile.kecamatan}` : '',
+      schoolProfile?.postalCode ? `Kode Pos ${schoolProfile.postalCode}` : ''
+    ].filter(Boolean).join(', ');
+    const contactLine = [
+      schoolProfile?.email ? `Email: ${schoolProfile.email}` : '',
+      schoolProfile?.npsn ? `NPSN: ${schoolProfile.npsn}` : ''
+    ].filter(Boolean).join(' • ');
+
+    const rowsToPrint = analysisRows;
+
+    return `
+      <div class="sagara-analysis-print-wrapper" style="font-family: Arial, Helvetica, sans-serif; color: #000000; background: #ffffff; line-height: 1.25; font-size: 8pt; padding: 4px; box-sizing: border-box; width: 100%;">
+        <!-- KOP SURAT RESMI -->
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 3px double #000000; padding-bottom: 6px; margin-bottom: 10px;">
+          <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            ${regencyLogo ? `<img src="${regencyLogo}" alt="Logo Daerah" style="max-height: 58px; max-width: 58px; object-fit: contain;" />` : `<div style="width: 45px; height: 45px; border: 1.5px solid #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; font-weight: bold; text-align: center;">LOGO</div>`}
+          </div>
+          <div style="text-align: center; flex: 1; padding: 0 12px;">
+            <div style="font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin: 0;">PEMERINTAH KABUPATEN ${kabName}</div>
+            <div style="font-size: 8.5pt; font-weight: 700; text-transform: uppercase; margin: 1px 0 0 0;">DINAS PENDIDIKAN</div>
+            <div style="font-size: 11.5pt; font-weight: 900; text-transform: uppercase; letter-spacing: 0.8px; margin: 2px 0 0 0;">${instName}</div>
+            <div style="font-size: 7.5pt; color: #222; margin: 2px 0 0 0;">${addressLine || 'Jalan Raya Pendidikan, Tuban'}</div>
+            ${contactLine ? `<div style="font-size: 7pt; color: #333; margin: 1px 0 0 0;">${contactLine}</div>` : ''}
+          </div>
+          <div style="width: 60px; height: 60px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            ${schoolLogo ? `<img src="${schoolLogo}" alt="Logo Sekolah" style="max-height: 58px; max-width: 58px; object-fit: contain;" />` : `<div style="width: 60px;"></div>`}
+          </div>
+        </div>
+
+        <!-- JUDUL & INFORMASI ASESMEN -->
+        <div style="text-align: center; margin-bottom: 10px;">
+          <h2 style="font-size: 11pt; font-weight: 900; text-transform: uppercase; text-decoration: underline; margin: 0 0 6px 0; letter-spacing: 0.5px;">
+            ANALISIS BUTIR SOAL DAN HASIL ASESMEN SUMATIF
+          </h2>
+          <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 0 auto;">
+            <tbody>
+              <tr>
+                <td style="width: 15%; font-weight: bold; padding: 1.5px 4px; border: none;">Mata Pelajaran</td>
+                <td style="width: 35%; padding: 1.5px 4px; border: none;">: ${subject?.name || sumatif.subjectId}</td>
+                <td style="width: 15%; font-weight: bold; padding: 1.5px 4px; border: none;">Tahun Pelajaran</td>
+                <td style="width: 35%; padding: 1.5px 4px; border: none;">: ${schoolProfile?.year || '2024/2025'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Judul Asesmen</td>
+                <td style="padding: 1.5px 4px; border: none;">: ${sumatif.title}</td>
+                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Semester</td>
+                <td style="padding: 1.5px 4px; border: none;">: ${schoolProfile?.semester === '2' ? '2 (Genap)' : '1 (Ganjil)'}</td>
+              </tr>
+              <tr>
+                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Kelas / Fase</td>
+                <td style="padding: 1.5px 4px; border: none;">: Kelas ${classId || sumatif.classId || '1'}</td>
+                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">KKTP / KKM</td>
+                <td style="padding: 1.5px 4px; border: none;">: ${kktp} (Poin Maksimal: ${totalMaxPoints})</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SUMMARY STATISTIK STRIP -->
+        <div style="display: flex; justify-content: space-between; background-color: #f8fafc; border: 1px solid #cbd5e1; border-radius: 4px; padding: 5px 8px; margin-bottom: 8px; font-size: 7.5pt; -webkit-print-color-adjust: exact;">
+          <div><strong>Peserta Ujian:</strong> ${analysisSummary.testedCount} / ${analysisRows.length} Siswa</div>
+          <div><strong>Rata-rata Nilai:</strong> ${analysisSummary.avgScore}</div>
+          <div><strong>Ketuntasan Klasikal:</strong> ${analysisSummary.passRate}% (${analysisSummary.passedCount} Tuntas)</div>
+          <div><strong>Soal Termudah:</strong> ${analysisSummary.easiestQuestion}</div>
+          <div><strong>Soal Tersulit:</strong> ${analysisSummary.hardestQuestion}</div>
+        </div>
+
+        <!-- TABEL ANALISIS MATRIKS BUTIR SOAL -->
+        <table style="width: 100%; border-collapse: collapse; font-size: 7pt; margin-bottom: 8px; border: 1px solid #000;">
+          <thead>
+            <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact;">
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 24px; text-align: center;">No</th>
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 55px; text-align: center;">NIS</th>
+              <th style="border: 1px solid #000; padding: 3px 4px; width: 140px; text-align: left;">Nama Siswa</th>
+              ${sumatif.questions.map((q, idx) => `
+                <th style="border: 1px solid #000; padding: 2px 1px; width: 22px; text-align: center;">
+                  <div>S${idx + 1}</div>
+                  <div style="font-size: 5.5pt; font-weight: normal; color: #475569;">(${q.points || 1}p)</div>
+                </th>
+              `).join('')}
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 38px; text-align: center;">Benar</th>
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 38px; text-align: center;">Nilai</th>
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 68px; text-align: center;">Keterangan</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsToPrint.map((row, idx) => `
+              <tr style="background-color: ${idx % 2 === 1 ? '#fafafa' : '#ffffff'}; -webkit-print-color-adjust: exact;">
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center;">${idx + 1}</td>
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-family: monospace;">${row.student.nis || '-'}</td>
+                <td style="border: 1px solid #000; padding: 2.5px 4px; text-align: left; font-weight: 500;">${row.student.name.toUpperCase()}</td>
+                ${row.questionResults.map(qr => `
+                  <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-weight: bold; ${
+                    !row.hasTaken ? 'color: #94a3b8;' : qr.isCorrect ? 'color: #047857; background-color: #f0fdf4;' : 'color: #b91c1c; background-color: #fef2f2;'
+                  }">
+                    ${!row.hasTaken ? '-' : qr.isCorrect ? '1' : '0'}
+                  </td>
+                `).join('')}
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: bold;">
+                  ${row.hasTaken ? row.totalCorrect : '-'}
+                </td>
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-weight: 900; ${
+                  !row.hasTaken ? 'color: #94a3b8;' : row.finalScore >= kktp ? 'color: #047857;' : 'color: #b91c1c;'
+                }">
+                  ${row.hasTaken ? row.finalScore : '-'}
+                </td>
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-size: 6.5pt; font-weight: bold; ${
+                  !row.hasTaken ? 'color: #94a3b8;' : row.isPass ? 'color: #047857;' : 'color: #b91c1c;'
+                }">
+                  ${!row.hasTaken ? 'Belum Ujian' : row.isPass ? 'PENGAYAAN' : 'REMEDIAL'}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="background-color: #f8fafc; font-weight: bold; -webkit-print-color-adjust: exact;">
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Jumlah Siswa Benar :</td>
+              ${questionItemStats.map(stat => `
+                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-weight: 900; color: #0f172a;">${stat.correctCount}</td>
+              `).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; color: #475569;">dari ${analysisSummary.testedCount} peserta</td>
+            </tr>
+            <tr style="background-color: #f1f5f9; font-weight: bold; -webkit-print-color-adjust: exact;">
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Daya Serap (% Benar) :</td>
+              ${questionItemStats.map(stat => `
+                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-weight: 900; font-size: 6.5pt; color: ${
+                  stat.percentage >= 70 ? '#047857' : stat.percentage < 30 ? '#b91c1c' : '#b45309'
+                };">
+                  ${stat.percentage}%
+                </td>
+              `).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; color: #334155;">Target: ≥ 70%</td>
+            </tr>
+            <tr style="background-color: #f8fafc; font-weight: bold; -webkit-print-color-adjust: exact;">
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Tingkat Kesulitan :</td>
+              ${questionItemStats.map(stat => `
+                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 6pt; text-transform: uppercase; ${
+                  stat.difficulty === 'mudah' ? 'color: #047857;' : stat.difficulty === 'sukar' ? 'color: #b91c1c;' : 'color: #b45309;'
+                }">
+                  ${stat.difficulty}
+                </td>
+              `).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; color: #475569;">Klasifikasi</td>
+            </tr>
+            <tr style="background-color: #f1f5f9; font-weight: bold; -webkit-print-color-adjust: exact;">
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Status Butir Soal :</td>
+              ${questionItemStats.map(stat => `
+                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 6pt; font-weight: 900; ${
+                  stat.status === 'Baik' ? 'color: #047857;' : stat.status === 'Revisi' ? 'color: #b91c1c;' : 'color: #b45309;'
+                }">
+                  ${stat.status}
+                </td>
+              `).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; font-weight: bold; color: #0284c7;">Rekomendasi</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <!-- CATATAN / TINDAK LANJUT -->
+        <div style="font-size: 7pt; line-height: 1.35; margin: 4px 0 10px 0; padding: 4px 8px; background-color: #fafafa; border: 1px dashed #cbd5e1; border-radius: 4px; page-break-inside: avoid;">
+          <strong style="color: #0f172a;">Catatan & Tindak Lanjut:</strong>
+          <div style="margin-left: 10px;">
+            <div>1. Sebanyak <strong>${analysisRows.filter(r => r.hasTaken && !r.isPass).length} siswa</strong> belum mencapai KKTP (${kktp}) dan diwajibkan mengikuti program pembelajaran remedial.</div>
+            <div>2. Sebanyak <strong>${analysisSummary.passedCount} siswa</strong> telah tuntas dan diberikan materi pengayaan untuk pendalaman capaian pembelajaran.</div>
+            <div>3. Butir soal berstatus <em>'Revisi'</em> disarankan untuk ditinjau kembali daya pembeda maupun kejelasan redaksi kalimatnya.</div>
+          </div>
+        </div>
+
+        <!-- TANDA TANGAN RESMI -->
+        <div style="margin-top: 14px; display: flex; justify-content: space-between; font-size: 7.5pt; line-height: 1.3; page-break-inside: avoid; break-inside: avoid;">
+          <div style="width: 260px; text-align: center;">
+            <div>Mengetahui,</div>
+            <div style="font-weight: bold;">Kepala ${instName}</div>
+            ${schoolProfile?.headmasterSignature ? `
+              <div style="height: 52px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
+                <img src="${schoolProfile.headmasterSignature}" alt="Tanda Tangan Kepala Sekolah" style="max-height: 48px; max-width: 140px; object-fit: contain;" />
+              </div>
+            ` : `<div style="height: 52px;"></div>`}
+            <div style="text-decoration: underline; font-weight: bold;">${schoolProfile?.headmaster || '...........................................'}</div>
+            <div>NIP. ${schoolProfile?.headmasterNip || '...........................................'}</div>
+          </div>
+          
+          <div style="width: 260px; text-align: center;">
+            <div>${desa}, ${formattedDate}</div>
+            <div style="font-weight: bold;">Guru Kelas / Pengampu</div>
+            <div style="height: 52px;"></div>
+            <div style="text-decoration: underline; font-weight: bold;">${teacherProfile?.name || '...........................................'}</div>
+            <div>NIP. ${teacherProfile?.nip || '...........................................'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }, [analysisRows, analysisSummary, questionItemStats, schoolProfile, teacherProfile, classId, sumatif, subject, kktp, totalMaxPoints, printPlace, printDate]);
+
+  const handlePrintAnalysis = useCallback((placeOverride?: string, dateOverride?: string) => {
+    const htmlContent = generateAnalysisPrintHtml(placeOverride, dateOverride);
+    
+    let container = document.getElementById('sagara-standalone-print-container');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'sagara-standalone-print-container';
+      document.body.appendChild(container);
+    }
+    container.innerHTML = htmlContent;
+
+    const styleId = 'sagara-analysis-print-style';
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.innerHTML = `
+      @media print {
+        @page {
+          size: A4 landscape !important;
+          margin: 8mm 10mm !important;
+        }
+        body.has-standalone-print {
+          background: white !important;
+        }
+        body.has-standalone-print #root {
+          display: none !important;
+        }
+        #sagara-standalone-print-container {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          background: white !important;
+          visibility: visible !important;
+        }
+      }
+    `;
+
+    document.body.classList.add('has-standalone-print');
+
+    const originalTitle = document.title;
+    const cleanSubj = (subject?.name || sumatif.subjectId).replace(/[^a-zA-Z0-9]/g, '_');
+    const cleanTitle = sumatif.title.replace(/[^a-zA-Z0-9]/g, '_');
+    document.title = `Analisis_Butir_Soal_${cleanSubj}_Kelas_${classId}_${cleanTitle}`;
+
+    const cleanup = () => {
+      document.body.classList.remove('has-standalone-print');
+      document.title = originalTitle;
+      if (container) {
+        container.innerHTML = '';
+      }
+      if (styleEl && styleEl.parentNode) {
+        styleEl.parentNode.removeChild(styleEl);
+      }
+      window.removeEventListener('afterprint', cleanup);
+    };
+
+    window.addEventListener('afterprint', cleanup);
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(cleanup, 2000);
+    }, 150);
+  }, [generateAnalysisPrintHtml, subject, sumatif, classId]);
 
   const handleExportAnalysisExcel = () => {
     const testedRows = analysisRows.filter(r => r.hasTaken);
@@ -5304,9 +5639,17 @@ const SumatifResultsView: React.FC<{
                 <span>Unduh Excel</span>
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={() => setIsPrintPreviewOpen(true)}
                 className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Cetak Analisis Butir Soal"
+                title="Pratinjau & Pengaturan Cetak Analisis Butir Soal"
+              >
+                <Eye size={14} className="text-slate-600" />
+                <span>Pratinjau</span>
+              </button>
+              <button
+                onClick={() => handlePrintAnalysis()}
+                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Cetak Langsung Analisis Butir Soal dengan Pengaturan Format Resmi A4 Landscape"
               >
                 <Printer size={14} />
                 <span>Cetak</span>
@@ -5551,6 +5894,108 @@ const SumatifResultsView: React.FC<{
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- MODAL PRATINJAU & PENGATURAN CETAK ANALISIS BUTIR SOAL --- */}
+      {isPrintPreviewOpen && createPortal(
+        <div className="fixed inset-0 z-[11000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-hidden">
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+                  <Printer size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Pratinjau & Pengaturan Cetak Analisis</h3>
+                  <p className="text-xs text-slate-400">Format Resmi A4 Landscape • Sesuai Pengaturan Aplikasi</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handlePrintAnalysis(printPlace, printDate)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer size={15} />
+                  <span>Cetak Dokumen (Print)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPrintPreviewOpen(false)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-all"
+                  title="Tutup Pratinjau"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Print Settings Bar */}
+            <div className="px-6 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-4 text-xs">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-600">Tempat Cetak:</span>
+                  <input
+                    type="text"
+                    value={printPlace}
+                    onChange={(e) => setPrintPlace(e.target.value)}
+                    placeholder="Contoh: Remen / Tuban"
+                    className="px-3 py-1 bg-white border border-slate-300 rounded-lg font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs w-36"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-slate-600">Tanggal Cetak:</span>
+                  <input
+                    type="date"
+                    value={printDate}
+                    onChange={(e) => setPrintDate(e.target.value)}
+                    className="px-3 py-1 bg-white border border-slate-300 rounded-lg font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-xs"
+                  />
+                </div>
+              </div>
+              <div className="text-[11px] text-slate-500 font-medium flex items-center gap-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                  A4 Landscape
+                </span>
+                <span>Margin: 8mm x 10mm</span>
+              </div>
+            </div>
+
+            {/* Document Preview Area */}
+            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-slate-200/90 flex justify-center scrollbar-thin">
+              <div 
+                className="bg-white shadow-2xl rounded-sm p-8 max-w-[1100px] w-full border border-slate-300 transition-all text-black"
+                dangerouslySetInnerHTML={{ __html: generateAnalysisPrintHtml(printPlace, printDate) }}
+              />
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 bg-white border-t border-slate-200 flex items-center justify-between text-xs">
+              <span className="text-slate-500 italic">
+                Tips: Pada dialog cetak peramban (browser), pastikan opsi <strong>"Background graphics"</strong> dicentang untuk hasil optimal.
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintPreviewOpen(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl font-bold transition-all cursor-pointer"
+                >
+                  Tutup
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintAnalysis(printPlace, printDate)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer size={15} />
+                  <span>Cetak Dokumen Sekarang</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

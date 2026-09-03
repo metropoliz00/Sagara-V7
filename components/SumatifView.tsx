@@ -4832,9 +4832,8 @@ const SumatifResultsView: React.FC<{
       schoolProfile?.postalCode ? `Kode Pos ${schoolProfile.postalCode}` : ''
     ].filter(Boolean).join(', ');
     const contactLine = [
-      schoolProfile?.email ? `Email: ${schoolProfile.email}` : '',
-      schoolProfile?.npsn ? `NPSN: ${schoolProfile.npsn}` : ''
-    ].filter(Boolean).join(' • ');
+      schoolProfile?.email ? `Email: ${schoolProfile.email}` : 'Email: sdnremen@gmail.com'
+    ].filter(Boolean).join('');
 
     const rowsToPrint = analysisRows;
 
@@ -4859,28 +4858,34 @@ const SumatifResultsView: React.FC<{
 
         <!-- JUDUL & INFORMASI ASESMEN -->
         <div style="text-align: center; margin-bottom: 10px;">
-          <h2 style="font-size: 11pt; font-weight: 900; text-transform: uppercase; text-decoration: underline; margin: 0 0 6px 0; letter-spacing: 0.5px;">
+          <h2 style="font-size: 11pt; font-weight: 900; text-transform: uppercase; text-decoration: underline; margin: 0 0 8px 0; letter-spacing: 0.5px;">
             ANALISIS BUTIR SOAL DAN HASIL ASESMEN SUMATIF
           </h2>
-          <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 0 auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 0 auto; text-align: left;">
             <tbody>
               <tr>
-                <td style="width: 15%; font-weight: bold; padding: 1.5px 4px; border: none;">Mata Pelajaran</td>
-                <td style="width: 35%; padding: 1.5px 4px; border: none;">: ${subject?.name || sumatif.subjectId}</td>
-                <td style="width: 15%; font-weight: bold; padding: 1.5px 4px; border: none;">Tahun Pelajaran</td>
-                <td style="width: 35%; padding: 1.5px 4px; border: none;">: ${schoolProfile?.year || '2024/2025'}</td>
+                <td style="width: 95px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Mata Pelajaran</td>
+                <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">${subject?.name || sumatif.subjectId}</td>
+                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Tahun Pelajaran</td>
+                <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.year || '2024/2025'}</td>
               </tr>
               <tr>
-                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Judul Asesmen</td>
-                <td style="padding: 1.5px 4px; border: none;">: ${sumatif.title}</td>
-                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Semester</td>
-                <td style="padding: 1.5px 4px; border: none;">: ${schoolProfile?.semester === '2' ? '2 (Genap)' : '1 (Ganjil)'}</td>
+                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Judul Asesmen</td>
+                <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">${sumatif.title}</td>
+                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Semester</td>
+                <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.semester === '2' ? '2 (Genap)' : '1 (Ganjil)'}</td>
               </tr>
               <tr>
-                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">Kelas / Fase</td>
-                <td style="padding: 1.5px 4px; border: none;">: Kelas ${classId || sumatif.classId || '1'}</td>
-                <td style="font-weight: bold; padding: 1.5px 4px; border: none;">KKTP / KKM</td>
-                <td style="padding: 1.5px 4px; border: none;">: ${kktp} (Poin Maksimal: ${totalMaxPoints})</td>
+                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Kelas / Fase</td>
+                <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">Kelas ${classId || sumatif.classId || '1'}</td>
+                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">KKTP / KKM</td>
+                <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
+                <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${kktp} (Poin Maksimal: ${totalMaxPoints})</td>
               </tr>
             </tbody>
           </table>
@@ -4963,36 +4968,44 @@ const SumatifResultsView: React.FC<{
             </tr>
             <tr style="background-color: #f8fafc; font-weight: bold; -webkit-print-color-adjust: exact;">
               <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Tingkat Kesulitan :</td>
-              ${questionItemStats.map(stat => `
-                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 6pt; text-transform: uppercase; ${
-                  stat.difficulty === 'mudah' ? 'color: #047857;' : stat.difficulty === 'sukar' ? 'color: #b91c1c;' : 'color: #b45309;'
-                }">
-                  ${stat.difficulty}
-                </td>
-              `).join('')}
-              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; color: #475569;">Klasifikasi</td>
+              ${questionItemStats.map(stat => {
+                const diffCode = stat.difficulty === 'mudah' ? 'M' : stat.difficulty === 'sedang' ? 'SD' : 'SK';
+                const color = stat.difficulty === 'mudah' ? 'color: #047857;' : stat.difficulty === 'sukar' ? 'color: #b91c1c;' : 'color: #b45309;';
+                return `
+                  <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 7.5pt; font-weight: 900; text-transform: uppercase; ${color}">
+                    ${diffCode}
+                  </td>
+                `;
+              }).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; color: #475569;">M / SD / SK</td>
             </tr>
             <tr style="background-color: #f1f5f9; font-weight: bold; -webkit-print-color-adjust: exact;">
               <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: right;">Status Butir Soal :</td>
-              ${questionItemStats.map(stat => `
-                <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 6pt; font-weight: 900; ${
-                  stat.status === 'Baik' ? 'color: #047857;' : stat.status === 'Revisi' ? 'color: #b91c1c;' : 'color: #b45309;'
-                }">
-                  ${stat.status}
-                </td>
-              `).join('')}
-              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; font-weight: bold; color: #0284c7;">Rekomendasi</td>
+              ${questionItemStats.map(stat => {
+                const statusCode = stat.status === 'Baik' ? 'B' : stat.status === 'Cukup' ? 'C' : 'R';
+                const color = stat.status === 'Baik' ? 'color: #047857;' : stat.status === 'Revisi' ? 'color: #b91c1c;' : 'color: #0284c7;';
+                return `
+                  <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-size: 7.5pt; font-weight: 900; ${color}">
+                    ${statusCode}
+                  </td>
+                `;
+              }).join('')}
+              <td colspan="3" style="border: 1px solid #000; padding: 2.5px 4px; text-align: center; font-size: 6.5pt; font-weight: bold; color: #0284c7;">B / C / R</td>
             </tr>
           </tfoot>
         </table>
 
         <!-- CATATAN / TINDAK LANJUT -->
         <div style="font-size: 7pt; line-height: 1.35; margin: 4px 0 10px 0; padding: 4px 8px; background-color: #fafafa; border: 1px dashed #cbd5e1; border-radius: 4px; page-break-inside: avoid;">
+          <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; margin-bottom: 3px; border-bottom: 1px dotted #cbd5e1; padding-bottom: 3px;">
+            <div><strong>Keterangan Kesulitan:</strong> <strong>M</strong> = Mudah (≥70%) • <strong>SD</strong> = Sedang (30-69%) • <strong>SK</strong> = Sukar (&lt;30%)</div>
+            <div><strong>Keterangan Status Soal:</strong> <strong>B</strong> = Baik • <strong>C</strong> = Cukup • <strong>R</strong> = Revisi</div>
+          </div>
           <strong style="color: #0f172a;">Catatan & Tindak Lanjut:</strong>
           <div style="margin-left: 10px;">
             <div>1. Sebanyak <strong>${analysisRows.filter(r => r.hasTaken && !r.isPass).length} siswa</strong> belum mencapai KKTP (${kktp}) dan diwajibkan mengikuti program pembelajaran remedial.</div>
             <div>2. Sebanyak <strong>${analysisSummary.passedCount} siswa</strong> telah tuntas dan diberikan materi pengayaan untuk pendalaman capaian pembelajaran.</div>
-            <div>3. Butir soal berstatus <em>'Revisi'</em> disarankan untuk ditinjau kembali daya pembeda maupun kejelasan redaksi kalimatnya.</div>
+            <div>3. Butir soal berstatus <em>'R' (Revisi)</em> disarankan untuk ditinjau kembali daya pembeda maupun kejelasan redaksi kalimatnya.</div>
           </div>
         </div>
 
@@ -5830,6 +5843,7 @@ const SumatifResultsView: React.FC<{
                       Tingkat Kesulitan
                     </td>
                     {questionItemStats.map((stat) => {
+                      const diffCode = stat.difficulty === 'mudah' ? 'M' : stat.difficulty === 'sedang' ? 'SD' : 'SK';
                       const badge = stat.difficulty === 'mudah' 
                         ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
                         : stat.difficulty === 'sedang' 
@@ -5837,13 +5851,18 @@ const SumatifResultsView: React.FC<{
                         : 'bg-rose-100 text-rose-800 border-rose-300';
                       return (
                         <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-extrabold border ${badge}`}>
-                            {stat.difficulty}
+                          <span 
+                            title={`Tingkat Kesulitan: ${stat.difficulty.toUpperCase()} (${stat.percentage}%)`}
+                            className={`inline-flex items-center justify-center min-w-[24px] h-5 text-[10px] px-1 rounded uppercase font-black border cursor-help ${badge}`}
+                          >
+                            {diffCode}
                           </span>
                         </td>
                       );
                     })}
-                    <td colSpan={3} className="bg-slate-100/80"></td>
+                    <td colSpan={3} className="bg-slate-100/80 text-[10px] text-slate-500 font-bold px-3 py-2 text-center">
+                      M / SD / SK
+                    </td>
                   </tr>
 
                   {/* Row 4: Status / Rekomendasi Butir Soal */}
@@ -5852,20 +5871,26 @@ const SumatifResultsView: React.FC<{
                       Status Butir Soal
                     </td>
                     {questionItemStats.map((stat) => {
+                      const statusCode = stat.status === 'Baik' ? 'B' : stat.status === 'Cukup' ? 'C' : 'R';
                       const badge = stat.status === 'Baik' 
-                        ? 'text-emerald-700' 
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                         : stat.status === 'Cukup' 
-                        ? 'text-blue-700' 
-                        : 'text-amber-700 font-bold';
+                        ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                        : 'bg-rose-50 text-rose-700 border-rose-200 font-bold';
                       return (
-                        <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200 text-[10px]">
-                          <span className={badge}>
-                            {stat.status}
+                        <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200">
+                          <span 
+                            title={`Status Soal: ${stat.status}`}
+                            className={`inline-flex items-center justify-center min-w-[24px] h-5 text-[10px] px-1 rounded font-black border cursor-help ${badge}`}
+                          >
+                            {statusCode}
                           </span>
                         </td>
                       );
                     })}
-                    <td colSpan={3} className="bg-slate-100/80"></td>
+                    <td colSpan={3} className="bg-slate-100/80 text-[10px] text-slate-500 font-bold px-3 py-2 text-center">
+                      B / C / R
+                    </td>
                   </tr>
                 </tfoot>
               </table>
@@ -5873,23 +5898,33 @@ const SumatifResultsView: React.FC<{
 
             {/* Bottom Legend Bar */}
             <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-              <div className="flex items-center space-x-4 flex-wrap gap-y-1">
+              <div className="flex items-center space-x-3 flex-wrap gap-y-1.5">
                 <span className="font-bold text-slate-700">Keterangan:</span>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center justify-center border border-emerald-300">1</span>
-                  <span className="text-slate-500">Benar</span>
+                  <span className="text-slate-500 text-[11px]">Benar</span>
                 </div>
                 <div className="flex items-center space-x-1.5">
                   <span className="w-5 h-5 rounded bg-rose-50 text-rose-600 font-bold text-[10px] flex items-center justify-center border border-rose-200">0</span>
-                  <span className="text-slate-500">Salah</span>
+                  <span className="text-slate-500 text-[11px]">Salah</span>
                 </div>
                 <div className="h-3 w-px bg-slate-300 hidden sm:block"></div>
-                <span className="text-slate-500">
-                  Kriteria Kesulitan: <strong className="text-emerald-700">Mudah (≥70%)</strong>, <strong className="text-amber-700">Sedang (30-69%)</strong>, <strong className="text-rose-700">Sukar (&lt;30%)</strong>
-                </span>
+                <div className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-slate-700">Kesulitan:</span>
+                  <span className="text-emerald-700 font-bold">M (Mudah ≥70%)</span> • 
+                  <span className="text-amber-700 font-bold">SD (Sedang 30-69%)</span> • 
+                  <span className="text-rose-700 font-bold">SK (Sukar &lt;30%)</span>
+                </div>
+                <div className="h-3 w-px bg-slate-300 hidden sm:block"></div>
+                <div className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap">
+                  <span className="font-semibold text-slate-700">Status Soal:</span>
+                  <span className="text-emerald-700 font-bold">B (Baik)</span> • 
+                  <span className="text-blue-700 font-bold">C (Cukup)</span> • 
+                  <span className="text-rose-700 font-bold">R (Revisi)</span>
+                </div>
               </div>
-              <div className="text-slate-500 font-medium">
-                KKM/KKTP: <strong className="text-slate-800">{kktp}</strong> | Total Soal: <strong className="text-slate-800">{sumatif.questions.length}</strong> ({totalMaxPoints} poin)
+              <div className="text-slate-500 font-medium text-[11px]">
+                KKM/KKTP: <strong className="text-slate-800">{kktp}</strong> | Total: <strong className="text-slate-800">{sumatif.questions.length}</strong> Soal ({totalMaxPoints} poin)
               </div>
             </div>
           </div>

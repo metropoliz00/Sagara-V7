@@ -4824,7 +4824,18 @@ const SumatifResultsView: React.FC<{
     const regencyLogo = schoolProfile?.regencyLogo;
     const schoolLogo = schoolProfile?.schoolLogo;
     const kabName = (schoolProfile?.kabupaten || 'TUBAN').toUpperCase();
-    const instName = (schoolProfile?.name || 'UPT SD NEGERI').toUpperCase();
+    const rawSchoolName = schoolProfile?.name || 'UPT SD NEGERI REMEN 2';
+    const instName = rawSchoolName.toUpperCase();
+    const formattedSchoolName = rawSchoolName
+      .split(' ')
+      .map(word => {
+        const upper = word.toUpperCase();
+        if (['UPT', 'SD', 'SMP', 'SMA', 'SMK', 'MIN', 'MAN', 'MTS', 'TK', 'PAUD'].includes(upper)) {
+          return upper;
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join(' ');
     const addressLine = [
       schoolProfile?.jalan || schoolProfile?.address,
       schoolProfile?.desa ? `Desa ${schoolProfile.desa}` : '',
@@ -4913,8 +4924,8 @@ const SumatifResultsView: React.FC<{
           <thead>
             <tr style="background-color: #f1f5f9; -webkit-print-color-adjust: exact;">
               <th style="border: 1px solid #000; padding: 3px 2px; width: 24px; text-align: center;">No</th>
-              <th style="border: 1px solid #000; padding: 3px 2px; width: 55px; text-align: center;">NIS</th>
-              <th style="border: 1px solid #000; padding: 3px 4px; width: 140px; text-align: left;">Nama Siswa</th>
+              <th style="border: 1px solid #000; padding: 3px 2px; width: 38px; text-align: center; white-space: nowrap;">NIS</th>
+              <th style="border: 1px solid #000; padding: 3px 4px; width: 160px; text-align: left;">Nama Siswa</th>
               ${sumatif.questions.map((q, idx) => `
                 <th style="border: 1px solid #000; padding: 2px 1px; width: 22px; text-align: center;">
                   <div>S${idx + 1}</div>
@@ -4930,7 +4941,7 @@ const SumatifResultsView: React.FC<{
             ${rowsToPrint.map((row, idx) => `
               <tr style="background-color: ${idx % 2 === 1 ? '#fafafa' : '#ffffff'}; -webkit-print-color-adjust: exact;">
                 <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center;">${idx + 1}</td>
-                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-family: monospace;">${row.student.nis || '-'}</td>
+                <td style="border: 1px solid #000; padding: 2.5px 2px; text-align: center; font-family: monospace; white-space: nowrap;">${row.student.nis || '-'}</td>
                 <td style="border: 1px solid #000; padding: 2.5px 4px; text-align: left; font-weight: 500;">${row.student.name.toUpperCase()}</td>
                 ${row.questionResults.map(qr => `
                   <td style="border: 1px solid #000; padding: 2.5px 1px; text-align: center; font-weight: bold; ${
@@ -5021,7 +5032,7 @@ const SumatifResultsView: React.FC<{
         <div style="margin-top: 14px; display: flex; justify-content: space-between; font-size: 7.5pt; line-height: 1.3; page-break-inside: avoid; break-inside: avoid;">
           <div style="width: 260px; text-align: center;">
             <div>Mengetahui,</div>
-            <div style="font-weight: bold;">Kepala ${instName}</div>
+            <div style="font-weight: bold;">Kepala ${formattedSchoolName}</div>
             ${schoolProfile?.headmasterSignature ? `
               <div style="height: 52px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
                 <img src="${schoolProfile.headmasterSignature}" alt="Tanda Tangan Kepala Sekolah" style="max-height: 48px; max-width: 140px; object-fit: contain;" />

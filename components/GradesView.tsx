@@ -207,6 +207,46 @@ const GradesView: React.FC<GradesViewProps> = ({
     return 'Kurang';
   };
 
+  const cleanTujuanText = (raw: string) => {
+    if (!raw) return '';
+    let text = String(raw).trim();
+    // Strip TP 1: or TP 1 - or TP 1.
+    text = text.replace(/^TP\s*\d+[\s:.-]*/i, '').trim();
+    // Strip Murid dapat / Murid mampu / Siswa dapat / Siswa mampu / Peserta didik dapat / dsb
+    text = text.replace(/^(murid|siswa|peserta\s*didik)\s+(dapat|mampu)\s+/i, '');
+    text = text.replace(/^(murid|siswa|peserta\s*didik)\s+/i, '');
+    text = text.replace(/^(dapat|mampu)\s+/i, '');
+    // Make first character lowercase
+    if (text.length > 0) {
+      text = text.charAt(0).toLowerCase() + text.slice(1);
+    }
+    // Strip trailing dot
+    text = text.replace(/[.]+$/, '').trim();
+    return text;
+  };
+
+  const getFormatifDescription = (
+    maxTpIndex: number,
+    minTpIndex: number,
+    maxScore: number,
+    minScore: number,
+    topics: any[]
+  ) => {
+    if (maxTpIndex === -1 || topics.length === 0) return '-';
+    const predikatMax = getPredicate(maxScore);
+    const rawMax = topics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1);
+    const tujuanMax = cleanTujuanText(rawMax);
+
+    if (minTpIndex !== -1 && maxTpIndex !== minTpIndex) {
+      const predikatMin = getPredicate(minScore);
+      const rawMin = topics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1);
+      const tujuanMin = cleanTujuanText(rawMin);
+      return `Murid mendapat predikat ${predikatMax}, dalam ${tujuanMax} dan Murid mendapat predikat ${predikatMin}, dalam ${tujuanMin}`;
+    }
+
+    return `Murid mendapat predikat ${predikatMax}, dalam ${tujuanMax}`;
+  };
+
   const getPredicateBadgeClass = (pred: string) => {
     switch (pred) {
       case 'Istimewa':
@@ -777,18 +817,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                  if (score < minScore) { minScore = score; minTpIndex = kIdx; }
                              }
                          });
-                         let desc = '-';
-                         if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
-                             const predikatMax = getPredicate(maxScore);
-                             const predikatMin = getPredicate(minScore);
-                             const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                             const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
-                             desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
-                         } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
-                             const predikatMax = getPredicate(maxScore);
-                             const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                             desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
-                         }
+                         const desc = getFormatifDescription(maxTpIndex, minTpIndex, maxScore, minScore, formatifTopics);
 
                          return \`
                          <tr>
@@ -972,18 +1001,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                      if (score < minScore) { minScore = score; minTpIndex = kIdx; }
                  }
              });
-             let desc = '-';
-             if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
-                 const predikatMax = getPredicate(maxScore);
-                 const predikatMin = getPredicate(minScore);
-                 const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                 const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
-                 desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
-             } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
-                 const predikatMax = getPredicate(maxScore);
-                 const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                 desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
-             }
+             const desc = getFormatifDescription(maxTpIndex, minTpIndex, maxScore, minScore, formatifTopics);
 
              return [idx + 1, s.nis, s.nisn || '-', s.name.toUpperCase(), subjectName, ...tpKeys.map((k: string) => g[k] || '-'), desc];
           });
@@ -1621,18 +1639,7 @@ const GradesView: React.FC<GradesViewProps> = ({
                                if (score < minScore) { minScore = score; minTpIndex = kIdx; }
                            }
                        });
-                       let desc = "-";
-                       if (maxTpIndex !== -1 && minTpIndex !== -1 && maxTpIndex !== minTpIndex && formatifTopics.length > 0) {
-                           const predikatMax = getPredicate(maxScore);
-                           const predikatMin = getPredicate(minScore);
-                           const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                           const tujuanMin = (formatifTopics[minTpIndex]?.tujuan || "TP " + (minTpIndex + 1)).replace(/^TP \d+: /, "");
-                           desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax + " dan Murid mendapat " + predikatMin + " pada " + tujuanMin;
-                       } else if (maxTpIndex !== -1 && formatifTopics.length > 0) {
-                           const predikatMax = getPredicate(maxScore);
-                           const tujuanMax = (formatifTopics[maxTpIndex]?.tujuan || "TP " + (maxTpIndex + 1)).replace(/^TP \d+: /, "");
-                           desc = "Murid mendapat " + predikatMax + " pada " + tujuanMax;
-                       }
+                       const desc = getFormatifDescription(maxTpIndex, minTpIndex, maxScore, minScore, formatifTopics);
 
                        return (
                           <tr key={s.id} className="hover:bg-indigo-50/30 transition-colors print:hover:bg-transparent border-b">

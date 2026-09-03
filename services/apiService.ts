@@ -3715,21 +3715,25 @@ export const apiService = {
     }
   },
 
-  // --- REALTIME SUMATIF STATUS (Bypasses localStorage completely, directly from Supabase DB) ---
+  // --- REALTIME SUMATIF STATUS (Safely queries DB with graceful cache fallback) ---
   getSumatifStatusRealtime: async (sumatifId: string): Promise<SumatifResult[]> => {
+    if (!isApiConfigured() || !supabase) {
+      const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`);
+      return cached || [];
+    }
     try {
-      if (!supabase) return [];
       const { data, error } = await supabase
         .from('sumatif_results')
         .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, started_at, submitted_at, created_at')
         .eq('sumatif_id', sumatifId);
 
       if (error) {
-        console.error("Error fetching realtime status test from database:", error);
-        return [];
+        console.warn("Realtime status test DB fetch notice, falling back to cache:", error.message || error);
+        const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`);
+        return cached || [];
       }
 
-      return (data || []).map((r: any) => ({
+      const results = (data || []).map((r: any) => ({
         id: r.id,
         sumatifId: r.sumatif_id,
         studentId: r.student_id,
@@ -3742,9 +3746,17 @@ export const apiService = {
         needsGrading: !!r.needs_grading,
         manualScores: r.manual_scores || {}
       }));
+
+      // Keep cache warm
+      if (results.length > 0) {
+        cacheService.set(`sumatif_results_${sumatifId}`, results);
+      }
+
+      return results;
     } catch (err) {
-      console.error("Database query failed for realtime status test:", err);
-      return [];
+      console.warn("Database query notice for realtime status test, using local cache fallback:", err);
+      const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`);
+      return cached || [];
     }
   },
 

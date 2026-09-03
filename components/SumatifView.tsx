@@ -4640,19 +4640,21 @@ const SumatifResultsView: React.FC<{
   const kktp = subject?.kkm || 75;
   const totalMaxPoints = sumatif.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0);
 
-  // Directly fetch from DB, strictly bypassing localStorage
+  // Safely fetch results from DB with fallback
   const fetchRealtimeFromDb = useCallback(async () => {
     try {
       const dbData = await apiService.getSumatifStatusRealtime(sumatif.id);
-      if (dbData) {
+      if (dbData && dbData.length > 0) {
         const normalized = normalizeSumatifResults(sumatif.questions, dbData);
         setLiveResults(normalized);
+      } else if (dbData && dbData.length === 0 && (!initialResults || initialResults.length === 0)) {
+        setLiveResults([]);
       }
       setLastSyncTime(new Date());
     } catch (e) {
-      console.warn("Failed to fetch realtime status test:", e);
+      console.warn("Notice: Realtime sumatif sync using local state fallback:", e);
     }
-  }, [sumatif.id, sumatif.questions]);
+  }, [sumatif.id, sumatif.questions, initialResults]);
 
   // Keep liveResults in sync if initialResults changes from parent
   useEffect(() => {

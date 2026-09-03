@@ -293,6 +293,67 @@ const renderFormattedText = (text: string | null | undefined) => {
   return formattedText;
 };
 
+const renderFormattedWacana = (text: string | null | undefined, customClass = '') => {
+  if (!text) return null;
+  const normalized = text
+    .replace(/<img[^>]*>/g, '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+
+  if (!normalized) return null;
+
+  // Split into paragraphs (by double newlines or single newlines)
+  let blocks = normalized.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  if (blocks.length === 1 && blocks[0].includes('\n')) {
+    const lines = blocks[0].split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length > 1) {
+      blocks = lines;
+    }
+  }
+
+  let title: string | null = null;
+  let paragraphs = blocks;
+
+  if (blocks.length > 1) {
+    const firstBlock = blocks[0];
+    // First block is considered a title if it's concise or doesn't end with a sentence period
+    if (firstBlock.length <= 160 || !firstBlock.endsWith('.')) {
+      title = firstBlock.replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
+      paragraphs = blocks.slice(1);
+    }
+  } else if (blocks.length === 1) {
+    const firstLineEnd = blocks[0].indexOf('\n');
+    if (firstLineEnd !== -1) {
+      const candidateTitle = blocks[0].slice(0, firstLineEnd).trim().replace(/^#+\s*/, '').replace(/^\*\*|\*\*$/g, '').trim();
+      const rest = blocks[0].slice(firstLineEnd).trim();
+      if (candidateTitle.length <= 160 && rest.length > 0) {
+        title = candidateTitle;
+        paragraphs = rest.split(/\n+/).map(p => p.trim()).filter(Boolean);
+      }
+    }
+  }
+
+  return (
+    <div className={`wacana-block w-full ${customClass}`}>
+      {title && (
+        <div className="text-center font-bold text-slate-800 text-sm sm:text-base md:text-lg mb-3 sm:mb-4 px-2 tracking-wide">
+          {title}
+        </div>
+      )}
+      <div className="space-y-3">
+        {paragraphs.map((p, idx) => (
+          <p key={idx} className="text-justify leading-relaxed text-slate-700">
+            {p}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 interface SumatifViewProps {
   currentUser: User | null;
   activeClassId: string;
@@ -1919,9 +1980,9 @@ const SumatifEditor: React.FC<{
                           </label>
                         </div>
                         {q.imageUrl && (
-                          <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap">
-                            <span className="font-bold block text-amber-700 mb-1">Preview Deskripsi Teks / Wacana:</span>
-                            {renderFormattedText(q.imageUrl)}
+                          <div className="p-3.5 bg-amber-50/50 border border-amber-200 rounded-xl text-amber-950 text-xs font-medium leading-relaxed">
+                            <span className="font-bold block text-amber-800 mb-2">Preview Deskripsi Teks / Wacana:</span>
+                            {renderFormattedWacana(q.imageUrl)}
                           </div>
                         )}
                       </div>
@@ -2146,9 +2207,9 @@ const SumatifEditor: React.FC<{
                                     </label>
                                   </div>
                                   {sq.imageUrl && (
-                                    <div className="p-2 bg-amber-50/50 border border-amber-100 rounded-lg text-amber-900 text-[10px] font-medium leading-relaxed whitespace-pre-wrap">
-                                      <span className="font-bold block text-amber-700 mb-0.5">Preview Deskripsi Teks / Wacana:</span>
-                                      {renderFormattedText(sq.imageUrl)}
+                                    <div className="p-2.5 bg-amber-50/50 border border-amber-200 rounded-lg text-amber-950 text-[11px] font-medium leading-relaxed">
+                                      <span className="font-bold block text-amber-800 mb-1">Preview Deskripsi Teks / Wacana:</span>
+                                      {renderFormattedWacana(sq.imageUrl)}
                                     </div>
                                   )}
                                 </div>
@@ -3040,8 +3101,8 @@ const SumatifTaking: React.FC<{
                         )}
                       </div>
                     ) : currentQuestion.imageUrl ? (
-                      <div className={`p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium ${adaptiveFontSize}`}>
-                        {renderFormattedText(currentQuestion.imageUrl)}
+                      <div className={`p-4 md:p-5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-700 shadow-sm ${adaptiveFontSize}`}>
+                        {renderFormattedWacana(currentQuestion.imageUrl)}
                       </div>
                     ) : null}
                   </div>
@@ -3049,7 +3110,7 @@ const SumatifTaking: React.FC<{
                 
                 {/* Right Side / Content Flow: Interactions / Options */}
                 <div className="flex flex-col w-full">
-                  <div className={`text-slate-800 font-medium leading-relaxed whitespace-pre-wrap break-words w-full min-w-0 ${adaptiveFontSize} ${
+                  <div className={`text-slate-800 font-medium leading-relaxed whitespace-pre-wrap break-words w-full min-w-0 text-justify ${adaptiveFontSize} ${
                     scaleMode === 'kecil' ? 'mb-4 md:mb-5' : 'mb-6 md:mb-8'
                   }`}>
                     {renderFormattedText(currentQuestion.text)}
@@ -3777,8 +3838,8 @@ const SumatifPembahasan: React.FC<{
                         )}
                       </div>
                     ) : currentQuestion.imageUrl ? (
-                      <div className={`p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-700 leading-relaxed whitespace-pre-wrap font-medium ${adaptiveFontSize}`}>
-                        {renderFormattedText(currentQuestion.imageUrl)}
+                      <div className={`p-4 md:p-5 bg-slate-50 border border-slate-200/80 rounded-2xl text-slate-700 shadow-sm ${adaptiveFontSize}`}>
+                        {renderFormattedWacana(currentQuestion.imageUrl)}
                       </div>
                     ) : null}
                   </div>
@@ -3786,7 +3847,7 @@ const SumatifPembahasan: React.FC<{
                 
                 {/* Right Side / Content Flow */}
                 <div className="flex flex-col w-full">
-                  <div className={`text-slate-800 font-medium leading-relaxed whitespace-pre-wrap break-words w-full min-w-0 ${adaptiveFontSize} ${
+                  <div className={`text-slate-800 font-medium leading-relaxed whitespace-pre-wrap break-words w-full min-w-0 text-justify ${adaptiveFontSize} ${
                     scaleMode === 'kecil' ? 'mb-4 md:mb-5' : 'mb-6 md:mb-8'
                   }`}>
                     {renderFormattedText(currentQuestion.text)}
@@ -4095,12 +4156,12 @@ const SumatifManualGrading: React.FC<{
               </div>
             </div>
 
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 leading-relaxed whitespace-pre-wrap">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 italic text-slate-600 leading-relaxed whitespace-pre-wrap text-justify">
               {currentQuestion.imageUrl && (currentQuestion.imageUrl.startsWith('http') || currentQuestion.imageUrl.startsWith('data:image/') || currentQuestion.imageUrl.startsWith('/')) ? (
                 <img src={currentQuestion.imageUrl} alt="Question" className="max-w-full h-auto max-h-[300px] rounded-lg mb-4 border border-slate-200 object-contain" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
               ) : currentQuestion.imageUrl ? (
                 <div className="p-4 bg-white border border-slate-200 rounded-xl text-slate-700 not-italic mb-4">
-                  {currentQuestion.imageUrl.replace(/<br\s*\/?>/gi, '\n').replace(/\\n/g, '\n')}
+                  {renderFormattedWacana(currentQuestion.imageUrl)}
                 </div>
               ) : null}
               {currentQuestion.text}
@@ -4471,11 +4532,11 @@ const SumatifStudentResultPrint: React.FC<{
                               {q.imageUrl && (q.imageUrl.startsWith('http') || q.imageUrl.startsWith('data:image/') || q.imageUrl.startsWith('/')) ? (
                                 <img src={q.imageUrl} alt="Question" className="max-w-[30%] h-auto max-h-[150px] rounded-lg my-1 border border-slate-200 object-contain" />
                               ) : q.imageUrl ? (
-                                <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-amber-900 text-xs font-medium leading-relaxed whitespace-pre-wrap mb-2">
-                                  {renderFormattedText(q.imageUrl)}
+                                <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl text-slate-800 text-xs font-medium leading-relaxed mb-2">
+                                  {renderFormattedWacana(q.imageUrl)}
                                 </div>
                               ) : null}
-                              <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium" />
+                              <div dangerouslySetInnerHTML={{ __html: q.text.replace(/<img[^>]*>/g, '') }} className="prose prose-sm max-w-none whitespace-pre-wrap font-medium text-justify" />
                               
                               <div className="flex mt-2 items-start text-[11px]">
                                 <div className="w-[42%] pr-2">

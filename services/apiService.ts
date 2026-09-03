@@ -3667,9 +3667,16 @@ export const apiService = {
     try {
       const { error } = await supabase
         .from('sumatif_results')
-        .update({ status_tes: 'mulai', score: 0, answers: {}, submitted_at: null })
-        .eq('sumatif_id', sumatifId)
-        .eq('student_id', studentId);
+        .upsert({ 
+          sumatif_id: sumatifId, 
+          student_id: studentId, 
+          status_tes: 'mulai', 
+          score: 0, 
+          answers: {}, 
+          submitted_at: null,
+          needs_grading: false,
+          manual_scores: {}
+        }, { onConflict: 'sumatif_id,student_id' });
       if (error) throw error;
     } catch (err) {
       console.warn("resetSumatifResult database failed:", err);
@@ -3705,6 +3712,72 @@ export const apiService = {
       if (error) throw error;
     } catch (err) {
       console.warn("startSumatifResult database failed:", err);
+    }
+  },
+
+  // --- REALTIME SUMATIF STATUS (Bypasses localStorage completely, directly from Supabase DB) ---
+  getSumatifStatusRealtime: async (sumatifId: string): Promise<SumatifResult[]> => {
+    try {
+      if (!supabase) return [];
+      const { data, error } = await supabase
+        .from('sumatif_results')
+        .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, started_at, submitted_at, created_at')
+        .eq('sumatif_id', sumatifId);
+
+      if (error) {
+        console.error("Error fetching realtime status test from database:", error);
+        return [];
+      }
+
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        sumatifId: r.sumatif_id,
+        studentId: r.student_id,
+        score: r.score ?? 0,
+        answers: r.answers || {},
+        submittedAt: r.submitted_at,
+        startedAt: r.started_at || r.created_at,
+        createdAt: r.created_at || r.started_at,
+        status_tes: (r.status_tes || 'mulai') as 'mulai' | 'sedang mengerjakan' | 'selesai',
+        needsGrading: !!r.needs_grading,
+        manualScores: r.manual_scores || {}
+      }));
+    } catch (err) {
+      console.error("Database query failed for realtime status test:", err);
+      return [];
+    }
+  },
+
+  subscribeToSumatifStatus: (sumatifId: string, onUpdate: (payload: any) => void): (() => void) => {
+    if (!supabase || typeof supabase.channel !== 'function') return () => {};
+    try {
+      const channelName = `realtime_status_${sumatifId.slice(0, 8)}_${Date.now()}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'sumatif_results',
+            filter: `sumatif_id=eq.${sumatifId}`
+          },
+          (payload: any) => {
+            onUpdate(payload);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn("Error removing sumatif realtime channel:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("Failed to initialize realtime subscription for sumatif status:", e);
+      return () => {};
     }
   },
 

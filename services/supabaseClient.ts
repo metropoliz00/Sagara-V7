@@ -8,12 +8,16 @@ const savedKey = typeof window !== 'undefined' ? localStorage.getItem('CUSTOM_SU
 const centralSavedUrl = typeof window !== 'undefined' ? localStorage.getItem('CENTRAL_SUPABASE_URL') : null;
 const centralSavedKey = typeof window !== 'undefined' ? localStorage.getItem('CENTRAL_SUPABASE_ANON_KEY') : null;
 
-// Jika sudah diatur oleh sekolah, gunakan milik mereka. Jika belum, gunakan default Anda.
-const supabaseUrl = savedUrl || import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = savedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+// Fallback default credentials from environment template
+const DEFAULT_SUPABASE_URL = 'https://vivqbxddlsszgatspicf.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_q2inPGa_weLic6CD9OyhbQ_m9DZKxSP';
 
-const masterUrl = centralSavedUrl || import.meta.env.VITE_SUPABASE_URL || supabaseUrl || '';
-const masterKey = centralSavedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey || '';
+// Jika sudah diatur oleh sekolah, gunakan milik mereka. Jika belum, gunakan default Anda.
+const supabaseUrl = savedUrl || import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
+const supabaseAnonKey = savedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || DEFAULT_SUPABASE_KEY;
+
+const masterUrl = centralSavedUrl || import.meta.env.VITE_SUPABASE_URL || supabaseUrl || DEFAULT_SUPABASE_URL;
+const masterKey = centralSavedKey || import.meta.env.VITE_SUPABASE_ANON_KEY || supabaseAnonKey || DEFAULT_SUPABASE_KEY;
 
 let activeSupabase = (supabaseUrl && supabaseAnonKey)
   ? createClient(supabaseUrl, supabaseAnonKey)

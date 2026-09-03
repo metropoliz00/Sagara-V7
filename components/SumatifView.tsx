@@ -6,7 +6,8 @@ import {
   HelpCircle, Check, X, ListFilter, User as UserIcon, LogIn, Monitor,
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
   Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2, FileText,
-  ArrowUp, HeartHandshake, Medal, Award, Calculator, Compass, Music, Trophy, Book, Globe, Printer
+  ArrowUp, HeartHandshake, Medal, Award, Calculator, Compass, Music, Trophy, Book, Globe, Printer,
+  Radio, Users, CheckCircle2, Search, Filter
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult } from '../types';
 import { apiService } from '../services/apiService';
@@ -329,6 +330,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     }
   }, [isEditing, isTaking, isEnteringToken, currentSumatif]);
   const [viewingResults, setViewingResults] = useState<Sumatif | null>(null);
+  const [resultsInitialTab, setResultsInitialTab] = useState<'status' | 'analysis'>('status');
   const [results, setResults] = useState<SumatifResult[]>([]);
   const [studentResultsMap, setStudentResultsMap] = useState<Record<string, SumatifResult>>({});
   const [viewingStudentResult, setViewingStudentResult] = useState<{ sumatif: Sumatif, result: SumatifResult } | null>(null);
@@ -379,7 +381,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       const resultsMap: Record<string, SumatifResult> = {};
       await Promise.all(sumatifsList.map(async (s) => {
         try {
-          const resList = await apiService.getSumatifResults(s.id);
+          // Fetch directly from DB to bypass stale localStorage
+          const resList = await apiService.getSumatifStatusRealtime(s.id);
           const myRes = resList.find(r => 
             String(r.studentId).trim() === String(sId).trim() || 
             (students[0]?.id && String(r.studentId).trim() === String(students[0].id).trim())
@@ -415,22 +418,36 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     fetchSumatifs();
   }, [activeClassId]);
 
-  // Polling for active test results viewing (30s interval, only when tab is visible)
+  // Realtime subscription + active database polling for test status (direct from DB, strictly bypassing localStorage)
   useEffect(() => {
     let interval: any;
+    let unsubscribe: (() => void) | null = null;
     if (viewingResults) {
+      // 1. Supabase Realtime channel subscription
+      unsubscribe = apiService.subscribeToSumatifStatus(viewingResults.id, async () => {
+        try {
+          const data = await apiService.getSumatifStatusRealtime(viewingResults.id);
+          const normalized = normalizeSumatifResults(viewingResults.questions, data || []);
+          setResults(normalized);
+        } catch (error) {
+          console.error("Realtime update error:", error);
+        }
+      });
+
+      // 2. Fast database polling (3 seconds) directly from DB to guarantee live sync
       interval = setInterval(async () => {
         if (document.visibilityState !== 'visible') return;
         try {
-          const data = await apiService.getSumatifResults(viewingResults.id);
+          const data = await apiService.getSumatifStatusRealtime(viewingResults.id);
           const normalized = normalizeSumatifResults(viewingResults.questions, data || []);
           setResults(normalized);
         } catch (error) {
           console.error("Realtime fetch error:", error);
         }
-      }, 30000); // Poll every 30 seconds
+      }, 3000);
     }
     return () => {
+      if (unsubscribe) unsubscribe();
       if (interval) clearInterval(interval);
     };
   }, [viewingResults]);
@@ -634,15 +651,17 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     }
   };
 
-  const handleViewResults = async (sumatif: Sumatif) => {
+  const handleViewResults = async (sumatif: Sumatif, initialTab: 'status' | 'analysis' = 'status') => {
     setLoading(true);
     try {
-      const data = await apiService.getSumatifResults(sumatif.id);
+      // For status test, fetch directly from DB without using localStorage
+      const data = await apiService.getSumatifStatusRealtime(sumatif.id);
       const normalized = normalizeSumatifResults(sumatif.questions, data || []);
       setResults(normalized);
+      setResultsInitialTab(initialTab);
       setViewingResults(sumatif);
     } catch (error) {
-      onShowNotification('Gagal mengambil hasil sumatif', 'error');
+      onShowNotification('Gagal mengambil status hasil sumatif dari database', 'error');
     } finally {
       setLoading(false);
     }
@@ -732,8 +751,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   const handleResetResult = async (studentId: string, sumatif: Sumatif) => {
     setModal({
       isOpen: true,
-      title: 'Reset Hasil Ujian',
-      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Data pengerjaan akan dihapus secara permanen dan siswa dapat mengerjakan ulang.',
+      title: 'Reset Hasil Ujian (Realtime Database)',
+      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Status tes siswa akan direset langsung di database ke "mulai" dan siswa dapat segera mengerjakan ulang.',
       type: 'confirm',
       confirmText: 'Reset Sekarang',
       cancelText: 'Batal',
@@ -742,14 +761,14 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         setModal(prev => ({ ...prev, isOpen: false }));
         try {
           await apiService.resetSumatifResult(sumatif.id, studentId);
-          onShowNotification('Hasil ujian berhasil direset', 'success');
+          onShowNotification('Status ujian berhasil direset di database', 'success');
           
-          // Refresh results immediately
-          const updatedResults = await apiService.getSumatifResults(sumatif.id);
+          // Refresh results immediately directly from DB (bypassing localStorage)
+          const updatedResults = await apiService.getSumatifStatusRealtime(sumatif.id);
           const normalized = normalizeSumatifResults(sumatif.questions, updatedResults || []);
           setResults(normalized);
         } catch (error) {
-          onShowNotification('Gagal mereset hasil ujian', 'error');
+          onShowNotification('Gagal mereset status ujian', 'error');
         }
       }
     });
@@ -762,8 +781,9 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     if (!studentId) return true;
 
     try {
-      const allResults = await apiService.getSumatifResults(sumatif.id);
-      const studentResult = allResults.find(r => r.studentId === studentId);
+      // Check attempt status directly from DB, strictly bypassing localStorage
+      const allResults = await apiService.getSumatifStatusRealtime(sumatif.id);
+      const studentResult = allResults.find(r => String(r.studentId).trim() === String(studentId).trim());
       
       if (studentResult && studentResult.status_tes === 'selesai') {
         setModal({
@@ -778,7 +798,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       return true;
     } catch (error) {
       console.error("Error checking attempt:", error);
-      return true; // Proceed if check fails? Or block? Better proceed for now but normally block.
+      return true;
     }
   };
 
@@ -858,6 +878,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           sumatif={viewingResults}
           results={results}
           students={students}
+          initialViewMode={resultsInitialTab}
           onBack={() => setViewingResults(null)}
           onSync={() => handleSyncToGrades(viewingResults, results)}
           onReset={(studentId) => handleResetResult(studentId, viewingResults)}
@@ -1057,11 +1078,12 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         <Edit2 size={16} />
                       </button>
                       <button 
-                        onClick={() => handleViewResults(s)} 
-                        title="Hasil & Analisis Nilai"
-                        className="p-2.5 bg-purple-50 text-purple-600 border border-purple-200 rounded-xl hover:bg-purple-100 transition-all"
+                        onClick={() => handleViewResults(s, 'status')} 
+                        title="Status Test"
+                        className="p-2.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-all relative"
                       >
                         <BarChart2 size={16} />
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                       </button>
                       <button 
                         onClick={() => { setCurrentSumatif(s); setIsPembahasan(true); }} 
@@ -4475,12 +4497,18 @@ const SumatifResultsView: React.FC<{
   sumatif: Sumatif,
   results: SumatifResult[],
   students: Student[],
+  initialViewMode?: 'status' | 'analysis',
   onBack: () => void,
   onSync: () => void,
   onReset: (studentId: string) => void,
   onSaveGrading: (resultId: string, manualScores: Record<string, number>, finalScore: number) => void
-}> = ({ sumatif, results, students, onBack, onSync, onReset, onSaveGrading }) => {
-  const [viewMode, setViewMode] = useState<'list' | 'analysis'>('list');
+}> = ({ sumatif, results: initialResults, students, initialViewMode = 'status', onBack, onSync, onReset, onSaveGrading }) => {
+  const [viewMode, setViewMode] = useState<'status' | 'analysis'>(initialViewMode === 'analysis' ? 'analysis' : 'status');
+  const [liveResults, setLiveResults] = useState<SumatifResult[]>(initialResults);
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'sedang' | 'selesai' | 'belum'>('all');
+  const [searchStatusQuery, setSearchStatusQuery] = useState('');
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
 
@@ -4490,44 +4518,177 @@ const SumatifResultsView: React.FC<{
 
   const totalMaxPoints = sumatif.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0);
 
+  // Directly fetch from DB, strictly bypassing localStorage
+  const fetchRealtimeFromDb = useCallback(async () => {
+    try {
+      const dbData = await apiService.getSumatifStatusRealtime(sumatif.id);
+      if (dbData) {
+        const normalized = normalizeSumatifResults(sumatif.questions, dbData);
+        setLiveResults(normalized);
+      }
+      setLastSyncTime(new Date());
+    } catch (e) {
+      console.warn("Failed to fetch realtime status test:", e);
+    }
+  }, [sumatif.id, sumatif.questions]);
+
+  // Keep liveResults in sync if initialResults changes from parent
+  useEffect(() => {
+    if (initialResults && initialResults.length > 0) {
+      setLiveResults(initialResults);
+    }
+  }, [initialResults]);
+
+  // Realtime subscription + active database polling
+  useEffect(() => {
+    // 1. Initial direct fetch from database
+    fetchRealtimeFromDb();
+
+    // 2. Supabase Realtime channel subscription
+    const unsubscribe = apiService.subscribeToSumatifStatus(sumatif.id, () => {
+      fetchRealtimeFromDb();
+    });
+
+    // 3. Fast polling every 3 seconds directly from DB
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchRealtimeFromDb();
+      }
+    }, 3000);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+      clearInterval(interval);
+    };
+  }, [fetchRealtimeFromDb, sumatif.id]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchRealtimeFromDb();
+    setIsRefreshing(false);
+  };
+
+  const handleExecuteReset = async (studentId: string) => {
+    await onReset(studentId);
+    await fetchRealtimeFromDb();
+  };
+
+  // Merge students with any results in the database
+  const allStudentsInScope = useMemo(() => {
+    const list = [...students];
+    liveResults.forEach(r => {
+      if (!list.some(s => String(s.id).trim() === String(r.studentId).trim())) {
+        list.push({
+          id: r.studentId,
+          name: `Siswa (ID: ${r.studentId.slice(0, 8)})`,
+          nis: '-',
+          classId: sumatif.classId || '',
+          nisn: '-',
+          gender: 'L',
+          birthDate: '',
+          birthPlace: '',
+          religion: '',
+          address: ''
+        } as Student);
+      }
+    });
+    return list;
+  }, [students, liveResults, sumatif.classId]);
+
+  // Map each student to their realtime status
+  const studentStatuses = useMemo(() => {
+    return allStudentsInScope.map(student => {
+      const result = liveResults.find(r => String(r.studentId).trim() === String(student.id).trim());
+      let status: 'sedang' | 'selesai' | 'belum' = 'belum';
+      if (result) {
+        if (result.status_tes === 'selesai') {
+          status = 'selesai';
+        } else if (result.status_tes === 'sedang mengerjakan') {
+          status = 'sedang';
+        } else {
+          status = 'belum';
+        }
+      }
+      return { student, result, status };
+    });
+  }, [allStudentsInScope, liveResults]);
+
+  const stats = useMemo(() => {
+    const total = studentStatuses.length;
+    const sedang = studentStatuses.filter(s => s.status === 'sedang').length;
+    const selesai = studentStatuses.filter(s => s.status === 'selesai').length;
+    const belum = studentStatuses.filter(s => s.status === 'belum').length;
+    return { total, sedang, selesai, belum };
+  }, [studentStatuses]);
+
+  const filteredStudentStatuses = useMemo(() => {
+    return studentStatuses.filter(item => {
+      if (statusFilter === 'sedang' && item.status !== 'sedang') return false;
+      if (statusFilter === 'selesai' && item.status !== 'selesai') return false;
+      if (statusFilter === 'belum' && item.status !== 'belum') return false;
+      if (searchStatusQuery.trim()) {
+        const q = searchStatusQuery.toLowerCase();
+        const nameMatch = item.student.name.toLowerCase().includes(q);
+        const nisMatch = item.student.nis?.toLowerCase().includes(q);
+        if (!nameMatch && !nisMatch) return false;
+      }
+      return true;
+    });
+  }, [studentStatuses, statusFilter, searchStatusQuery]);
+
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative">
-      <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+      <div className="p-6 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50">
         <div className="flex items-center space-x-4">
-          <button onClick={onBack} className="p-2 hover:bg-white rounded-xl transition-colors text-slate-400">
+          <button onClick={onBack} className="p-2 hover:bg-white rounded-xl transition-colors text-slate-400 shadow-xs">
             <ChevronLeft size={24} />
           </button>
           <div>
             <div className="flex items-center space-x-3 flex-wrap gap-y-1">
-              <h2 className="text-xl font-bold text-slate-800">Hasil: {sumatif.title}</h2>
+              <h2 className="text-xl font-bold text-slate-800">{sumatif.title}</h2>
               <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold border ${decoration.badgeBg} shadow-xs`}>
                 <SubjectIcon size={14} className="shrink-0" />
                 <span>{subject?.name || sumatif.subjectId}</span>
               </span>
             </div>
-            <p className="text-sm text-slate-500">{results.length} Siswa telah mengerjakan</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {stats.selesai} Selesai • {stats.sedang} Sedang Mengerjakan • {stats.total} Total Terdaftar
+            </p>
           </div>
         </div>
-        <div className="flex items-center space-x-3">
-          <div className="flex bg-slate-100 p-1 rounded-xl mr-4">
+
+        <div className="flex items-center flex-wrap gap-3">
+          <div className="flex bg-slate-200/80 p-1 rounded-xl">
             <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'list' ? 'bg-white text-[#5AB2FF] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              onClick={() => setViewMode('status')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'status' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              Daftar Nilai
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <Radio size={13} className="text-emerald-600" />
+              <span>Status Test</span>
             </button>
             <button
               onClick={() => setViewMode('analysis')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-white text-[#5AB2FF] shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-white text-[#5AB2FF] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
             >
-              Analisis Soal
+              Analisis Butir Soal
             </button>
           </div>
+
+          <button
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+            className="p-2 bg-white text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-all shadow-xs"
+            title={`Segarkan data (Diperbarui ${format(lastSyncTime, 'HH:mm:ss')} WIB)`}
+          >
+            <RefreshCw size={16} className={isRefreshing ? 'animate-spin text-emerald-600' : ''} />
+          </button>
+
           <button
             onClick={onSync}
-            className="flex items-center space-x-2 px-6 py-2.5 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all shadow-md font-bold"
+            className="flex items-center space-x-2 px-5 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-all shadow-sm font-bold text-xs"
           >
-            <Save size={20} />
+            <Save size={16} />
             <span>Input ke Buku Nilai</span>
           </button>
         </div>
@@ -4555,111 +4716,326 @@ const SumatifResultsView: React.FC<{
         />
       )}
 
-      {viewMode === 'list' ? (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Siswa</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Skor</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Waktu Selesai</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Status Tes</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {results.map(r => {
-                const student = students.find(s => s.id === r.studentId);
-                return (
-                  <tr key={r.id} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold">
-                          {student?.name.charAt(0)}
-                        </div>
-                        <div>
-                          <div className="font-bold text-slate-800">{student?.name || 'Siswa Tidak Ditemukan'}</div>
-                          <div className="text-xs text-slate-400">NIS: {student?.nis}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      {(() => {
-                        if (r.status_tes !== 'selesai') return <span className="text-slate-400 font-bold">-</span>;
-                        const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
-                        const finalScore = studentCalc.finalScore;
-                        return (
-                          <div className="flex flex-col items-center">
-                            <span className={`text-lg font-bold ${
-                              finalScore >= 75 ? 'text-green-600' : finalScore >= 60 ? 'text-amber-600' : 'text-red-600'
-                            }`}>
-                              {finalScore}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-medium">
-                              {studentCalc.earnedPoints}/{totalMaxPoints}
-                            </span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-6 py-4 text-center text-sm text-slate-500">
-                      {(r.status_tes === 'selesai' && r.submittedAt) ? format(new Date(r.submittedAt), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${
-                        r.status_tes === 'selesai' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700 animate-pulse'
-                      }`}>
-                        {r.status_tes || 'Mulai'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center space-x-2">
-                        <button
-                          onClick={() => setViewingPrintResult(r)}
-                          className="px-3 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all flex items-center space-x-1"
-                          title="Lihat Lembar Jawaban"
-                        >
-                          <Eye size={14} />
-                          <span>Lembar Jawaban</span>
-                        </button>
-                        {sumatif.questions.some(q => q.type === 'uraian') && (
-                          <button
-                            onClick={() => setGradingResult(r)}
-                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
-                              r.needsGrading 
-                                ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                                : 'bg-green-50 text-green-600 hover:bg-green-100'
-                            }`}
-                            title="Koreksi Jawaban Uraian"
-                          >
-                            <Edit2 size={14} />
-                            <span>{r.needsGrading ? 'Koreksi' : 'Koreksi Ulang'}</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onReset(r.studentId)}
-                          className="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-xs font-bold hover:bg-red-100 transition-all flex items-center space-x-1"
-                          title="Reset Hasil Ujian"
-                        >
-                          <RefreshCw size={14} />
-                          <span>Reset</span>
-                        </button>
-                      </div>
-                    </td>
+      {/* --- TAMPILAN KHUSUS STATUS TES REALTIME (LANGSUNG DARI DATABASE) --- */}
+      {viewMode === 'status' && (
+        <div className="p-6 space-y-6">
+          {/* Metric Summary Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Siswa */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Siswa</p>
+                <h4 className="text-2xl font-black text-slate-800 mt-1">{stats.total}</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Peserta kelas terdaftar</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                <Users size={22} />
+              </div>
+            </div>
+
+            {/* Sedang Mengerjakan */}
+            <div className="p-4 bg-blue-50/80 rounded-2xl border border-blue-200 flex items-center justify-between relative overflow-hidden">
+              <div className="relative z-10">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Sedang Mengerjakan</p>
+                </div>
+                <h4 className="text-2xl font-black text-blue-900 mt-1">{stats.sedang}</h4>
+                <p className="text-[11px] text-blue-700/80 mt-0.5">Ujian aktif di perangkat</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-sm">
+                <Radio size={22} className="animate-pulse" />
+              </div>
+            </div>
+
+            {/* Sudah Selesai */}
+            <div className="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Sudah Selesai</p>
+                <h4 className="text-2xl font-black text-emerald-900 mt-1">{stats.selesai}</h4>
+                <p className="text-[11px] text-emerald-700/80 mt-0.5">
+                  {stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0}% telah selesai
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
+                <CheckCircle2 size={22} />
+              </div>
+            </div>
+
+            {/* Belum Mulai */}
+            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 flex items-center justify-between">
+              <div>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Mulai</p>
+                <h4 className="text-2xl font-black text-slate-700 mt-1">{stats.belum}</h4>
+                <p className="text-[11px] text-slate-400 mt-0.5">Belum membuka soal</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center">
+                <Clock size={22} />
+              </div>
+            </div>
+          </div>
+
+          {/* Realtime Progress Track */}
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/70 space-y-2">
+            <div className="flex justify-between items-center text-xs font-bold">
+              <span className="text-slate-600">Progres Keseluruhan Ujian</span>
+              <span className="text-emerald-700">
+                {stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0}% Selesai
+              </span>
+            </div>
+            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden flex">
+              <div 
+                className="bg-emerald-500 h-full transition-all duration-500" 
+                style={{ width: `${stats.total > 0 ? (stats.selesai / stats.total) * 100 : 0}%` }}
+                title={`${stats.selesai} Siswa Selesai`}
+              />
+              <div 
+                className="bg-blue-500 h-full transition-all duration-500 animate-pulse" 
+                style={{ width: `${stats.total > 0 ? (stats.sedang / stats.total) * 100 : 0}%` }}
+                title={`${stats.sedang} Siswa Sedang Mengerjakan`}
+              />
+            </div>
+          </div>
+
+          {/* Filter & Search Bar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-1.5 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'all' ? 'bg-white text-slate-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Semua ({stats.total})
+              </button>
+              <button
+                onClick={() => setStatusFilter('sedang')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${statusFilter === 'sedang' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-ping"></span>
+                Sedang Mengerjakan ({stats.sedang})
+              </button>
+              <button
+                onClick={() => setStatusFilter('selesai')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'selesai' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Selesai ({stats.selesai})
+              </button>
+              <button
+                onClick={() => setStatusFilter('belum')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'belum' ? 'bg-slate-700 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                Belum Mulai ({stats.belum})
+              </button>
+            </div>
+
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+              <input
+                type="text"
+                value={searchStatusQuery}
+                onChange={(e) => setSearchStatusQuery(e.target.value)}
+                placeholder="Cari nama siswa atau NIS..."
+                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Realtime Student Status Table */}
+          <div className="border border-slate-200/80 rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-200/80">
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider w-12 text-center">No</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Siswa</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Status Ujian</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Waktu Mulai</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Waktu Selesai</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Nilai</th>
+                    <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Aksi Cepat</th>
                   </tr>
-                );
-              })}
-              {results.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">
-                    Belum ada data pengerjaan
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredStudentStatuses.map((item, idx) => {
+                    const r = item.result;
+                    const isSedang = item.status === 'sedang';
+                    const isSelesai = item.status === 'selesai';
+                    const isBelum = item.status === 'belum';
+
+                    // Duration calculate if sedang mengerjakan
+                    let elapsedMins = 0;
+                    if (isSedang && r?.startedAt) {
+                      try {
+                        const start = new Date(r.startedAt).getTime();
+                        const now = Date.now();
+                        elapsedMins = Math.max(0, Math.floor((now - start) / 60000));
+                      } catch (e) {}
+                    }
+
+                    return (
+                      <tr 
+                        key={item.student.id} 
+                        className={`transition-colors ${isSedang ? 'bg-blue-50/30 hover:bg-blue-50/50' : 'hover:bg-slate-50/60'}`}
+                      >
+                        <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-400">
+                          {idx + 1}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
+                              isSedang 
+                                ? 'bg-blue-500 text-white shadow-xs' 
+                                : isSelesai 
+                                ? 'bg-emerald-500 text-white shadow-xs' 
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              {item.student.name?.charAt(0) || 'S'}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-800 text-sm">{item.student.name}</div>
+                              <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                                <span>NIS: {item.student.nis || '-'}</span>
+                                {item.student.classId && <span>• Kelas {item.student.classId}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Status Ujian Realtime Badge */}
+                        <td className="px-5 py-3.5 text-center">
+                          {isSedang && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-xs">
+                              <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
+                              Sedang Mengerjakan
+                            </span>
+                          )}
+                          {isSelesai && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs">
+                              <CheckCircle2 size={13} className="text-emerald-600" />
+                              Selesai
+                            </span>
+                          )}
+                          {isBelum && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-200">
+                              <Clock size={12} className="text-slate-400" />
+                              Belum Mulai
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Waktu Mulai */}
+                        <td className="px-5 py-3.5 text-center text-xs text-slate-600">
+                          {r?.startedAt ? (
+                            <div className="flex flex-col items-center">
+                              <span className="font-medium">{format(new Date(r.startedAt), 'dd MMM HH:mm', { locale: id })}</span>
+                              {isSedang && elapsedMins > 0 && (
+                                <span className="text-[10px] text-blue-600 font-semibold mt-0.5">
+                                  Berjalan {elapsedMins} mnt
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </td>
+
+                        {/* Waktu Selesai */}
+                        <td className="px-5 py-3.5 text-center text-xs text-slate-600">
+                          {isSelesai && r?.submittedAt ? (
+                            <span className="font-medium">{format(new Date(r.submittedAt), 'dd MMM HH:mm', { locale: id })}</span>
+                          ) : (
+                            <span className="text-slate-300">-</span>
+                          )}
+                        </td>
+
+                        {/* Nilai */}
+                        <td className="px-5 py-3.5 text-center">
+                          {isSelesai && r ? (() => {
+                            const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
+                            const finalScore = studentCalc.finalScore;
+                            return (
+                              <div className="flex flex-col items-center">
+                                <span className={`text-base font-black ${
+                                  finalScore >= 75 ? 'text-emerald-600' : finalScore >= 60 ? 'text-amber-600' : 'text-rose-600'
+                                }`}>
+                                  {finalScore}
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {studentCalc.earnedPoints}/{totalMaxPoints} poin
+                                </span>
+                              </div>
+                            );
+                          })() : isSedang ? (
+                            <span className="text-xs font-bold text-blue-600 italic">Sedang Berjalan</span>
+                          ) : (
+                            <span className="text-slate-300 font-bold">-</span>
+                          )}
+                        </td>
+
+                        {/* Aksi Cepat */}
+                        <td className="px-5 py-3.5 text-center">
+                          <div className="flex items-center justify-center space-x-1.5">
+                            {isSelesai && r && (
+                              <button
+                                onClick={() => setViewingPrintResult(r)}
+                                className="px-2.5 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100 transition-all flex items-center space-x-1"
+                                title="Lihat Lembar Jawaban Siswa"
+                              >
+                                <Eye size={13} />
+                                <span className="hidden sm:inline">Lembar</span>
+                              </button>
+                            )}
+
+                            {isSelesai && r && sumatif.questions.some(q => q.type === 'uraian') && (
+                              <button
+                                onClick={() => setGradingResult(r)}
+                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center space-x-1 ${
+                                  r.needsGrading 
+                                    ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                                    : 'bg-green-50 text-green-600 hover:bg-green-100'
+                                }`}
+                                title="Koreksi Jawaban Uraian"
+                              >
+                                <Edit2 size={13} />
+                                <span className="hidden sm:inline">{r.needsGrading ? 'Koreksi' : 'Koreksi Ulang'}</span>
+                              </button>
+                            )}
+
+                            {(isSedang || isSelesai) && (
+                              <button
+                                onClick={() => handleExecuteReset(item.student.id)}
+                                className="px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-all flex items-center space-x-1"
+                                title="Reset Status Ujian Siswa Langsung di Database"
+                              >
+                                <RefreshCw size={13} />
+                                <span>Reset</span>
+                              </button>
+                            )}
+
+                            {isBelum && (
+                              <span className="text-[11px] text-slate-400 italic">Menunggu Siswa</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredStudentStatuses.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
+                        Tidak ada siswa dengan filter atau pencarian ini.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
-      ) : (
+      )}
+
+      {/* --- TAB ANALISIS SOAL --- */}
+      {viewMode === 'analysis' && (
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[800px]">
             <thead>
@@ -4676,7 +5052,7 @@ const SumatifResultsView: React.FC<{
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {results.map(r => {
+              {liveResults.map(r => {
                 const student = students.find(s => s.id === r.studentId);
                 const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
                 const subject = MOCK_SUBJECTS.find(sub => sub.id === sumatif.subjectId);
@@ -4715,8 +5091,8 @@ const SumatifResultsView: React.FC<{
               <tr>
                 <td className="px-6 py-4 text-xs uppercase tracking-wider text-slate-500 sticky left-0 bg-slate-50 z-10">Prosentase Benar</td>
                 {sumatif.questions.map(q => {
-                  const correctCount = results.filter(r => checkCorrect(q, r.answers[q.id])).length;
-                  const percentage = results.length > 0 ? Math.round((correctCount / results.length) * 100) : 0;
+                  const correctCount = liveResults.filter(r => checkCorrect(q, r.answers[q.id])).length;
+                  const percentage = liveResults.length > 0 ? Math.round((correctCount / liveResults.length) * 100) : 0;
                   return (
                     <td key={q.id} className="px-3 py-4 text-center text-[#5AB2FF]">
                       {percentage}%
@@ -4729,8 +5105,8 @@ const SumatifResultsView: React.FC<{
               <tr>
                 <td className="px-6 py-4 text-xs uppercase tracking-wider text-slate-500 sticky left-0 bg-slate-50 z-10">Tingkat Kesulitan</td>
                 {sumatif.questions.map(q => {
-                  const correctCount = results.filter(r => checkCorrect(q, r.answers[q.id])).length;
-                  const percentage = results.length > 0 ? (correctCount / results.length) * 100 : 0;
+                  const correctCount = liveResults.filter(r => checkCorrect(q, r.answers[q.id])).length;
+                  const percentage = liveResults.length > 0 ? (correctCount / liveResults.length) * 100 : 0;
                   
                   // Dynamic Difficulty based on percentage
                   // > 70% = Mudah, 30-70% = Sedang, < 30% = Sulit

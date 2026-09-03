@@ -4509,6 +4509,8 @@ const SumatifResultsView: React.FC<{
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'sedang' | 'selesai' | 'belum'>('all');
   const [searchStatusQuery, setSearchStatusQuery] = useState('');
+  const [searchAnalysisQuery, setSearchAnalysisQuery] = useState('');
+  const [analysisFilter, setAnalysisFilter] = useState<'all' | 'pengayaan' | 'remidi' | 'selesai'>('all');
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
 
@@ -4516,6 +4518,7 @@ const SumatifResultsView: React.FC<{
   const decoration = SUBJECT_DECORATIONS[sumatif.subjectId?.toLowerCase()] || SUBJECT_DECORATIONS.default;
   const SubjectIcon = decoration.icon;
 
+  const kktp = subject?.kkm || 75;
   const totalMaxPoints = sumatif.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0);
 
   // Directly fetch from DB, strictly bypassing localStorage
@@ -4635,6 +4638,166 @@ const SumatifResultsView: React.FC<{
       return true;
     });
   }, [studentStatuses, statusFilter, searchStatusQuery]);
+
+  // Process item analysis rows for all students in scope
+  const analysisRows = useMemo(() => {
+    return allStudentsInScope.map(student => {
+      const result = liveResults.find(r => String(r.studentId).trim() === String(student.id).trim());
+      const hasTaken = Boolean(result && (result.status_tes === 'selesai' || Object.keys(result.answers || {}).length > 0));
+      const studentCalc = result 
+        ? calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {})
+        : { finalScore: 0, earnedPoints: 0, totalMax: totalMaxPoints };
+      
+      const questionResults = sumatif.questions.map(q => {
+        if (!result || !hasTaken) return { isAnswered: false, isCorrect: false, score: 0 };
+        const isCorrect = checkCorrect(q, result.answers?.[q.id]);
+        const score = isCorrect ? (q.points || 1) : (result.manualScores?.[q.id] || 0);
+        return { isAnswered: true, isCorrect, score };
+      });
+
+      const totalCorrect = questionResults.filter(qr => qr.isCorrect).length;
+      const isPass = studentCalc.finalScore >= kktp;
+      const rekomendasi: 'Pengayaan' | 'Remidi' = isPass ? 'Pengayaan' : 'Remidi';
+
+      return {
+        student,
+        result,
+        hasTaken,
+        statusTes: result?.status_tes || 'belum',
+        finalScore: studentCalc.finalScore,
+        earnedPoints: studentCalc.earnedPoints,
+        totalCorrect,
+        questionResults,
+        isPass,
+        rekomendasi
+      };
+    });
+  }, [allStudentsInScope, liveResults, sumatif.questions, totalMaxPoints, kktp]);
+
+  const filteredAnalysisRows = useMemo(() => {
+    return analysisRows.filter(row => {
+      if (analysisFilter === 'selesai' && !row.hasTaken) return false;
+      if (analysisFilter === 'pengayaan' && (!row.hasTaken || !row.isPass)) return false;
+      if (analysisFilter === 'remidi' && (!row.hasTaken || row.isPass)) return false;
+      if (searchAnalysisQuery.trim()) {
+        const q = searchAnalysisQuery.toLowerCase();
+        const nameMatch = row.student.name.toLowerCase().includes(q);
+        const nisMatch = row.student.nis?.toLowerCase().includes(q);
+        if (!nameMatch && !nisMatch) return false;
+      }
+      return true;
+    });
+  }, [analysisRows, analysisFilter, searchAnalysisQuery]);
+
+  const questionItemStats = useMemo(() => {
+    const completedStudents = analysisRows.filter(r => r.hasTaken);
+    const totalTested = completedStudents.length;
+
+    return sumatif.questions.map((q, idx) => {
+      const correctCount = completedStudents.filter(r => r.questionResults[idx]?.isCorrect).length;
+      const percentage = totalTested > 0 ? Math.round((correctCount / totalTested) * 100) : 0;
+      
+      let difficulty: 'mudah' | 'sedang' | 'sukar' = 'sedang';
+      if (percentage >= 70) difficulty = 'mudah';
+      else if (percentage < 30) difficulty = 'sukar';
+
+      let status: 'Baik' | 'Cukup' | 'Revisi' = 'Baik';
+      if (percentage > 85 || percentage < 20) {
+        status = 'Revisi';
+      } else if (percentage >= 30 && percentage <= 75) {
+        status = 'Baik';
+      } else {
+        status = 'Cukup';
+      }
+
+      return {
+        question: q,
+        index: idx,
+        totalTested,
+        correctCount,
+        percentage,
+        difficulty,
+        status
+      };
+    });
+  }, [analysisRows, sumatif.questions]);
+
+  const analysisSummary = useMemo(() => {
+    const tested = analysisRows.filter(r => r.hasTaken);
+    const count = tested.length;
+    if (count === 0) {
+      return {
+        testedCount: 0,
+        avgScore: 0,
+        passRate: 0,
+        passedCount: 0,
+        easiestQuestion: '-',
+        hardestQuestion: '-'
+      };
+    }
+    const totalScores = tested.reduce((acc, r) => acc + r.finalScore, 0);
+    const avgScore = Math.round((totalScores / count) * 10) / 10;
+    const passedCount = tested.filter(r => r.isPass).length;
+    const passRate = Math.round((passedCount / count) * 100);
+
+    const sortedStats = [...questionItemStats].sort((a, b) => b.percentage - a.percentage);
+    const easiest = sortedStats[0];
+    const hardest = sortedStats[sortedStats.length - 1];
+
+    return {
+      testedCount: count,
+      avgScore,
+      passRate,
+      passedCount,
+      easiestQuestion: easiest ? `S${easiest.index + 1} (${easiest.percentage}%)` : '-',
+      hardestQuestion: hardest ? `S${hardest.index + 1} (${hardest.percentage}%)` : '-'
+    };
+  }, [analysisRows, questionItemStats]);
+
+  const handleExportAnalysisExcel = () => {
+    const testedRows = analysisRows.filter(r => r.hasTaken);
+    if (testedRows.length === 0) {
+      alert("Belum ada data pengerjaan siswa untuk dianalisis dan diekspor.");
+      return;
+    }
+
+    const headers = ['No', 'NIS', 'Nama Siswa', ...sumatif.questions.map((_, i) => `S${i + 1}`), 'Jml Benar', 'Nilai Akhir', 'Rekomendasi'];
+    
+    const rows = testedRows.map((r, i) => [
+      i + 1,
+      r.student.nis || '-',
+      r.student.name,
+      ...r.questionResults.map(qr => qr.isCorrect ? 1 : 0),
+      r.totalCorrect,
+      r.finalScore,
+      r.rekomendasi
+    ]);
+
+    const rowJmlBenar = ['Jumlah Benar', '', '', ...questionItemStats.map(qs => qs.correctCount), '', '', ''];
+    const rowPersen = ['Persentase Ketuntasan (%)', '', '', ...questionItemStats.map(qs => `${qs.percentage}%`), '', '', ''];
+    const rowKesulitan = ['Tingkat Kesulitan', '', '', ...questionItemStats.map(qs => qs.difficulty.toUpperCase()), '', '', ''];
+    const rowStatus = ['Status Butir Soal', '', '', ...questionItemStats.map(qs => qs.status), '', '', ''];
+
+    const aoaData = [
+      [`ANALISIS BUTIR SOAL - ${sumatif.title}`],
+      [`Mata Pelajaran: ${subject?.name || sumatif.subjectId} | Kelas: ${sumatif.classId || '-'} | KKM/KKTP: ${kktp}`],
+      [`Waktu Ekspor: ${format(new Date(), 'dd MMMM yyyy HH:mm', { locale: id })} WIB`],
+      [],
+      headers,
+      ...rows,
+      [],
+      rowJmlBenar,
+      rowPersen,
+      rowKesulitan,
+      rowStatus
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(aoaData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Analisis Butir Soal');
+    const safeTitle = sumatif.title.replace(/[^a-zA-Z0-9]/g, '_');
+    XLSX.writeFile(wb, `Analisis_Butir_Soal_${safeTitle}.xlsx`);
+  };
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden relative">
@@ -5034,110 +5197,356 @@ const SumatifResultsView: React.FC<{
         </div>
       )}
 
-      {/* --- TAB ANALISIS SOAL --- */}
+      {/* --- TAB ANALISIS SOAL (TAMPILAN TABEL CSS LIBRARY 1 HALAMAN) --- */}
       {viewMode === 'analysis' && (
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-slate-50/50">
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">Siswa</th>
-                {sumatif.questions.map((q, idx) => (
-                  <th key={idx} className="px-3 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">
-                    <div>S{idx + 1}</div>
-                    <div className="text-[9px] text-slate-400 font-normal font-mono">({q.points || 1}p)</div>
-                  </th>
-                ))}
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Skor</th>
-                <th className="px-6 py-4 text-xs font-bold text-slate-400 uppercase tracking-wider text-center">Rekomendasi</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {liveResults.map(r => {
-                const student = students.find(s => s.id === r.studentId);
-                const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
-                const subject = MOCK_SUBJECTS.find(sub => sub.id === sumatif.subjectId);
-                const kktp = subject?.kkm || 75;
-                const isPass = studentCalc.finalScore >= kktp;
-                return (
-                  <tr key={r.id} className="hover:bg-slate-50/30 transition-colors">
-                    <td className="px-6 py-4 font-bold text-slate-700 sticky left-0 bg-white z-10 border-r border-slate-50">
-                      {student?.name || 'Unknown'}
+        <div className="p-6 space-y-5">
+          {/* Top Metric Cards (KPI Baris Kompak) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Rata-rata Nilai</p>
+                <div className="text-2xl font-black text-slate-800 mt-0.5">{analysisSummary.avgScore}</div>
+                <p className="text-[10px] text-slate-400 mt-0.5">Dari {analysisSummary.testedCount} siswa selesai</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center font-black">
+                <BarChart2 size={20} />
+              </div>
+            </div>
+
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Ketuntasan Klasikal</p>
+                <div className="text-2xl font-black text-emerald-900 mt-0.5">{analysisSummary.passRate}%</div>
+                <p className="text-[10px] text-emerald-700/80 mt-0.5">{analysisSummary.passedCount} siswa ≥ KKTP ({kktp})</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                <CheckCircle2 size={20} />
+              </div>
+            </div>
+
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-teal-700 uppercase tracking-wider">Soal Termudah</p>
+                <div className="text-lg font-black text-teal-900 mt-0.5 truncate">{analysisSummary.easiestQuestion}</div>
+                <p className="text-[10px] text-teal-700/80 mt-0.5">Daya serap tertinggi</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center font-bold text-xs">
+                MAX
+              </div>
+            </div>
+
+            <div className="bg-slate-50/80 border border-slate-200/80 rounded-2xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Soal Tersulit</p>
+                <div className="text-lg font-black text-amber-900 mt-0.5 truncate">{analysisSummary.hardestQuestion}</div>
+                <p className="text-[10px] text-amber-700/80 mt-0.5">Perlu penguatan konsep</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-xs">
+                MIN
+              </div>
+            </div>
+          </div>
+
+          {/* Table Header / Toolbar */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-3.5 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Search Bar */}
+              <div className="relative w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchAnalysisQuery}
+                  onChange={(e) => setSearchAnalysisQuery(e.target.value)}
+                  placeholder="Cari siswa atau NIS..."
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]/30 focus:border-[#5AB2FF] transition-all"
+                />
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center p-0.5 bg-slate-100 rounded-xl text-xs font-bold">
+                <button
+                  onClick={() => setAnalysisFilter('all')}
+                  className={`px-3 py-1 rounded-lg transition-all ${analysisFilter === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Semua ({analysisRows.length})
+                </button>
+                <button
+                  onClick={() => setAnalysisFilter('selesai')}
+                  className={`px-3 py-1 rounded-lg transition-all ${analysisFilter === 'selesai' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Selesai ({analysisSummary.testedCount})
+                </button>
+                <button
+                  onClick={() => setAnalysisFilter('pengayaan')}
+                  className={`px-3 py-1 rounded-lg transition-all ${analysisFilter === 'pengayaan' ? 'bg-white text-emerald-700 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Pengayaan
+                </button>
+                <button
+                  onClick={() => setAnalysisFilter('remidi')}
+                  className={`px-3 py-1 rounded-lg transition-all ${analysisFilter === 'remidi' ? 'bg-white text-rose-700 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+                >
+                  Remidi
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-500 font-medium hidden md:inline">
+                Menampilkan <strong className="text-slate-800">{filteredAnalysisRows.length}</strong> siswa
+              </span>
+              <button
+                onClick={handleExportAnalysisExcel}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Unduh Analisis Butir Soal ke Format Microsoft Excel (.xlsx)"
+              >
+                <Download size={14} />
+                <span>Unduh Excel</span>
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Cetak Analisis Butir Soal"
+              >
+                <Printer size={14} />
+                <span>Cetak</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table Container - TAMPIL 1 HALAMAN DENGAN STICKY HEADER & FOOTER */}
+          <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
+            <div className="overflow-x-auto max-h-[calc(100vh-320px)] min-h-[440px] relative scrollbar-thin">
+              <table className="w-full text-left border-separate border-spacing-0 min-w-max">
+                <thead>
+                  <tr>
+                    <th className="sticky top-0 left-0 z-40 bg-slate-100 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider text-center w-12 py-3 px-2 border-b-2 border-r border-slate-300">
+                      No
+                    </th>
+                    <th className="sticky top-0 left-12 z-40 bg-slate-100 text-slate-600 font-extrabold text-[11px] uppercase tracking-wider min-w-[200px] max-w-[240px] py-3 px-3.5 border-b-2 border-r-2 border-slate-300 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)]">
+                      Nama Siswa & NIS
+                    </th>
+                    {sumatif.questions.map((q, idx) => (
+                      <th 
+                        key={q.id || idx} 
+                        className="sticky top-0 z-30 bg-slate-100 text-slate-600 font-bold text-center min-w-[50px] max-w-[58px] py-2 px-1 border-b-2 border-r border-slate-200/80"
+                        title={`Soal ${idx + 1} (${q.type?.toUpperCase() || 'PG'}) - Bobot: ${q.points || 1} poin`}
+                      >
+                        <div className="text-xs font-black text-slate-800">S{idx + 1}</div>
+                        <div className="text-[10px] text-slate-400 font-normal font-mono">({q.points || 1}p)</div>
+                      </th>
+                    ))}
+                    <th className="sticky top-0 z-30 bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider text-center w-20 py-3 px-2 border-b-2 border-r border-slate-200">
+                      Jml Benar
+                    </th>
+                    <th className="sticky top-0 z-30 bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider text-center w-20 py-3 px-2 border-b-2 border-r border-slate-200">
+                      Nilai
+                    </th>
+                    <th className="sticky top-0 z-30 bg-slate-100 text-slate-700 font-extrabold text-[11px] uppercase tracking-wider text-center w-28 py-3 px-2 border-b-2 border-slate-300">
+                      Rekomendasi
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {filteredAnalysisRows.map((row, rowIdx) => {
+                    const isEven = rowIdx % 2 === 0;
+                    return (
+                      <tr 
+                        key={row.student.id} 
+                        className={`group transition-colors ${isEven ? 'bg-white' : 'bg-slate-50/50'} hover:bg-sky-50/60`}
+                      >
+                        {/* No Column (Sticky) */}
+                        <td className={`sticky left-0 z-20 text-center font-bold text-xs text-slate-400 py-2.5 px-2 border-b border-r border-slate-200/80 ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-sky-50`}>
+                          {rowIdx + 1}
+                        </td>
+
+                        {/* Nama Siswa Column (Sticky) */}
+                        <td className={`sticky left-12 z-20 py-2.5 px-3.5 border-b border-r-2 border-slate-300 shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)] ${isEven ? 'bg-white' : 'bg-slate-50'} group-hover:bg-sky-50`}>
+                          <div className="font-bold text-xs text-slate-800 truncate max-w-[200px]" title={row.student.name}>
+                            {row.student.name}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono">
+                            NIS: {row.student.nis || '-'}
+                          </div>
+                        </td>
+
+                        {/* Question Result Cells */}
+                        {sumatif.questions.map((q, qIdx) => {
+                          const qr = row.questionResults[qIdx];
+                          if (!row.hasTaken) {
+                            return (
+                              <td key={q.id || qIdx} className="text-center py-2 px-1 border-b border-r border-slate-200/70">
+                                <span className="text-slate-300 text-xs font-mono">-</span>
+                              </td>
+                            );
+                          }
+
+                          return (
+                            <td key={q.id || qIdx} className="text-center py-2 px-1 border-b border-r border-slate-200/70">
+                              {qr.isCorrect ? (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-emerald-100 text-emerald-800 font-bold text-xs shadow-2xs border border-emerald-300/70">
+                                  1
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-md bg-rose-50 text-rose-600 font-semibold text-xs border border-rose-200/60">
+                                  0
+                                </span>
+                              )}
+                            </td>
+                          );
+                        })}
+
+                        {/* Jml Benar */}
+                        <td className="text-center py-2.5 px-2 border-b border-r border-slate-200/80">
+                          {row.hasTaken ? (
+                            <span className="font-bold text-xs text-slate-700 font-mono">
+                              {row.totalCorrect}/{sumatif.questions.length}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-xs">-</span>
+                          )}
+                        </td>
+
+                        {/* Nilai Akhir */}
+                        <td className="text-center py-2.5 px-2 border-b border-r border-slate-200/80">
+                          {row.hasTaken ? (
+                            <span className={`font-black text-sm ${row.isPass ? 'text-emerald-600' : 'text-rose-600'}`}>
+                              {row.finalScore}
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-xs">-</span>
+                          )}
+                        </td>
+
+                        {/* Rekomendasi */}
+                        <td className="text-center py-2.5 px-2 border-b border-slate-200/80">
+                          {row.hasTaken ? (
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              row.isPass 
+                                ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' 
+                                : 'bg-rose-100 text-rose-700 border border-rose-200'
+                            }`}>
+                              {row.rekomendasi}
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-400">
+                              Belum Tes
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredAnalysisRows.length === 0 && (
+                    <tr>
+                      <td colSpan={sumatif.questions.length + 5} className="py-12 text-center text-slate-400 italic">
+                        Tidak ada data siswa yang cocok dengan pencarian / filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+
+                {/* STICKY FOOTER: ANALISIS STATISTIK BUTIR SOAL */}
+                <tfoot className="sticky bottom-0 z-30 bg-slate-100/95 backdrop-blur-xs font-bold text-xs border-t-2 border-slate-300 shadow-[0_-3px_8px_rgba(0,0,0,0.06)]">
+                  {/* Row 1: Jumlah Siswa Benar */}
+                  <tr>
+                    <td colSpan={2} className="sticky left-0 z-40 bg-slate-100 border-r-2 border-slate-300 text-right pr-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)]">
+                      Jumlah Siswa Benar
                     </td>
-                    {sumatif.questions.map(q => {
-                      const isCorrect = checkCorrect(q, r.answers[q.id]);
+                    {questionItemStats.map((stat) => (
+                      <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200 text-xs font-bold text-slate-800 font-mono">
+                        {stat.correctCount}
+                      </td>
+                    ))}
+                    <td colSpan={3} className="bg-slate-100/80"></td>
+                  </tr>
+
+                  {/* Row 2: Persentase Benar / Ketuntasan */}
+                  <tr>
+                    <td colSpan={2} className="sticky left-0 z-40 bg-slate-100 border-r-2 border-slate-300 text-right pr-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)]">
+                      Daya Serap (% Benar)
+                    </td>
+                    {questionItemStats.map((stat) => {
+                      const color = stat.percentage >= 70 ? 'text-emerald-700 bg-emerald-50' : stat.percentage >= 30 ? 'text-amber-700 bg-amber-50' : 'text-rose-700 bg-rose-50';
                       return (
-                        <td key={q.id} className="px-3 py-4 text-center">
-                          <span className={`font-bold ${isCorrect ? 'text-green-500' : 'text-red-400'}`}>
-                            {isCorrect ? '1' : '0'}
+                        <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200">
+                          <span className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-black ${color}`}>
+                            {stat.percentage}%
                           </span>
                         </td>
                       );
                     })}
-                    <td className="px-6 py-4 text-center font-black text-[#5AB2FF]">
-                      {studentCalc.finalScore}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase ${
-                        isPass ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
-                      }`}>
-                        {isPass ? 'Pengayaan' : 'Remidi'}
-                      </span>
-                    </td>
+                    <td colSpan={3} className="bg-slate-100/80"></td>
                   </tr>
-                );
-              })}
-            </tbody>
-            <tfoot className="bg-slate-50/80 font-bold">
-              <tr>
-                <td className="px-6 py-4 text-xs uppercase tracking-wider text-slate-500 sticky left-0 bg-slate-50 z-10">Prosentase Benar</td>
-                {sumatif.questions.map(q => {
-                  const correctCount = liveResults.filter(r => checkCorrect(q, r.answers[q.id])).length;
-                  const percentage = liveResults.length > 0 ? Math.round((correctCount / liveResults.length) * 100) : 0;
-                  return (
-                    <td key={q.id} className="px-3 py-4 text-center text-[#5AB2FF]">
-                      {percentage}%
+
+                  {/* Row 3: Tingkat Kesulitan */}
+                  <tr>
+                    <td colSpan={2} className="sticky left-0 z-40 bg-slate-100 border-r-2 border-slate-300 text-right pr-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)]">
+                      Tingkat Kesulitan
                     </td>
-                  );
-                })}
-                <td className="px-6 py-4"></td>
-                <td className="px-6 py-4"></td>
-              </tr>
-              <tr>
-                <td className="px-6 py-4 text-xs uppercase tracking-wider text-slate-500 sticky left-0 bg-slate-50 z-10">Tingkat Kesulitan</td>
-                {sumatif.questions.map(q => {
-                  const correctCount = liveResults.filter(r => checkCorrect(q, r.answers[q.id])).length;
-                  const percentage = liveResults.length > 0 ? (correctCount / liveResults.length) * 100 : 0;
-                  
-                  // Dynamic Difficulty based on percentage
-                  // > 70% = Mudah, 30-70% = Sedang, < 30% = Sulit
-                  const difficulty = percentage >= 70 ? 'mudah' : percentage >= 30 ? 'sedang' : 'sulit';
-                  
-                  return (
-                    <td key={q.id} className="px-3 py-4 text-center">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full uppercase font-bold ${
-                        difficulty === 'mudah' ? 'bg-green-100 text-green-600' :
-                        difficulty === 'sulit' ? 'bg-red-100 text-red-600' :
-                        'bg-blue-100 text-blue-600'
-                      }`}>
-                        {difficulty}
-                      </span>
+                    {questionItemStats.map((stat) => {
+                      const badge = stat.difficulty === 'mudah' 
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                        : stat.difficulty === 'sedang' 
+                        ? 'bg-amber-100 text-amber-800 border-amber-300' 
+                        : 'bg-rose-100 text-rose-800 border-rose-300';
+                      return (
+                        <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-extrabold border ${badge}`}>
+                            {stat.difficulty}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td colSpan={3} className="bg-slate-100/80"></td>
+                  </tr>
+
+                  {/* Row 4: Status / Rekomendasi Butir Soal */}
+                  <tr>
+                    <td colSpan={2} className="sticky left-0 z-40 bg-slate-100 border-r-2 border-slate-300 text-right pr-4 py-2.5 text-[11px] font-bold text-slate-700 uppercase tracking-wider shadow-[3px_0_6px_-2px_rgba(0,0,0,0.07)]">
+                      Status Butir Soal
                     </td>
-                  );
-                })}
-                <td className="px-6 py-4"></td>
-                <td className="px-6 py-4"></td>
-              </tr>
-            </tfoot>
-          </table>
-          <div className="p-6 bg-slate-50/30 border-t border-slate-100">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                <span className="text-xs text-slate-500">1 = Benar</span>
+                    {questionItemStats.map((stat) => {
+                      const badge = stat.status === 'Baik' 
+                        ? 'text-emerald-700' 
+                        : stat.status === 'Cukup' 
+                        ? 'text-blue-700' 
+                        : 'text-amber-700 font-bold';
+                      return (
+                        <td key={stat.index} className="text-center py-2 px-1 border-r border-slate-200 text-[10px]">
+                          <span className={badge}>
+                            {stat.status}
+                          </span>
+                        </td>
+                      );
+                    })}
+                    <td colSpan={3} className="bg-slate-100/80"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Bottom Legend Bar */}
+            <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+              <div className="flex items-center space-x-4 flex-wrap gap-y-1">
+                <span className="font-bold text-slate-700">Keterangan:</span>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-5 h-5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] flex items-center justify-center border border-emerald-300">1</span>
+                  <span className="text-slate-500">Benar</span>
+                </div>
+                <div className="flex items-center space-x-1.5">
+                  <span className="w-5 h-5 rounded bg-rose-50 text-rose-600 font-bold text-[10px] flex items-center justify-center border border-rose-200">0</span>
+                  <span className="text-slate-500">Salah</span>
+                </div>
+                <div className="h-3 w-px bg-slate-300 hidden sm:block"></div>
+                <span className="text-slate-500">
+                  Kriteria Kesulitan: <strong className="text-emerald-700">Mudah (≥70%)</strong>, <strong className="text-amber-700">Sedang (30-69%)</strong>, <strong className="text-rose-700">Sukar (&lt;30%)</strong>
+                </span>
               </div>
-              <div className="flex items-center space-x-2">
-                <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                <span className="text-xs text-slate-500">0 = Salah</span>
+              <div className="text-slate-500 font-medium">
+                KKM/KKTP: <strong className="text-slate-800">{kktp}</strong> | Total Soal: <strong className="text-slate-800">{sumatif.questions.length}</strong> ({totalMaxPoints} poin)
               </div>
             </div>
           </div>

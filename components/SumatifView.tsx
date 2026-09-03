@@ -148,7 +148,16 @@ const SUBJECT_DECORATIONS: {
   }
 };
 
-const checkCorrect = (q: Question, studentAnswer: any) => {
+const checkCorrect = (q: Question, studentAnswer: any, manualScore?: number) => {
+  if (q.type === 'uraian') {
+    const maxPoints = Number(q.points) > 0 ? Number(q.points) : 1;
+    const score = manualScore !== undefined && manualScore !== null
+      ? Number(manualScore) || 0
+      : (typeof studentAnswer === 'number' ? studentAnswer : 0);
+    // Jika bobot skor yang diisi oleh guru >= 50% maka terhitung benar (1), jika < 50% terhitung 0
+    return (score / maxPoints) >= 0.5;
+  }
+
   if (studentAnswer === undefined || studentAnswer === null) return false;
   
   if (q.type === 'pg') {
@@ -211,10 +220,6 @@ const checkCorrect = (q: Question, studentAnswer: any) => {
       const c = String(sq.correctAnswer || '').trim().toLowerCase();
       return s && c && s === c;
     });
-  } else if (q.type === 'uraian') {
-    // Essay questions are graded manually. 
-    // This function is for auto-grading only.
-    return false;
   }
   return false;
 };
@@ -249,7 +254,8 @@ export const calculateSumatifScore = (
       const scoreGiven = manualScores[q.id];
       if (scoreGiven !== undefined && scoreGiven !== null) {
         earned = Math.min(Math.max(0, Number(scoreGiven) || 0), maxPoints);
-        isCorrect = earned > 0;
+        // Jika bobot skor yang diisi oleh guru >= 50% maka terhitung benar (1), jika < 50% terhitung salah (0)
+        isCorrect = (earned / maxPoints) >= 0.5;
       }
     }
 
@@ -4519,7 +4525,9 @@ const SumatifStudentResultPrint: React.FC<{
                         studentAnswerText = studentTextArr.join('\n');
                         correctAnswerText = correctTextArr.join('\n');
                       } else if (q.type === 'uraian') {
-                        isCorrect = (result.manualScores?.[q.id] || 0) > 0;
+                        const maxPoints = Number(q.points) > 0 ? Number(q.points) : 1;
+                        const scoreGiven = Number(result.manualScores?.[q.id]) || 0;
+                        isCorrect = (scoreGiven / maxPoints) >= 0.5;
                         studentAnswerText = studentAnswer || '-';
                         correctAnswerText = q.correctAnswer ? String(q.correctAnswer) : '-';
                       }
@@ -4761,8 +4769,8 @@ const SumatifResultsView: React.FC<{
       
       const questionResults = sumatif.questions.map(q => {
         if (!result || !hasTaken) return { isAnswered: false, isCorrect: false, score: 0 };
-        const isCorrect = checkCorrect(q, result.answers?.[q.id]);
-        const score = isCorrect ? (q.points || 1) : (result.manualScores?.[q.id] || 0);
+        const isCorrect = checkCorrect(q, result.answers?.[q.id], result.manualScores?.[q.id]);
+        const score = isCorrect ? (Number(q.points) > 0 ? Number(q.points) : 1) : (result.manualScores?.[q.id] || 0);
         return { isAnswered: true, isCorrect, score };
       });
 

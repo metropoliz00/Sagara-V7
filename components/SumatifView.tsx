@@ -4837,6 +4837,14 @@ const SumatifResultsView: React.FC<{
 
     const rowsToPrint = analysisRows;
 
+    const rawClassStr = String(classId || sumatif.classId || '1');
+    const classCleanNum = rawClassStr.replace(/[^0-9]/g, '') || '1';
+    const numVal = parseInt(classCleanNum, 10);
+    let faseLetter = 'A';
+    if (numVal === 3 || numVal === 4) faseLetter = 'B';
+    else if (numVal >= 5) faseLetter = 'C';
+    const classFaseDisplay = `${classCleanNum} / ${faseLetter}`;
+
     return `
       <div class="sagara-analysis-print-wrapper" style="font-family: Arial, Helvetica, sans-serif; color: #000000; background: #ffffff; line-height: 1.25; font-size: 8pt; padding: 4px; box-sizing: border-box; width: 100%;">
         <!-- KOP SURAT RESMI -->
@@ -4864,28 +4872,28 @@ const SumatifResultsView: React.FC<{
           <table style="width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 0 auto; text-align: left;">
             <tbody>
               <tr>
-                <td style="width: 95px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Mata Pelajaran</td>
+                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Mata Pelajaran</td>
                 <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
-                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">${subject?.name || sumatif.subjectId}</td>
-                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Tahun Pelajaran</td>
+                <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${subject?.name || sumatif.subjectId}</td>
+                <td style="width: 100px; font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">Tahun Pelajaran</td>
                 <td style="width: 12px; font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.year || '2024/2025'}</td>
               </tr>
               <tr>
-                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Judul Asesmen</td>
+                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Materi</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
-                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">${sumatif.title}</td>
-                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Semester</td>
+                <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${sumatif.title}</td>
+                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">Semester</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
                 <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${schoolProfile?.semester === '2' ? '2 (Genap)' : '1 (Ganjil)'}</td>
               </tr>
               <tr>
                 <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">Kelas / Fase</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
-                <td style="padding: 1.5px 20px 1.5px 4px; border: none; font-weight: 500;">Kelas ${classId || sumatif.classId || '1'}</td>
-                <td style="font-weight: bold; padding: 1.5px 2px; border: none; white-space: nowrap;">KKTP / KKM</td>
+                <td style="padding: 1.5px 10px 1.5px 4px; border: none; font-weight: 500;">${classFaseDisplay}</td>
+                <td style="font-weight: bold; padding: 1.5px 2px 1.5px 70px; border: none; white-space: nowrap;">KKTP</td>
                 <td style="font-weight: bold; padding: 1.5px 0; border: none; text-align: center;">:</td>
-                <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${kktp} (Poin Maksimal: ${totalMaxPoints})</td>
+                <td style="padding: 1.5px 4px; border: none; font-weight: 500;">${kktp}</td>
               </tr>
             </tbody>
           </table>
@@ -5025,7 +5033,7 @@ const SumatifResultsView: React.FC<{
           
           <div style="width: 260px; text-align: center;">
             <div>${desa}, ${formattedDate}</div>
-            <div style="font-weight: bold;">Guru Kelas / Pengampu</div>
+            <div style="font-weight: bold;">Guru Kelas ${classId || sumatif.classId || '1'}</div>
             <div style="height: 52px;"></div>
             <div style="text-decoration: underline; font-weight: bold;">${teacherProfile?.name || '...........................................'}</div>
             <div>NIP. ${teacherProfile?.nip || '...........................................'}</div>

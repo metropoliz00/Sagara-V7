@@ -15,7 +15,7 @@ import {
   CalendarClock, ArrowRight, Loader2, CloudDownload,
   AlertTriangle, Filter, Edit, ChevronDown, XCircle, Pencil,
   ChevronLeft, ChevronRight, RefreshCw, Scan, Camera, CheckCircle, Medal,
-  RotateCcw, Volume2
+  RotateCcw
 } from 'lucide-react';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
@@ -133,6 +133,21 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   const isPhotoError = (url?: string) => !url || url.startsWith('ERROR') || url.startsWith('error');
 
+  // Format nama agar diucapkan sebagai kata utuh (bukan dieja huruf demi huruf seperti akronim kapital)
+  const formatNameForSpeech = (name: string): string => {
+    if (!name) return '';
+    return name
+      .toLowerCase()
+      .replace(/[._\-\/\\,()]/g, ' ')
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(word => {
+        if (word === 'm' || word === 'muh' || word === 'moch') return 'Muhammad';
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      })
+      .join(' ');
+  };
+
   const stopSpeech = useCallback(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
@@ -170,7 +185,8 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
     try {
       window.speechSynthesis.cancel();
       
-      const textToSpeak = `${studentName}, berhasil absen.`;
+      const spokenName = formatNameForSpeech(studentName);
+      const textToSpeak = `${spokenName}, berhasil absen.`;
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = 'id-ID';
       utterance.rate = 0.95;
@@ -1237,9 +1253,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
               if (!isDemoMode) {
                   await (apiService as any).saveSingleScanAttendance(today, payload);
                   onRefreshData(); 
-                  onShowNotification(`Absensi ${student.name} (${targetClassId}) berhasil dicatat.`, 'success');
-              } else {
-                  onShowNotification(`(Demo) ${student.name} Hadir`, 'success');
+                  // Notifikasi toast dihilangkan agar tidak dobel karena sudah muncul pop-up
               }
           } catch (e) {
               onShowNotification("Gagal menyimpan presensi scan.", 'error');
@@ -2404,14 +2418,6 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                     <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500">
                                         <CalendarClock size={15} className="text-emerald-600" />
                                         <span>Waktu Presensi: <strong className="text-gray-800">{scanResultModal.time} WIB</strong></span>
-                                    </div>
-
-                                    {/* Indikator Suara TTS */}
-                                    <div className="mt-4 flex items-center justify-center gap-2.5 py-2.5 px-4 bg-emerald-50/90 rounded-2xl border border-emerald-100 text-emerald-800 text-xs font-medium">
-                                        <Volume2 size={18} className="text-emerald-600 animate-bounce shrink-0" />
-                                        <span className="font-semibold text-emerald-900">
-                                            Menyebutkan nama &amp; pop-up menutup otomatis...
-                                        </span>
                                     </div>
                                 </div>
                             </div>

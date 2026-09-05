@@ -126,10 +126,13 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
     time: string;
     classId: string;
     isSpeaking: boolean;
+    alreadyAttended?: boolean;
+    existingNotes?: string;
   } | null>(null);
   const [scanModalPhotoError, setScanModalPhotoError] = useState(false);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const scannedTodayStudentIdsRef = useRef<Set<string>>(new Set());
 
   const isPhotoError = (url?: string) => !url || url.startsWith('ERROR') || url.startsWith('error');
 
@@ -174,7 +177,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
     }, 450);
   }, [stopSpeech]);
 
-  const speakAttendanceSuccess = useCallback((studentName: string, onFinished: () => void) => {
+  const speakAttendanceVoice = useCallback((studentName: string, messageSuffix: string, onFinished: () => void) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       speechTimeoutRef.current = setTimeout(() => {
         onFinished();
@@ -186,7 +189,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       window.speechSynthesis.cancel();
       
       const spokenName = formatNameForSpeech(studentName);
-      const textToSpeak = `${spokenName}, berhasil absen.`;
+      const textToSpeak = `${spokenName}, ${messageSuffix}.`;
       const utterance = new SpeechSynthesisUtterance(textToSpeak);
       utterance.lang = 'id-ID';
       utterance.rate = 0.95;
@@ -230,7 +233,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       (window as any).__attendanceUtterance = utterance;
 
       // Fallback timeout in case onend never fires
-      const estimatedDuration = Math.min(6500, Math.max(3000, textToSpeak.length * 85 + 2000));
+      const estimatedDuration = Math.min(7500, Math.max(3000, textToSpeak.length * 90 + 2000));
       speechTimeoutRef.current = setTimeout(() => {
         handleFinish();
       }, estimatedDuration);
@@ -1217,6 +1220,78 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       const student = searchScope.find(s => String(s.id).trim() === cleanCode || String(s.nis).trim() === cleanCode);
       
       if (student) {
+          const today = getLocalISODate(new Date());
+          const now = new Date();
+          const scanTime = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+          const targetClassId = student.classId || getRealClassId(student.id);
+          const studentCleanId = String(student.id).trim();
+
+          // Cek apakah siswa sudah berhasil absen hari ini
+          const alreadyInSession = scannedTodayStudentIdsRef.current.has(studentCleanId);
+          const mapKey = `${studentCleanId}_${today}`;
+          const recordInMap = attendanceMap[mapKey];
+          const recordInAll = (allAttendanceRecords || []).find((r: any) => {
+              if (!r) return false;
+              const rSid = String(r.studentId || '').trim();
+              if (rSid !== studentCleanId && String(student.nis || '').trim() !== rSid) return false;
+              let rDate = String(r.date || '').trim();
+              if (rDate.includes('T')) rDate = rDate.split('T')[0];
+              const parts = rDate.split('-');
+              if (parts.length === 3) {
+                  rDate = `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+              }
+              return rDate === today;
+          });
+          const recordInDaily = (selectedDate === today) ? dailyAttendance[studentCleanId] : undefined;
+
+          const isAlreadyAttended = Boolean(
+              alreadyInSession ||
+              (recordInMap && recordInMap.status) ||
+              (recordInAll && recordInAll.status) ||
+              (recordInDaily && recordInDaily.status)
+          );
+
+          const existingNotes = recordInAll?.notes || recordInMap?.notes || recordInDaily?.notes || '';
+
+          if (isAlreadyAttended) {
+              // Nada lembut peringatan / notifikasi bahwa sudah absen
+              try {
+                  const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+                  const osc = audioContext.createOscillator();
+                  const gain = audioContext.createGain();
+                  osc.connect(gain);
+                  gain.connect(audioContext.destination);
+                  osc.type = "sine";
+                  osc.frequency.setValueAtTime(600, audioContext.currentTime);
+                  osc.frequency.setValueAtTime(500, audioContext.currentTime + 0.12);
+                  gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+                  gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.28);
+                  osc.start();
+                  setTimeout(() => osc.stop(), 280);
+              } catch (audioErr) {
+                  console.warn("Chime audio error:", audioErr);
+              }
+
+              setScanModalPhotoError(false);
+              setScanResultModal({
+                  student,
+                  time: scanTime,
+                  classId: targetClassId,
+                  isSpeaking: true,
+                  alreadyAttended: true,
+                  existingNotes: existingNotes || 'Sudah tercatat sebelumnya'
+              });
+
+              // Suara: "[Nama Siswa], sudah absen untuk hari ini."
+              speakAttendanceVoice(student.name, 'sudah absen untuk hari ini', () => {
+                  closeScanModal();
+              });
+              return;
+          }
+
+          // Tandai siswa ini di sesi saat ini agar tidak terduplikasi
+          scannedTodayStudentIdsRef.current.add(studentCleanId);
+
           // Play positive chime beep
           try {
               const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -1233,34 +1308,29 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
               console.warn("Chime audio error:", audioErr);
           }
 
-          const now = new Date();
-          const scanTime = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
-          const targetClassId = student.classId || getRealClassId(student.id);
-
           setLastScannedStudent({ name: student.name, time: scanTime });
           setScanModalPhotoError(false);
           setScanResultModal({
               student,
               time: scanTime,
               classId: targetClassId,
-              isSpeaking: true
+              isSpeaking: true,
+              alreadyAttended: false
           });
           
           try {
-              const today = getLocalISODate(new Date());
               const payload = { studentId: student.id, classId: targetClassId, status: 'present', notes: `Via Scan ${scanTime}` };
 
               if (!isDemoMode) {
                   await (apiService as any).saveSingleScanAttendance(today, payload);
                   onRefreshData(); 
-                  // Notifikasi toast dihilangkan agar tidak dobel karena sudah muncul pop-up
               }
           } catch (e) {
               onShowNotification("Gagal menyimpan presensi scan.", 'error');
           }
 
-          // Voice announcement speaking student's full name and "berhasil absen"
-          speakAttendanceSuccess(student.name, () => {
+          // Suara: "[Nama Siswa], berhasil absen."
+          speakAttendanceVoice(student.name, 'berhasil absen', () => {
               // Automatically dismiss the popup after speech finishes
               closeScanModal();
           });
@@ -2361,10 +2431,12 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                              <div className="w-full h-0.5 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-scan"></div>
                         </div>
                         
-                        {/* Pop-up Berhasil Absen: Foto Siswa, Nama Siswa, Berhasil Absen, & Indikator Suara TTS */}
+                        {/* Pop-up Presensi Scan: Foto Siswa, Nama Siswa, Status Absen (Baru / Sudah Absen) */}
                         {scanResultModal && (
                             <div className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-                                <div className="bg-white rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full p-6 sm:p-8 text-center relative border border-emerald-100 animate-fade-in-up">
+                                <div className={`bg-white rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full p-6 sm:p-8 text-center relative border animate-fade-in-up ${
+                                    scanResultModal.alreadyAttended ? 'border-amber-200' : 'border-emerald-100'
+                                }`}>
                                     {/* Tombol Tutup Manual */}
                                     <button 
                                         onClick={closeScanModal}
@@ -2374,13 +2446,23 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                         <X size={20} />
                                     </button>
 
-                                    {/* Check Icon Ring */}
-                                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border-4 border-emerald-50 flex items-center justify-center mx-auto mb-3 text-emerald-600 shadow-inner">
-                                        <CheckCircle size={36} className="text-emerald-600 animate-pulse" />
-                                    </div>
+                                    {/* Top Icon Ring */}
+                                    {scanResultModal.alreadyAttended ? (
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-amber-100 border-4 border-amber-50 flex items-center justify-center mx-auto mb-3 text-amber-600 shadow-inner">
+                                            <AlertCircle size={36} className="text-amber-600 animate-pulse" />
+                                        </div>
+                                    ) : (
+                                        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border-4 border-emerald-50 flex items-center justify-center mx-auto mb-3 text-emerald-600 shadow-inner">
+                                            <CheckCircle size={36} className="text-emerald-600 animate-pulse" />
+                                        </div>
+                                    )}
 
                                     {/* Foto Siswa */}
-                                    <div className="relative mx-auto w-28 h-28 sm:w-36 sm:h-36 rounded-full p-1.5 ring-4 ring-emerald-500/40 bg-gradient-to-tr from-emerald-400 to-teal-200 shadow-xl mb-4 overflow-hidden flex items-center justify-center">
+                                    <div className={`relative mx-auto w-28 h-28 sm:w-36 sm:h-36 rounded-full p-1.5 ring-4 shadow-xl mb-4 overflow-hidden flex items-center justify-center ${
+                                        scanResultModal.alreadyAttended 
+                                            ? 'ring-amber-500/40 bg-gradient-to-tr from-amber-400 to-orange-200' 
+                                            : 'ring-emerald-500/40 bg-gradient-to-tr from-emerald-400 to-teal-200'
+                                    }`}>
                                         {scanResultModal.student.photo && !isPhotoError(scanResultModal.student.photo) && !scanModalPhotoError ? (
                                             <img 
                                                 src={scanResultModal.student.photo} 
@@ -2397,11 +2479,18 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                         )}
                                     </div>
 
-                                    {/* Status Berhasil Absen */}
-                                    <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-emerald-500 text-white font-extrabold text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-emerald-500/30 mb-3">
-                                        <Check size={18} strokeWidth={3} />
-                                        <span>BERHASIL ABSEN</span>
-                                    </div>
+                                    {/* Status Badge */}
+                                    {scanResultModal.alreadyAttended ? (
+                                        <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-amber-500 text-white font-extrabold text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-amber-500/30 mb-3">
+                                            <AlertCircle size={18} strokeWidth={2.5} />
+                                            <span>SUDAH ABSEN HARI INI</span>
+                                        </div>
+                                    ) : (
+                                        <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-emerald-500 text-white font-extrabold text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-emerald-500/30 mb-3">
+                                            <Check size={18} strokeWidth={3} />
+                                            <span>BERHASIL ABSEN</span>
+                                        </div>
+                                    )}
 
                                     {/* Nama Lengkap Siswa */}
                                     <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-snug uppercase">
@@ -2414,11 +2503,20 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                                         {scanResultModal.student.nis && <span> &bull; NIS: {scanResultModal.student.nis}</span>}
                                     </p>
 
-                                    {/* Jam Presensi */}
-                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500">
-                                        <CalendarClock size={15} className="text-emerald-600" />
-                                        <span>Waktu Presensi: <strong className="text-gray-800">{scanResultModal.time} WIB</strong></span>
-                                    </div>
+                                    {/* Keterangan Status / Jam Presensi */}
+                                    {scanResultModal.alreadyAttended ? (
+                                        <div className="mt-4 p-3.5 bg-amber-50/90 rounded-2xl border border-amber-200 text-amber-900 text-xs sm:text-sm text-center">
+                                            <p className="font-bold">Siswa sudah absen untuk hari ini</p>
+                                            <p className="text-xs text-amber-700 font-medium mt-1">
+                                                {scanResultModal.existingNotes || 'Presensi telah tercatat dan tidak dapat discan ulang.'}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500">
+                                            <CalendarClock size={15} className="text-emerald-600" />
+                                            <span>Waktu Presensi: <strong className="text-gray-800">{scanResultModal.time} WIB</strong></span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

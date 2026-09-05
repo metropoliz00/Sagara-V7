@@ -27,6 +27,9 @@ export const masterSupabase = (masterUrl && masterKey)
   ? createClient(masterUrl, masterKey)
   : activeSupabase;
 
+export const defaultSupabaseUrl = masterUrl;
+export const defaultSupabaseKey = masterKey;
+
 if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase URL or Anon Key is missing. App may not function correctly without database configuration.');
 }

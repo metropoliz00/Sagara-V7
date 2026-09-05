@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { saveDatabaseConfig, resetDatabaseConfig, masterSupabase } from '../services/supabaseClient';
-import { School, Database, AlertCircle, CheckCircle2, Loader2, ArrowRight, Trash2, PlusCircle, Globe, Key, Sparkles } from 'lucide-react';
+import { saveDatabaseConfig, resetDatabaseConfig, masterSupabase, defaultSupabaseUrl, defaultSupabaseKey } from '../services/supabaseClient';
+import { School, Database, AlertCircle, CheckCircle2, Loader2, ArrowRight, Trash2, PlusCircle, Sparkles } from 'lucide-react';
 import CustomModal from './CustomModal';
 
 export const DatabaseSetup: React.FC = () => {
@@ -11,8 +11,6 @@ export const DatabaseSetup: React.FC = () => {
   // Registration state variables
   const [regKodeSekolah, setRegKodeSekolah] = useState('');
   const [regNamaSekolah, setRegNamaSekolah] = useState('');
-  const [regSupabaseUrl, setRegSupabaseUrl] = useState('');
-  const [regSupabaseAnonKey, setRegSupabaseAnonKey] = useState('');
 
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -109,21 +107,6 @@ export const DatabaseSetup: React.FC = () => {
 
     const finalSchoolName = regNamaSekolah.trim() || 'Dinas Pendidikan';
 
-    if (!regSupabaseUrl.trim()) {
-      setError('Supabase URL wajib diisi!');
-      return;
-    }
-    if (!regSupabaseAnonKey.trim()) {
-      setError('Supabase Anon Key wajib diisi!');
-      return;
-    }
-
-    // Simple URL validation
-    if (!regSupabaseUrl.trim().startsWith('http://') && !regSupabaseUrl.trim().startsWith('https://')) {
-      setError('Supabase URL harus diawali dengan http:// atau https://');
-      return;
-    }
-
     setIsLoading(true);
     try {
       if (!masterSupabase) {
@@ -131,7 +114,7 @@ export const DatabaseSetup: React.FC = () => {
       }
 
       // Check if school code already exists
-      const { data: existing, error: checkError } = await masterSupabase
+      const { data: existing } = await masterSupabase
         .from('school_databases')
         .select('id')
         .eq('school_code', cleanRegCode);
@@ -140,14 +123,17 @@ export const DatabaseSetup: React.FC = () => {
         throw new Error('NPSN Sekolah ini sudah terdaftar! Silakan gunakan NPSN lain atau langsung lakukan aktivasi.');
       }
 
+      const targetUrl = defaultSupabaseUrl || '';
+      const targetKey = defaultSupabaseKey || '';
+
       // Insert school info into central database
       const { error: insertError } = await masterSupabase
         .from('school_databases')
         .insert([{
           school_code: cleanRegCode,
           school_name: finalSchoolName,
-          supabase_url: regSupabaseUrl.trim(),
-          supabase_anon_key: regSupabaseAnonKey.trim()
+          supabase_url: targetUrl,
+          supabase_anon_key: targetKey
         }]);
 
       if (insertError) {
@@ -159,7 +145,7 @@ export const DatabaseSetup: React.FC = () => {
       
       // Auto activate
       setTimeout(() => {
-        saveDatabaseConfig(regSupabaseUrl.trim(), regSupabaseAnonKey.trim());
+        saveDatabaseConfig(targetUrl, targetKey);
       }, 2000);
 
     } catch (err: any) {
@@ -333,54 +319,10 @@ export const DatabaseSetup: React.FC = () => {
             </div>
           </div>
 
-          {/* Supabase URL */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-              Supabase URL
-            </label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5AB2FF] transition-colors">
-                <Globe size={16} />
-              </div>
-              <input 
-                type="text"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#5AB2FF] focus:ring-4 focus:ring-[#5AB2FF]/10 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none transition-all font-mono" 
-                placeholder="https://your-project.supabase.co" 
-                value={regSupabaseUrl} 
-                onChange={(e) => setRegSupabaseUrl(e.target.value)} 
-                disabled={isLoading || success}
-                autoComplete="off"
-                required
-              />
-            </div>
-          </div>
-
-          {/* Supabase Anon Key */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider ml-1">
-              Supabase Anon Key
-            </label>
-            <div className="relative group">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 group-focus-within:text-[#5AB2FF] transition-colors">
-                <Key size={16} />
-              </div>
-              <input 
-                type="text"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 hover:bg-slate-100/50 focus:bg-white border border-slate-200 focus:border-[#5AB2FF] focus:ring-4 focus:ring-[#5AB2FF]/10 rounded-xl text-xs text-slate-800 placeholder-slate-400 outline-none transition-all font-mono" 
-                placeholder="Kunci anonim Supabase (eyJ...)" 
-                value={regSupabaseAnonKey} 
-                onChange={(e) => setRegSupabaseAnonKey(e.target.value)} 
-                disabled={isLoading || success}
-                autoComplete="off"
-                required
-              />
-            </div>
-          </div>
-
           <button 
             type="submit"
             className="w-full bg-[#5AB2FF] hover:bg-blue-500 active:scale-[0.98] text-white py-3 px-4 rounded-xl font-bold text-xs tracking-wide shadow-md shadow-[#5AB2FF]/20 hover:shadow-lg hover:shadow-[#5AB2FF]/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none mt-2" 
-            disabled={isLoading || success || !regKodeSekolah.trim() || !regNamaSekolah.trim() || !regSupabaseUrl.trim() || !regSupabaseAnonKey.trim()}
+            disabled={isLoading || success || !regKodeSekolah.trim() || !regNamaSekolah.trim()}
           >
             {isLoading ? (
               <>

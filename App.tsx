@@ -731,7 +731,7 @@ const AppContent: React.FC = () => {
       
       setCurrentUser(user);
       localStorage.setItem('sagara_user', JSON.stringify(user));
-      const hasCache = !!cacheService.get('students');
+      const hasCache = !cacheService.isExpired('students');
       setLoading(!hasCache);
   };
 
@@ -837,15 +837,36 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fallback safety sync every 60 minutes (Realtime WebSocket Hub handles instantaneous live updates with 0-egress deltas)
+  // Fallback safety sync every 60 minutes & on tab visibility check (Realtime WebSocket Hub handles instantaneous live updates with 0-egress deltas)
   useEffect(() => {
     if (!currentUser) return;
+
+    const checkMasterCacheExpiration = () => {
+      const isStudentsExpired = cacheService.isExpired('students');
+      const isUsersExpired = currentUser.role !== 'siswa' ? cacheService.isExpired('users') : false;
+      if (isStudentsExpired || isUsersExpired) {
+        fetchData(true, true); // Pembaruan berkala data master (silent background refresh)
+      }
+    };
+
     const interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-            fetchDynamicData();
-        }
+      if (document.visibilityState === 'visible') {
+        fetchDynamicData();
+        checkMasterCacheExpiration();
+      }
     }, 60 * 60 * 1000);
-    return () => clearInterval(interval);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkMasterCacheExpiration();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [currentUser, students]);
 
   useEffect(() => {
@@ -2188,15 +2209,17 @@ const AppContent: React.FC = () => {
   const fetchData = async (forceRefresh = false, silent = false) => {
     if (!currentUser) return;
 
-    const isCacheEmpty = !cacheService.get('students');
+    const isStudentsExpired = cacheService.isExpired('students');
+    const isUsersExpired = currentUser.role !== 'siswa' ? cacheService.isExpired('users') : false;
+    const isMasterCacheExpired = isStudentsExpired || isUsersExpired;
 
-    // Optimasi Egress: Gunakan local storage jika data sudah ada dan tidak dipaksa refresh
-    if (!forceRefresh && !isCacheEmpty) {
+    // Optimasi Egress: Gunakan local storage jika data master masih valid dalam interval 24 jam dan tidak dipaksa refresh
+    if (!forceRefresh && !isMasterCacheExpired) {
       if (!silent) setLoading(false);
       return;
     }
 
-    if ((isCacheEmpty || forceRefresh) && !silent) {
+    if ((isMasterCacheExpired || forceRefresh) && !silent) {
       setLoading(true);
     }
     setError(null);

@@ -15,7 +15,7 @@ import {
   CalendarClock, ArrowRight, Loader2, CloudDownload,
   AlertTriangle, Filter, Edit, ChevronDown, XCircle, Pencil,
   ChevronLeft, ChevronRight, RefreshCw, Scan, Camera, CheckCircle, Medal,
-  RotateCcw
+  RotateCcw, Volume2
 } from 'lucide-react';
 import CustomModal from './CustomModal';
 import { getLocalISODate } from '../utils/dateUtils';
@@ -119,6 +119,133 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [cameraFacingMode, setCameraFacingMode] = useState<"user" | "environment">("environment");
   const [lastScannedStudent, setLastScannedStudent] = useState<{name: string, time: string} | null>(null);
   const scannerRef = useRef<any>(null);
+
+  // Pop-up Berhasil Absen & Text-To-Speech Voice State
+  const [scanResultModal, setScanResultModal] = useState<{
+    student: Student;
+    time: string;
+    classId: string;
+    isSpeaking: boolean;
+  } | null>(null);
+  const [scanModalPhotoError, setScanModalPhotoError] = useState(false);
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const isPhotoError = (url?: string) => !url || url.startsWith('ERROR') || url.startsWith('error');
+
+  const stopSpeech = useCallback(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (e) {
+        console.warn("Speech cancel warning:", e);
+      }
+    }
+    if (speechTimeoutRef.current) {
+      clearTimeout(speechTimeoutRef.current);
+      speechTimeoutRef.current = null;
+    }
+    speechUtteranceRef.current = null;
+  }, []);
+
+  const closeScanModal = useCallback(() => {
+    stopSpeech();
+    setScanResultModal(null);
+    setScanModalPhotoError(false);
+    setTimeout(() => {
+      if (scannerRef.current) {
+        scannerRef.current.isPaused = false;
+      }
+    }, 450);
+  }, [stopSpeech]);
+
+  const speakAttendanceSuccess = useCallback((studentName: string, onFinished: () => void) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      speechTimeoutRef.current = setTimeout(() => {
+        onFinished();
+      }, 2500);
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      
+      const textToSpeak = `${studentName}, berhasil absen.`;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'id-ID';
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // Select Indonesian voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const idVoice = voices.find(v => 
+        v.lang.toLowerCase().startsWith('id') || 
+        v.name.toLowerCase().includes('indonesia')
+      );
+      if (idVoice) {
+        utterance.voice = idVoice;
+      }
+
+      let hasFinished = false;
+      const handleFinish = () => {
+        if (hasFinished) return;
+        hasFinished = true;
+        if (speechTimeoutRef.current) {
+          clearTimeout(speechTimeoutRef.current);
+          speechTimeoutRef.current = null;
+        }
+        setTimeout(() => {
+          onFinished();
+        }, 300);
+      };
+
+      utterance.onend = () => {
+        handleFinish();
+      };
+      
+      utterance.onerror = (e) => {
+        console.warn("Speech synthesis onerror or cancel:", e);
+        handleFinish();
+      };
+
+      // Store in ref and window to prevent Chromium GC cancellation bug
+      speechUtteranceRef.current = utterance;
+      (window as any).__attendanceUtterance = utterance;
+
+      // Fallback timeout in case onend never fires
+      const estimatedDuration = Math.min(6500, Math.max(3000, textToSpeak.length * 85 + 2000));
+      speechTimeoutRef.current = setTimeout(() => {
+        handleFinish();
+      }, estimatedDuration);
+
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error("Speech synthesis invocation failed:", err);
+      speechTimeoutRef.current = setTimeout(() => {
+        onFinished();
+      }, 2500);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      const handleVoicesChanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+      window.speechSynthesis.onvoiceschanged = handleVoicesChanged;
+      return () => {
+        window.speechSynthesis.onvoiceschanged = null;
+      };
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopSpeech();
+    };
+  }, [stopSpeech]);
 
   // Replaced Modal state with Inline Form state
   const [isSavingHoliday, setIsSavingHoliday] = useState(false);
@@ -1074,24 +1201,37 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
       const student = searchScope.find(s => String(s.id).trim() === cleanCode || String(s.nis).trim() === cleanCode);
       
       if (student) {
-          const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          const oscillator = audioContext.createOscillator();
-          const gainNode = audioContext.createGain();
-          oscillator.connect(gainNode);
-          gainNode.connect(audioContext.destination);
-          oscillator.type = "sine";
-          oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-          gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-          oscillator.start();
-          setTimeout(() => oscillator.stop(), 200);
+          // Play positive chime beep
+          try {
+              const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+              const oscillator = audioContext.createOscillator();
+              const gainNode = audioContext.createGain();
+              oscillator.connect(gainNode);
+              gainNode.connect(audioContext.destination);
+              oscillator.type = "sine";
+              oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+              gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+              oscillator.start();
+              setTimeout(() => oscillator.stop(), 200);
+          } catch (audioErr) {
+              console.warn("Chime audio error:", audioErr);
+          }
 
           const now = new Date();
           const scanTime = now.toLocaleTimeString('id-ID', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/\./g, ':');
+          const targetClassId = student.classId || getRealClassId(student.id);
+
           setLastScannedStudent({ name: student.name, time: scanTime });
+          setScanModalPhotoError(false);
+          setScanResultModal({
+              student,
+              time: scanTime,
+              classId: targetClassId,
+              isSpeaking: true
+          });
           
           try {
               const today = getLocalISODate(new Date());
-              const targetClassId = student.classId || getRealClassId(student.id);
               const payload = { studentId: student.id, classId: targetClassId, status: 'present', notes: `Via Scan ${scanTime}` };
 
               if (!isDemoMode) {
@@ -1104,13 +1244,18 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
           } catch (e) {
               onShowNotification("Gagal menyimpan presensi scan.", 'error');
           }
+
+          // Voice announcement speaking student's full name and "berhasil absen"
+          speakAttendanceSuccess(student.name, () => {
+              // Automatically dismiss the popup after speech finishes
+              closeScanModal();
+          });
       } else {
           onShowNotification(`Siswa tidak ditemukan. Kode: ${cleanCode}`, 'warning');
+          setTimeout(() => {
+              if (scannerRef.current) scannerRef.current.isPaused = false;
+          }, 2000);
       }
-
-      setTimeout(() => {
-          if (scannerRef.current) scannerRef.current.isPaused = false;
-      }, 2000);
   };
 
   const handleScanSuccessRef = useRef(handleScanSuccess);
@@ -2186,7 +2331,7 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                             <Scan size={20} /> SCAN QR
                         </h3>
                         <button 
-                            onClick={() => setIsScannerOpen(false)} 
+                            onClick={() => { closeScanModal(); setIsScannerOpen(false); }} 
                             className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/30 transition-all border border-white/10"
                         >
                             <X size={24}/>
@@ -2202,16 +2347,72 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
                              <div className="w-full h-0.5 bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.8)] animate-scan"></div>
                         </div>
                         
-                        {/* Result Feedback Overlay */}
-                        {lastScannedStudent && (
-                            <div className="absolute bottom-20 left-4 right-4 mx-auto max-w-sm bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-2xl animate-fade-in-up z-20 flex items-center border border-emerald-100">
-                                <div className="bg-emerald-100 p-3 rounded-full mr-4 text-emerald-600">
-                                    <CheckCircle size={32} />
-                                </div>
-                                <div>
-                                    <p className="text-xs text-emerald-600 font-bold uppercase tracking-wide">Berhasil Scan</p>
-                                    <p className="font-bold text-gray-900 text-lg">{lastScannedStudent.name}</p>
-                                    <p className="text-sm text-gray-500">{lastScannedStudent.time}</p>
+                        {/* Pop-up Berhasil Absen: Foto Siswa, Nama Siswa, Berhasil Absen, & Indikator Suara TTS */}
+                        {scanResultModal && (
+                            <div className="fixed inset-0 z-[300] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+                                <div className="bg-white rounded-3xl shadow-2xl max-w-sm sm:max-w-md w-full p-6 sm:p-8 text-center relative border border-emerald-100 animate-fade-in-up">
+                                    {/* Tombol Tutup Manual */}
+                                    <button 
+                                        onClick={closeScanModal}
+                                        className="absolute top-4 right-4 p-2 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                                        title="Tutup Sekarang"
+                                    >
+                                        <X size={20} />
+                                    </button>
+
+                                    {/* Check Icon Ring */}
+                                    <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-emerald-100 border-4 border-emerald-50 flex items-center justify-center mx-auto mb-3 text-emerald-600 shadow-inner">
+                                        <CheckCircle size={36} className="text-emerald-600 animate-pulse" />
+                                    </div>
+
+                                    {/* Foto Siswa */}
+                                    <div className="relative mx-auto w-28 h-28 sm:w-36 sm:h-36 rounded-full p-1.5 ring-4 ring-emerald-500/40 bg-gradient-to-tr from-emerald-400 to-teal-200 shadow-xl mb-4 overflow-hidden flex items-center justify-center">
+                                        {scanResultModal.student.photo && !isPhotoError(scanResultModal.student.photo) && !scanModalPhotoError ? (
+                                            <img 
+                                                src={scanResultModal.student.photo} 
+                                                alt={scanResultModal.student.name}
+                                                onError={() => setScanModalPhotoError(true)}
+                                                className="w-full h-full object-cover rounded-full"
+                                            />
+                                        ) : (
+                                            <div className={`w-full h-full rounded-full flex flex-col items-center justify-center font-black text-4xl text-white shadow-inner ${
+                                                scanResultModal.student.gender === 'P' ? 'bg-gradient-to-br from-pink-400 to-rose-500' : 'bg-gradient-to-br from-[#5AB2FF] to-blue-600'
+                                            }`}>
+                                                <span>{scanResultModal.student.gender === 'P' ? '👧' : '👦'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Status Berhasil Absen */}
+                                    <div className="inline-flex items-center gap-2 px-5 py-1.5 rounded-full bg-emerald-500 text-white font-extrabold text-sm sm:text-base tracking-wide uppercase shadow-lg shadow-emerald-500/30 mb-3">
+                                        <Check size={18} strokeWidth={3} />
+                                        <span>BERHASIL ABSEN</span>
+                                    </div>
+
+                                    {/* Nama Lengkap Siswa */}
+                                    <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight leading-snug uppercase">
+                                        {scanResultModal.student.name}
+                                    </h2>
+
+                                    {/* Detail Kelas & NIS */}
+                                    <p className="text-sm font-semibold text-gray-600 mt-1">
+                                        {scanResultModal.classId && <span>Kelas {scanResultModal.classId}</span>}
+                                        {scanResultModal.student.nis && <span> &bull; NIS: {scanResultModal.student.nis}</span>}
+                                    </p>
+
+                                    {/* Jam Presensi */}
+                                    <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-500">
+                                        <CalendarClock size={15} className="text-emerald-600" />
+                                        <span>Waktu Presensi: <strong className="text-gray-800">{scanResultModal.time} WIB</strong></span>
+                                    </div>
+
+                                    {/* Indikator Suara TTS */}
+                                    <div className="mt-4 flex items-center justify-center gap-2.5 py-2.5 px-4 bg-emerald-50/90 rounded-2xl border border-emerald-100 text-emerald-800 text-xs font-medium">
+                                        <Volume2 size={18} className="text-emerald-600 animate-bounce shrink-0" />
+                                        <span className="font-semibold text-emerald-900">
+                                            Menyebutkan nama &amp; pop-up menutup otomatis...
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         )}

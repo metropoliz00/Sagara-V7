@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { SchoolProfileData } from '../../types';
 import { compressImage } from '../../utils/imageHelper';
-import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, ExternalLink, CheckCircle2, Clock, Users } from 'lucide-react';
+import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, CheckCircle2, Clock, Users } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
 
 interface SchoolDataTabProps {
@@ -563,19 +563,9 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
 
             <div className="space-y-4">
                 <div>
-                     <div className="flex items-center justify-between mb-1">
-                       <label className="block text-sm font-medium text-gray-700">
-                         Gemini API Key
-                       </label>
-                       <a 
-                         href="https://aistudio.google.com/apikey" 
-                         target="_blank" 
-                         rel="noopener noreferrer" 
-                         className="text-xs text-indigo-600 hover:text-indigo-800 font-medium inline-flex items-center gap-1 hover:underline"
-                       >
-                         Dapatkan API Key di Google AI Studio <ExternalLink size={12} />
-                       </a>
-                     </div>
+                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                       Gemini API Key
+                     </label>
                      <div className="flex flex-col sm:flex-row gap-2">
                        <input 
                           disabled={isReadOnly} 

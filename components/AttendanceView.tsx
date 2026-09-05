@@ -28,6 +28,7 @@ interface AttendanceViewProps {
   allAttendanceRecords: any[];
   holidays: Holiday[];
   onRefreshData: () => void;
+  onQuickRefreshAttendance?: () => Promise<void> | void;
   onAddHoliday: (holidays: Omit<Holiday, 'id'>[]) => Promise<void>;
   onUpdateHoliday: (holiday: Holiday) => void;
   onDeleteHoliday: (id: string) => void;
@@ -61,7 +62,7 @@ const STATUS_TEXT: { [key in AttendanceStatus]: string } = {
 
 const AttendanceView: React.FC<AttendanceViewProps> = ({ 
   students, allStudents, isDemoMode, allAttendanceRecords, holidays, 
-  onRefreshData, onAddHoliday, onUpdateHoliday, onDeleteHoliday, onShowNotification,
+  onRefreshData, onQuickRefreshAttendance, onAddHoliday, onUpdateHoliday, onDeleteHoliday, onShowNotification,
   teacherProfile, schoolProfile, classId, isReadOnly = false, userRole, currentUser
 }) => {
   const [viewMode, setViewMode] = useState<ViewMode>(isReadOnly ? 'rekap' : 'daily');
@@ -75,6 +76,24 @@ const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [dailyAttendance, setDailyAttendance] = useState<Record<string, {status: AttendanceStatus, notes: string}>>({});
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-sync targeted attendance directly from DB on mount so view is 100% fresh automatically without relying on stale localStorage
+  useEffect(() => {
+    let isMounted = true;
+    const initialSync = async () => {
+      try {
+        if (onQuickRefreshAttendance) {
+          await onQuickRefreshAttendance();
+        } else if (onRefreshData) {
+          onRefreshData();
+        }
+      } catch (err) {
+        console.warn("Initial attendance background sync:", err);
+      }
+    };
+    initialSync();
+    return () => { isMounted = false; };
+  }, []);
 
   const [rangeStart, setRangeStart] = useState(getLocalISODate(new Date()));
   const [rangeEnd, setRangeEnd] = useState(getLocalISODate(new Date()));

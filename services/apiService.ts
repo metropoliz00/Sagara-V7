@@ -1447,20 +1447,81 @@ export const apiService = {
 
   // --- Attendance ---
   getAttendance: async (currentUser: User | null): Promise<any[]> => {
-    const { data, error } = await supabase.from('attendance').select('id, records');
-    if (error) return [];
-    const allRecords: any[] = [];
-    data.forEach((row: any) => {
-      const parts = row.id.split('_');
-      const classId = parts[0];
-      const date = parts[1];
-      if (Array.isArray(row.records)) {
-        row.records.forEach((rec: any) => {
-          allRecords.push({ ...rec, date, classId });
-        });
+    try {
+      if (!isApiConfigured() || !supabase) {
+        return cacheService.get<any[]>('allAttendanceRecords') || [];
       }
-    });
-    return allRecords;
+      const { data, error } = await supabase.from('attendance').select('id, records');
+      if (error) {
+        console.warn("Could not fetch attendance from database (using cache):", error.message || error);
+        return cacheService.get<any[]>('allAttendanceRecords') || [];
+      }
+      const allRecords: any[] = [];
+      (data || []).forEach((row: any) => {
+        const parts = String(row.id || '').split('_');
+        const classId = parts[0];
+        const date = parts[1];
+        if (Array.isArray(row.records)) {
+          row.records.forEach((rec: any) => {
+            allRecords.push({ ...rec, date, classId });
+          });
+        }
+      });
+      cacheService.set('allAttendanceRecords', allRecords);
+      return allRecords;
+    } catch (e: any) {
+      console.warn("getAttendance fallback notice:", e?.message || e);
+      return cacheService.get<any[]>('allAttendanceRecords') || [];
+    }
+  },
+
+  subscribeToAttendance: (onUpdate: (payload: { eventType: string; newRow?: any; oldRow?: any; parsedRecords?: any[] }) => void): (() => void) => {
+    if (!supabase || typeof supabase.channel !== 'function') return () => {};
+    try {
+      const channelName = `realtime_attendance_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'attendance'
+          },
+          (payload: any) => {
+            let parsedRecords: any[] = [];
+            const row = payload.new || {};
+            if (row.id && Array.isArray(row.records)) {
+              const parts = String(row.id).split('_');
+              const classId = parts[0];
+              const date = parts[1];
+              parsedRecords = row.records.map((rec: any) => ({
+                ...rec,
+                date,
+                classId
+              }));
+            }
+            onUpdate({
+              eventType: payload.eventType,
+              newRow: payload.new,
+              oldRow: payload.old,
+              parsedRecords
+            });
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn("Error removing attendance realtime channel:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("Failed to subscribe to attendance realtime:", e);
+      return () => {};
+    }
   },
   saveAttendance: async (date: string, records: any[], forceClasses?: string[]): Promise<void> => {
     const classGroups: Record<string, any[]> = {};
@@ -2314,6 +2375,37 @@ export const apiService = {
   replyLiaisonLog: async (id: string, response: string): Promise<void> => {
     await supabase.from('buku_penghubung').update({ response, status: 'Diterima' }).eq('id', id);
   },
+  subscribeToLiaisonLogs: (onUpdate: (payload: any) => void): (() => void) => {
+    if (!supabase || typeof supabase.channel !== 'function') return () => {};
+    try {
+      const channelName = `realtime_liaison_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'buku_penghubung'
+          },
+          (payload: any) => {
+            onUpdate(payload);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn("Error removing liaison realtime channel:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("Failed to subscribe to liaison realtime:", e);
+      return () => {};
+    }
+  },
 
   // --- Permission Requests ---
   getPermissionRequests: async (currentUser: User | null): Promise<PermissionRequest[]> => {
@@ -2344,6 +2436,109 @@ export const apiService = {
     } catch (e: any) {
       console.warn("getPermissionRequests network/catch warning:", e?.message || e);
       return cacheService.get('permissionRequests') || [];
+    }
+  },
+  subscribeToPermissionRequests: (onUpdate: (payload: any) => void): (() => void) => {
+    if (!supabase || typeof supabase.channel !== 'function') return () => {};
+    try {
+      const channelName = `realtime_permissions_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'permission_requests'
+          },
+          (payload: any) => {
+            onUpdate(payload);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn("Error removing permissions realtime channel:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("Failed to subscribe to permissions realtime:", e);
+      return () => {};
+    }
+  },
+
+  // Centralized high-performance Realtime Hub for ALL displayed tables in the app
+  // Minimizes egress to near 0 bytes by listening to lightweight websocket delta events (row changes only)
+  subscribeToGlobalAppRealtime: (onTableChange: (change: {
+    table: string;
+    eventType: 'INSERT' | 'UPDATE' | 'DELETE';
+    newRow: any;
+    oldRow: any;
+  }) => void): (() => void) => {
+    if (!supabase || typeof supabase.channel !== 'function') return () => {};
+    try {
+      const channelName = `sagara_hub_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const channel = supabase.channel(channelName);
+
+      const tablesToTrack = [
+        'attendance',
+        'permission_requests',
+        'buku_penghubung',
+        'agendas',
+        'grades',
+        'counseling',
+        'students',
+        'holidays',
+        'materials',
+        'learning_reports',
+        'penilaian_sikap',
+        'penilaian_karakter',
+        'inventory',
+        'school_assets',
+        'bos_management',
+        'book_loans',
+        'emergency_alerts',
+        'sumatifs'
+      ];
+
+      tablesToTrack.forEach(table => {
+        channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table
+          },
+          (payload: any) => {
+            onTableChange({
+              table,
+              eventType: payload.eventType,
+              newRow: payload.new,
+              oldRow: payload.old
+            });
+          }
+        );
+      });
+
+      channel.subscribe((status: string) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[Realtime Hub] Connected to ${tablesToTrack.length} tables in real time.`);
+        }
+      });
+
+      return () => {
+        try {
+          supabase.removeChannel(channel);
+        } catch (e) {
+          console.warn("Error removing realtime hub channel:", e);
+        }
+      };
+    } catch (e) {
+      console.warn("Failed to initialize realtime hub:", e);
+      return () => {};
     }
   },
   savePermissionRequest: async (request: any): Promise<any> => {

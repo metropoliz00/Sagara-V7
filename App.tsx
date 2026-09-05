@@ -823,28 +823,29 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Auto-refresh dynamic data every 15 minutes (active tab only)
+  // Ultra-lightweight targeted attendance sync (queries ONLY attendance table, consumes tiny egress)
+  const handleRefreshAttendance = async () => {
+    if (!currentUser || !apiService.isConfigured()) return;
+    try {
+      const fAttendance = await apiService.getAttendance(currentUser);
+      if (fAttendance && Array.isArray(fAttendance)) {
+        setAllAttendanceRecords(fAttendance);
+        cacheService.set('allAttendanceRecords', fAttendance);
+      }
+    } catch (e) {
+      console.warn("Fast attendance refresh error:", e);
+    }
+  };
+
+  // Fallback safety sync every 60 minutes (Realtime WebSocket Hub handles instantaneous live updates with 0-egress deltas)
   useEffect(() => {
     if (!currentUser) return;
     const interval = setInterval(() => {
         if (document.visibilityState === 'visible') {
             fetchDynamicData();
         }
-    }, 15 * 60 * 1000);
+    }, 60 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [currentUser, students]);
-
-  // Window Focus Refresh effect: only refresh dynamic daily data if older than 10 minutes
-  useEffect(() => {
-    if (!currentUser) return;
-    const handleFocus = () => {
-      const tenMinutes = 10 * 60 * 1000;
-      if (Date.now() - lastFetchTimeRef.current >= tenMinutes) {
-        fetchDynamicData();
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
   }, [currentUser, students]);
 
   useEffect(() => {
@@ -2478,6 +2479,527 @@ const AppContent: React.FC = () => {
     }
   }, [currentUser, activeClassId, liaisonLogs]);
 
+  // Global Realtime Hub for ALL displayed tables in the app (0-Egress delta updates)
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const unsubscribeRealtime = apiService.subscribeToGlobalAppRealtime(({ table, eventType, newRow, oldRow }) => {
+      // 1. Attendance (Absensi Harian & Rekap)
+      if (table === 'attendance') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          const rowId = newRow?.id;
+          if (rowId && Array.isArray(newRow.records)) {
+            const parts = String(rowId).split('_');
+            const classId = parts[0];
+            const date = parts[1];
+            const parsed = newRow.records.map((rec: any) => ({
+              ...rec,
+              date,
+              classId
+            }));
+            setAllAttendanceRecords(prev => {
+              const filtered = (prev || []).filter(r => !(r.date === date && String(r.classId) === String(classId)));
+              const next = [...filtered, ...parsed];
+              cacheService.set('allAttendanceRecords', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          const rowId = oldRow?.id;
+          if (rowId) {
+            const parts = String(rowId).split('_');
+            const classId = parts[0];
+            const date = parts[1];
+            setAllAttendanceRecords(prev => {
+              const filtered = (prev || []).filter(r => !(r.date === date && String(r.classId) === String(classId)));
+              cacheService.set('allAttendanceRecords', filtered);
+              return filtered;
+            });
+          }
+        }
+      }
+
+      // 2. Permission Requests (Izin Siswa)
+      else if (table === 'permission_requests') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const student = (students || []).find(s => String(s.id).trim() === String(newRow.student_id).trim());
+            const newReq: PermissionRequest = {
+              id: String(newRow.id),
+              classId: newRow.class_id,
+              studentId: String(newRow.student_id),
+              studentName: student?.name || 'Siswa',
+              date: newRow.date,
+              type: newRow.type,
+              reason: newRow.reason,
+              status: newRow.status || 'Pending',
+              rejectionReason: newRow.rejection_reason
+            };
+            setPermissionRequests(prev => {
+              const filtered = (prev || []).filter(item => item.id !== newReq.id);
+              const next = [newReq, ...filtered];
+              cacheService.set('permissionRequests', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          const oldId = String(oldRow?.id);
+          if (oldId) {
+            setPermissionRequests(prev => {
+              const next = (prev || []).filter(item => item.id !== oldId);
+              cacheService.set('permissionRequests', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 3. Liaison Logs (Buku Penghubung)
+      else if (table === 'buku_penghubung') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            setLiaisonLogs(prev => {
+              const filtered = (prev || []).filter(l => l.id !== newRow.id);
+              const next = [newRow, ...filtered];
+              cacheService.set('liaisonLogs', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setLiaisonLogs(prev => {
+              const next = (prev || []).filter(l => l.id !== oldRow.id);
+              cacheService.set('liaisonLogs', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 4. Agendas (Agenda Kelas & Kegiatan)
+      else if (table === 'agendas') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: AgendaItem = {
+              ...newRow,
+              classId: newRow.class_id,
+              endDate: newRow.end_date
+            };
+            setAgendas(prev => {
+              const filtered = (prev || []).filter(a => a.id !== mapped.id);
+              const next = [mapped, ...filtered].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              cacheService.set('agendas', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setAgendas(prev => {
+              const next = (prev || []).filter(a => a.id !== oldRow.id);
+              cacheService.set('agendas', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 5. Grades (Penilaian & Nilai Siswa)
+      else if (table === 'grades') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow && newRow.student_id && newRow.subject_id) {
+            const studentId = String(newRow.student_id);
+            const subjectId = String(newRow.subject_id);
+            const classId = String(newRow.class_id || '');
+            const gradeData: any = {
+              sum1: Number(newRow.sum1) || 0,
+              sum2: Number(newRow.sum2) || 0,
+              sum3: Number(newRow.sum3) || 0,
+              sum4: Number(newRow.sum4) || 0,
+              sas: Number(newRow.sas) || 0,
+              formatif: newRow.extra_data?.formatif || {},
+              rekapFormatif: newRow.extra_data?.rekapFormatif || {},
+              tpDescriptions: newRow.extra_data?.tpDescriptions || {},
+              lingkupMateri: newRow.extra_data?.lingkupMateri || {},
+              semester: newRow.extra_data?.semester || 'ganjil',
+              academicYear: newRow.extra_data?.academicYear || '2024/2025'
+            };
+
+            setGrades(prev => {
+              const existingRecord = (prev || []).find(g => g.studentId === studentId);
+              let next: GradeRecord[];
+              if (existingRecord) {
+                next = (prev || []).map(g => {
+                  if (g.studentId === studentId) {
+                    return {
+                      ...g,
+                      classId: classId || g.classId,
+                      subjects: {
+                        ...g.subjects,
+                        [subjectId]: gradeData
+                      }
+                    };
+                  }
+                  return g;
+                });
+              } else {
+                next = [
+                  ...(prev || []),
+                  {
+                    studentId,
+                    classId,
+                    subjects: {
+                      [subjectId]: gradeData
+                    }
+                  }
+                ];
+              }
+              cacheService.set('grades', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow && oldRow.student_id && oldRow.subject_id) {
+            const studentId = String(oldRow.student_id);
+            const subjectId = String(oldRow.subject_id);
+            setGrades(prev => {
+              const next = (prev || []).map(g => {
+                if (g.studentId === studentId) {
+                  const updatedSubjects = { ...g.subjects };
+                  delete updatedSubjects[subjectId];
+                  return { ...g, subjects: updatedSubjects };
+                }
+                return g;
+              });
+              cacheService.set('grades', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 6. Counseling (Bimbingan Konseling / Perilaku)
+      else if (table === 'counseling') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: BehaviorLog = {
+              ...newRow,
+              classId: newRow.class_id,
+              studentId: newRow.student_id,
+              studentName: newRow.student_name
+            };
+            setCounselingLogs(prev => {
+              const filtered = (prev || []).filter(l => l.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('counselingLogs', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setCounselingLogs(prev => {
+              const next = (prev || []).filter(l => l.id !== oldRow.id);
+              cacheService.set('counselingLogs', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 7. Students (Data Siswa)
+      else if (table === 'students') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const classVal = newRow.rombel || newRow.class_id || newRow.classId || '1A';
+            const mapped: Student = {
+              ...newRow,
+              classId: classVal,
+              rombel: classVal
+            };
+            setStudents(prev => {
+              const filtered = (prev || []).filter(s => s.id !== mapped.id);
+              const next = [...filtered, mapped].sort((a,b) => (a.name || '').localeCompare(b.name || ''));
+              cacheService.set('students', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setStudents(prev => {
+              const next = (prev || []).filter(s => s.id !== oldRow.id);
+              cacheService.set('students', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 8. Holidays (Kalender Libur)
+      else if (table === 'holidays') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: Holiday = {
+              ...newRow,
+              classId: newRow.class_id
+            };
+            setHolidays(prev => {
+              const filtered = (prev || []).filter(h => h.id !== mapped.id);
+              const next = [...filtered, mapped].sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+              cacheService.set('holidays', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setHolidays(prev => {
+              const next = (prev || []).filter(h => h.id !== oldRow.id);
+              cacheService.set('holidays', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 9. Learning Reports (Jurnal & Laporan Pembelajaran)
+      else if (table === 'learning_reports') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: LearningReport = {
+              ...newRow,
+              classId: newRow.class_id,
+              documentLink: newRow.document_link,
+              teacherName: newRow.teacher_name
+            };
+            setLearningReports(prev => {
+              const filtered = (prev || []).filter(r => r.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('learningReports', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setLearningReports(prev => {
+              const next = (prev || []).filter(r => r.id !== oldRow.id);
+              cacheService.set('learningReports', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 10. Penilaian Sikap
+      else if (table === 'penilaian_sikap') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow && newRow.student_id && newRow.class_id) {
+            const mapped: SikapAssessment = {
+              studentId: String(newRow.student_id),
+              classId: String(newRow.class_id),
+              keimanan: Number(newRow.keimanan) || 0,
+              kewargaan: Number(newRow.kewargaan) || 0,
+              penalaranKritis: Number(newRow.penalaran_kritis) || 0,
+              kreativitas: Number(newRow.kreativitas) || 0,
+              kolaborasi: Number(newRow.kolaborasi) || 0,
+              kemandirian: Number(newRow.kemandirian) || 0,
+              kesehatan: Number(newRow.kesehatan) || 0,
+              komunikasi: Number(newRow.komunikasi) || 0
+            };
+            setSikapAssessments(prev => {
+              const filtered = (prev || []).filter(s => !(s.studentId === mapped.studentId && s.classId === mapped.classId));
+              const next = [...filtered, mapped];
+              cacheService.set('sikapAssessments', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow && oldRow.student_id && oldRow.class_id) {
+            const studentId = String(oldRow.student_id);
+            const classId = String(oldRow.class_id);
+            setSikapAssessments(prev => {
+              const next = (prev || []).filter(s => !(s.studentId === studentId && s.classId === classId));
+              cacheService.set('sikapAssessments', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 11. Penilaian Karakter
+      else if (table === 'penilaian_karakter') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow && newRow.student_id && newRow.class_id) {
+            const mapped: KarakterAssessment = {
+              studentId: String(newRow.student_id),
+              classId: String(newRow.class_id),
+              bangunPagi: newRow.bangun_pagi || 'Tidak',
+              beribadah: newRow.beribadah || 'Tidak',
+              berolahraga: newRow.berolahraga || 'Tidak',
+              makanSehat: newRow.makan_sehat || 'Tidak',
+              gemarBelajar: newRow.gemar_belajar || 'Tidak',
+              bermasyarakat: newRow.bermasyarakat || 'Tidak',
+              tidurAwal: newRow.tidur_awal || 'Tidak',
+              catatan: newRow.catatan,
+              afirmasi: newRow.afirmasi
+            };
+            setKarakterAssessments(prev => {
+              const filtered = (prev || []).filter(k => !(k.studentId === mapped.studentId && k.classId === mapped.classId));
+              const next = [...filtered, mapped];
+              cacheService.set('karakterAssessments', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow && oldRow.student_id && oldRow.class_id) {
+            const studentId = String(oldRow.student_id);
+            const classId = String(oldRow.class_id);
+            setKarakterAssessments(prev => {
+              const next = (prev || []).filter(k => !(k.studentId === studentId && k.classId === classId));
+              cacheService.set('karakterAssessments', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 12. Inventory (Sarpras)
+      else if (table === 'inventory') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: InventoryItem = {
+              ...newRow,
+              classId: newRow.class_id,
+              updatedAt: newRow.updated_at
+            };
+            setInventory(prev => {
+              const filtered = (prev || []).filter(i => i.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('inventory', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setInventory(prev => {
+              const next = (prev || []).filter(i => i.id !== oldRow.id);
+              cacheService.set('inventory', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 13. School Assets (Aset Sekolah)
+      else if (table === 'school_assets') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: SchoolAsset = {
+              ...newRow,
+              acquisitionDate: newRow.acquisition_date
+            };
+            setSchoolAssets(prev => {
+              const filtered = (prev || []).filter(a => a.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('schoolAssets', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setSchoolAssets(prev => {
+              const next = (prev || []).filter(a => a.id !== oldRow.id);
+              cacheService.set('schoolAssets', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 14. BOS Management
+      else if (table === 'bos_management') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            setBosTransactions(prev => {
+              const filtered = (prev || []).filter(b => b.id !== newRow.id);
+              const next = [newRow, ...filtered];
+              cacheService.set('bosTransactions', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setBosTransactions(prev => {
+              const next = (prev || []).filter(b => b.id !== oldRow.id);
+              cacheService.set('bosTransactions', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 15. Book Loans (Perpustakaan)
+      else if (table === 'book_loans') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: BookLoan = {
+              ...newRow,
+              bookId: newRow.book_id,
+              bookTitle: newRow.book_title,
+              studentId: newRow.student_id,
+              studentName: newRow.student_name,
+              classId: newRow.class_id,
+              loanDate: newRow.loan_date,
+              dueDate: newRow.due_date,
+              returnDate: newRow.return_date
+            };
+            setBookLoans(prev => {
+              const filtered = (prev || []).filter(b => b.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('bookLoans', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setBookLoans(prev => {
+              const next = (prev || []).filter(b => b.id !== oldRow.id);
+              cacheService.set('bookLoans', next);
+              return next;
+            });
+          }
+        }
+      }
+
+      // 16. Materials (Materi Pembelajaran)
+      else if (table === 'materials') {
+        if (eventType === 'INSERT' || eventType === 'UPDATE') {
+          if (newRow) {
+            const mapped: Material = {
+              ...newRow,
+              classId: newRow.class_id
+            };
+            setMaterials(prev => {
+              const filtered = (prev || []).filter(m => m.id !== mapped.id);
+              const next = [mapped, ...filtered];
+              cacheService.set('materials', next);
+              return next;
+            });
+          }
+        } else if (eventType === 'DELETE') {
+          if (oldRow?.id) {
+            setMaterials(prev => {
+              const next = (prev || []).filter(m => m.id !== oldRow.id);
+              cacheService.set('materials', next);
+              return next;
+            });
+          }
+        }
+      }
+    });
+
+    return () => {
+      unsubscribeRealtime();
+    };
+  }, [currentUser, students]);
+
   // Silent presence tracking for students (background only, no widget UI rendered)
   useEffect(() => {
     if (!supabase || !currentUser || currentUser.role !== 'siswa') return;
@@ -3041,6 +3563,7 @@ const AppContent: React.FC = () => {
                         allAttendanceRecords={filteredAttendance}
                         holidays={filteredHolidays}
                         onRefreshData={fetchData}
+                        onQuickRefreshAttendance={handleRefreshAttendance}
                         onAddHoliday={handleAddHoliday}
                         onUpdateHoliday={handleUpdateHoliday}
                         onDeleteHoliday={handleDeleteHoliday}

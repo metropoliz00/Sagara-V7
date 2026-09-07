@@ -2299,6 +2299,9 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
           .pedagogis-table, .pedagogis-table td, .pedagogis-td {
             border: none !important;
           }
+          .meta-identity-table, .meta-identity-table tr, .meta-identity-table td {
+            border: none !important;
+          }
         </style>
       </head>
       <body>
@@ -2546,6 +2549,22 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     const startAttr = (node.listType === 'numbered' && node.startIndex && node.startIndex > 1) ? ` start="${node.startIndex}"` : '';
                     let items = node.items!.map(item => `<li>${item.content}</li>`).join('');
                     return `<${tag}${startAttr} style="margin-bottom: 15px; font-family: Arial, Helvetica, sans-serif; ${alignStyle} ${listStyleType} ${marginLeft}">${items}</${tag}>`;
+                }
+
+                if (node.type === 'identity_group') {
+                  return `
+                    <table class="meta-identity-table" style="border-collapse: collapse; border: none; margin: 8px 0 16px 0; font-family: Arial, Helvetica, sans-serif; font-size: 10pt; width: auto; max-width: 100%;">
+                      <tbody>
+                        ${node.metaItems!.map(item => `
+                          <tr style="border: none;">
+                            <td style="padding: 2.5px 14px 2.5px 0; border: none; vertical-align: top; white-space: nowrap; font-weight: normal; color: #1e293b; min-width: 130px;">${item.label}</td>
+                            <td style="padding: 2.5px 8px 2.5px 0; border: none; vertical-align: top; text-align: center; width: 15px; font-weight: bold; color: #1e293b;">:</td>
+                            <td style="padding: 2.5px 0; border: none; vertical-align: top; font-weight: bold; color: #0f172a;">${item.value}</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+                  `;
                 }
 
                 const block = node.block!;
@@ -3072,6 +3091,28 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                             <li key={item.key} className="pl-1" dangerouslySetInnerHTML={{ __html: item.content || '' }} />
                           ))}
                         </Tag>
+                      );
+                    }
+
+                    if (node.type === 'identity_group') {
+                      return (
+                        <div key={node.key} className="my-2.5 overflow-x-auto select-text">
+                          <table className="border-collapse border-0 text-slate-800 text-[11px] font-sans">
+                            <tbody>
+                              {node.metaItems!.map((item, mIdx) => (
+                                <tr key={mIdx} className="border-0">
+                                  <td className="py-0.5 pr-4 whitespace-nowrap font-medium text-slate-600 align-top border-0 select-text min-w-[125px] sm:min-w-[140px]">
+                                    {item.label}
+                                  </td>
+                                  <td className="py-0.5 px-2 text-center w-5 font-bold text-slate-700 align-top border-0 select-text">
+                                    :
+                                  </td>
+                                  <td className="py-0.5 pl-0.5 font-bold text-slate-900 align-top border-0 select-text" dangerouslySetInnerHTML={{ __html: item.value || '-' }} />
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       );
                     }
 

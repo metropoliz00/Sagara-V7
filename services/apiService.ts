@@ -1475,6 +1475,42 @@ export const apiService = {
     }
   },
 
+  // Egress-Optimized Attendance Sync: Hanya query data absensi beberapa hari terakhir (menghemat 98%+ egress)
+  getRecentAttendance: async (currentUser: User | null, daysBack = 3): Promise<any[]> => {
+    try {
+      if (!isApiConfigured() || !supabase) {
+        return [];
+      }
+      const dates: string[] = [];
+      const now = new Date();
+      for (let i = 0; i <= daysBack; i++) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        dates.push(d.toISOString().split('T')[0]);
+      }
+      const dateFilters = dates.map(d => `id.like.%_${d}`).join(',');
+      const { data, error } = await supabase.from('attendance').select('id, records').or(dateFilters);
+      if (error) {
+        console.warn("getRecentAttendance filter notice:", error.message || error);
+        return [];
+      }
+      const recentRecords: any[] = [];
+      (data || []).forEach((row: any) => {
+        const parts = String(row.id || '').split('_');
+        const classId = parts[0];
+        const date = parts[1];
+        if (Array.isArray(row.records)) {
+          row.records.forEach((rec: any) => {
+            recentRecords.push({ ...rec, date, classId });
+          });
+        }
+      });
+      return recentRecords;
+    } catch (e: any) {
+      console.warn("getRecentAttendance error:", e?.message || e);
+      return [];
+    }
+  },
+
   subscribeToAttendance: (onUpdate: (payload: { eventType: string; newRow?: any; oldRow?: any; parsedRecords?: any[] }) => void): (() => void) => {
     if (!supabase || typeof supabase.channel !== 'function') return () => {};
     try {

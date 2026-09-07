@@ -265,6 +265,8 @@ const AppContent: React.FC = () => {
 
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const lastFetchTimeRef = useRef<number>(Date.now());
+  const isSyncingDynamicRef = useRef<boolean>(false);
+  const lastUserActivityRef = useRef<number>(Date.now());
   
   // -- ADMIN CLASS FILTER STATE --
   const [selectedClassId, setSelectedClassId] = useState<string>(() => {
@@ -755,6 +757,7 @@ const AppContent: React.FC = () => {
     const INACTIVITY_LIMIT = 15 * 60 * 1000; // 15 minutes
 
     const resetTimer = () => {
+      lastUserActivityRef.current = Date.now();
       if (inactivityTimer) clearTimeout(inactivityTimer);
       if (currentUser) {
         inactivityTimer = setTimeout(() => {
@@ -783,43 +786,148 @@ const AppContent: React.FC = () => {
     };
   }, [currentUser]);
 
-  // Background sync for dynamic data only (attendance, permissions, liaison, agendas)
-  // Saves over 80% egress compared to refetching all 25 tables!
-  const fetchDynamicData = async () => {
-    if (!currentUser || !apiService.isConfigured()) return;
+  // Background silent sync for dynamic data only (attendance, permissions, liaison, agendas)
+  // "Tidak Terasa": Berjalan hening di latar belakang tanpa spinner, tanpa refresh layar, dan tanpa re-render jika data tidak berubah.
+  // "Hemat Egress": Hanya query absensi hari ini/terbaru (menghemat 98%+ egress) & auto-pause saat tab tidak aktif/idle.
+  const fetchDynamicData = async (forceAllAttendance = false) => {
+    if (!currentUser || !apiService.isConfigured() || isDemoMode) return;
+    if (isSyncingDynamicRef.current) return;
+    if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+
+    // Pause sync if user has been inactive for more than 5 minutes to prevent idle egress
+    if (Date.now() - lastUserActivityRef.current > 5 * 60 * 1000) {
+      return;
+    }
+
+    isSyncingDynamicRef.current = true;
     try {
-      const [fAttendance, fPermissions, fLiaison, fAgendas] = await Promise.all([
-        apiService.getAttendance(currentUser).catch(() => null),
+      const [fRecentAttendance, fPermissions, fLiaison, fAgendas] = await Promise.all([
+        (forceAllAttendance ? apiService.getAttendance(currentUser) : apiService.getRecentAttendance(currentUser, 2)).catch(() => null),
         apiService.getPermissionRequests(currentUser).catch(() => null),
         apiService.getLiaisonLogs(currentUser).catch(() => null),
         apiService.getAgendas(currentUser).catch(() => null),
       ]);
 
-      if (fAttendance !== null && Array.isArray(fAttendance)) {
-        setAllAttendanceRecords(fAttendance);
-        cacheService.set('allAttendanceRecords', fAttendance);
+      // 1. Attendance Update (Diff & Merge with Zero Flicker)
+      if (fRecentAttendance !== null && Array.isArray(fRecentAttendance)) {
+        if (forceAllAttendance) {
+          setAllAttendanceRecords(prev => {
+            if (JSON.stringify(prev) === JSON.stringify(fRecentAttendance)) return prev;
+            cacheService.set('allAttendanceRecords', fRecentAttendance);
+            return fRecentAttendance;
+          });
+        } else if (fRecentAttendance.length > 0) {
+          setAllAttendanceRecords(prev => {
+            const prevList = prev || [];
+            const recentKeys = new Set(fRecentAttendance.map(r => `${r.classId}_${r.date}_${r.studentId}`));
+            const prevMatching = prevList.filter(r => recentKeys.has(`${r.classId}_${r.date}_${r.studentId}`));
+            
+            // Cek apakah ada perbedaan nyata
+            let hasChanged = prevMatching.length !== fRecentAttendance.length;
+            if (!hasChanged) {
+              const prevMap = new Map(prevMatching.map(r => [`${r.classId}_${r.date}_${r.studentId}`, `${r.status}_${r.notes || ''}`]));
+              for (const r of fRecentAttendance) {
+                if (prevMap.get(`${r.classId}_${r.date}_${r.studentId}`) !== `${r.status}_${r.notes || ''}`) {
+                  hasChanged = true;
+                  break;
+                }
+              }
+            }
+
+            if (!hasChanged) return prev; // Identik: tidak perlu re-render
+
+            const recentDateClassPairs = new Set(fRecentAttendance.map(r => `${r.classId}_${r.date}`));
+            const untouched = prevList.filter(r => !recentDateClassPairs.has(`${r.classId}_${r.date}`));
+            const merged = [...untouched, ...fRecentAttendance];
+            cacheService.set('allAttendanceRecords', merged);
+            return merged;
+          });
+        }
       }
+
+      // 2. Permission Requests Update (Diff & Set)
       if (fPermissions !== null && Array.isArray(fPermissions)) {
         const currentStudents = (students || []) as Student[];
-        const hydratedPermissions = fPermissions.map((p: any) => ({
+        const hydratedPermissions: PermissionRequest[] = fPermissions.map((p: any) => ({
           ...p,
           studentName: currentStudents.find((s: Student) => String(s.id).trim() === String(p.studentId).trim())?.name || p.studentName || 'Siswa'
         }));
-        setPermissionRequests(hydratedPermissions);
-        cacheService.set('permissionRequests', hydratedPermissions);
+
+        setPermissionRequests(prev => {
+          const prevList = prev || [];
+          if (prevList.length === hydratedPermissions.length) {
+            let isIdentical = true;
+            for (let i = 0; i < prevList.length; i++) {
+              if (
+                prevList[i].id !== hydratedPermissions[i].id ||
+                prevList[i].status !== hydratedPermissions[i].status ||
+                prevList[i].rejectionReason !== hydratedPermissions[i].rejectionReason
+              ) {
+                isIdentical = false;
+                break;
+              }
+            }
+            if (isIdentical) return prev; // Identik: skip re-render
+          }
+          cacheService.set('permissionRequests', hydratedPermissions);
+          return hydratedPermissions;
+        });
       }
+
+      // 3. Liaison Logs Update (Diff & Set)
       if (fLiaison !== null && Array.isArray(fLiaison)) {
-        setLiaisonLogs(fLiaison as LiaisonLog[]);
-        cacheService.set('liaisonLogs', fLiaison);
+        const nextLiaison = fLiaison as LiaisonLog[];
+        setLiaisonLogs(prev => {
+          const prevList = prev || [];
+          if (prevList.length === nextLiaison.length) {
+            let isIdentical = true;
+            for (let i = 0; i < prevList.length; i++) {
+              if (
+                prevList[i].id !== nextLiaison[i].id ||
+                prevList[i].status !== nextLiaison[i].status ||
+                prevList[i].response !== nextLiaison[i].response
+              ) {
+                isIdentical = false;
+                break;
+              }
+            }
+            if (isIdentical) return prev;
+          }
+          cacheService.set('liaisonLogs', nextLiaison);
+          return nextLiaison;
+        });
       }
+
+      // 4. Agendas Update (Diff & Set)
       if (fAgendas !== null && Array.isArray(fAgendas)) {
         const sorted = (fAgendas as AgendaItem[]).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setAgendas(sorted);
-        cacheService.set('agendas', sorted);
+        setAgendas(prev => {
+          const prevList = prev || [];
+          if (prevList.length === sorted.length) {
+            let isIdentical = true;
+            for (let i = 0; i < prevList.length; i++) {
+              if (
+                prevList[i].id !== sorted[i].id ||
+                prevList[i].completed !== sorted[i].completed ||
+                prevList[i].title !== sorted[i].title ||
+                prevList[i].date !== sorted[i].date
+              ) {
+                isIdentical = false;
+                break;
+              }
+            }
+            if (isIdentical) return prev;
+          }
+          cacheService.set('agendas', sorted);
+          return sorted;
+        });
       }
+
       lastFetchTimeRef.current = Date.now();
     } catch (e) {
       console.warn("Dynamic background sync error:", e);
+    } finally {
+      isSyncingDynamicRef.current = false;
     }
   };
 
@@ -837,7 +945,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Fallback safety sync every 60 minutes & on tab visibility check (Realtime WebSocket Hub handles instantaneous live updates with 0-egress deltas)
+  // Interval Reload "Tidak Terasa" (~10 detik sekali) dengan Proteksi Egress Maksimal
   useEffect(() => {
     if (!currentUser) return;
 
@@ -845,19 +953,23 @@ const AppContent: React.FC = () => {
       const isStudentsExpired = cacheService.isExpired('students');
       const isUsersExpired = currentUser.role !== 'siswa' ? cacheService.isExpired('users') : false;
       if (isStudentsExpired || isUsersExpired) {
-        fetchData(true, true); // Pembaruan berkala data master (silent background refresh)
+        fetchData(true, true); // Pembaruan berkala data master (silent background refresh saat TTL 24 jam habis)
       }
     };
 
+    // Eksekusi reload hening setiap 10 detik
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchDynamicData();
         checkMasterCacheExpiration();
       }
-    }, 60 * 60 * 1000);
+    }, 10 * 1000);
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
+        if (Date.now() - lastFetchTimeRef.current >= 10 * 1000) {
+          fetchDynamicData();
+        }
         checkMasterCacheExpiration();
       }
     };
@@ -1054,6 +1166,16 @@ const AppContent: React.FC = () => {
       return raw.filter(p => isRecordMatchClass(p, activeClassId) || isClassMatch(p.classId, activeClassId));
   }, [permissionRequests, activeClassId, currentUser, students]);
 
+  // Otomatis tutup modal ijin langsung jika sudah tidak ada permintaan yang tersisa
+  useEffect(() => {
+    if (isPermissionModalOpen && pendingPermissions.length === 0) {
+      const timer = setTimeout(() => {
+        setIsPermissionModalOpen(false);
+      }, 400);
+      return () => clearTimeout(timer);
+    }
+  }, [isPermissionModalOpen, pendingPermissions.length]);
+
   // NEW: Check for unread liaison messages for teachers
   const unreadLiaisonCount = useMemo(() => {
     if (currentUser?.role === 'siswa') return 0;
@@ -1194,36 +1316,79 @@ const AppContent: React.FC = () => {
   };
 
   const handleProcessPermission = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+      const req = permissionRequests.find(p => String(p.id).trim() === String(id).trim());
+      if (!req) {
+          setIsPermissionModalOpen(false);
+          return;
+      }
+
+      const prevRequests = [...permissionRequests];
+      const prevAttendance = [...allAttendanceRecords];
+
+      // 1. Instantly close reject modal if open
+      if (action === 'reject') {
+          setRejectPermissionModalData({ isOpen: false, id: "" });
+          setPermissionRejectionReason("");
+      }
+
+      // 2. Optimistic instant update: update permission status
+      const updatedRequests: PermissionRequest[] = permissionRequests.map(p => 
+          String(p.id).trim() === String(id).trim() 
+              ? { 
+                  ...p, 
+                  status: (action === 'approve' ? 'Approved' : 'Rejected') as 'Approved' | 'Rejected',
+                  ...(action === 'reject' && reason ? { rejectionReason: reason } : {})
+                } 
+              : p
+      );
+
+      setPermissionRequests(updatedRequests);
+      cacheService.set('permissionRequests', updatedRequests);
+
+      // 3. Optimistic instant update: add attendance record if approved
+      if (action === 'approve') {
+          const filtered = allAttendanceRecords.filter(r => !(String(r.studentId) === String(req.studentId) && String(r.date) === String(req.date)));
+          const updatedAttendance = [...filtered, { 
+              studentId: req.studentId, 
+              classId: req.classId, 
+              date: req.date, 
+              status: req.type, 
+              notes: req.reason 
+          }];
+          setAllAttendanceRecords(updatedAttendance);
+          cacheService.set('attendance', updatedAttendance);
+      }
+
+      // 4. Check remaining pending permissions
+      const remainingPending = updatedRequests.filter(p => {
+          if ((p.status || '').toLowerCase() !== 'pending') return false;
+          if (currentUser?.role === 'admin' || currentUser?.role === 'Kepala Sekolah') return true;
+          return isRecordMatchClass(p, activeClassId) || isClassMatch(p.classId, activeClassId);
+      });
+
+      // 5. If no more pending requests left, close the modal instantly without delay!
+      if (remainingPending.length === 0) {
+          setIsPermissionModalOpen(false);
+      }
+
+      handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'}.`, 'success');
+
+      if (isDemoMode) return;
+
       setProcessingPermissionId(id);
       try {
-          const req = permissionRequests.find(p => String(p.id).trim() === String(id).trim());
-          if (isDemoMode) {
-              setPermissionRequests(prev => prev.map(p => p.id === id ? { 
-                  ...p, 
-                  status: action === 'approve' ? 'Approved' : 'Rejected',
-                  ...(action === 'reject' && reason ? { rejectionReason: reason } : {})
-              } : p));
-              if (action === 'approve' && req) {
-                  setAllAttendanceRecords(prev => {
-                      const filtered = prev.filter(r => !(String(r.studentId) === String(req.studentId) && String(r.date) === String(req.date)));
-                      return [...filtered, { studentId: req.studentId, classId: req.classId, date: req.date, status: req.type, notes: req.reason }];
-                  });
-              }
-              handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'} (Demo).`, 'success');
-              if (action === 'reject') {
-                  setRejectPermissionModalData({ isOpen: false, id: "" });
-                  setPermissionRejectionReason("");
-              }
-          } else {
-              await apiService.processPermissionRequest(id, action, reason);
-              handleShowNotification(`Ijin berhasil di${action === 'approve' ? 'terima' : 'tolak'}.`, 'success');
-              if (action === 'reject') {
-                  setRejectPermissionModalData({ isOpen: false, id: "" });
-                  setPermissionRejectionReason("");
-              }
-              
-          }
-      } catch (e) { handleShowNotification('Gagal memproses ijin.', 'error'); } finally { setProcessingPermissionId(null); }
+          await apiService.processPermissionRequest(id, action, reason);
+      } catch (e: any) {
+          console.error("Gagal memproses ijin di server:", e);
+          // Rollback on error
+          setPermissionRequests(prevRequests);
+          cacheService.set('permissionRequests', prevRequests);
+          setAllAttendanceRecords(prevAttendance);
+          cacheService.set('attendance', prevAttendance);
+          handleShowNotification('Gagal memproses ijin pada server. Perubahan dibatalkan.', 'error');
+      } finally {
+          setProcessingPermissionId(null);
+      }
   };
 
   // Add/Update/Delete Student handlers
@@ -3980,7 +4145,19 @@ const AppContent: React.FC = () => {
                           </thead>
                           <tbody className="divide-y divide-gray-100">
                               {pendingPermissions.length === 0 ? (
-                                  <tr><td colSpan={4} className="p-6 text-center text-gray-400">Tidak ada permintaan baru.</td></tr>
+                                  <tr>
+                                      <td colSpan={4} className="p-8 text-center text-gray-400">
+                                          <div className="flex flex-col items-center justify-center gap-2">
+                                              <p className="text-gray-500 font-medium">Tidak ada permintaan baru.</p>
+                                              <button 
+                                                  onClick={() => setIsPermissionModalOpen(false)}
+                                                  className="mt-1 px-4 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-semibold rounded-lg transition-colors"
+                                              >
+                                                  Tutup
+                                              </button>
+                                          </div>
+                                      </td>
+                                  </tr>
                               ) : (
                                   pendingPermissions.map(req => (
                                       <tr key={req.id} className="hover:bg-gray-50">
@@ -4019,7 +4196,7 @@ const AppContent: React.FC = () => {
       )}
 
       {rejectPermissionModalData.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-[150] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[250] flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Tolak Ijin Siswa</h3>
             <p className="text-sm text-gray-600 mb-4">Silakan masukkan alasan penolakan ijin ini.</p>

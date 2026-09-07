@@ -4,6 +4,7 @@ import { Save, Trash2, Plus, FileText, LayoutTemplate, FileCheck, BrainCircuit, 
 import { parseRichText, markdownToHtml, htmlToMarkdown, cleanAiText, cleanAiAttachmentText } from '../utils/textParser';
 import { ContentModal } from './ContentModal';
 import CustomModal from './CustomModal';
+import { verifyGeminiConnection, generateWithGemini, checkAiStatus, getStoredGeminiApiKey, setStoredGeminiApiKey } from '../services/geminiClientService';
 
 
 interface AttachmentEditorProps {
@@ -176,25 +177,17 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
   };
 
   useEffect(() => {
-    fetch('/api/ai/status')
-      .then(res => res.json())
-      .then(data => {
-        if (data?.configured) {
-          setServerAiConfigured(true);
-        }
-      })
-      .catch(() => {});
+    checkAiStatus().then(status => {
+      if (status.configured) {
+        setServerAiConfigured(true);
+      }
+    });
 
     // Try loading local cached key if available
-    try {
-      const cached = localStorage.getItem('school_profile_cache');
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed?.geminiApiKey && !customKeyInput) {
-          setCustomKeyInput(parsed.geminiApiKey);
-        }
-      }
-    } catch {}
+    const stored = getStoredGeminiApiKey();
+    if (stored && !customKeyInput) {
+      setCustomKeyInput(stored);
+    }
   }, []);
 
   // Countdown timer for rate limit recovery
@@ -223,31 +216,23 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
     setKeyVerifyResult(null);
 
     try {
-      const res = await fetch('/api/ai/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: keyToTest || undefined }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
+      const result = await verifyGeminiConnection(keyToTest);
+      if (result.success) {
         setKeyVerifyResult({ 
           success: true, 
-          text: data.message || 'API Key Valid! Berhasil terhubung ke Gemini AI.' 
+          text: result.message || 'API Key Valid! Berhasil terhubung ke Gemini AI.' 
         });
+        if (keyToTest) setStoredGeminiApiKey(keyToTest);
       } else {
-        const isRate = data.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(data.error || '');
         setKeyVerifyResult({ 
           success: false, 
-          text: isRate
-            ? 'API Key terhubung ke Google AI, tetapi batas frekuensi per menit (15 request/menit) sedang penuh. Tunggu 10–15 detik lalu klik tombol "Uji API Key" kembali.'
-            : (data.error || 'API Key ditolak. Periksa kembali API Key Anda.')
+          text: result.message || 'Gagal memverifikasi API Key.' 
         });
       }
-    } catch {
+    } catch (err: any) {
       setKeyVerifyResult({ 
         success: false, 
-        text: 'Gagal menghubungi server verifikasi. Pastikan jaringan aktif.' 
+        text: err?.message || 'Gagal menghubungi server verifikasi. Pastikan jaringan aktif.' 
       });
     } finally {
       setIsVerifyingKey(false);
@@ -256,16 +241,9 @@ export const AttachmentEditor: React.FC<AttachmentEditorProps> = ({ attachments 
 
   const handleSaveKeyLocally = () => {
     if (!customKeyInput.trim()) return;
-    try {
-      const cached = localStorage.getItem('school_profile_cache');
-      const obj = cached ? JSON.parse(cached) : {};
-      obj.geminiApiKey = customKeyInput.trim();
-      localStorage.setItem('school_profile_cache', JSON.stringify(obj));
-      setIsKeySavedLocally(true);
-      setTimeout(() => setIsKeySavedLocally(false), 3000);
-    } catch (e) {
-      console.error("Gagal simpan key ke cache", e);
-    }
+    setStoredGeminiApiKey(customKeyInput.trim());
+    setIsKeySavedLocally(true);
+    setTimeout(() => setIsKeySavedLocally(false), 3000);
   };
 
   const isAiConnected = !!(geminiApiKey?.trim() || serverAiConfigured || customKeyInput.trim());
@@ -553,55 +531,12 @@ Sertakan:
     setIsRateLimited(false);
 
     try {
-      let data: any = null;
-      try {
-        const response = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            prompt, 
-            apiKey: effectiveKey || undefined 
-          }),
-        });
-        if (response.ok) {
-          data = await response.json();
-        } else {
-          throw new Error(`Server status ${response.status}`);
-        }
-      } catch (serverErr) {
-        // Fallback for static hosting like Vercel where Express backend is not running
-        if (!effectiveKey) {
-          throw new Error("API Key Gemini belum dikonfigurasi.");
-        }
-        const { GoogleGenAI } = await import('@google/genai');
-        const aiClient = new GoogleGenAI({ apiKey: effectiveKey });
-        const modelsToTry = ["gemini-3.1-flash-lite", "gemini-flash-latest", "gemini-3.7-flash"];
-        let generatedText = "";
-        let lastErr: any = null;
-        for (const m of modelsToTry) {
-          try {
-            const result = await aiClient.models.generateContent({
-              model: m,
-              contents: [{ role: 'user', parts: [{ text: prompt }] }]
-            });
-            if (result.text) {
-              generatedText = result.text;
-              break;
-            }
-          } catch (err: any) {
-            lastErr = err;
-          }
-        }
-        if (!generatedText && lastErr) {
-          throw lastErr;
-        }
-        data = { text: generatedText };
-      }
+      const { text } = await generateWithGemini(prompt, effectiveKey);
 
-      if (data && data.text) {
+      if (text) {
         setIsRateLimited(false);
         setRateLimitCountdown(0);
-        const cleaned = cleanAiAttachmentText(data.text);
+        const cleaned = cleanAiAttachmentText(text);
         
         const topic = planData?.topic || '[Materi Pokok]';
         const subject = planData?.subject || '[Mata Pelajaran]';
@@ -656,40 +591,31 @@ Sertakan:
           setAiSuccessToast(null);
         }, 4000);
       } else {
-        const errorMsg = data?.error || "Gagal menghasilkan konten AI. Periksa kembali API Key Anda.";
-        
-        const rateLimitDetected = data?.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan|too\s*many\s*requests/i.test(errorMsg);
-        if (rateLimitDetected) {
-          setIsRateLimited(true);
-          setRateLimitCountdown(15);
-          setModalConfig({
-            isOpen: true,
-            type: 'alert',
-            title: 'Batas Kecepatan Request Google AI (Rate Exceeded / 429)',
-            message: 'Batas frekuensi request per menit (15 RPM) Google AI sedang penuh. Mohon tunggu sekitar 15 detik agar kuota pulih otomatis, lalu klik tombol "Generate AI" kembali.'
-          });
-        } else if (errorMsg.includes("401") || errorMsg.includes("UNAUTHENTICATED") || errorMsg.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") || errorMsg.includes("API Key") || errorMsg.includes("403")) {
-          setShowApiKeyModal(true);
-        } else {
-          setModalConfig({
-            isOpen: true,
-            type: 'error',
-            title: 'Gagal Generate Konten AI',
-            message: errorMsg
-          });
-        }
+        throw new Error("Gagal menghasilkan konten AI. Tidak ada teks yang dikembalikan.");
       }
     } catch (e: any) {
       console.error("AI Generation failed:", e);
       const errStr = e?.message || String(e);
       const isRate = /rate\s*exceeded|429|quota|resource_exhausted/i.test(errStr);
-      setModalConfig({
-        isOpen: true,
-        type: isRate ? 'alert' : 'error',
-        title: isRate ? 'Batas Kecepatan Request Google AI (429)' : 'Gagal Generate Konten AI',
-        message: isRate ? 'Batas frekuensi request Google AI sedang penuh. Mohon tunggu 15 detik lalu coba kembali.' : (errStr || 'Gagal menghubungi server AI. Pastikan jaringan internet aktif.')
-      });
-      setIsRateLimited(isRate);
+      if (isRate) {
+        setIsRateLimited(true);
+        setRateLimitCountdown(15);
+        setModalConfig({
+          isOpen: true,
+          type: 'alert',
+          title: 'Batas Kecepatan Request Google AI (Rate Exceeded / 429)',
+          message: 'Batas frekuensi request per menit (15 RPM) Google AI sedang penuh. Mohon tunggu sekitar 15 detik agar kuota pulih otomatis, lalu klik tombol "Generate AI" kembali.'
+        });
+      } else if (errStr.includes("401") || errStr.includes("UNAUTHENTICATED") || errStr.includes("ACCESS_TOKEN_TYPE_UNSUPPORTED") || errStr.includes("API Key") || errStr.includes("403")) {
+        setShowApiKeyModal(true);
+      } else {
+        setModalConfig({
+          isOpen: true,
+          type: 'error',
+          title: 'Gagal Generate Konten AI',
+          message: errStr || 'Gagal menghubungi server AI. Pastikan jaringan internet aktif.'
+        });
+      }
     } finally {
       setIsGeneratingAi(false);
     }

@@ -10,6 +10,7 @@ import { apiService } from '../services/apiService';
 import { useModal } from '../context/ModalContext';
 import { AttachmentEditor } from './AttachmentEditor';
 import { parseRichText, markdownToHtml, groupBlocks } from '../utils/textParser';
+import { generateWithGemini, getStoredGeminiApiKey } from '../services/geminiClientService';
 
 interface LearningPlanViewProps {
   classId: string;
@@ -1131,19 +1132,7 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     onShowNotification('Asisten AI sedang menyusun kegiatan awal & penutup...', 'warning');
 
     // Retrieve effective API Key from schoolProfile or localStorage cache
-    let effectiveKey = (schoolProfile?.geminiApiKey || '').trim();
-    if (!effectiveKey && typeof localStorage !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('school_profile_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.geminiApiKey) effectiveKey = parsed.geminiApiKey.trim();
-        }
-        if (!effectiveKey) {
-          effectiveKey = (localStorage.getItem('gemini_custom_api_key') || '').trim();
-        }
-      } catch {}
-    }
+    const effectiveKey = (schoolProfile?.geminiApiKey || '').trim() || getStoredGeminiApiKey();
 
     const prompt = `Anda adalah asisten kurikulum pembelajaran yang cerdas dan cepat.
 Tugas: Buat teks "kegiatanAwal" (persis 7 butir ringkas) dan "kegiatanPenutup" (persis 3 butir ringkas) untuk RPP/RPM.
@@ -1175,27 +1164,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN):
   ]
 }`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt, 
-          apiKey: effectiveKey || undefined 
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const text = data.text || '';
+      const { text } = await generateWithGemini(prompt, effectiveKey);
       
       let parsed = null;
       try {
@@ -1298,19 +1268,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN):
     onShowNotification('Asisten AI sedang menyusun seluruh sintak kegiatan inti sesuai data input...', 'warning');
 
     // Retrieve effective API Key from schoolProfile or localStorage cache
-    let effectiveKey = (schoolProfile?.geminiApiKey || '').trim();
-    if (!effectiveKey && typeof localStorage !== 'undefined') {
-      try {
-        const cached = localStorage.getItem('school_profile_cache');
-        if (cached) {
-          const parsed = JSON.parse(cached);
-          if (parsed?.geminiApiKey) effectiveKey = parsed.geminiApiKey.trim();
-        }
-        if (!effectiveKey) {
-          effectiveKey = (localStorage.getItem('gemini_custom_api_key') || '').trim();
-        }
-      } catch {}
-    }
+    const effectiveKey = (schoolProfile?.geminiApiKey || '').trim() || getStoredGeminiApiKey();
 
     // Determine current base phases
     const basePhases = (intiInput && intiInput.length > 0)
@@ -1363,27 +1321,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
   ]
 }`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
-
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt, 
-          apiKey: effectiveKey || undefined 
-        }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const text = data.text || '';
+      const { text } = await generateWithGemini(prompt, effectiveKey);
 
       let parsed: any = null;
       try {

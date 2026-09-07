@@ -4,6 +4,7 @@ import { SchoolProfileData } from '../../types';
 import { compressImage } from '../../utils/imageHelper';
 import { Loader2, AlertCircle, Save, Lock, Upload, Trash2, Megaphone, AlertTriangle, Palette, Volume2, BrainCircuit, CheckCircle2, Clock, Users } from 'lucide-react';
 import { useModal } from '../../context/ModalContext';
+import { verifyGeminiConnection, checkAiStatus, setStoredGeminiApiKey, getStoredGeminiApiKey } from '../../services/geminiClientService';
 
 interface SchoolDataTabProps {
   school: SchoolProfileData;
@@ -22,14 +23,19 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
   const { showAlert } = useModal();
 
   useEffect(() => {
-    fetch('/api/ai/status')
-      .then(res => res.json())
-      .then(data => {
-        if (data?.configured) {
-          setServerConfigured(true);
-        }
-      })
-      .catch(() => {});
+    checkAiStatus().then(status => {
+      if (status.configured) {
+        setServerConfigured(true);
+      }
+    });
+
+    // If local state doesn't have geminiApiKey yet, try loading stored key
+    if (!school.geminiApiKey) {
+      const stored = getStoredGeminiApiKey();
+      if (stored) {
+        setSchool(prev => ({ ...prev, geminiApiKey: stored }));
+      }
+    }
   }, []);
 
   const handleVerifyAiConnection = async () => {
@@ -46,59 +52,15 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
     setVerifyResult(null);
 
     try {
-      let data: any = null;
-      try {
-        const res = await fetch('/api/ai/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ apiKey: keyToTest || undefined }),
-        });
-        if (res.ok) {
-          data = await res.json();
-        } else {
-          throw new Error(`Server status ${res.status}`);
-        }
-      } catch {
-        // Fallback for static hosting like Vercel where Express backend is not running
-        if (!keyToTest) {
-          throw new Error("API Key Gemini belum dikonfigurasi.");
-        }
-        const { GoogleGenAI } = await import('@google/genai');
-        const aiClient = new GoogleGenAI({ apiKey: keyToTest });
-        const res = await aiClient.models.generateContent({
-          model: 'gemini-3.7-flash',
-          contents: [{ role: 'user', parts: [{ text: 'Ping test' }] }]
-        });
-        if (res.text) {
-          data = { success: true, message: 'Koneksi Berhasil! Model Gemini aktif dan siap digunakan (Client Verified).' };
-        } else {
-          data = { success: false, error: 'Gagal mendapatkan respons dari Google AI.' };
-        }
-      }
-
-      if (data && data.success) {
-        setVerifyResult({
-          success: true,
-          message: data.message || 'Koneksi Berhasil! Model Gemini aktif dan siap digunakan.',
-        });
-      } else {
-        const errText = data?.error || 'Koneksi gagal. Periksa kembali API Key Anda.';
-        const isRate = data?.isRateLimit || /rate\s*exceeded|429|quota|batas\s*frekuensi|batas\s*kecepatan/i.test(errText);
-        setVerifyResult({
-          success: false,
-          isRateLimit: isRate,
-          message: isRate 
-            ? 'API Key terhubung ke Google AI, namun batas kecepatan request per menit (15 RPM) sedang penuh. Silakan tunggu 10–15 detik, lalu klik tombol "Coba Uji Ulang Sekarang".'
-            : errText,
-        });
+      const result = await verifyGeminiConnection(keyToTest);
+      setVerifyResult(result);
+      if (result.success && keyToTest) {
+        setStoredGeminiApiKey(keyToTest);
       }
     } catch (e: any) {
-      const errStr = e?.message || String(e);
-      const isRate = /rate\s*exceeded|429|quota/i.test(errStr);
       setVerifyResult({
         success: false,
-        isRateLimit: isRate,
-        message: isRate ? 'Batas kecepatan request Google AI (429). Mohon tunggu 15 detik.' : (errStr || 'Gagal menghubungi server verifikasi AI. Pastikan API Key valid.'),
+        message: e?.message || 'Gagal memverifikasi API Key. Pastikan format key benar dan koneksi internet aktif.',
       });
     } finally {
       setIsVerifyingAi(false);
@@ -713,7 +675,12 @@ const SchoolDataTab: React.FC<SchoolDataTabProps> = ({ school, setSchool, onSave
         <div className="mt-8 pt-6 border-t border-gray-100 flex justify-end">
             {!isReadOnly ? (
                 <button 
-                    onClick={onSave}
+                    onClick={async () => {
+                      if (school.geminiApiKey) {
+                        setStoredGeminiApiKey(school.geminiApiKey);
+                      }
+                      await onSave();
+                    }}
                     disabled={isSaving}
                     className="flex items-center space-x-2 bg-indigo-600 text-white px-6 py-2.5 rounded-lg hover:bg-indigo-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >

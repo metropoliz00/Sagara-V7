@@ -2671,9 +2671,6 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
               <ArrowLeft size={18} /> Tutup Pratinjau
             </button>
             <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-block px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-lg border border-emerald-200">
-                A4 Portrait (210 × 297 mm)
-              </span>
               <button 
                 onClick={triggerPrintAction}
                 className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-xl shadow-sm transition text-sm"

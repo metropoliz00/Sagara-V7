@@ -238,13 +238,8 @@ export const parseRichText = (text: string): ParsedBlock[] => {
   return blocks;
 };
 
-export interface MetaItem {
-  label: string;
-  value: string;
-}
-
 export interface BlockGroup {
-  type: ParsedBlock['type'] | 'list_group' | 'identity_group';
+  type: ParsedBlock['type'] | 'list_group';
   listType?: 'bullet' | 'numbered';
   listStyle?: 'decimal' | 'lower-alpha' | 'disc';
   startIndex?: number;
@@ -252,179 +247,39 @@ export interface BlockGroup {
   block?: ParsedBlock;
   align?: string;
   key: string | number;
-  metaItems?: MetaItem[];
 }
-
-export const KNOWN_IDENTITY_LABELS = /^(mata\s*pelajaran|mapel|kelas(\s*[\/\-]\s*semester)?|semester|fase(\s*[\/\-]\s*kelas)?|materi(\s*pokok)?|topik(\s*bahasan|\s*pokok|\s*utama)?|tema(\s*[\/\-]\s*subtema)?|subtema|alokasi\s*waktu|waktu(\s*pelaksanaan)?|teknik(\s*penilaian|\s*asesmen)?|bentuk(\s*penilaian|\s*instrumen|\s*asesmen)?|metode(\s*penilaian)?|instrumen(\s*penilaian)?|nama\s*sekolah|satuan\s*pendidikan|sekolah|instansi|nama\s*guru|guru(\s*pengampu)?|penyusun|nama\s*penyusun|nip(\s*[\/\-]\s*nuptk)?|nuptk|hari(\s*[\/\-,]\s*tanggal)?|tanggal(\s*pelaksanaan)?|tahun\s*ajaran|tahun\s*pelajaran|tp|target\s*(murid|peserta\s*didik)|jumlah\s*(murid|siswa|peserta\s*didik)|model\s*pembelajaran|moda\s*pembelajaran|pendekatan|dimensi(\s*profil\s*lulusan|\s*dpl)?|dpl|elemen|capaian\s*pembelajaran|cp|tujuan\s*pembelajaran|nama\s*(siswa|murid)|no\.?\s*(absen|presensi)|anggota\s*kelompok|skor\s*maksimal)$/i;
-
-export const extractIdentityItem = (rawText?: string): MetaItem | null => {
-  if (!rawText) return null;
-  const trimmed = rawText.trim();
-  if (!trimmed) return null;
-
-  // Don't match tables, comments, or explicit headers
-  if (trimmed.startsWith('|') || trimmed.startsWith('<!--') || trimmed.startsWith('<table') || trimmed.startsWith('<h') || trimmed.startsWith('#')) {
-    return null;
-  }
-
-  // Remove markdown bullet markers or tags to inspect plain text
-  const withoutBullet = trimmed.replace(/^[-*•]\s+/, '').trim();
-  const plainText = withoutBullet.replace(/<[^>]+>/g, '').trim();
-
-  const colonIdx = plainText.indexOf(':');
-  if (colonIdx === -1) return null;
-
-  const rawLabel = plainText.substring(0, colonIdx).trim();
-  const rawValue = plainText.substring(colonIdx + 1).trim();
-
-  // Validate label length
-  if (rawLabel.length < 2 || rawLabel.length > 55) return null;
-
-  // Disqualify URLs
-  if (/^(https?|ftp|mailto|data|tel)$/i.test(rawLabel)) return null;
-
-  // Disqualify numbered questions or lists like "1. Soal:", "2) Pertanyaan:"
-  if (/^\d+[\.)]/.test(rawLabel)) return null;
-
-  // Disqualify notes, directions, instructions
-  if (/[.!?]\s/.test(rawLabel)) return null;
-  if (/^(catatan|note|petunjuk|perhatian|keterangan|peringatan|instruksi|langkah|contoh|pertanyaan|refleksi|kunci\s*jawaban|pembahasan)\b/i.test(rawLabel)) {
-    return null;
-  }
-
-  const isKnownIdentity = KNOWN_IDENTITY_LABELS.test(rawLabel);
-
-  // If label is formatted like a short title key (no verbs/conjunctions)
-  const isKeyFormat = isKnownIdentity || (
-    rawLabel.length <= 40 &&
-    !rawLabel.includes(',') &&
-    !/\b(yang|dan|atau|untuk|dengan|adalah|yaitu|karena|pada|di|ke|dari)\b/i.test(rawLabel)
-  );
-
-  if (!isKeyFormat) return null;
-
-  // Extract formatted value from withoutBullet
-  let formattedValue = '';
-  let inTag = false;
-  let colonInHtmlIdx = -1;
-  for (let c = 0; c < withoutBullet.length; c++) {
-    if (withoutBullet[c] === '<') inTag = true;
-    else if (withoutBullet[c] === '>') inTag = false;
-    else if (!inTag && withoutBullet[c] === ':') {
-      colonInHtmlIdx = c;
-      break;
-    }
-  }
-
-  if (colonInHtmlIdx !== -1) {
-    formattedValue = withoutBullet.substring(colonInHtmlIdx + 1).trim();
-  } else {
-    const m = withoutBullet.match(/^(?:<[^>]+>)*\s*([^:<]+(?::\s*<\/[^>]+>|<\/[^>]+>\s*:))\s*(.*)$/i);
-    if (m) {
-      formattedValue = m[2].trim();
-    } else {
-      formattedValue = rawValue;
-    }
-  }
-
-  formattedValue = formattedValue.replace(/^(?:<\/[^>]+>\s*)+/, '').trim();
-
-  return {
-    label: rawLabel,
-    value: formattedValue || rawValue || '-'
-  };
-};
 
 export const groupBlocks = (blocks: ParsedBlock[]): BlockGroup[] => {
   const grouped: BlockGroup[] = [];
-  let i = 0;
+  let currentList: any = null;
 
-  while (i < blocks.length) {
-    const block = blocks[i];
-
-    // 1. Check if this block and possibly following blocks form an identity group
-    const isCandidateIdentity = block.type === 'paragraph' || block.type === 'bullet';
-    const firstMeta = isCandidateIdentity ? extractIdentityItem(block.content) : null;
-
-    if (firstMeta) {
-      // Lookahead to see if there are more identity items or if this is a known identity label
-      const metaItems: MetaItem[] = [firstMeta];
-      let j = i + 1;
-      
-      while (j < blocks.length) {
-        const nextBlock = blocks[j];
-        if (nextBlock.type === 'paragraph' || nextBlock.type === 'bullet') {
-          // If it's an empty line between identity items, check if the one after it is an identity item
-          if (!nextBlock.content || nextBlock.content.trim() === '' || nextBlock.content === '<br>') {
-            if (j + 1 < blocks.length) {
-              const afterNext = blocks[j + 1];
-              if ((afterNext.type === 'paragraph' || afterNext.type === 'bullet') && extractIdentityItem(afterNext.content)) {
-                // Skip empty line and continue grouping
-                j++;
-                continue;
-              }
-            }
-            break;
-          }
-
-          const nextMeta = extractIdentityItem(nextBlock.content);
-          if (nextMeta) {
-            metaItems.push(nextMeta);
-            j++;
-            continue;
-          }
-        }
-        break;
+  blocks.forEach((block, idx) => {
+    const isList = block.type === 'bullet' || block.type === 'numbered';
+    if (isList) {
+      if (currentList && currentList.listType === block.type && currentList.listStyle === block.listStyle && currentList.align === block.align) {
+        currentList.items.push(block);
+      } else {
+        currentList = { 
+          type: 'list_group', 
+          listType: block.type, 
+          listStyle: block.listStyle,
+          startIndex: block.startIndex || 1,
+          items: [block], 
+          align: block.align, 
+          key: `list-${idx}` 
+        };
+        grouped.push(currentList);
       }
-
-      // Group as identity_group if it has multiple items OR if single item is a known identity label
-      if (metaItems.length > 1 || KNOWN_IDENTITY_LABELS.test(firstMeta.label)) {
-        grouped.push({
-          type: 'identity_group',
-          metaItems,
-          align: block.align,
-          key: `identity-${i}`
-        });
-        i = j;
-        continue;
-      }
-    }
-
-    // 2. Check for bullet / numbered list grouping (existing logic)
-    if (block.type === 'bullet' || block.type === 'numbered') {
-      const listGroup: BlockGroup = {
-        type: 'list_group',
-        listType: block.type,
-        listStyle: block.listStyle,
-        startIndex: block.startIndex || 1,
-        items: [block],
+    } else {
+      currentList = null;
+      grouped.push({
+        type: block.type,
+        block: block,
         align: block.align,
-        key: `list-${i}`
-      };
-      let j = i + 1;
-      while (j < blocks.length) {
-        const nextBlock = blocks[j];
-        if (nextBlock.type === block.type && nextBlock.listStyle === block.listStyle && nextBlock.align === block.align) {
-          listGroup.items!.push(nextBlock);
-          j++;
-        } else {
-          break;
-        }
-      }
-      grouped.push(listGroup);
-      i = j;
-      continue;
+        key: block.key
+      });
     }
-
-    // 3. Regular block
-    grouped.push({
-      type: block.type,
-      block: block,
-      align: block.align,
-      key: block.key
-    });
-    i++;
-  }
+  });
 
   return grouped;
 };
@@ -461,13 +316,6 @@ export const markdownToHtml = (markdown: string): string => {
       html += `</${tag}>`;
     } else if (group.type === 'heading') {
       html += `<h2${styleAttr}>${group.block!.content || ''}</h2>`;
-    } else if (group.type === 'identity_group') {
-      let identityHtml = `<table class="meta-identity-table" style="border-collapse: collapse; border: none; margin: 8px 0 14px 0; font-family: inherit; font-size: inherit; width: auto; max-width: 100%;"><tbody>`;
-      group.metaItems!.forEach(item => {
-        identityHtml += `<tr style="border: none;"><td style="padding: 2px 14px 2px 0; border: none; vertical-align: top; white-space: nowrap; color: #334155; min-width: 130px; font-weight: normal;">${item.label}</td><td style="padding: 2px 8px 2px 0; border: none; vertical-align: top; text-align: center; width: 15px; font-weight: bold; color: #334155;">:</td><td style="padding: 2px 0; border: none; vertical-align: top; font-weight: 600; color: #0f172a;">${item.value}</td></tr>`;
-      });
-      identityHtml += `</tbody></table>`;
-      html += identityHtml;
     } else if (group.type === 'image') {
       html += `<div style="text-align: center; margin: 10px 0;"><img src="${group.block!.content || ''}" style="max-height: 300px; max-width: 100%; border-radius: 6px;" /></div>`;
     } else if (group.type === 'table') {
@@ -669,31 +517,6 @@ export const htmlToMarkdown = (html: string): string => {
     }
 
     if (tagName === 'table') {
-      // Check if it's an identity table
-      const isIdentityTable = el.classList.contains('meta-identity-table') || (
-        el.querySelectorAll('tr').length > 0 &&
-        !el.querySelector('th') &&
-        Array.from(el.querySelectorAll('tr')).every(tr => {
-          const tds = tr.querySelectorAll('td');
-          return tds.length === 3 && tds[1].textContent?.trim() === ':';
-        })
-      );
-
-      if (isIdentityTable) {
-        let identityStr = '';
-        el.querySelectorAll('tr').forEach(tr => {
-          const tds = tr.querySelectorAll('td');
-          if (tds.length === 3) {
-            const label = cleanText(tds[0]).trim();
-            const val = cleanCellText(tds[2]).trim();
-            if (label) {
-              identityStr += `${label}: ${val}\n`;
-            }
-          }
-        });
-        return identityStr ? `\n${identityStr}\n` : '';
-      }
-
       let tableStr = '\n';
       const width = el.style.width || '100%';
       if (width !== '100%') {

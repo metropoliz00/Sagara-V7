@@ -720,23 +720,6 @@ Sertakan:
     setShowLinkModal(false);
   };
 
-  const handleInsertIdentityBlock = () => {
-    const s = planData?.subject || 'Bahasa Indonesia';
-    const cs = planData?.classSemester || 'V / 1 (Ganjil) / Fase C';
-    const t = planData?.topic || 'Buku Jendela Dunia';
-    const ta = planData?.timeAllocation || '2 x 35 Menit';
-    
-    let defaultMeta = `Mata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\n`;
-    if (selectedType === 'Rubrik Penilaian') {
-      defaultMeta += `Teknik Penilaian: Observasi Proses Pembelajaran (Formatif)\n`;
-    } else if (selectedType === 'LKM') {
-      defaultMeta += `Alokasi Waktu: ${ta}\n`;
-    }
-
-    const html = markdownToHtml(defaultMeta);
-    insertHtmlAtCursor(html + '<p><br></p>');
-  };
-
   const handleSave = () => {
     // Sync content one last time from editor
     let finalContent = content;
@@ -802,7 +785,7 @@ Sertakan:
       case 'LKM':
         return {
           title: `LKM - ${t}`,
-          content: `LEMBAR KERJA MURID (LKM)\n\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nAlokasi Waktu: ${ta}\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Murid] | | Ketua Kelompok |\n| 2. [Nama Murid] | | Notulis |\n| 3. [Nama Murid] | | Anggota |\n| 4. [Nama Murid] | | Anggota |\n| 5. [Nama Murid] | | Anggota |\n\nPetunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\nPertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
+          content: `LEMBAR KERJA MURID (LKM)\n\n| Informasi Pembelajaran | Detail Kelas |\n| :--- | :--- |\n| Mata Pelajaran | ${s} |\n| Kelas / Semester | ${cs} |\n| Materi Pokok | ${t} |\n| Alokasi Waktu | ${ta} |\n\n| Anggota Kelompok | No. Presensi | Peran Kelompok |\n| :--- | :--- | :--- |\n| 1. [Nama Murid] | | Ketua Kelompok |\n| 2. [Nama Murid] | | Notulis |\n| 3. [Nama Murid] | | Anggota |\n| 4. [Nama Murid] | | Anggota |\n| 5. [Nama Murid] | | Anggota |\n\nPetunjuk Kerja\n1. Diskusikan bersama kelompok mengenai topik di atas.\n2. Selesaikan pertanyaan penyelidikan secara kolaboratif.\n\nPertanyaan Penyelidikan\n- Pertanyaan 1: [Tuliskan pertanyaan analisis atau pemecahan masalah di sini]\n- Pertanyaan 2: [Tuliskan pertanyaan refleksi kelompok di sini]`
         };
       case 'Rubrik Penilaian':
         const selectedDims = selectedDplList.length > 0
@@ -824,22 +807,22 @@ Sertakan:
       case 'Soal Sumatif':
         return {
           title: `Soal Sumatif - ${t}`,
-          content: `ASESMEN SUMATIF AKHIR\n\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nAlokasi Waktu: ${ta}\n\nNama Siswa: _______________________________\nNo. Presensi / Kelas: ________ / _________\nHari / Tanggal: _______________________________\n\nBagian A: Pilihan Ganda\n1. [Tuliskan pertanyaan nomor 1 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\n2. [Tuliskan pertanyaan nomor 2 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\nBagian B: Uraian / Essai\n1. [Tuliskan soal uraian nomor 1 di sini...]\n2. [Tuliskan soal uraian nomor 2 di sini...]`
+          content: `ASESMEN SUMATIF AKHIR\n\n| Lembar Jawab Murid | | Nilai |\n| :--- | :--- | :--- |\n| Nama Siswa | : _______________________________ | |\n| No. Absen / Kelas | : ________ / _________ | |\n| Hari / Tanggal | : _______________________________ | |\n\nBagian A: Pilihan Ganda\n1. [Tuliskan pertanyaan nomor 1 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\n2. [Tuliskan pertanyaan nomor 2 di sini...]\n   a. [Pilihan Jawaban A]\n   b. [Pilihan Jawaban B]\n   c. [Pilihan Jawaban C]\n   d. [Pilihan Jawaban D]\n\nBagian B: Uraian / Essai\n1. [Tuliskan soal uraian nomor 1 di sini...]\n2. [Tuliskan soal uraian nomor 2 di sini...]`
         };
       case 'Asesmen Awal':
         return {
           title: `Asesmen Awal - ${t}`,
-          content: `LEMBAR ASESMEN DIAGNOSTIK / AWAL\n\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nTeknik Asesmen: Diagnostik Non-Kognitif & Kognitif\n\n| Aspek Kesiapan / Pengetahuan | Kategori Soal Pemantik | Respon / Pemahaman Murid |\n| :--- | :--- | :--- |\n| Pengetahuan Prasyarat | [Pertanyaan pengukur pemahaman dasar] | |\n| Kesiapan Emosional | Bagaimana perasaanmu belajar hari ini? | [Sangat Antusias / Netral / Cemas] |\n| Minat Belajar | Gaya belajar apa yang kamu sukai? | [Visual / Audio / Kinestetik] |`
+          content: `LEMBAR ASESMEN DIAGNOSTIK / AWAL\n\n| Aspek Kesiapan / Pengetahuan | Kategori Soal Pemantik | Respon / Pemahaman Murid |\n| :--- | :--- | :--- |\n| Pengetahuan Prasyarat | [Pertanyaan pengukur pemahaman dasar] | |\n| Kesiapan Emosional | Bagaimana perasaanmu belajar hari ini? | [Sangat Antusias / Netral / Cemas] |\n| Minat Belajar | Gaya belajar apa yang kamu sukai? | [Visual / Audio / Kinestetik] |`
         };
       case 'Proses':
         return {
           title: `Asesmen Formatif (Proses) - ${t}`,
-          content: `LEMBAR OBSERVASI PROSES PEMBELAJARAN (FORMATIF)\n\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nTeknik Penilaian: Observasi Diskusi & Aktivitas Kelas\n\n| No. | Nama Siswa | Keaktifan Belajar (1-4) | Kerjasama Tim (1-4) | Kedisiplinan (1-4) | Catatan Guru |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n| 1. | | | | | |\n| 2. | | | | | |\n| 3. | | | | | |`
+          content: `LEMBAR OBSERVASI PROSES PEMBELAJARAN (FORMATIF)\n\n| No. | Nama Siswa | Keaktifan Belajar (1-4) | Kerjasama Tim (1-4) | Kedisiplinan (1-4) | Catatan Guru |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n| 1. | | | | | |\n| 2. | | | | | |\n| 3. | | | | | |`
         };
       case 'Akhir':
         return {
           title: `Asesmen Sumatif (Akhir) - ${t}`,
-          content: `LEMBAR REFLEKSI & EVALUASI AKHIR PEMBELAJARAN\n\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nBentuk Asesmen: Refleksi Diri & Umpan Balik Murid\n\n| Pertanyaan Reflektif Siswa | Skor Kepuasan Diri (1-10) | Umpan Balik Tindak Lanjut |\n| :--- | :--- | :--- |\n| Apakah kamu memahami materi pokok hari ini? | | |\n| Seberapa sulit penugasan kelompok yang diberikan? | | |\n| Pelajaran berharga apa yang kamu dapatkan hari ini? | [Tuliskan komentar singkat] | |`
+          content: `LEMBAR REFLEKSI & EVALUASI AKHIR PEMBELAJARAN\n\n| Pertanyaan Reflektif Siswa | Skor Kepuasan Diri (1-10) | Umpan Balik Tindak Lanjut |\n| :--- | :--- | :--- |\n| Apakah kamu memahami materi pokok hari ini? | | |\n| Seberapa sulit penugasan kelompok yang diberikan? | | |\n| Pelajaran berharga apa yang kamu dapatkan hari ini? | [Tuliskan komentar singkat] | |`
         };
       case 'Media':
         return {
@@ -1534,15 +1517,6 @@ Sertakan:
                   title="Sisipkan Alamat Gambar"
                 >
                   <Image className="w-4 h-4" /> Foto Media
-                </button>
-
-                <button
-                  type="button"
-                  onClick={handleInsertIdentityBlock}
-                  className="p-1.5 hover:bg-indigo-50 hover:text-indigo-700 rounded text-slate-700 transition flex items-center gap-1 text-xs font-medium"
-                  title="Sisipkan Blok Identitas Rapi (Titik Dua Otomatis Lurus)"
-                >
-                  <LayoutTemplate className="w-4 h-4 text-indigo-600" /> Identitas Rapi
                 </button>
 
                 <button

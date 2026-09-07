@@ -78,7 +78,13 @@ export const parseRichText = (text: string): ParsedBlock[] => {
           const cells = currentTrimmed
             .split('|')
             .slice(1, -1)
-            .map(cell => format(cell.trim()));
+            .map(cell => {
+              // Normalize rubrik column headers: e.g. "Sangat Baik (SB) [Skor 4]" -> "Sangat Baik (SB)<br>Skor 4"
+              const normalized = cell
+                .replace(/(\b(?:Sangat Baik|Baik|Cukup|Kurang|Perlu Bimbingan)[^|\[\n]*?)\s*\[Skor\s*(\d+)\]/gi, '$1<br>Skor $2')
+                .replace(/\s*\[Skor\s*(\d+)\]/gi, '<br>Skor $1');
+              return format(normalized.trim());
+            });
             
           if (!headerRow) {
             headerRow = cells;
@@ -392,6 +398,43 @@ export const htmlToMarkdown = (html: string): string => {
     return text;
   };
 
+  const cleanCellText = (node: Node): string => {
+    let text = '';
+    node.childNodes.forEach(child => {
+      if (child.nodeType === Node.TEXT_NODE) {
+        text += child.textContent || '';
+      } else if (child.nodeType === Node.ELEMENT_NODE) {
+        const el = child as HTMLElement;
+        const tagName = el.tagName.toLowerCase();
+        const elStyle = el.getAttribute('style') || '';
+        
+        if (tagName === 'strong' || tagName === 'b' || elStyle.includes('font-weight: bold') || elStyle.includes('font-weight: 700') || elStyle.includes('font-weight:bold')) {
+          text += `**${cleanCellText(el)}**`;
+        } else if (tagName === 'u' || elStyle.includes('text-decoration: underline') || elStyle.includes('text-decoration:underline')) {
+          text += `__${cleanCellText(el)}__`;
+        } else if (tagName === 'em' || tagName === 'i' || elStyle.includes('font-style: italic') || elStyle.includes('font-style:italic')) {
+          text += `*${cleanCellText(el)}*`;
+        } else if (tagName === 'a') {
+          const href = el.getAttribute('href') || '#';
+          text += `[${cleanCellText(el)}](${href})`;
+        } else if (tagName === 'img') {
+          const src = el.getAttribute('src') || '';
+          text += `![Image](${src})`;
+        } else if (tagName === 'br') {
+          text += '<br>';
+        } else if (tagName === 'p' || tagName === 'div') {
+          const inner = cleanCellText(el).trim();
+          if (inner) {
+            text += (text ? '<br>' : '') + inner;
+          }
+        } else {
+          text += cleanCellText(el);
+        }
+      }
+    });
+    return text.replace(/\r?\n+/g, '<br>');
+  };
+
   const processElement = (el: HTMLElement, parentAlign?: string, parentLineHeight?: string): string => {
     const tagName = el.tagName.toLowerCase();
     
@@ -489,7 +532,7 @@ export const htmlToMarkdown = (html: string): string => {
       const rows: string[][] = [];
 
       el.querySelectorAll('th').forEach(th => {
-        headers.push(cleanText(th).trim() || ' ');
+        headers.push(cleanCellText(th).trim() || ' ');
       });
 
       el.querySelectorAll('tr').forEach(tr => {
@@ -497,7 +540,7 @@ export const htmlToMarkdown = (html: string): string => {
         
         const rowCells: string[] = [];
         tr.querySelectorAll('td').forEach(td => {
-          rowCells.push(cleanText(td).trim() || ' ');
+          rowCells.push(cleanCellText(td).trim() || ' ');
         });
         if (rowCells.length > 0) {
           rows.push(rowCells);
@@ -608,6 +651,11 @@ export const cleanAiAttachmentText = (text: string): string => {
 
   // 5. Normalize excessive blank lines and formatting
   cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+
+  // 6. Normalize rubrik observasi column headers: e.g. "Sangat Baik (SB) [Skor 4]" -> "Sangat Baik (SB)<br>Skor 4"
+  cleaned = cleaned.replace(/(\b(?:Sangat Baik|Baik|Cukup|Kurang|Perlu Bimbingan)[^|\[\n]*?)\s*\[Skor\s*(\d+)\]/gi, '$1<br>Skor $2');
+  cleaned = cleaned.replace(/(\|\s*[^|\[\n]+?)\s*\[Skor\s*(\d+)\]/gi, '$1<br>Skor $2');
+
   return cleaned.trim();
 };
 

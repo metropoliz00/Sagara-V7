@@ -475,8 +475,8 @@ SUSUNAN KONTEN DOKUMEN (FORMAT LENGKAP):
    Panduan ringkas bagi guru dalam mengamati perilaku murid selama proses pembelajaran materi ${topic}.
 
 2. TABEL MATRIKS RUBRIK OBSERVASI SIKAP (DPL):
-   Sajikan dalam format tabel markdown dengan kolom persis:
-   | Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB) [Skor 4] | Baik (B) [Skor 3] | Cukup (C) [Skor 2] | Kurang (K) [Skor 1] |
+   Sajikan dalam format tabel markdown dengan judul kolom persis (posisikan Skor di bawah predikat tanpa tanda kurung siku [], gunakan tag <br>):
+   | Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB)<br>Skor 4 | Baik (B)<br>Skor 3 | Cukup (C)<br>Skor 2 | Kurang (K)<br>Skor 1 |
    | :--- | :--- | :--- | :--- | :--- | :--- |
    
    WAJIB memuat baris terpisah untuk setiap Dimensi Profil Lulusan (DPL) yang dipilih (${activeDpls.join(', ')}). Deskriptor pada setiap tingkatan skor harus jelas, terukur, dan operasional sesuai aktivitas pembelajaran materi ${topic}.
@@ -876,7 +876,7 @@ Sertakan:
 
         return {
           title: `Rubrik Observasi Sikap (DPL) - ${t}`,
-          content: `RUBRIK OBSERVASI SIKAP - DIMENSI PROFIL LULUSAN (DPL)\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nAlokasi Waktu: ${ta}\nTeknik Penilaian: Observasi Proses Pembelajaran (Formatif)\n\nPetunjuk Penilaian:\n1. Guru mengamati perilaku murid selama proses pembelajaran materi ${t}.\n2. Berikan skor 1 sampai 4 pada setiap Dimensi Profil Lulusan (DPL) yang diamati:\n   - 4: Sangat Baik (SB)\n   - 3: Baik (B)\n   - 2: Cukup (C)\n   - 1: Kurang (K) / Perlu Bimbingan (PB)\n3. Nilai Formatif (Skala 100) = Rata-Rata Skor DPL x 25. Nilai tersinkron ke Buku Nilai Formatif Observasi Sikap.\n\n| Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB) [Skor 4] | Baik (B) [Skor 3] | Cukup (C) [Skor 2] | Kurang (K) [Skor 1] |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rubrikRows}\n\nLEMBAR CATATAN OBSERVASI SIKAP KELAS (JURNAL FORMATIF)\n\n| No | Nama Murid | ${studentHeaderCols} | Rata-Rata DPL | Predikat | Formatif (x25) | Catatan Anekdot Guru |\n| :--- | :--- | ${studentAlignCols} | :---: | :---: | :---: | :--- |\n| 1. | [Nama Murid 1] | ${studentDummyCols} | | | | |\n| 2. | [Nama Murid 2] | ${studentDummyCols} | | | | |\n| 3. | [Nama Murid 3] | ${studentDummyCols} | | | | |`
+          content: `RUBRIK OBSERVASI SIKAP - DIMENSI PROFIL LULUSAN (DPL)\nMata Pelajaran: ${s}\nKelas / Semester: ${cs}\nMateri Pokok: ${t}\nAlokasi Waktu: ${ta}\nTeknik Penilaian: Observasi Proses Pembelajaran (Formatif)\n\nPetunjuk Penilaian:\n1. Guru mengamati perilaku murid selama proses pembelajaran materi ${t}.\n2. Berikan skor 1 sampai 4 pada setiap Dimensi Profil Lulusan (DPL) yang diamati:\n   - 4: Sangat Baik (SB)\n   - 3: Baik (B)\n   - 2: Cukup (C)\n   - 1: Kurang (K) / Perlu Bimbingan (PB)\n3. Nilai Formatif (Skala 100) = Rata-Rata Skor DPL x 25. Nilai tersinkron ke Buku Nilai Formatif Observasi Sikap.\n\n| Dimensi Profil Lulusan (DPL) | Indikator Pengamatan Sikap Murid | Sangat Baik (SB)<br>Skor 4 | Baik (B)<br>Skor 3 | Cukup (C)<br>Skor 2 | Kurang (K)<br>Skor 1 |\n| :--- | :--- | :--- | :--- | :--- | :--- |\n${rubrikRows}\n\nLEMBAR CATATAN OBSERVASI SIKAP KELAS (JURNAL FORMATIF)\n\n| No | Nama Murid | ${studentHeaderCols} | Rata-Rata DPL | Predikat | Formatif (x25) | Catatan Anekdot Guru |\n| :--- | :--- | ${studentAlignCols} | :---: | :---: | :---: | :--- |\n| 1. | [Nama Murid 1] | ${studentDummyCols} | | | | |\n| 2. | [Nama Murid 2] | ${studentDummyCols} | | | | |\n| 3. | [Nama Murid 3] | ${studentDummyCols} | | | | |`
         };
       case 'Soal Sumatif':
         return {

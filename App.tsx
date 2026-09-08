@@ -449,6 +449,9 @@ const AppContent: React.FC = () => {
     };
   });
   const [loading, setLoading] = useState(true);
+  const [isReloading, setIsReloading] = useState(false);
+  const [reloadingMenuId, setReloadingMenuId] = useState<string | null>(null);
+  const isReloadingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [isDemoMode, setIsDemoMode] = useState(false);
 
@@ -2637,6 +2640,48 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const triggerAutoReload = async (menuId?: string) => {
+    if (!currentUser) return;
+    if (isReloadingRef.current) return;
+
+    isReloadingRef.current = true;
+    setIsReloading(true);
+    if (menuId) setReloadingMenuId(menuId);
+
+    try {
+      const minSpinDelay = new Promise(resolve => setTimeout(resolve, 800));
+      await Promise.all([
+        fetchData(true, true),
+        minSpinDelay
+      ]);
+    } catch (err) {
+      console.warn("Auto reload error on sidebar menu:", err);
+    } finally {
+      setIsReloading(false);
+      setReloadingMenuId(null);
+      isReloadingRef.current = false;
+    }
+  };
+
+  const handleSidebarMenuClick = (menuId: string) => {
+    triggerAutoReload(menuId);
+  };
+
+  const prevPathnameRef = useRef<string>(location.pathname);
+  const isInitialLoadDoneRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    if (!isInitialLoadDoneRef.current) {
+      isInitialLoadDoneRef.current = true;
+      return;
+    }
+    if (prevPathnameRef.current !== location.pathname) {
+      prevPathnameRef.current = location.pathname;
+      triggerAutoReload();
+    }
+  }, [location.pathname, currentUser]);
+
   const prevClassIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (currentUser) {
@@ -3283,6 +3328,9 @@ const AppContent: React.FC = () => {
           isOpen={isSidebarOpen}
           onClose={() => setIsSidebarOpen(false)}
           onLogout={handleLogout}
+          onMenuClick={handleSidebarMenuClick}
+          isReloading={isReloading}
+          reloadingMenuId={reloadingMenuId}
         />
       )}
 
@@ -3406,8 +3454,8 @@ const AppContent: React.FC = () => {
                  <WifiOff size={14} className="mr-1.5" /> Offline Mode
                </div>
              )}
-             <button onClick={() => fetchData(true)} className="p-1.5 sm:p-2 text-gray-400 hover:text-[#5AB2FF] rounded-full hover:bg-[#CAF4FF]/50" title="Refresh Data">
-               <RefreshCw size={20} className={loading ? "animate-spin" : ""} />
+             <button onClick={() => triggerAutoReload()} className={`p-1.5 sm:p-2 rounded-full transition-all ${isReloading ? 'text-[#5AB2FF] bg-[#CAF4FF]/60 shadow-xs' : 'text-gray-400 hover:text-[#5AB2FF] hover:bg-[#CAF4FF]/50'}`} title="Muat Ulang Data Otomatis">
+               <RefreshCw size={20} className={isReloading ? "animate-spin text-[#5AB2FF]" : ""} />
              </button>
 
              <div className="relative" ref={profileDropdownRef}>

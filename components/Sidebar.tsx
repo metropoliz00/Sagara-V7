@@ -6,7 +6,7 @@ import {
   UserCog, HeartHandshake, Tent, BookText, Smile, Link2, FileText, Contact, BookOpen, 
   UserCheck, Database, NotebookPen, Files, Activity, Building, Wallet, Camera, Book,
   Star, FolderOpen, BookOpenCheck, UsersRound, Briefcase, Settings, Award, ListTodo,
-  AlertTriangle, ClipboardList, Code, Mail, UserPlus, UserMinus
+  AlertTriangle, ClipboardList, Code, Mail, UserPlus, UserMinus, RefreshCw
 } from 'lucide-react';
 import { ViewState, User } from '../types';
 
@@ -16,6 +16,9 @@ interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
   onLogout: () => void;
+  onMenuClick?: (viewId: string) => void;
+  isReloading?: boolean;
+  reloadingMenuId?: string | null;
 }
 
 export interface MenuItem {
@@ -136,7 +139,16 @@ const menuGroups: MenuGroup[] = [
   }
 ];
 
-const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onClose, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ 
+  currentUser, 
+  currentView, 
+  isOpen, 
+  onClose, 
+  onLogout,
+  onMenuClick,
+  isReloading = false,
+  reloadingMenuId = null
+}) => {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [openSubMenus, setOpenSubMenus] = useState<Record<string, boolean>>({});
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -268,13 +280,17 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
               {visibleSubItems.map(sub => {
                 const SubIcon = sub.icon;
                 const isSubItemActive = sub.id === currentView || currentView.startsWith(sub.id + '/');
+                const isThisSubReloading = isReloading && (isSubItemActive || reloadingMenuId === sub.id);
                 const subPath = `/${sub.id}`;
                 
                 return (
                   <NavLink
                     key={sub.id}
                     to={subPath}
-                    onClick={onClose}
+                    onClick={() => {
+                      onClose();
+                      onMenuClick?.(sub.id);
+                    }}
                     className={() => `w-full flex items-center justify-between text-left px-4 py-2.5 rounded-xl transition-all duration-300 group relative overflow-hidden ${
                       isSubItemActive 
                         ? 'bg-[#5AB2FF] text-white shadow-md shadow-[#5AB2FF]/20 translate-x-1' 
@@ -284,10 +300,20 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
                     {() => (
                       <>
                         <div className="flex items-center space-x-3 relative z-10 w-full">
-                          <SubIcon size={16} className={`${isSubItemActive ? 'text-white' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'}`} />
+                          {isThisSubReloading ? (
+                            <RefreshCw size={16} className="text-white animate-spin shrink-0" />
+                          ) : (
+                            <SubIcon size={16} className={`${isSubItemActive ? 'text-white' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'}`} />
+                          )}
                           <span className={`text-xs font-medium whitespace-nowrap ${isSubItemActive ? 'text-white' : 'text-slate-600 group-hover:text-[#5AB2FF]'}`}>{sub.label}</span>
                         </div>
-                        {isSubItemActive && <ChevronRight size={12} className="text-[#CAF4FF] animate-pulse shrink-0" />}
+                        {isSubItemActive && (
+                          isThisSubReloading ? (
+                            <RefreshCw size={12} className="text-white animate-spin shrink-0" />
+                          ) : (
+                            <ChevronRight size={12} className="text-[#CAF4FF] animate-pulse shrink-0" />
+                          )
+                        )}
                       </>
                     )}
                   </NavLink>
@@ -305,7 +331,10 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
       <NavLink
         key={item.id}
         to={path}
-        onClick={onClose}
+        onClick={() => {
+          onClose();
+          onMenuClick?.(item.id);
+        }}
         title={isCollapsed ? item.label : undefined}
         className={({ isActive }) => `w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between'} text-left ${isCollapsed ? 'px-2' : 'px-4'} py-3.5 rounded-2xl transition-all duration-300 group relative overflow-hidden ${
           isActive 
@@ -313,17 +342,30 @@ const Sidebar: React.FC<SidebarProps> = ({ currentUser, currentView, isOpen, onC
             : 'text-slate-500 hover:bg-[#FFF9D0]/50 hover:text-[#5AB2FF] hover:translate-x-1'
         }`}
       >
-        {({ isActive }) => (
-          <>
-            <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} relative z-10 w-full`}>
-              <Icon size={20} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'} ${isCollapsed ? 'mx-auto' : ''}`} />
-              {!isCollapsed && (
-                <span className={`font-medium whitespace-nowrap ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-[#5AB2FF]'}`}>{item.label}</span>
+        {({ isActive }) => {
+          const isThisReloading = isReloading && (isActive || reloadingMenuId === item.id);
+          return (
+            <>
+              <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'space-x-3'} relative z-10 w-full`}>
+                {isThisReloading ? (
+                  <RefreshCw size={20} className={`${isActive ? 'text-white' : 'text-[#5AB2FF]'} animate-spin shrink-0 ${isCollapsed ? 'mx-auto' : ''}`} />
+                ) : (
+                  <Icon size={20} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#5AB2FF] transition-colors'} ${isCollapsed ? 'mx-auto' : ''}`} />
+                )}
+                {!isCollapsed && (
+                  <span className={`font-medium whitespace-nowrap ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-[#5AB2FF]'}`}>{item.label}</span>
+                )}
+              </div>
+              {isActive && !isCollapsed && (
+                isThisReloading ? (
+                  <RefreshCw size={16} className="text-[#CAF4FF] animate-spin shrink-0" />
+                ) : (
+                  <ChevronRight size={16} className="text-[#CAF4FF] animate-pulse shrink-0" />
+                )
               )}
-            </div>
-            {isActive && !isCollapsed && <ChevronRight size={16} className="text-[#CAF4FF] animate-pulse shrink-0" />}
-          </>
-        )}
+            </>
+          );
+        }}
       </NavLink>
     );
   };

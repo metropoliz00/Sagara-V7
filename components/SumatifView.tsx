@@ -4692,6 +4692,15 @@ const SumatifResultsView: React.FC<{
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+  const [now, setNow] = useState<number>(() => Date.now());
+
+  // 1-second interval to update live countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const [printPlace, setPrintPlace] = useState<string>(() => {
     return schoolProfile?.desa || schoolProfile?.kabupaten || 'Remen';
@@ -5686,9 +5695,38 @@ const SumatifResultsView: React.FC<{
                         <td className="px-5 py-3.5 text-center text-xs text-slate-600">
                           {isSelesai && r?.submittedAt ? (
                             <span className="font-medium">{format(new Date(r.submittedAt), 'dd MMM HH:mm', { locale: id })}</span>
-                          ) : isSedang ? (
-                            <span className="text-[11px] text-blue-600 font-medium">Dalam proses</span>
-                          ) : (
+                          ) : isSedang ? (() => {
+                            const durationMinutes = Number(sumatif.duration) > 0 ? Number(sumatif.duration) : 60;
+                            const totalDurationSecs = durationMinutes * 60;
+                            let remainingSecs = totalDurationSecs;
+                            if (r?.startedAt) {
+                              const startMs = new Date(r.startedAt).getTime();
+                              const elapsedSecs = Math.max(0, Math.floor((now - startMs) / 1000));
+                              remainingSecs = Math.max(0, totalDurationSecs - elapsedSecs);
+                            }
+                            const mins = Math.floor(remainingSecs / 60);
+                            const secs = remainingSecs % 60;
+                            const isTimeAlmostUp = remainingSecs < 300 && remainingSecs > 0;
+                            const isTimeOut = remainingSecs === 0;
+
+                            return (
+                              <div className="flex flex-col items-center">
+                                <span className={`inline-flex items-center gap-1 font-mono font-bold text-xs ${
+                                  isTimeOut 
+                                    ? 'text-rose-600 font-black' 
+                                    : isTimeAlmostUp 
+                                    ? 'text-amber-600 animate-pulse' 
+                                    : 'text-blue-600'
+                                }`}>
+                                  <Clock size={12} className={isTimeAlmostUp ? 'animate-spin' : ''} />
+                                  {mins} mnt {secs < 10 ? '0' : ''}{secs} dtk
+                                </span>
+                                <span className="text-[10px] text-slate-400 font-medium">
+                                  {isTimeOut ? 'Waktu habis' : 'Sisa waktu'}
+                                </span>
+                              </div>
+                            );
+                          })() : (
                             <span className="text-slate-300">-</span>
                           )}
                         </td>

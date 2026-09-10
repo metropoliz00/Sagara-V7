@@ -2372,34 +2372,33 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
             <td class="meta-label" style="width: 17%;">Nama Sekolah</td>
             <td style="width: 2%; text-align: center;">:</td>
             <td style="width: 31%; font-weight: bold;">${plan.schoolName}</td>
-            <td class="meta-label" style="width: 17%; padding-left: 20px;">Topik / Materi</td>
+            <td class="meta-label" style="width: 17%; padding-left: 20px;">Topik</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 31%; font-weight: bold;">
-              ${plan.topic}
-              ${plan.materials && plan.materials.length > 0 ? `<div style="font-size: 8.5pt; font-weight: normal; color: #334155; margin-top: 1px;">Materi: ${plan.materials.join('; ')}</div>` : ''}
-            </td>
+            <td style="width: 31%; font-weight: bold;">${plan.topic}</td>
           </tr>
           <tr>
             <td class="meta-label">Nama Penyusun</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.compiler}</td>
-            <td class="meta-label" style="padding-left: 20px;">Kelas/Semester</td>
+            <td class="meta-label" style="padding-left: 20px;">Materi</td>
             <td style="text-align: center;">:</td>
-            <td style="font-weight: bold;">${plan.classSemester}</td>
+            <td style="font-weight: normal; color: #334155; font-size: 9pt;">${plan.materials && plan.materials.length > 0 ? plan.materials.join('; ') : '-'}</td>
           </tr>
           <tr>
             <td class="meta-label">NIP</td>
             <td style="text-align: center;">:</td>
             <td>${plan.nip || '-'}</td>
-            <td class="meta-label" style="padding-left: 20px;">Tahun Ajaran</td>
+            <td class="meta-label" style="padding-left: 20px;">Kelas/Semester</td>
             <td style="text-align: center;">:</td>
-            <td style="font-weight: bold;">${plan.academicYear}</td>
+            <td style="font-weight: bold;">${plan.classSemester}</td>
           </tr>
           <tr>
             <td class="meta-label">Mata Pelajaran</td>
             <td style="text-align: center;">:</td>
             <td class="text-blue" style="font-weight: bold;">${plan.subject}</td>
-            <td colspan="3"></td>
+            <td class="meta-label" style="padding-left: 20px;">Tahun Ajaran</td>
+            <td style="text-align: center;">:</td>
+            <td style="font-weight: bold;">${plan.academicYear}</td>
           </tr>
           <tr>
             <td class="meta-label">Alokasi Waktu</td>
@@ -2854,16 +2853,14 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                 
                 <div className="space-y-1">
                   <div className="flex items-start">
-                    <span className="w-28 text-slate-500 shrink-0">Topik / Materi</span>
+                    <span className="w-28 text-slate-500 shrink-0">Topik</span>
                     <span className="mr-2 shrink-0">:</span>
-                    <div className="flex-1 min-w-0 break-words">
-                      <span className="font-bold text-slate-800">{printPlan.topic}</span>
-                      {printPlan.materials && printPlan.materials.length > 0 && (
-                        <div className="text-[10px] text-slate-600 font-normal mt-0.5">
-                          Materi: {printPlan.materials.join('; ')}
-                        </div>
-                      )}
-                    </div>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.topic}</span>
+                  </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Materi</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="text-slate-600 flex-1 min-w-0 break-words">{printPlan.materials && printPlan.materials.length > 0 ? printPlan.materials.join('; ') : '-'}</span>
                   </div>
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Kelas/Semester</span>

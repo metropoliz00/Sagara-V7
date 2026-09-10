@@ -532,6 +532,7 @@ CREATE TABLE IF NOT EXISTS sumatifs (
   end_time TIMESTAMPTZ,
   is_active BOOLEAN DEFAULT FALSE,
   is_visible BOOLEAN DEFAULT TRUE,
+  show_score BOOLEAN DEFAULT TRUE,
   token TEXT,
   questions JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT now()
@@ -588,6 +589,7 @@ CREATE TABLE IF NOT EXISTS learning_plans (
   nip TEXT,
   subject TEXT,
   topic TEXT,
+  materials JSONB DEFAULT '[]'::jsonb,
   class_semester TEXT,
   academic_year TEXT,
   time_allocation TEXT,

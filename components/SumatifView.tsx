@@ -750,6 +750,30 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     }
   };
 
+  const handleToggleShowScore = async (sumatif: Sumatif) => {
+    const isDemo = !apiService.isConfigured();
+    const newShowScore = sumatif.showScore === false ? true : false;
+    const updatedSumatif = { ...sumatif, showScore: newShowScore };
+    try {
+      if (isDemo) {
+        const allSumatifs = cacheService.get<Sumatif[]>('sumatifs') || [];
+        const index = allSumatifs.findIndex(s => s.id === sumatif.id);
+        if (index !== -1) {
+          allSumatifs[index] = updatedSumatif;
+          cacheService.set('sumatifs', allSumatifs);
+          setSumatifs(allSumatifs.filter(s => s.classId === activeClassId));
+        }
+        onShowNotification(`Nilai sumatif ${newShowScore ? 'ditampilkan' : 'disembunyikan'} dari siswa`, 'success');
+      } else {
+        await apiService.saveSumatif(updatedSumatif);
+        onShowNotification(`Nilai sumatif ${newShowScore ? 'ditampilkan' : 'disembunyikan'} dari siswa`, 'success');
+        fetchSumatifs();
+      }
+    } catch (error) {
+      onShowNotification('Gagal mengubah pengaturan tampilan nilai', 'error');
+    }
+  };
+
   const handleViewResults = async (sumatif: Sumatif, initialTab: 'status' | 'analysis' = 'status') => {
     setLoading(true);
     try {
@@ -1040,7 +1064,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                 questions: [],
                 duration: 60,
                 isActive: false,
-                isVisible: false
+                isVisible: false,
+                showScore: true
               });
               setIsEditing(true);
             }}
@@ -1107,11 +1132,18 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         {s.isActive ? '🔴 Aktif' : '⚪ Draft'}
                       </span>
                       {isTeacher && (
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                          s.isVisible ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-amber-100 text-amber-600 border border-amber-200'
-                        }`}>
-                          {s.isVisible ? '👁️ Terlihat' : '🔒 Sembunyi'}
-                        </span>
+                        <>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            s.isVisible ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'bg-amber-100 text-amber-600 border border-amber-200'
+                          }`}>
+                            {s.isVisible ? '👁️ Terlihat' : '🔒 Sembunyi'}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                            s.showScore !== false ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}>
+                            {s.showScore !== false ? '🏆 Nilai Tampil' : '🔒 Nilai Rahasia'}
+                          </span>
+                        </>
                       )}
                     </div>
                     {/* Jenis Sumatif di Pojok Kanan Atas */}
@@ -1181,6 +1213,13 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                         <Eye size={16} />
                       </button>
                       <button 
+                        onClick={() => handleToggleShowScore(s)} 
+                        title={s.showScore !== false ? 'Sembunyikan Nilai dari Siswa (Saat ini: Ditampilkan)' : 'Tampilkan Nilai ke Siswa (Saat ini: Dirahasiakan)'} 
+                        className={`p-2.5 rounded-xl border transition-all ${s.showScore !== false ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-200 hover:bg-slate-100'}`}
+                      >
+                        <Award size={16} />
+                      </button>
+                      <button 
                         onClick={() => handleToggleActive(s)} 
                         title={s.isActive ? 'Nonaktifkan Sumatif' : 'Aktifkan Sumatif'} 
                         className={`p-2.5 rounded-xl border transition-all ${s.isActive ? 'bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100'}`}
@@ -1221,27 +1260,44 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                     (() => {
                       const studentResult = studentResultsMap[s.id];
                       if (studentResult && studentResult.status_tes === 'selesai') {
+                        const isScoreVisibleToStudent = s.showScore !== false;
                         return (
                           <div className="flex flex-col gap-2.5 w-full">
-                            <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-3 flex items-center justify-between shadow-sm">
+                            <div className={`${isScoreVisibleToStudent ? 'bg-emerald-50 border-emerald-200/80' : 'bg-blue-50 border-blue-200/80'} border rounded-2xl p-3 flex items-center justify-between shadow-sm`}>
                               <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-emerald-100/80 text-emerald-700 rounded-xl">
-                                  <Award size={18} />
+                                <div className={`p-2 rounded-xl ${isScoreVisibleToStudent ? 'bg-emerald-100/80 text-emerald-700' : 'bg-blue-100/80 text-blue-700'}`}>
+                                  {isScoreVisibleToStudent ? <Award size={18} /> : <CheckCircle2 size={18} />}
                                 </div>
                                 <div>
-                                  <span className="text-[10px] font-black uppercase text-emerald-600 tracking-wider block">Nilai Sumatif</span>
-                                  <span className="text-sm md:text-base font-black text-emerald-800">
-                                    {studentResult.needsGrading ? 'Menunggu Koreksi Guru' : `${studentResult.score} / 100`}
+                                  <span className={`text-[10px] font-black uppercase tracking-wider block ${isScoreVisibleToStudent ? 'text-emerald-600' : 'text-blue-600'}`}>
+                                    {isScoreVisibleToStudent ? 'Nilai Sumatif' : 'Status Ujian'}
                                   </span>
+                                  <span className={`text-sm md:text-base font-black ${isScoreVisibleToStudent ? 'text-emerald-800' : 'text-blue-800'}`}>
+                                    {isScoreVisibleToStudent 
+                                      ? (studentResult.needsGrading ? 'Menunggu Koreksi Guru' : `${studentResult.score} / 100`)
+                                      : 'Selesai Dikerjakan'
+                                    }
+                                  </span>
+                                  {!isScoreVisibleToStudent && (
+                                    <span className="text-[11px] text-slate-500 block">
+                                      Nilai dirahasiakan oleh guru
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                              <button 
-                                type="button"
-                                onClick={() => setViewingStudentResult({ sumatif: s, result: studentResult })}
-                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                              >
-                                <Eye size={14} /> <span>Hasil & Nilai</span>
-                              </button>
+                              {isScoreVisibleToStudent ? (
+                                <button 
+                                  type="button"
+                                  onClick={() => setViewingStudentResult({ sumatif: s, result: studentResult })}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                                >
+                                  <Eye size={14} /> <span>Hasil & Nilai</span>
+                                </button>
+                              ) : (
+                                <span className="px-2.5 py-1 bg-blue-100/90 text-blue-700 rounded-xl text-xs font-bold flex items-center gap-1.5 border border-blue-200/60">
+                                  <Check size={14} /> Terkirim
+                                </span>
+                              )}
                             </div>
                           </div>
                         );
@@ -1290,7 +1346,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
         )}
       </div>
 
-      {viewingStudentResult && (
+      {viewingStudentResult && (isTeacher || viewingStudentResult.sumatif.showScore !== false) && (
         <SumatifStudentResultPrint
           sumatif={viewingStudentResult.sumatif}
           result={viewingStudentResult.result}
@@ -1376,7 +1432,7 @@ const SumatifEditor: React.FC<{
       };
     });
     
-    return { ...sumatif, questions: normalizedQuestions };
+    return { ...sumatif, showScore: sumatif.showScore !== false, questions: normalizedQuestions };
   });
 
   useEffect(() => {
@@ -1939,6 +1995,24 @@ const SumatifEditor: React.FC<{
                   </div>
                   <div className={`w-14 h-8 rounded-full relative transition-all ${formData.isVisible ? 'bg-[#5AB2FF]' : 'bg-slate-300'}`}>
                     <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${formData.isVisible ? 'left-7' : 'left-1'}`}></div>
+                  </div>
+                </div>
+
+                <div 
+                  onClick={() => setFormData({ ...formData, showScore: formData.showScore !== false ? false : true })}
+                  className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-all group"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className={`p-3 rounded-xl ${formData.showScore !== false ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                      {formData.showScore !== false ? <Award size={24} /> : <EyeOff size={24} />}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800">Tampilkan Nilai Hasil ke Siswa</h4>
+                      <p className="text-sm text-slate-500">Jika aktif, siswa dapat langsung melihat perolehan skor & nilai setelah selesai mengerjakan ujian. Jika dinonaktifkan, nilai akan dirahasiakan.</p>
+                    </div>
+                  </div>
+                  <div className={`w-14 h-8 rounded-full relative transition-all ${formData.showScore !== false ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${formData.showScore !== false ? 'left-7' : 'left-1'}`}></div>
                   </div>
                 </div>
               </div>
@@ -2719,9 +2793,17 @@ const SumatifTaking: React.FC<{
         status_tes: 'selesai'
       });
       
-      const successMessage = hasEssay 
-        ? 'Jawaban Anda telah berhasil dikirim. Nilai pengerjaan soal uraian akan muncul setelah dikoreksi oleh guru.' 
-        : `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore} (${earnedPoints}/${totalPoints})`;
+      const isScoreShown = sumatif.showScore !== false;
+      let successMessage = '';
+      if (hasEssay) {
+        successMessage = isScoreShown
+          ? 'Jawaban Anda telah berhasil dikirim. Nilai pengerjaan soal uraian akan muncul setelah dikoreksi oleh guru.' 
+          : 'Jawaban Anda telah berhasil dikirim. Terima kasih telah menyelesaikan ujian ini.';
+      } else {
+        successMessage = isScoreShown
+          ? `Jawaban Anda telah berhasil dikirim. Skor Anda: ${finalScore} (${earnedPoints}/${totalPoints})`
+          : 'Jawaban Anda telah berhasil dikirim. Terima kasih telah menyelesaikan ujian ini.';
+      }
 
       setModal({
         isOpen: true,

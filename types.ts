@@ -610,6 +610,7 @@ export interface Sumatif {
   endTime?: string;
   isActive: boolean;
   isVisible?: boolean;
+  showScore?: boolean;
   token?: string;
   createdAt?: string;
 }

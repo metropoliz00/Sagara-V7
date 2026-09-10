@@ -3256,6 +3256,7 @@ export const apiService = {
           mapped.endTime = row.end_time;
           mapped.isActive = row.is_active;
           mapped.isVisible = row.is_visible;
+          mapped.showScore = row.show_score;
         }
         
         if (table === 'sumatif_results') {
@@ -3386,6 +3387,7 @@ export const apiService = {
             if (mapped.endTime) { mapped.end_time = mapped.endTime; delete mapped.endTime; }
             if (mapped.isActive !== undefined) { mapped.is_active = mapped.isActive; delete mapped.isActive; }
             if (mapped.isVisible !== undefined) { mapped.is_visible = mapped.isVisible; delete mapped.isVisible; }
+            if (mapped.showScore !== undefined) { mapped.show_score = mapped.showScore; delete mapped.showScore; }
         }
         
         if (table === 'sumatif_results') {
@@ -3610,14 +3612,22 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase
+      let queryRes = await supabase
         .from('sumatifs')
-        .select('id, class_id, subject_id, title, type, duration, start_time, end_time, is_active, is_visible, token, questions, created_at')
+        .select('id, class_id, subject_id, title, type, duration, start_time, end_time, is_active, is_visible, show_score, token, questions, created_at')
         .eq('class_id', classId);
-      if (error) {
+
+      if (queryRes.error && queryRes.error.message && queryRes.error.message.includes('show_score')) {
+        queryRes = await supabase
+          .from('sumatifs')
+          .select('id, class_id, subject_id, title, type, duration, start_time, end_time, is_active, is_visible, token, questions, created_at')
+          .eq('class_id', classId);
+      }
+
+      if (queryRes.error) {
         return cached || [];
       }
-      return (data || []).map((s: any) => ({
+      return (queryRes.data || []).map((s: any) => ({
         ...s,
         classId: s.class_id,
         subjectId: s.subject_id,
@@ -3625,6 +3635,7 @@ export const apiService = {
         endTime: s.end_time,
         isActive: s.is_active,
         isVisible: s.is_visible,
+        showScore: s.show_score !== false,
         token: s.token,
         createdAt: s.created_at
       }));
@@ -3635,7 +3646,10 @@ export const apiService = {
   saveSumatif: async (sumatif: Sumatif): Promise<Sumatif> => {
     const classId = sumatif.classId;
     const cached = cacheService.get<Sumatif[]>(`sumatifs_${classId}`) || [];
-    const savedSumatif = { ...sumatif };
+    const savedSumatif = { 
+      ...sumatif,
+      showScore: sumatif.showScore !== false
+    };
     if (!savedSumatif.id) {
       savedSumatif.id = 'sumatif-' + Date.now();
       savedSumatif.createdAt = new Date().toISOString();
@@ -3653,7 +3667,7 @@ export const apiService = {
     }
 
     try {
-      const dbSumatif = {
+      const dbSumatif: any = {
         class_id: sumatif.classId,
         subject_id: sumatif.subjectId,
         title: sumatif.title,
@@ -3663,6 +3677,7 @@ export const apiService = {
         end_time: sumatif.endTime || null,
         is_active: sumatif.isActive,
         is_visible: sumatif.isVisible ?? true,
+        show_score: sumatif.showScore !== false,
         token: sumatif.token || null,
         questions: sumatif.questions
       };
@@ -3670,16 +3685,26 @@ export const apiService = {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sumatif.id || '');
 
       if (sumatif.id && sumatif.id !== '' && isUUID) {
-        const { data, error } = await supabase
+        let updateRes = await supabase
           .from('sumatifs')
           .update(dbSumatif)
           .eq('id', sumatif.id)
           .select()
           .single();
-        if (error) {
-          console.error("Error updating sumatif:", error);
-          throw error;
+        if (updateRes.error && updateRes.error.message && updateRes.error.message.includes('show_score')) {
+          delete dbSumatif.show_score;
+          updateRes = await supabase
+            .from('sumatifs')
+            .update(dbSumatif)
+            .eq('id', sumatif.id)
+            .select()
+            .single();
         }
+        if (updateRes.error) {
+          console.error("Error updating sumatif:", updateRes.error);
+          throw updateRes.error;
+        }
+        const data = updateRes.data;
         const result = { 
           ...data, 
           classId: data.class_id, 
@@ -3688,6 +3713,7 @@ export const apiService = {
           endTime: data.end_time,
           isActive: data.is_active,
           isVisible: data.is_visible,
+          showScore: data.show_score !== undefined ? (data.show_score !== false) : (sumatif.showScore !== false),
           token: data.token,
           createdAt: data.created_at
         };
@@ -3696,15 +3722,24 @@ export const apiService = {
         cacheService.set(`sumatifs_${classId}`, cached);
         return result;
       } else {
-        const { data, error } = await supabase
+        let insertRes = await supabase
           .from('sumatifs')
           .insert([dbSumatif])
           .select()
           .single();
-        if (error) {
-          console.error("Error inserting sumatif:", error);
-          throw error;
+        if (insertRes.error && insertRes.error.message && insertRes.error.message.includes('show_score')) {
+          delete dbSumatif.show_score;
+          insertRes = await supabase
+            .from('sumatifs')
+            .insert([dbSumatif])
+            .select()
+            .single();
         }
+        if (insertRes.error) {
+          console.error("Error inserting sumatif:", insertRes.error);
+          throw insertRes.error;
+        }
+        const data = insertRes.data;
         const result = { 
           ...data, 
           classId: data.class_id, 
@@ -3713,6 +3748,7 @@ export const apiService = {
           endTime: data.end_time,
           isActive: data.is_active,
           isVisible: data.is_visible,
+          showScore: data.show_score !== undefined ? (data.show_score !== false) : (sumatif.showScore !== false),
           token: data.token,
           createdAt: data.created_at
         };

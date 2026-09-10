@@ -3163,7 +3163,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                             <div className="my-3 overflow-x-auto">
                               <table 
                                 className="divide-y divide-gray-300 text-xs text-left border border-gray-300 rounded-lg shadow-sm"
-                                style={{ width: line.content || '100%', margin: '0 auto' }}
+                                style={{ width: line.content || '100%', margin: '0 auto', tableLayout: 'fixed', wordWrap: 'break-word' }}
                               >
                                 {line.caption && (
                                   <caption className="caption-top py-2 font-bold text-sm text-slate-800 text-center">
@@ -3174,8 +3174,18 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                                   <tr>
                                     {line.headers?.map((header, hIdx) => {
                                       const isNoCol = header.toLowerCase() === 'no.' || header.toLowerCase() === 'no' || header.toLowerCase().includes('absen') || header.toLowerCase().includes('presensi');
+                                      let colWidth = undefined;
+                                      const headerLower = header.toLowerCase();
+                                      if (isNoCol) colWidth = '5%';
+                                      else if (headerLower.includes('(dpl)') && !headerLower.includes('rata-rata')) colWidth = '12%';
+                                      else if (headerLower.includes('indikator pengamatan')) colWidth = '24%';
+                                      else if (headerLower.includes('sangat baik') || headerLower.includes('baik (b)') || headerLower.includes('cukup (c)') || headerLower.includes('kurang (k)')) colWidth = '16%';
+                                      else if (headerLower.includes('nama murid') || headerLower.includes('nama siswa')) colWidth = '15%';
+                                      else if (headerLower.includes('rata-rata') || headerLower.includes('predikat') || headerLower.includes('formatif')) colWidth = '9%';
+                                      else if (headerLower.includes('catatan')) colWidth = '16%';
+                                      
                                       return (
-                                        <th key={hIdx} style={isNoCol ? { width: '60px', minWidth: '60px' } : undefined} className={`px-3 py-2 font-semibold text-slate-800 border-r last:border-r-0 border-gray-300 uppercase tracking-wider text-[9px] text-center`} dangerouslySetInnerHTML={{ __html: header }} />
+                                        <th key={hIdx} style={{ width: colWidth }} className={`px-2 py-2 font-bold text-slate-800 border-r last:border-r-0 border-gray-300 tracking-wider text-[11px] text-center align-middle`} dangerouslySetInnerHTML={{ __html: header }} />
                                       );
                                     })}
                                   </tr>
@@ -3187,7 +3197,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                                         const header = line.headers?.[cIdx] || '';
                                         const isNoCol = header.toLowerCase() === 'no.' || header.toLowerCase() === 'no' || header.toLowerCase().includes('absen') || header.toLowerCase().includes('presensi');
                                         return (
-                                          <td key={cIdx} className={`px-3 py-2 text-slate-700 border-r last:border-r-0 border-gray-200 whitespace-pre-wrap ${isNoCol ? 'text-center font-mono' : ''}`} dangerouslySetInnerHTML={{ __html: cell }} />
+                                          <td key={cIdx} className={`px-2 py-2 text-slate-700 border-r last:border-r-0 border-gray-200 whitespace-normal align-top ${isNoCol ? 'text-center font-mono' : ''}`} dangerouslySetInnerHTML={{ __html: cell }} />
                                         );
                                       })}
                                     </tr>

@@ -2399,9 +2399,13 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
             <td class="meta-label">Mata Pelajaran</td>
             <td style="text-align: center;">:</td>
             <td class="text-blue" style="font-weight: bold;">${plan.subject}</td>
-            <td class="meta-label" style="padding-left: 20px;">Alokasi Waktu</td>
+            <td colspan="3"></td>
+          </tr>
+          <tr>
+            <td class="meta-label">Alokasi Waktu</td>
             <td style="text-align: center;">:</td>
             <td style="font-weight: bold;">${plan.timeAllocation}</td>
+            <td colspan="3"></td>
           </tr>
         </table>
 
@@ -2841,6 +2845,11 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     <span className="mr-2 shrink-0">:</span>
                     <span className="font-bold text-indigo-900 flex-1 min-w-0 break-words">{printPlan.subject}</span>
                   </div>
+                  <div className="flex items-start">
+                    <span className="w-28 text-slate-500 shrink-0">Alokasi Waktu</span>
+                    <span className="mr-2 shrink-0">:</span>
+                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.timeAllocation}</span>
+                  </div>
                 </div>
                 
                 <div className="space-y-1">
@@ -2865,11 +2874,6 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     <span className="w-28 text-slate-500 shrink-0">Tahun Ajaran</span>
                     <span className="mr-2 shrink-0">:</span>
                     <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.academicYear}</span>
-                  </div>
-                  <div className="flex items-start">
-                    <span className="w-28 text-slate-500 shrink-0">Alokasi Waktu</span>
-                    <span className="mr-2 shrink-0">:</span>
-                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.timeAllocation}</span>
                   </div>
                 </div>
               </div>

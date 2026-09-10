@@ -7,7 +7,7 @@ import {
   Maximize2, Minimize2, Type, ArrowLeft, ArrowRight, Flag, RefreshCw,
   Image as ImageIcon, Copy, Download, Upload, LayoutGrid, ZoomIn, ZoomOut, List, BarChart2, FileText,
   ArrowUp, HeartHandshake, Medal, Award, Calculator, Compass, Music, Trophy, Book, Globe, Printer,
-  Radio, Users, CheckCircle2, Search, Filter
+  Radio, Users, CheckCircle2, Search, Filter, Activity
 } from 'lucide-react';
 import { Sumatif, Question, QuestionType, User, Student, Subject, SumatifResult, SchoolProfileData, TeacherProfileData } from '../types';
 import { apiService } from '../services/apiService';
@@ -922,13 +922,28 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     );
   }
 
-  if (isEnteringToken && currentSumatif && isStudent) {
+  if (isEnteringToken && currentSumatif && (isStudent || currentUser?.role === 'siswa')) {
     const student = students[0]; // In student portal, students array has only the current student
     return (
       <SumatifTokenEntry 
         sumatif={currentSumatif}
         student={student}
         onConfirm={() => {
+          const studentIdToUse = currentUser?.studentId || (students.length > 0 ? (students[0]?.id || students[0]?.nis) : '') || currentUser?.username || currentUser?.id || '';
+          if (studentIdToUse && currentSumatif) {
+            const nowIso = new Date().toISOString();
+            apiService.submitSumatifResult({
+              sumatifId: currentSumatif.id,
+              studentId: studentIdToUse,
+              score: 0,
+              answers: {},
+              status_tes: 'sedang mengerjakan',
+              needsGrading: false,
+              manualScores: {},
+              startedAt: nowIso,
+              submittedAt: ''
+            }).catch(() => {});
+          }
           setIsEnteringToken(false);
           setIsTaking(true);
         }}
@@ -949,8 +964,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     );
   }
 
-  if (isTaking && currentSumatif && (currentUser?.studentId || isStudent)) {
-    const studentId = currentUser?.studentId || (isStudent ? students[0]?.id : '');
+  if (isTaking && currentSumatif && (currentUser?.studentId || isStudent || currentUser?.role === 'siswa')) {
+    const studentId = currentUser?.studentId || (students.length > 0 ? (students[0]?.id || students[0]?.nis) : '') || currentUser?.username || currentUser?.id || '';
     return (
       <SumatifTaking 
         sumatif={currentSumatif} 
@@ -1238,6 +1253,22 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                           onClick={async () => {
                             const canProceed = await checkStudentAttempt(s);
                             if (!canProceed) return;
+
+                            const studentIdToUse = currentUser?.studentId || (students.length > 0 ? (students[0]?.id || students[0]?.nis) : '') || currentUser?.username || currentUser?.id || '';
+                            if (studentIdToUse && !s.token) {
+                              const nowIso = new Date().toISOString();
+                              apiService.submitSumatifResult({
+                                sumatifId: s.id,
+                                studentId: studentIdToUse,
+                                score: 0,
+                                answers: {},
+                                status_tes: 'sedang mengerjakan',
+                                needsGrading: false,
+                                manualScores: {},
+                                startedAt: nowIso,
+                                submittedAt: ''
+                              }).catch(() => {});
+                            }
                             
                             setCurrentSumatif(s);
                             if (s.token) setIsEnteringToken(true);
@@ -2562,6 +2593,8 @@ const SumatifTaking: React.FC<{
   };
 
   useEffect(() => {
+    if (!studentId || !sumatif.id) return;
+
     // Notify server that student is currently taking the test
     let storedStartTime = localStorage.getItem(`${ATTEMPT_KEY}_start_time`);
     if (!storedStartTime) {
@@ -2569,17 +2602,31 @@ const SumatifTaking: React.FC<{
       localStorage.setItem(`${ATTEMPT_KEY}_start_time`, storedStartTime);
     }
 
-    apiService.submitSumatifResult({
-      sumatifId: sumatif.id,
-      studentId: studentId,
-      score: 0,
-      answers: {},
-      status_tes: 'sedang mengerjakan',
-      needsGrading: false,
-      manualScores: {},
-      startedAt: storedStartTime,
-      submittedAt: new Date().toISOString()
-    }).catch(console.error);
+    const sendStudentActiveStatus = (currentAnswers = answers) => {
+      apiService.submitSumatifResult({
+        sumatifId: sumatif.id,
+        studentId: studentId,
+        score: 0,
+        answers: currentAnswers || {},
+        status_tes: 'sedang mengerjakan',
+        needsGrading: false,
+        manualScores: {},
+        startedAt: storedStartTime || new Date().toISOString(),
+        submittedAt: ''
+      }).catch(err => {
+        console.warn("Notice: Realtime student test status update:", err);
+      });
+    };
+
+    // 1. Send immediately when test starts
+    sendStudentActiveStatus();
+
+    // 2. Active heartbeat every 10 seconds to keep realtime status alive
+    const interval = setInterval(() => {
+      sendStudentActiveStatus();
+    }, 10000);
+
+    return () => clearInterval(interval);
   }, [sumatif.id, studentId]);
 
   useEffect(() => {
@@ -2588,7 +2635,26 @@ const SumatifTaking: React.FC<{
 
   useEffect(() => {
     localStorage.setItem(`${ATTEMPT_KEY}_answers`, JSON.stringify(answers));
-  }, [answers]);
+
+    // Debounced sync answers while answering
+    if (!studentId || !sumatif.id) return;
+    const timeout = setTimeout(() => {
+      const storedStartTime = localStorage.getItem(`${ATTEMPT_KEY}_start_time`) || new Date().toISOString();
+      apiService.submitSumatifResult({
+        sumatifId: sumatif.id,
+        studentId: studentId,
+        score: 0,
+        answers: answers || {},
+        status_tes: 'sedang mengerjakan',
+        needsGrading: false,
+        manualScores: {},
+        startedAt: storedStartTime,
+        submittedAt: ''
+      }).catch(() => {});
+    }, 1500);
+
+    return () => clearTimeout(timeout);
+  }, [answers, studentId, sumatif.id]);
 
   useEffect(() => {
     localStorage.setItem(`${ATTEMPT_KEY}_time`, timeLeft.toString());
@@ -4626,6 +4692,7 @@ const SumatifResultsView: React.FC<{
   const [gradingResult, setGradingResult] = useState<SumatifResult | null>(null);
   const [viewingPrintResult, setViewingPrintResult] = useState<SumatifResult | null>(null);
   const [isPrintPreviewOpen, setIsPrintPreviewOpen] = useState(false);
+
   const [printPlace, setPrintPlace] = useState<string>(() => {
     return schoolProfile?.desa || schoolProfile?.kabupaten || 'Remen';
   });
@@ -4640,21 +4707,33 @@ const SumatifResultsView: React.FC<{
   const kktp = subject?.kkm || 75;
   const totalMaxPoints = sumatif.questions.reduce((acc, q) => acc + (Number(q.points) > 0 ? Number(q.points) : 1), 0);
 
+  // Robust student matching by id, nis, or nisn
+  const isStudentMatchWithResult = useCallback((r: SumatifResult, s: Student) => {
+    if (!r || !s) return false;
+    const rId = String(r.studentId || '').trim();
+    const sId = String(s.id || '').trim();
+    const sNis = String(s.nis || '').trim();
+    const sNisn = String(s.nisn || '').trim();
+
+    if (rId && sId && rId === sId) return true;
+    if (rId && sNis && rId === sNis) return true;
+    if (rId && sNisn && rId === sNisn) return true;
+    return false;
+  }, []);
+
   // Safely fetch results from DB with fallback
   const fetchRealtimeFromDb = useCallback(async () => {
     try {
       const dbData = await apiService.getSumatifStatusRealtime(sumatif.id);
-      if (dbData && dbData.length > 0) {
+      if (dbData) {
         const normalized = normalizeSumatifResults(sumatif.questions, dbData);
         setLiveResults(normalized);
-      } else if (dbData && dbData.length === 0 && (!initialResults || initialResults.length === 0)) {
-        setLiveResults([]);
       }
       setLastSyncTime(new Date());
     } catch (e) {
       console.warn("Notice: Realtime sumatif sync using local state fallback:", e);
     }
-  }, [sumatif.id, sumatif.questions, initialResults]);
+  }, [sumatif.id, sumatif.questions]);
 
   // Keep liveResults in sync if initialResults changes from parent
   useEffect(() => {
@@ -4673,12 +4752,12 @@ const SumatifResultsView: React.FC<{
       fetchRealtimeFromDb();
     });
 
-    // 3. Fast polling every 3 seconds directly from DB
+    // 3. Fast polling every 2.5 seconds directly from DB
     const interval = setInterval(() => {
       if (document.visibilityState === 'visible') {
         fetchRealtimeFromDb();
       }
-    }, 3000);
+    }, 2500);
 
     return () => {
       if (unsubscribe) unsubscribe();
@@ -4701,11 +4780,12 @@ const SumatifResultsView: React.FC<{
   const allStudentsInScope = useMemo(() => {
     const list = [...students];
     liveResults.forEach(r => {
-      if (!list.some(s => String(s.id).trim() === String(r.studentId).trim())) {
+      const alreadyInList = list.some(s => isStudentMatchWithResult(r, s));
+      if (!alreadyInList && r.studentId) {
         list.push({
           id: r.studentId,
-          name: `Siswa (ID: ${r.studentId.slice(0, 8)})`,
-          nis: '-',
+          name: `Siswa (ID/NIS: ${r.studentId.slice(0, 10)})`,
+          nis: r.studentId,
           classId: sumatif.classId || '',
           nisn: '-',
           gender: 'L',
@@ -4717,17 +4797,31 @@ const SumatifResultsView: React.FC<{
       }
     });
     return list;
-  }, [students, liveResults, sumatif.classId]);
+  }, [students, liveResults, sumatif.classId, isStudentMatchWithResult]);
 
   // Map each student to their realtime status
   const studentStatuses = useMemo(() => {
     return allStudentsInScope.map(student => {
-      const result = liveResults.find(r => String(r.studentId).trim() === String(student.id).trim());
+      const result = liveResults.find(r => isStudentMatchWithResult(r, student));
       let status: 'sedang' | 'selesai' | 'belum' = 'belum';
       if (result) {
-        if (result.status_tes === 'selesai') {
+        const rawStatus = (result.status_tes || '').toLowerCase().trim();
+        const hasAnswers = result.answers && Object.keys(result.answers).length > 0;
+        const hasStarted = !!result.startedAt;
+        const hasSubmitted = !!result.submittedAt;
+
+        if (rawStatus === 'selesai' || hasSubmitted) {
           status = 'selesai';
-        } else if (result.status_tes === 'sedang mengerjakan') {
+        } else if (
+          rawStatus === 'sedang mengerjakan' ||
+          rawStatus === 'sedang' ||
+          rawStatus === 'proses' ||
+          rawStatus === 'proses mengerjakan' ||
+          rawStatus === 'mulai' ||
+          rawStatus === 'mengerjakan' ||
+          hasStarted ||
+          hasAnswers
+        ) {
           status = 'sedang';
         } else {
           status = 'belum';
@@ -4735,7 +4829,7 @@ const SumatifResultsView: React.FC<{
       }
       return { student, result, status };
     });
-  }, [allStudentsInScope, liveResults]);
+  }, [allStudentsInScope, liveResults, isStudentMatchWithResult]);
 
   const stats = useMemo(() => {
     const total = studentStatuses.length;
@@ -4763,7 +4857,7 @@ const SumatifResultsView: React.FC<{
   // Process item analysis rows for all students in scope
   const analysisRows = useMemo(() => {
     return allStudentsInScope.map(student => {
-      const result = liveResults.find(r => String(r.studentId).trim() === String(student.id).trim());
+      const result = liveResults.find(r => isStudentMatchWithResult(r, student));
       const hasTaken = Boolean(result && (result.status_tes === 'selesai' || Object.keys(result.answers || {}).length > 0));
       const studentCalc = result 
         ? calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {})
@@ -5462,15 +5556,27 @@ const SumatifResultsView: React.FC<{
               </button>
             </div>
 
-            <div className="relative w-full md:w-72">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-              <input
-                type="text"
-                value={searchStatusQuery}
-                onChange={(e) => setSearchStatusQuery(e.target.value)}
-                placeholder="Cari nama siswa atau NIS..."
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative w-full md:w-64">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                <input
+                  type="text"
+                  value={searchStatusQuery}
+                  onChange={(e) => setSearchStatusQuery(e.target.value)}
+                  placeholder="Cari nama siswa atau NIS..."
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                />
+              </div>
+
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshing}
+                className="px-3 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all flex items-center space-x-1.5 shadow-2xs shrink-0"
+                title="Segarkan data realtime langsung dari database"
+              >
+                <RefreshCw size={13} className={isRefreshing ? 'animate-spin text-emerald-600' : ''} />
+                <span className="hidden sm:inline">{isRefreshing ? 'Menyinkronkan...' : 'Segarkan'}</span>
+              </button>
             </div>
           </div>
 
@@ -5562,12 +5668,15 @@ const SumatifResultsView: React.FC<{
                           {r?.startedAt ? (
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{format(new Date(r.startedAt), 'dd MMM HH:mm', { locale: id })}</span>
-                              {isSedang && elapsedMins > 0 && (
-                                <span className="text-[10px] text-blue-600 font-semibold mt-0.5">
-                                  Berjalan {elapsedMins} mnt
+                              {isSedang && (
+                                <span className="text-[10px] text-blue-600 font-semibold mt-0.5 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping"></span>
+                                  {elapsedMins > 0 ? `Berjalan ${elapsedMins} mnt` : 'Baru saja'}
                                 </span>
                               )}
                             </div>
+                          ) : isSedang ? (
+                            <span className="text-xs text-blue-600 font-medium italic">Baru saja</span>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -5577,6 +5686,8 @@ const SumatifResultsView: React.FC<{
                         <td className="px-5 py-3.5 text-center text-xs text-slate-600">
                           {isSelesai && r?.submittedAt ? (
                             <span className="font-medium">{format(new Date(r.submittedAt), 'dd MMM HH:mm', { locale: id })}</span>
+                          ) : isSedang ? (
+                            <span className="text-[11px] text-blue-600 font-medium">Dalam proses</span>
                           ) : (
                             <span className="text-slate-300">-</span>
                           )}
@@ -5600,7 +5711,7 @@ const SumatifResultsView: React.FC<{
                               </div>
                             );
                           })() : isSedang ? (
-                            <span className="text-xs font-bold text-blue-600 italic">Sedang Berjalan</span>
+                            <span className="text-xs font-semibold text-blue-600">Sedang proses mengerjakan</span>
                           ) : (
                             <span className="text-slate-300 font-bold">-</span>
                           )}

@@ -3275,7 +3275,20 @@ const AppContent: React.FC = () => {
   const canViewGraduates = isSupervisor || isAdminRole || (currentUser.role === 'guru' && (currentUser.position?.toLowerCase() || '').includes('kelas 6'));
 
   const myStudentData = isStudentRole 
-    ? (students.find(s => String(s.id).trim() === String(currentUser.studentId).trim()) || null)
+    ? (students.find(s => {
+        const sId = String(s.id || '').trim();
+        const sNis = String(s.nis || '').trim();
+        const sNisn = String(s.nisn || '').trim();
+        const cStudentId = String(currentUser.studentId || '').trim();
+        const cUsername = String(currentUser.username || '').trim();
+        const cName = String(currentUser.fullName || '').trim().toLowerCase();
+        const sName = String(s.name || '').trim().toLowerCase();
+
+        if (cStudentId && (sId === cStudentId || sNis === cStudentId || sNisn === cStudentId)) return true;
+        if (cUsername && (sNis === cUsername || sId === cUsername || sNisn === cUsername)) return true;
+        if (cName && sName === cName) return true;
+        return false;
+      }) || null)
     : null;
 
   const getProfilePhoto = () => {
@@ -4114,9 +4127,9 @@ const AppContent: React.FC = () => {
                 } />
                 <Route path="/sumatif" element={
                     <SumatifView 
-                        currentUser={currentUser} 
-                        activeClassId={activeClassId} 
-                        students={filteredStudents} 
+                        currentUser={isStudentRole && myStudentData ? { ...currentUser, studentId: myStudentData.id, classId: myStudentData.classId } : currentUser} 
+                        activeClassId={isStudentRole && myStudentData ? myStudentData.classId : activeClassId} 
+                        students={isStudentRole && myStudentData ? [myStudentData] : filteredStudents} 
                         onShowNotification={handleShowNotification} 
                         onRefresh={() => fetchData(true)}
                         schoolProfile={schoolProfile}

@@ -3795,14 +3795,15 @@ export const apiService = {
     const sumatifId = result.sumatifId;
     const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`) || [];
     const existingIndex = cached.findIndex(r => r.studentId === result.studentId);
+    const isCompleted = result.status_tes === 'selesai';
     const savedResult = {
       id: existingIndex !== -1 ? cached[existingIndex].id : 'res-' + Date.now(),
       ...result,
       startedAt: result.startedAt || (existingIndex !== -1 ? cached[existingIndex].startedAt : undefined),
-      status_tes: result.status_tes || 'selesai',
+      status_tes: result.status_tes || (isCompleted ? 'selesai' : 'sedang mengerjakan'),
       needsGrading: result.needsGrading || false,
       manualScores: result.manualScores || {},
-      submittedAt: result.submittedAt || new Date().toISOString()
+      submittedAt: isCompleted ? (result.submittedAt || new Date().toISOString()) : ''
     } as SumatifResult;
 
     if (existingIndex !== -1) {
@@ -3818,12 +3819,12 @@ export const apiService = {
       const payload: any = {
         sumatif_id: result.sumatifId,
         student_id: result.studentId,
-        score: result.score,
-        answers: result.answers,
-        status_tes: result.status_tes || 'selesai',
+        score: result.score ?? 0,
+        answers: result.answers || {},
+        status_tes: result.status_tes || (isCompleted ? 'selesai' : 'sedang mengerjakan'),
         needs_grading: result.needsGrading || false,
         manual_scores: result.manualScores || {},
-        submitted_at: result.submittedAt || new Date().toISOString()
+        submitted_at: isCompleted ? (result.submittedAt || new Date().toISOString()) : null
       };
       if (result.startedAt) {
         payload.started_at = result.startedAt;
@@ -3836,6 +3837,38 @@ export const apiService = {
         delete payload.started_at;
         const retry = await supabase.from('sumatif_results').upsert(payload, { onConflict: 'sumatif_id,student_id' });
         error = retry.error;
+      }
+
+      // If error occurs because needs_grading or manual_scores column doesn't exist yet
+      if (error && error.code === '42703') {
+        delete payload.needs_grading;
+        delete payload.manual_scores;
+        const retry = await supabase.from('sumatif_results').upsert(payload, { onConflict: 'sumatif_id,student_id' });
+        error = retry.error;
+      }
+
+      // If upsert failed due to missing UNIQUE constraint on (sumatif_id, student_id)
+      if (error) {
+        console.warn("Upsert notice on sumatif_results, trying manual update or insert fallback:", error.message || error);
+        const { data: existing } = await supabase
+          .from('sumatif_results')
+          .select('id')
+          .eq('sumatif_id', result.sumatifId)
+          .eq('student_id', result.studentId)
+          .maybeSingle();
+
+        if (existing) {
+          const updateRes = await supabase
+            .from('sumatif_results')
+            .update(payload)
+            .eq('id', existing.id);
+          error = updateRes.error;
+        } else {
+          const insertRes = await supabase
+            .from('sumatif_results')
+            .insert(payload);
+          error = insertRes.error;
+        }
       }
 
       if (error) throw error;
@@ -3953,30 +3986,52 @@ export const apiService = {
       return cached || [];
     }
     try {
-      const { data, error } = await supabase
+      let res = await supabase
         .from('sumatif_results')
         .select('id, sumatif_id, student_id, score, answers, status_tes, needs_grading, manual_scores, started_at, submitted_at, created_at')
         .eq('sumatif_id', sumatifId);
 
-      if (error) {
-        console.warn("Realtime status test DB fetch notice, falling back to cache:", error.message || error);
+      // If column error occurs (e.g. started_at or created_at not yet migrated)
+      if (res.error) {
+        res = await supabase
+          .from('sumatif_results')
+          .select('*')
+          .eq('sumatif_id', sumatifId);
+      }
+
+      // If still error, fallback to core minimal columns
+      if (res.error) {
+        res = await supabase
+          .from('sumatif_results')
+          .select('id, sumatif_id, student_id, score, answers, status_tes, submitted_at')
+          .eq('sumatif_id', sumatifId);
+      }
+
+      if (res.error) {
+        console.warn("Realtime status test DB fetch notice, falling back to cache:", res.error.message || res.error);
         const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`);
         return cached || [];
       }
 
-      const results = (data || []).map((r: any) => ({
-        id: r.id,
-        sumatifId: r.sumatif_id,
-        studentId: r.student_id,
-        score: r.score ?? 0,
-        answers: r.answers || {},
-        submittedAt: r.submitted_at,
-        startedAt: r.started_at || r.created_at,
-        createdAt: r.created_at || r.started_at,
-        status_tes: (r.status_tes || 'mulai') as 'mulai' | 'sedang mengerjakan' | 'selesai',
-        needsGrading: !!r.needs_grading,
-        manualScores: r.manual_scores || {}
-      }));
+      const results = (res.data || []).map((r: any) => {
+        let derivedStatus = r.status_tes;
+        if (!derivedStatus) {
+          derivedStatus = r.submitted_at ? 'selesai' : 'sedang mengerjakan';
+        }
+        return {
+          id: r.id,
+          sumatifId: r.sumatif_id,
+          studentId: r.student_id,
+          score: r.score ?? 0,
+          answers: r.answers || {},
+          submittedAt: r.submitted_at,
+          startedAt: r.started_at || r.created_at,
+          createdAt: r.created_at || r.started_at,
+          status_tes: derivedStatus as 'mulai' | 'sedang mengerjakan' | 'selesai',
+          needsGrading: !!r.needs_grading,
+          manualScores: r.manual_scores || {}
+        };
+      });
 
       // Keep cache warm
       if (results.length > 0) {
@@ -3994,7 +4049,7 @@ export const apiService = {
   subscribeToSumatifStatus: (sumatifId: string, onUpdate: (payload: any) => void): (() => void) => {
     if (!supabase || typeof supabase.channel !== 'function') return () => {};
     try {
-      const channelName = `realtime_status_${sumatifId.slice(0, 8)}_${Date.now()}`;
+      const channelName = `realtime_status_${String(sumatifId).replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}`;
       const channel = supabase
         .channel(channelName)
         .on(
@@ -4002,11 +4057,13 @@ export const apiService = {
           {
             event: '*',
             schema: 'public',
-            table: 'sumatif_results',
-            filter: `sumatif_id=eq.${sumatifId}`
+            table: 'sumatif_results'
           },
           (payload: any) => {
-            onUpdate(payload);
+            const rec = payload.new || payload.old;
+            if (!rec || !rec.sumatif_id || String(rec.sumatif_id).trim() === String(sumatifId).trim()) {
+              onUpdate(payload);
+            }
           }
         )
         .subscribe();

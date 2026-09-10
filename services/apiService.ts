@@ -3951,33 +3951,97 @@ export const apiService = {
       console.warn("updateSumatifResultGrading database failed:", err);
     }
   },
-  resetSumatifResult: async (sumatifId: string, studentId: string): Promise<void> => {
+  resetSumatifResult: async (sumatifId: string, studentId: string | string[]): Promise<void> => {
+    const targetIds = Array.from(new Set(
+      (Array.isArray(studentId) ? studentId : [studentId])
+        .filter(Boolean)
+        .map(id => String(id).trim())
+    ));
+    if (targetIds.length === 0) return;
+
+    // 1. Update cache directly
     const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`) || [];
-    const index = cached.findIndex(r => r.studentId === studentId);
-    if (index !== -1) {
-      cached[index].status_tes = 'mulai';
-      cached[index].score = 0;
-      cached[index].answers = {};
-      cached[index].submittedAt = '';
-      cacheService.set(`sumatif_results_${sumatifId}`, cached);
+    targetIds.forEach(id => {
+      const index = cached.findIndex(r => String(r.studentId).trim() === id);
+      if (index !== -1) {
+        cached[index].status_tes = 'mulai';
+        cached[index].score = 0;
+        cached[index].answers = {};
+        cached[index].submittedAt = '';
+        cached[index].startedAt = '';
+        cached[index].needsGrading = false;
+        cached[index].manualScores = {};
+      }
+    });
+    cacheService.set(`sumatif_results_${sumatifId}`, cached);
+
+    // Clear local attempts in localStorage for all targeted student IDs
+    if (typeof window !== 'undefined' && window.localStorage) {
+      targetIds.forEach(id => {
+        const attemptKey = `sumatif_attempt_${sumatifId}_${id}`;
+        localStorage.removeItem(`${attemptKey}_questions`);
+        localStorage.removeItem(`${attemptKey}_answers`);
+        localStorage.removeItem(`${attemptKey}_time`);
+        localStorage.removeItem(`${attemptKey}_start_time`);
+        localStorage.removeItem(`${attemptKey}_idx`);
+        localStorage.removeItem(`${attemptKey}_flags`);
+      });
     }
 
     if (!isApiConfigured()) return;
 
     try {
-      const { error } = await supabase
+      // 2. Direct update on all existing matching rows in database
+      const { error: updateError } = await supabase
         .from('sumatif_results')
-        .upsert({ 
-          sumatif_id: sumatifId, 
-          student_id: studentId, 
+        .update({ 
           status_tes: 'mulai', 
           score: 0, 
           answers: {}, 
           submitted_at: null,
+          started_at: null,
           needs_grading: false,
           manual_scores: {}
-        }, { onConflict: 'sumatif_id,student_id' });
-      if (error) throw error;
+        })
+        .eq('sumatif_id', sumatifId)
+        .in('student_id', targetIds);
+
+      if (updateError) {
+        console.warn("Update existing sumatif_results error, fallback to upsert:", updateError);
+      }
+
+      // 3. Upsert primary studentId to ensure the row exists with status_tes: 'mulai'
+      const primaryId = targetIds[0];
+      if (primaryId) {
+        const { error: upsertError } = await supabase
+          .from('sumatif_results')
+          .upsert({ 
+            sumatif_id: sumatifId, 
+            student_id: primaryId, 
+            status_tes: 'mulai', 
+            score: 0, 
+            answers: {}, 
+            submitted_at: null,
+            started_at: null,
+            needs_grading: false,
+            manual_scores: {}
+          }, { onConflict: 'sumatif_id,student_id' });
+        
+        if (upsertError) {
+          await supabase
+            .from('sumatif_results')
+            .upsert({ 
+              sumatif_id: sumatifId, 
+              student_id: primaryId, 
+              status_tes: 'mulai', 
+              score: 0, 
+              answers: {}, 
+              submitted_at: null,
+              needs_grading: false,
+              manual_scores: {}
+            }, { onConflict: 'sumatif_id,student_id' });
+        }
+      }
     } catch (err) {
       console.warn("resetSumatifResult database failed:", err);
     }
@@ -3985,16 +4049,18 @@ export const apiService = {
   startSumatifResult: async (sumatifId: string, studentId: string): Promise<void> => {
     const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`) || [];
     const index = cached.findIndex(r => r.studentId === studentId);
+    const nowIso = new Date().toISOString();
     const newResult: SumatifResult = {
       id: index !== -1 ? cached[index].id : 'res-' + Date.now(),
       sumatifId,
       studentId,
       score: 0,
       answers: {},
-      status_tes: 'mulai',
+      status_tes: 'sedang mengerjakan',
       needsGrading: false,
       manualScores: {},
-      submittedAt: new Date().toISOString()
+      startedAt: nowIso,
+      submittedAt: ''
     };
     if (index !== -1) {
       cached[index] = newResult;
@@ -4008,7 +4074,15 @@ export const apiService = {
     try {
       const { error } = await supabase
         .from('sumatif_results')
-        .upsert({ sumatif_id: sumatifId, student_id: studentId, status_tes: 'mulai', score: 0, answers: {}, submitted_at: null }, { onConflict: 'sumatif_id,student_id' });
+        .upsert({ 
+          sumatif_id: sumatifId, 
+          student_id: studentId, 
+          status_tes: 'sedang mengerjakan', 
+          score: 0, 
+          answers: {}, 
+          started_at: nowIso,
+          submitted_at: null 
+        }, { onConflict: 'sumatif_id,student_id' });
       if (error) throw error;
     } catch (err) {
       console.warn("startSumatifResult database failed:", err);
@@ -4054,18 +4128,19 @@ export const apiService = {
         if (!derivedStatus) {
           derivedStatus = r.submitted_at ? 'selesai' : 'sedang mengerjakan';
         }
+        const isResetMulai = derivedStatus === 'mulai';
         return {
           id: r.id,
           sumatifId: r.sumatif_id,
           studentId: r.student_id,
-          score: r.score ?? 0,
-          answers: r.answers || {},
-          submittedAt: r.submitted_at,
-          startedAt: r.started_at || r.created_at,
+          score: isResetMulai ? 0 : (r.score ?? 0),
+          answers: isResetMulai ? {} : (r.answers || {}),
+          submittedAt: isResetMulai ? '' : (r.submitted_at || ''),
+          startedAt: isResetMulai ? '' : (r.started_at || ''),
           createdAt: r.created_at || r.started_at,
           status_tes: derivedStatus as 'mulai' | 'sedang mengerjakan' | 'selesai',
-          needsGrading: !!r.needs_grading,
-          manualScores: r.manual_scores || {}
+          needsGrading: isResetMulai ? false : !!r.needs_grading,
+          manualScores: isResetMulai ? {} : (r.manual_scores || {})
         };
       });
 

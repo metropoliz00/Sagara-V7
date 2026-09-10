@@ -474,7 +474,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   const fetchStudentResults = async (sumatifsList: Sumatif[]) => {
     if (!isStudent || sumatifsList.length === 0) return;
     const sId = currentUser?.studentId || currentUser?.id || students[0]?.id;
-    if (!sId) return;
+    const sNis = students[0]?.nis || currentUser?.username;
+    if (!sId && !sNis) return;
 
     try {
       const resultsMap: Record<string, SumatifResult> = {};
@@ -483,8 +484,9 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           // Fetch directly from DB to bypass stale localStorage
           const resList = await apiService.getSumatifStatusRealtime(s.id);
           const myRes = resList.find(r => 
-            String(r.studentId).trim() === String(sId).trim() || 
-            (students[0]?.id && String(r.studentId).trim() === String(students[0].id).trim())
+            (sId && String(r.studentId).trim() === String(sId).trim()) || 
+            (students[0]?.id && String(r.studentId).trim() === String(students[0].id).trim()) ||
+            (sNis && String(r.studentId).trim() === String(sNis).trim())
           );
           if (myRes) {
             resultsMap[s.id] = myRes;
@@ -496,6 +498,17 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       console.error("Error fetching student results:", err);
     }
   };
+
+  // Periodic polling for students so when guru resets, the student status automatically updates to 'Mulai'
+  useEffect(() => {
+    if (!isStudent || sumatifs.length === 0) return;
+    const timer = setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchStudentResults(sumatifs);
+      }
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [isStudent, sumatifs]);
 
   const isGuru6 = useMemo(() => {
     if (!currentUser) return false;
@@ -871,11 +884,16 @@ const SumatifView: React.FC<SumatifViewProps> = ({
     }
   };
 
-  const handleResetResult = async (studentId: string, sumatif: Sumatif) => {
+  const handleResetResult = async (
+    studentId: string | string[], 
+    sumatif: Sumatif, 
+    resultStudentId?: string,
+    onDone?: () => void
+  ) => {
     setModal({
       isOpen: true,
-      title: 'Reset Hasil Ujian (Realtime Database)',
-      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Status tes siswa akan direset langsung di database ke "mulai" dan siswa dapat segera mengerjakan ulang.',
+      title: 'Reset Status Ujian Siswa (Ke Status Mulai)',
+      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Status tes siswa akan langsung direset di database ke "mulai" dan siswa dapat segera mengerjakan ulang.',
       type: 'confirm',
       confirmText: 'Reset Sekarang',
       cancelText: 'Batal',
@@ -883,13 +901,19 @@ const SumatifView: React.FC<SumatifViewProps> = ({
       onConfirm: async () => {
         setModal(prev => ({ ...prev, isOpen: false }));
         try {
-          await apiService.resetSumatifResult(sumatif.id, studentId);
-          onShowNotification('Status ujian berhasil direset di database', 'success');
+          const idsToReset = Array.from(new Set(
+            (Array.isArray(studentId) ? studentId : [studentId, resultStudentId])
+              .filter(Boolean)
+              .map(id => String(id).trim())
+          ));
+          await apiService.resetSumatifResult(sumatif.id, idsToReset);
+          onShowNotification('Status ujian berhasil direset ke "Mulai"', 'success');
           
           // Refresh results immediately directly from DB (bypassing localStorage)
           const updatedResults = await apiService.getSumatifStatusRealtime(sumatif.id);
           const normalized = normalizeSumatifResults(sumatif.questions, updatedResults || []);
           setResults(normalized);
+          if (onDone) onDone();
         } catch (error) {
           onShowNotification('Gagal mereset status ujian', 'error');
         }
@@ -900,14 +924,37 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   const checkStudentAttempt = async (sumatif: Sumatif) => {
     if (!isStudent && !currentUser?.studentId) return true;
     
-    const studentId = currentUser?.studentId;
-    if (!studentId) return true;
+    const candidateIds = [
+      currentUser?.studentId,
+      currentUser?.id,
+      students[0]?.id,
+      students[0]?.nis,
+      currentUser?.username
+    ].filter(Boolean).map(id => String(id).trim());
+
+    if (candidateIds.length === 0) return true;
 
     try {
       // Check attempt status directly from DB, strictly bypassing localStorage
       const allResults = await apiService.getSumatifStatusRealtime(sumatif.id);
-      const studentResult = allResults.find(r => String(r.studentId).trim() === String(studentId).trim());
+      const studentResult = allResults.find(r => 
+        candidateIds.includes(String(r.studentId).trim())
+      );
       
+      // If student status is 'mulai' (reset by teacher), clear local cache and permit exam
+      if (studentResult && studentResult.status_tes === 'mulai') {
+        candidateIds.forEach(cId => {
+          const attemptKey = `sumatif_attempt_${sumatif.id}_${cId}`;
+          localStorage.removeItem(`${attemptKey}_questions`);
+          localStorage.removeItem(`${attemptKey}_answers`);
+          localStorage.removeItem(`${attemptKey}_time`);
+          localStorage.removeItem(`${attemptKey}_start_time`);
+          localStorage.removeItem(`${attemptKey}_idx`);
+          localStorage.removeItem(`${attemptKey}_flags`);
+        });
+        return true;
+      }
+
       if (studentResult && studentResult.status_tes === 'selesai') {
         setModal({
           isOpen: true,
@@ -1022,7 +1069,7 @@ const SumatifView: React.FC<SumatifViewProps> = ({
           classId={activeClassId || viewingResults.classId || '1'}
           onBack={() => setViewingResults(null)}
           onSync={() => handleSyncToGrades(viewingResults, results)}
-          onReset={(studentId) => handleResetResult(studentId, viewingResults)}
+          onReset={(studentId, resultStudentId, onDone) => handleResetResult(studentId, viewingResults, resultStudentId, onDone)}
           onSaveGrading={async (resultId, manualScores, finalScore) => {
             try {
               await apiService.updateSumatifResultGrading(resultId, manualScores, finalScore);
@@ -1302,40 +1349,60 @@ const SumatifView: React.FC<SumatifViewProps> = ({
                           </div>
                         );
                       }
+                      const isResetByTeacher = studentResult && studentResult.status_tes === 'mulai';
                       return (
-                        <button
-                          disabled={!s.isActive}
-                          type="button"
-                          onClick={async () => {
-                            const canProceed = await checkStudentAttempt(s);
-                            if (!canProceed) return;
+                        <div className="flex flex-col gap-2.5 w-full">
+                          {isResetByTeacher && (
+                            <div className="bg-amber-50 border border-amber-200/90 text-amber-800 text-xs px-3 py-2 rounded-xl flex items-center gap-2 font-medium shadow-xs">
+                              <Play size={14} className="text-amber-600 fill-amber-600 shrink-0" />
+                              <span>Status ujian telah direset oleh guru ke <strong>Mulai</strong>. Anda dapat mengerjakan ulang.</span>
+                            </div>
+                          )}
+                          <button
+                            disabled={!s.isActive}
+                            type="button"
+                            onClick={async () => {
+                              const canProceed = await checkStudentAttempt(s);
+                              if (!canProceed) return;
 
-                            const studentIdToUse = currentUser?.studentId || (students.length > 0 ? (students[0]?.id || students[0]?.nis) : '') || currentUser?.username || currentUser?.id || '';
-                            if (studentIdToUse && !s.token) {
-                              const nowIso = new Date().toISOString();
-                              apiService.submitSumatifResult({
-                                sumatifId: s.id,
-                                studentId: studentIdToUse,
-                                score: 0,
-                                answers: {},
-                                status_tes: 'sedang mengerjakan',
-                                needsGrading: false,
-                                manualScores: {},
-                                startedAt: nowIso,
-                                submittedAt: ''
-                              }).catch(() => {});
-                            }
-                            
-                            setCurrentSumatif(s);
-                            if (s.token) setIsEnteringToken(true);
-                            else setIsTaking(true);
-                          }}
-                          className={`w-full py-3 px-6 rounded-xl font-bold text-sm tracking-wider transition-all duration-200 transform active:scale-95 text-center ${
-                            s.isActive ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                          }`}
-                        >
-                          {s.isActive ? 'Mulai Ujian Sumatif' : 'Belum Aktif'}
-                        </button>
+                              const studentIdToUse = currentUser?.studentId || (students.length > 0 ? (students[0]?.id || students[0]?.nis) : '') || currentUser?.username || currentUser?.id || '';
+                              
+                              if (studentIdToUse) {
+                                const attemptKey = `sumatif_attempt_${s.id}_${studentIdToUse}`;
+                                localStorage.removeItem(`${attemptKey}_questions`);
+                                localStorage.removeItem(`${attemptKey}_answers`);
+                                localStorage.removeItem(`${attemptKey}_time`);
+                                localStorage.removeItem(`${attemptKey}_start_time`);
+                                localStorage.removeItem(`${attemptKey}_idx`);
+                                localStorage.removeItem(`${attemptKey}_flags`);
+                              }
+
+                              if (studentIdToUse && !s.token) {
+                                const nowIso = new Date().toISOString();
+                                apiService.submitSumatifResult({
+                                  sumatifId: s.id,
+                                  studentId: studentIdToUse,
+                                  score: 0,
+                                  answers: {},
+                                  status_tes: 'sedang mengerjakan',
+                                  needsGrading: false,
+                                  manualScores: {},
+                                  startedAt: nowIso,
+                                  submittedAt: ''
+                                }).catch(() => {});
+                              }
+                              
+                              setCurrentSumatif(s);
+                              if (s.token) setIsEnteringToken(true);
+                              else setIsTaking(true);
+                            }}
+                            className={`w-full py-3 px-6 rounded-xl font-bold text-sm tracking-wider transition-all duration-200 transform active:scale-95 text-center ${
+                              s.isActive ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100' : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {s.isActive ? (isResetByTeacher ? 'Mulai Ulang Ujian Sumatif' : 'Mulai Ujian Sumatif') : 'Belum Aktif'}
+                          </button>
+                        </div>
                       );
                     })()
                   )}
@@ -4745,7 +4812,7 @@ const SumatifResultsView: React.FC<{
   initialViewMode?: 'status' | 'analysis',
   onBack: () => void,
   onSync: () => void,
-  onReset: (studentId: string) => void,
+  onReset: (studentId: string | string[], resultStudentId?: string, onDone?: () => void) => void,
   onSaveGrading: (resultId: string, manualScores: Record<string, number>, finalScore: number) => void,
   schoolProfile?: SchoolProfileData,
   teacherProfile?: TeacherProfileData,
@@ -4767,7 +4834,7 @@ const SumatifResultsView: React.FC<{
   const [liveResults, setLiveResults] = useState<SumatifResult[]>(initialResults);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'sedang' | 'selesai' | 'belum'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'mulai' | 'sedang' | 'selesai' | 'belum'>('all');
   const [searchStatusQuery, setSearchStatusQuery] = useState('');
   const [searchAnalysisQuery, setSearchAnalysisQuery] = useState('');
   const [analysisFilter, setAnalysisFilter] = useState<'all' | 'pengayaan' | 'remidi' | 'selesai'>('all');
@@ -4862,9 +4929,16 @@ const SumatifResultsView: React.FC<{
     setIsRefreshing(false);
   };
 
-  const handleExecuteReset = async (studentId: string) => {
-    await onReset(studentId);
-    await fetchRealtimeFromDb();
+  const handleExecuteReset = (student: Student, result?: SumatifResult) => {
+    const candidateIds = Array.from(new Set([
+      student.id,
+      student.nis,
+      student.nisn,
+      result?.studentId
+    ].filter(Boolean) as string[]));
+    onReset(candidateIds, result?.studentId, () => {
+      fetchRealtimeFromDb();
+    });
   };
 
   // Merge students with any results in the database
@@ -4894,24 +4968,23 @@ const SumatifResultsView: React.FC<{
   const studentStatuses = useMemo(() => {
     return allStudentsInScope.map(student => {
       const result = liveResults.find(r => isStudentMatchWithResult(r, student));
-      let status: 'sedang' | 'selesai' | 'belum' = 'belum';
+      let status: 'mulai' | 'sedang' | 'selesai' | 'belum' = 'belum';
       if (result) {
         const rawStatus = (result.status_tes || '').toLowerCase().trim();
         const hasAnswers = result.answers && Object.keys(result.answers).length > 0;
-        const hasStarted = !!result.startedAt;
         const hasSubmitted = !!result.submittedAt;
 
-        if (rawStatus === 'selesai' || hasSubmitted) {
+        if (rawStatus === 'mulai') {
+          status = 'mulai';
+        } else if (rawStatus === 'selesai' || hasSubmitted) {
           status = 'selesai';
         } else if (
           rawStatus === 'sedang mengerjakan' ||
           rawStatus === 'sedang' ||
           rawStatus === 'proses' ||
           rawStatus === 'proses mengerjakan' ||
-          rawStatus === 'mulai' ||
           rawStatus === 'mengerjakan' ||
-          hasStarted ||
-          hasAnswers
+          (hasAnswers && !hasSubmitted)
         ) {
           status = 'sedang';
         } else {
@@ -4924,14 +4997,16 @@ const SumatifResultsView: React.FC<{
 
   const stats = useMemo(() => {
     const total = studentStatuses.length;
+    const mulai = studentStatuses.filter(s => s.status === 'mulai').length;
     const sedang = studentStatuses.filter(s => s.status === 'sedang').length;
     const selesai = studentStatuses.filter(s => s.status === 'selesai').length;
     const belum = studentStatuses.filter(s => s.status === 'belum').length;
-    return { total, sedang, selesai, belum };
+    return { total, mulai, sedang, selesai, belum };
   }, [studentStatuses]);
 
   const filteredStudentStatuses = useMemo(() => {
     return studentStatuses.filter(item => {
+      if (statusFilter === 'mulai' && item.status !== 'mulai') return false;
       if (statusFilter === 'sedang' && item.status !== 'sedang') return false;
       if (statusFilter === 'selesai' && item.status !== 'selesai') return false;
       if (statusFilter === 'belum' && item.status !== 'belum') return false;
@@ -4949,7 +5024,7 @@ const SumatifResultsView: React.FC<{
   const analysisRows = useMemo(() => {
     return allStudentsInScope.map(student => {
       const result = liveResults.find(r => isStudentMatchWithResult(r, student));
-      const hasTaken = Boolean(result && (result.status_tes === 'selesai' || Object.keys(result.answers || {}).length > 0));
+      const hasTaken = Boolean(result && (result.status_tes === 'selesai' || Object.keys(result.answers || {}).length > 0) && result.status_tes !== 'mulai');
       const studentCalc = result 
         ? calculateSumatifScore(sumatif.questions, result.answers || {}, result.manualScores || {})
         : { finalScore: 0, earnedPoints: 0, totalMax: totalMaxPoints };
@@ -5540,16 +5615,31 @@ const SumatifResultsView: React.FC<{
       {viewMode === 'status' && (
         <div className="p-6 space-y-6">
           {/* Metric Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {/* Total Siswa */}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/70 flex items-center justify-between">
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Siswa</p>
                 <h4 className="text-2xl font-black text-slate-800 mt-1">{stats.total}</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Peserta kelas terdaftar</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Peserta terdaftar</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
-                <Users size={22} />
+              <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                <Users size={20} />
+              </div>
+            </div>
+
+            {/* Siap Mulai / Direset */}
+            <div className="p-4 bg-amber-50/80 rounded-2xl border border-amber-200 flex items-center justify-between">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                  <p className="text-xs font-bold text-amber-700 uppercase tracking-wider">Status: Mulai</p>
+                </div>
+                <h4 className="text-2xl font-black text-amber-900 mt-1">{stats.mulai}</h4>
+                <p className="text-[11px] text-amber-700/80 mt-0.5">Direset / Siap Mulai</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                <Play size={18} className="fill-white" />
               </div>
             </div>
 
@@ -5558,13 +5648,13 @@ const SumatifResultsView: React.FC<{
               <div className="relative z-10">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
-                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Sedang Mengerjakan</p>
+                  <p className="text-xs font-bold text-blue-700 uppercase tracking-wider">Sedang Ujian</p>
                 </div>
                 <h4 className="text-2xl font-black text-blue-900 mt-1">{stats.sedang}</h4>
-                <p className="text-[11px] text-blue-700/80 mt-0.5">Ujian aktif di perangkat</p>
+                <p className="text-[11px] text-blue-700/80 mt-0.5">Aktif di perangkat</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-sm">
-                <Radio size={22} className="animate-pulse" />
+              <div className="w-10 h-10 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs">
+                <Radio size={18} className="animate-pulse" />
               </div>
             </div>
 
@@ -5574,11 +5664,11 @@ const SumatifResultsView: React.FC<{
                 <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">Sudah Selesai</p>
                 <h4 className="text-2xl font-black text-emerald-900 mt-1">{stats.selesai}</h4>
                 <p className="text-[11px] text-emerald-700/80 mt-0.5">
-                  {stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0}% telah selesai
+                  {stats.total > 0 ? Math.round((stats.selesai / stats.total) * 100) : 0}% selesai
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-sm">
-                <CheckCircle2 size={22} />
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                <CheckCircle2 size={18} />
               </div>
             </div>
 
@@ -5587,10 +5677,10 @@ const SumatifResultsView: React.FC<{
               <div>
                 <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Belum Mulai</p>
                 <h4 className="text-2xl font-black text-slate-700 mt-1">{stats.belum}</h4>
-                <p className="text-[11px] text-slate-400 mt-0.5">Belum membuka soal</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Belum buka ujian</p>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center">
-                <Clock size={22} />
+              <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-600 flex items-center justify-center">
+                <Clock size={18} />
               </div>
             </div>
           </div>
@@ -5614,6 +5704,11 @@ const SumatifResultsView: React.FC<{
                 style={{ width: `${stats.total > 0 ? (stats.sedang / stats.total) * 100 : 0}%` }}
                 title={`${stats.sedang} Siswa Sedang Mengerjakan`}
               />
+              <div 
+                className="bg-amber-400 h-full transition-all duration-500" 
+                style={{ width: `${stats.total > 0 ? (stats.mulai / stats.total) * 100 : 0}%` }}
+                title={`${stats.mulai} Siswa Status Mulai`}
+              />
             </div>
           </div>
 
@@ -5627,11 +5722,18 @@ const SumatifResultsView: React.FC<{
                 Semua ({stats.total})
               </button>
               <button
+                onClick={() => setStatusFilter('mulai')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${statusFilter === 'mulai' ? 'bg-amber-500 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+              >
+                <Play size={11} className={statusFilter === 'mulai' ? 'fill-white' : ''} />
+                Mulai ({stats.mulai})
+              </button>
+              <button
                 onClick={() => setStatusFilter('sedang')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${statusFilter === 'sedang' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-300 animate-ping"></span>
-                Sedang Mengerjakan ({stats.sedang})
+                Sedang ({stats.sedang})
               </button>
               <button
                 onClick={() => setStatusFilter('selesai')}
@@ -5689,6 +5791,7 @@ const SumatifResultsView: React.FC<{
                 <tbody className="divide-y divide-slate-100">
                   {filteredStudentStatuses.map((item, idx) => {
                     const r = item.result;
+                    const isMulai = item.status === 'mulai';
                     const isSedang = item.status === 'sedang';
                     const isSelesai = item.status === 'selesai';
                     const isBelum = item.status === 'belum';
@@ -5706,7 +5809,13 @@ const SumatifResultsView: React.FC<{
                     return (
                       <tr 
                         key={item.student.id} 
-                        className={`transition-colors ${isSedang ? 'bg-blue-50/30 hover:bg-blue-50/50' : 'hover:bg-slate-50/60'}`}
+                        className={`transition-colors ${
+                          isSedang 
+                            ? 'bg-blue-50/30 hover:bg-blue-50/50' 
+                            : isMulai 
+                            ? 'bg-amber-50/30 hover:bg-amber-50/50' 
+                            : 'hover:bg-slate-50/60'
+                        }`}
                       >
                         <td className="px-5 py-3.5 text-center text-xs font-bold text-slate-400">
                           {idx + 1}
@@ -5718,6 +5827,8 @@ const SumatifResultsView: React.FC<{
                                 ? 'bg-blue-500 text-white shadow-xs' 
                                 : isSelesai 
                                 ? 'bg-emerald-500 text-white shadow-xs' 
+                                : isMulai
+                                ? 'bg-amber-500 text-white shadow-xs'
                                 : 'bg-slate-100 text-slate-500'
                             }`}>
                               {item.student.name?.charAt(0) || 'S'}
@@ -5734,6 +5845,12 @@ const SumatifResultsView: React.FC<{
 
                         {/* Status Ujian Realtime Badge */}
                         <td className="px-5 py-3.5 text-center">
+                          {isMulai && (
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200 shadow-xs">
+                              <Play size={11} className="text-amber-600 fill-amber-600" />
+                              Mulai
+                            </span>
+                          )}
                           {isSedang && (
                             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-200 shadow-xs">
                               <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping"></span>
@@ -5756,7 +5873,11 @@ const SumatifResultsView: React.FC<{
 
                         {/* Waktu Mulai */}
                         <td className="px-5 py-3.5 text-center text-xs text-slate-600">
-                          {r?.startedAt ? (
+                          {isMulai ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              Direset Guru (Siap Mulai)
+                            </span>
+                          ) : r?.startedAt ? (
                             <div className="flex flex-col items-center">
                               <span className="font-medium">{format(new Date(r.startedAt), 'dd MMM HH:mm', { locale: id })}</span>
                               {isSedang && (
@@ -5775,7 +5896,9 @@ const SumatifResultsView: React.FC<{
 
                         {/* Waktu Selesai */}
                         <td className="px-5 py-3.5 text-center text-xs text-slate-600">
-                          {isSelesai && r?.submittedAt ? (
+                          {isMulai ? (
+                            <span className="text-slate-300">-</span>
+                          ) : isSelesai && r?.submittedAt ? (
                             <span className="font-medium">{format(new Date(r.submittedAt), 'dd MMM HH:mm', { locale: id })}</span>
                           ) : isSedang ? (() => {
                             const durationMinutes = Number(sumatif.duration) > 0 ? Number(sumatif.duration) : 60;
@@ -5815,7 +5938,9 @@ const SumatifResultsView: React.FC<{
 
                         {/* Nilai */}
                         <td className="px-5 py-3.5 text-center">
-                          {isSelesai && r ? (() => {
+                          {isMulai ? (
+                            <span className="text-xs font-bold text-amber-600">0 (Direset)</span>
+                          ) : isSelesai && r ? (() => {
                             const studentCalc = calculateSumatifScore(sumatif.questions, r.answers || {}, r.manualScores || {});
                             const finalScore = studentCalc.finalScore;
                             return (
@@ -5866,9 +5991,9 @@ const SumatifResultsView: React.FC<{
                               </button>
                             )}
 
-                            {(isSedang || isSelesai) && (
+                            {(isSedang || isSelesai || isMulai) && (
                               <button
-                                onClick={() => handleExecuteReset(item.student.id)}
+                                onClick={() => handleExecuteReset(item.student, item.result)}
                                 className="px-2.5 py-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs font-bold hover:bg-rose-100 transition-all flex items-center space-x-1"
                                 title="Reset Status Ujian Siswa Langsung di Database"
                               >

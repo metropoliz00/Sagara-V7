@@ -3445,7 +3445,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
                         <BookOpen size={14} className="text-[#5AB2FF]" />
-                        Topik Pembelajaran (Topik Utama / Tema Besar)
+                        Topik Pembelajaran
                       </label>
                       <span className="text-[10px] text-slate-400 font-medium">Contoh: Sistem Organ Tubuh Manusia, Siklus Air</span>
                     </div>
@@ -3453,7 +3453,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                       type="text"
                       value={topic}
                       onChange={(e) => setTopic(e.target.value)}
-                      placeholder="Masukkan Topik Utama Pembelajaran..."
+                      placeholder="Masukkan Topik Pembelajaran..."
                       className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
                     />
                   </div>
@@ -3466,9 +3466,6 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                           <Layers size={14} className="text-indigo-600" />
                           Rincian Materi Pokok (Sub-Materi)
                         </label>
-                        <p className="text-[11px] text-indigo-700/80 font-medium mt-0.5">
-                          Materi ini menjadi dasar pemilihan pada Tujuan Pembelajaran (TP) & penyesuaian konteks Kegiatan AI.
-                        </p>
                       </div>
                       <button
                         type="button"

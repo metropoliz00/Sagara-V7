@@ -3178,6 +3178,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                                       const headerLower = header.toLowerCase();
                                       if (isNoCol) colWidth = '5%';
                                       else if (headerLower.includes('(dpl)') && !headerLower.includes('rata-rata')) colWidth = '12%';
+                                      else if (headerLower.includes('(1-4)')) colWidth = '12%';
                                       else if (headerLower.includes('indikator pengamatan')) colWidth = '24%';
                                       else if (headerLower.includes('sangat baik') || headerLower.includes('baik (b)') || headerLower.includes('cukup (c)') || headerLower.includes('kurang (k)')) colWidth = '16%';
                                       else if (headerLower.includes('nama murid') || headerLower.includes('nama siswa')) colWidth = '15%';

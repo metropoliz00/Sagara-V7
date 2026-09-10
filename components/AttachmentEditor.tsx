@@ -796,7 +796,7 @@ Sertakan:
           `| ${dim} | Menunjukkan sikap dan penerapan ${dim} dalam kegiatan pembelajaran materi ${t} | Menunjukkan konsistensi luar biasa, mandiri, dan menjadi teladan bagi rekan sekelas | Menunjukkan sikap aktif, teratur, dan mampu bertindak mandiri | Mulai menunjukkan sikap ${dim} namun sesekali masih membutuhkan pengingat guru | Belum menunjukkan sikap ${dim} dan memerlukan pendampingan intensif dari guru |`
         ).join('\n');
 
-        const studentHeaderCols = selectedDims.slice(0, 4).map(d => `${d} (1-4)`).join(' | ');
+        const studentHeaderCols = selectedDims.slice(0, 4).map(d => `${d}<br>(1-4)`).join(' | ');
         const studentDummyCols = selectedDims.slice(0, 4).map(() => '').join(' | ');
         const studentAlignCols = selectedDims.slice(0, 4).map(() => ':---:').join(' | ');
 

@@ -712,6 +712,8 @@ export interface Attachment {
 
 export interface LearningPlan {
   id: string;
+  classId?: string;
+  teacherId?: string;
   schoolName: string;
   compiler: string;
   nip: string;

@@ -2163,6 +2163,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
     const planData: LearningPlan = {
       id: targetId,
+      classId: classId || '',
+      teacherId: currentUser?.id || teacherProfile?.id || '',
       schoolName,
       tempatPengesahan,
       compiler,
@@ -3259,6 +3261,52 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
         {currentTab === 'dashboard' ? (
           /* DASHBOARD VIEW */
+          (() => {
+            const filteredPlans = plans.filter(plan => {
+              const classNum = (classId || '').toString().trim();
+              const planClassSemester = (plan.classSemester || '').toString().toUpperCase();
+              const planClassId = (plan.classId || '').toString().toUpperCase();
+
+              let matchesClass = true;
+              if (classNum && classNum.toLowerCase() !== 'all') {
+                const matchNum = classNum.match(/[1-6]/);
+                const digit = matchNum ? matchNum[0] : classNum;
+                const romanMap: Record<string, string> = { '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V', '6': 'VI' };
+                const roman = romanMap[digit] || digit;
+
+                matchesClass = 
+                  (planClassId && planClassId === classNum.toUpperCase()) ||
+                  planClassSemester.includes(`KELAS ${digit}`) ||
+                  planClassSemester.includes(`KELAS ${roman}`) ||
+                  planClassSemester.includes(` ${digit} `) ||
+                  planClassSemester.includes(` ${roman} `) ||
+                  planClassSemester.startsWith(`${digit}`) ||
+                  planClassSemester.startsWith(`${roman}`) ||
+                  (!plan.classId && !plan.classSemester);
+              }
+
+              const teacherName = (teacherProfile?.fullName || currentUser?.fullName || '').trim().toLowerCase();
+              const teacherNip = (teacherProfile?.nip || currentUser?.nip || '').trim();
+              const planCompiler = (plan.compiler || '').trim().toLowerCase();
+              const planNip = (plan.nip || '').trim();
+              const planTeacherId = plan.teacherId;
+              const currentUserId = currentUser?.id;
+
+              let matchesTeacher = true;
+              if (currentUser?.role === 'guru' || teacherProfile) {
+                if (teacherName || teacherNip || currentUserId) {
+                  matchesTeacher = 
+                    (planCompiler && teacherName && (planCompiler === teacherName || planCompiler.includes(teacherName) || teacherName.includes(planCompiler))) ||
+                    (planNip && teacherNip && planNip === teacherNip) ||
+                    (planTeacherId && currentUserId && planTeacherId === currentUserId) ||
+                    (!plan.compiler && !plan.nip && !plan.teacherId);
+                }
+              }
+
+              return matchesClass && matchesTeacher;
+            });
+
+            return (
           <div className="space-y-6">
             <div className="bg-white rounded-3xl border border-blue-100 shadow-xl overflow-hidden">
               <div className="bg-[#5AB2FF] text-white px-6 py-4 flex items-center justify-between">
@@ -3267,7 +3315,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                   Daftar Rencana Pembelajaran Tersimpan
                 </h3>
                 <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full shadow-inner border border-white/10 whitespace-nowrap shrink-0">
-                  {plans.length} Berkas
+                  {filteredPlans.length} Berkas
                 </span>
               </div>
 
@@ -3285,7 +3333,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                    {plans.map((plan, idx) => (
+                    {filteredPlans.map((plan, idx) => (
                       <tr key={plan.id} className="hover:bg-slate-50/50 transition-colors">
                         <td className="p-4 text-center text-slate-400 font-mono">{idx + 1}</td>
                         <td className="p-4">
@@ -3349,10 +3397,10 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                         </td>
                       </tr>
                     ))}
-                    {plans.length === 0 && (
+                    {filteredPlans.length === 0 && (
                       <tr>
                         <td colSpan={7} className="p-16 text-center text-slate-400 italic bg-slate-50/20">
-                          Tidak ada rencana pembelajaran yang tersimpan. Klik "Susun Baru" untuk mulai membuat Rencana Pembelajaran Mendalam.
+                          Tidak ada rencana pembelajaran yang tersimpan untuk akun guru dan kelas ini. Klik "Susun Baru" untuk mulai membuat Rencana Pembelajaran Mendalam.
                         </td>
                       </tr>
                     )}
@@ -3361,6 +3409,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
               </div>
             </div>
           </div>
+            );
+          })()
         ) : (
           /* FORM VIEW */
           <form onSubmit={handleSave} className="space-y-6">

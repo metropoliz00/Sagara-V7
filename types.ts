@@ -716,6 +716,7 @@ export interface LearningPlan {
   nip: string;
   subject: string;
   topic: string;
+  materials?: string[];
   classSemester: string;
   academicYear: string;
   timeAllocation: string;

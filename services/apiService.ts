@@ -4100,6 +4100,7 @@ export const apiService = {
       nip: item.nip,
       subject: item.subject,
       topic: item.topic,
+      materials: item.materials || (item.topic ? [item.topic] : []),
       classSemester: item.class_semester,
       academicYear: item.academic_year,
       timeAllocation: item.time_allocation,
@@ -4138,13 +4139,14 @@ export const apiService = {
   },
 
   saveLearningPlan: async (plan: LearningPlan): Promise<LearningPlan> => {
-    const dbPlan = {
+    const dbPlan: any = {
       id: plan.id,
       school_name: plan.schoolName,
       compiler: plan.compiler,
       nip: plan.nip,
       subject: plan.subject,
       topic: plan.topic,
+      materials: plan.materials || [],
       class_semester: plan.classSemester,
       academic_year: plan.academicYear,
       time_allocation: plan.timeAllocation,
@@ -4181,17 +4183,37 @@ export const apiService = {
       created_at: plan.createdAt || new Date().toISOString()
     };
 
-    const { data, error } = await supabase
-      .from('learning_plans')
-      .upsert(dbPlan, { onConflict: 'id' })
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Error saving learning plan to database:", error);
-      throw error;
+    let resultData: any = null;
+    try {
+      const { data, error } = await supabase
+        .from('learning_plans')
+        .upsert(dbPlan, { onConflict: 'id' })
+        .select()
+        .single();
+      
+      if (error) {
+        // If materials column doesn't exist in Supabase table yet, retry without materials column
+        if (error.message?.includes('materials') || error.code === 'PGRST204' || error.message?.includes('column')) {
+          const { materials: _m, ...fallbackPlan } = dbPlan;
+          const { data: retryData, error: retryError } = await supabase
+            .from('learning_plans')
+            .upsert(fallbackPlan, { onConflict: 'id' })
+            .select()
+            .single();
+          if (retryError) throw retryError;
+          resultData = retryData;
+        } else {
+          throw error;
+        }
+      } else {
+        resultData = data;
+      }
+    } catch (err) {
+      console.error("Error saving learning plan to database:", err);
+      throw err;
     }
 
+    const data = resultData;
     return {
       id: data.id,
       schoolName: data.school_name,
@@ -4199,6 +4221,7 @@ export const apiService = {
       nip: data.nip,
       subject: data.subject,
       topic: data.topic,
+      materials: plan.materials || (data.materials ? data.materials : [data.topic]),
       classSemester: data.class_semester,
       academicYear: data.academic_year,
       timeAllocation: data.time_allocation,

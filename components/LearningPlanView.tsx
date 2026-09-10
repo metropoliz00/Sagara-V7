@@ -3,7 +3,7 @@ import html2pdf from 'html2pdf.js';
 import { 
   Plus, Edit2, Trash2, Printer, CheckSquare, Square, 
   BookText, History, Settings, FilePlus, ChevronRight, Save, Undo, Eye, BookOpen, AlertCircle, Sparkles, Loader2,
-  Clock, RefreshCw, ArrowLeft
+  Clock, RefreshCw, ArrowLeft, Layers
 } from 'lucide-react';
 import { User, SchoolProfileData, LearningPlan, Attachment } from '../types';
 import { apiService } from '../services/apiService';
@@ -385,9 +385,15 @@ export const generateTailoredIntiTemplate = (
   digital: string,
   lingkungan: string,
   dimensions: string[],
-  existingPhases?: { phase: string; description: string }[]
+  existingPhases?: { phase: string; description: string }[],
+  materials?: string[]
 ): { phase: string; description: string }[] => {
-  const tMateri = (topic && topic.trim()) ? topic.trim() : '[Topik Bahasan]';
+  const cleanTopic = (topic && topic.trim()) ? topic.trim() : '';
+  const validMaterials = (materials && materials.length > 0) ? materials.filter(m => m.trim() !== '') : [];
+  const matStr = validMaterials.length > 0 ? validMaterials.join(', ') : '';
+  const tMateri = cleanTopic && matStr 
+    ? `${cleanTopic} (${matStr})` 
+    : (matStr || cleanTopic || '[Topik Bahasan]');
   const tModel = modelName || 'Problem Based Learning (PBL)';
   const tPendekatan = (pendekatan && pendekatan.trim()) ? pendekatan.trim() : 'Diferensiasi';
   const tStrategi = (strategi && strategi.trim()) ? strategi.trim() : 'Active Learning';
@@ -727,6 +733,7 @@ export const formatAndEnforce2to3Activities = (
   totalPhases: number,
   context: {
     topic: string;
+    materials?: string[];
     model: string;
     pendekatan: string;
     strategi: string;
@@ -790,7 +797,11 @@ export const formatAndEnforce2to3Activities = (
   }
 
   // 4. Ensure we have between 2 and 3 items!
-  const activeTopic = context.topic || 'topik materi pembelajaran';
+  const cleanTopic = (context.topic && context.topic.trim()) ? context.topic.trim() : '';
+  const validMats = (context.materials && context.materials.length > 0) ? context.materials.filter(m => m.trim() !== '') : [];
+  const activeTopic = cleanTopic && validMats.length > 0
+    ? `${cleanTopic} (${validMats.join(', ')})`
+    : (validMats.length > 0 ? validMats.join(', ') : (cleanTopic || 'topik materi pembelajaran'));
   const activeDigital = context.digital || 'media digital interaktif';
   const activeLingkungan = context.lingkungan || 'ruang kelas';
   const activePendekatan = context.pendekatan || 'Diferensiasi';
@@ -962,6 +973,26 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
   const [nip, setNip] = useState('198905202020121006');
   const [subject, setSubject] = useState('IPAS');
   const [topic, setTopic] = useState('');
+  const [materials, setMaterials] = useState<string[]>(['']);
+
+  const handleAddMaterial = () => {
+    setMaterials(prev => [...prev, '']);
+  };
+
+  const handleMaterialChange = (index: number, val: string) => {
+    setMaterials(prev => {
+      const next = [...prev];
+      next[index] = val;
+      return next;
+    });
+  };
+
+  const handleRemoveMaterial = (index: number) => {
+    setMaterials(prev => {
+      if (prev.length <= 1) return [''];
+      return prev.filter((_, i) => i !== index);
+    });
+  };
   const [classSemester, setClassSemester] = useState('V / 2 (Genap)');
   const [academicYear, setAcademicYear] = useState('2025/2026');
   const [timeAllocation, setTimeAllocation] = useState('4 JP (4 x 35 Menit)');
@@ -1242,6 +1273,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN):
   const [selectedGoalIndex, setSelectedGoalIndex] = useState<number | null>(null);
   const [tempPrefixType, setTempPrefixType] = useState('pendekatan');
   const [tempKko, setTempKko] = useState('menganalisis');
+  const [tempSelectedMaterialOption, setTempSelectedMaterialOption] = useState<string>('custom');
   const [tempMateri, setTempMateri] = useState('');
   const [tempDegree, setTempDegree] = useState('dengan tepat');
   const [customGeneratedText, setCustomGeneratedText] = useState('');
@@ -1253,6 +1285,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN):
     if (isGeneratingAiInti) return;
 
     const activeTopic = (topic && topic.trim()) ? topic.trim() : '[Topik Bahasan]';
+    const validMaterials = materials.filter(m => m.trim() !== '');
+    const activeMaterialsStr = validMaterials.length > 0 ? validMaterials.join(', ') : activeTopic;
     const goalsList = (goalsInput && goalsInput.length > 0)
       ? goalsInput.filter((g) => g.trim() !== '')
       : ['[Tujuan pembelajaran]'];
@@ -1280,7 +1314,8 @@ Tugas: Buat teks "kegiatanInti" (fase dan deskripsi langkah kegiatan operasional
 
 DATA INPUT PEMBELAJARAN:
 - Mata Pelajaran: ${subject || 'Mata Pelajaran'}
-- Topik / Materi: ${activeTopic}
+- Topik Utama: ${activeTopic}
+- Rincian Materi Pokok: ${activeMaterialsStr}
 - Tujuan Pembelajaran: ${goalsList.slice(0, 4).join('; ')}
 - Model Pembelajaran: ${activeModel}
 - Pendekatan: ${activePendekatan}
@@ -1304,9 +1339,9 @@ ATURAN WAJIB FORMAT & KONTEN:
 3. [Aksi operasional Guru / Murid...]
 3. TAG KOGNITIF: Setiap deskripsi fase WAJIB diawali tag kognitif: [Memahami], [Mengaplikasikan], atau [Merefleksi].
    Contoh format:
-   "[Memahami] 1. Guru menyajikan stimulus masalah kontekstual materi ${activeTopic} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan bernalar kritis (${activeDimensi}) serta merumuskan pertanyaan inti bersama bimbingan guru."
+   "[Memahami] 1. Guru menyajikan stimulus masalah kontekstual materi ${activeMaterialsStr} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan bernalar kritis (${activeDimensi}) serta merumuskan pertanyaan inti bersama bimbingan guru."
 4. DIKEMBANGKAN SESUAI DATA INPUT:
-   Setiap butir kegiatan HARUS dikembangkan secara kontekstual menghubungkan materi "${activeTopic}", media "${activeDigital}", lingkungan "${activeLingkungan}", pendekatan "${activePendekatan}", strategi "${activeStrategi}", metode "${activeMetode}", dan dimensi "${activeDimensi}".
+   Setiap butir kegiatan HARUS dikembangkan secara kontekstual menghubungkan materi "${activeMaterialsStr}" (topik: ${activeTopic}), media "${activeDigital}", lingkungan "${activeLingkungan}", pendekatan "${activePendekatan}", strategi "${activeStrategi}", metode "${activeMetode}", dan dimensi "${activeDimensi}".
 
 KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA PENJELASAN LAIN):
 {
@@ -1314,8 +1349,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
     ${basePhases.map((p, idx) => {
       const isSubstantive = idx === 2 || p.phase.toLowerCase().includes('penyelidikan') || p.phase.toLowerCase().includes('data') || p.phase.toLowerCase().includes('proyek') || p.phase.toLowerCase().includes('kolaboratif') || p.phase.toLowerCase().includes('bimbing');
       const sampleDesc = isSubstantive
-        ? `[Mengaplikasikan] 1. Murid melakukan eksplorasi data dan penyelidikan materi ${activeTopic} di ${activeLingkungan} didukung media ${activeDigital}.\\n2. Guru mendampingi kelompok yang membutuhkan bimbingan sesuai pendekatan ${activePendekatan} dan strategi ${activeStrategi}.\\n3. Murid mencatat dan memverifikasi data temuan kelompok menggunakan metode ${activeMetode}.`
-        : `[Memahami] 1. Guru menyajikan stimulus kontekstual mengenai ${activeTopic} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan merumuskan masalah inti dipandu bimbingan guru.`;
+        ? `[Mengaplikasikan] 1. Murid melakukan eksplorasi data dan penyelidikan materi ${activeMaterialsStr} di ${activeLingkungan} didukung media ${activeDigital}.\\n2. Guru mendampingi kelompok yang membutuhkan bimbingan sesuai pendekatan ${activePendekatan} dan strategi ${activeStrategi}.\\n3. Murid mencatat dan memverifikasi data temuan kelompok menggunakan metode ${activeMetode}.`
+        : `[Memahami] 1. Guru menyajikan stimulus kontekstual mengenai ${activeMaterialsStr} melalui media ${activeDigital} di ${activeLingkungan}.\\n2. Murid mengamati dengan rasa ingin tahu dan merumuskan masalah inti dipandu bimbingan guru.`;
       return `{ "phase": "${p.phase.replace(/"/g, '\\"')}", "description": "${sampleDesc}" }`;
     }).join(',\n    ')}
   ]
@@ -1343,6 +1378,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
             parsed.kegiatanInti.length,
             {
               topic: activeTopic,
+              materials: validMaterials,
               model: activeModel,
               pendekatan: activePendekatan,
               strategi: activeStrategi,
@@ -1363,7 +1399,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
       } else {
         const fallbackInti = generateTailoredIntiTemplate(
           activeModel, activeTopic, goalsList, activePendekatan, activeStrategi,
-          activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases
+          activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases, validMaterials
         );
         setIntiInput(fallbackInti);
         onShowNotification('Sintak Kegiatan Inti berhasil disesuaikan dengan data input & sintaks model (2-3 butir per fase).', 'success');
@@ -1372,7 +1408,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
       console.warn('AI call for Kegiatan Inti encountered issue, using curated tailored engine:', err);
       const fallbackInti = generateTailoredIntiTemplate(
         activeModel, activeTopic, goalsList, activePendekatan, activeStrategi,
-        activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases
+        activeMetode, activeDigital, activeLingkungan, selectedDimensions, basePhases, validMaterials
       );
       setIntiInput(fallbackInti);
       onShowNotification('Sintak Kegiatan Inti berhasil disesuaikan dengan data input & sintaks model (2-3 butir per fase).', 'warning');
@@ -1383,11 +1419,12 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
   const handleAddIntiPhase = () => {
     const nextNum = intiInput.length + 1;
+    const matSample = materials.find(m => m.trim() !== '') || topic || 'pembelajaran';
     setIntiInput([
       ...intiInput,
       {
         phase: `Fase ${nextNum}: Aktivitas Pembelajaran Tambahan`,
-        description: `[Mengaplikasikan] 1. Guru mendampingi murid dalam kegiatan penguatan konsep materi ${topic || 'pembelajaran'}.\n2. Murid mempraktikkan keterampilan dan mendiskusikan pemecahan masalah bersama kelompok.\n3. Murid mencatat hasil pengerjaan pada lembar kerja.`
+        description: `[Mengaplikasikan] 1. Guru mendampingi murid dalam kegiatan penguatan konsep materi ${matSample}.\n2. Murid mempraktikkan keterampilan dan mendiskusikan pemecahan masalah bersama kelompok.\n3. Murid mencatat hasil pengerjaan pada lembar kerja.`
       }
     ]);
   };
@@ -1402,9 +1439,10 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
   const getSintaksSuggestion = (sIdx: number) => {
     const tTopic = topic || '[Topik Bahasan]';
+    const validMaterials = materials.filter(m => m.trim() !== '');
     const tGoals = goalsInput.length > 0 ? goalsInput : ['[Tujuan pembelajaran]'];
     const res = generateTailoredIntiTemplate(
-      model, tTopic, tGoals, pendekatan, strategi, metode, digital, lingkungan, selectedDimensions, intiInput
+      model, tTopic, tGoals, pendekatan, strategi, metode, digital, lingkungan, selectedDimensions, intiInput, validMaterials
     );
     return res[sIdx]?.description || '';
   };
@@ -1660,9 +1698,19 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
   useEffect(() => {
     if (selectedGoalIndex !== null) {
-      setTempMateri(topic || '');
+      const validMaterials = materials.filter(m => m.trim() !== '');
+      if (validMaterials.length > 0) {
+        setTempSelectedMaterialOption('mat_0');
+        setTempMateri(validMaterials[0]);
+      } else if (topic && topic.trim()) {
+        setTempSelectedMaterialOption('topic');
+        setTempMateri(topic);
+      } else {
+        setTempSelectedMaterialOption('custom');
+        setTempMateri('');
+      }
     }
-  }, [selectedGoalIndex, topic]);
+  }, [selectedGoalIndex, topic, materials]);
 
   useEffect(() => {
     if (selectedGoalIndex !== null) {
@@ -1916,6 +1964,7 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
   const handleResetForm = () => {
     setEditingId(null);
     setTopic('');
+    setMaterials(['']);
     
     // Automatically set Class/Semester/Fase and other defaults on reset
     const autoInfo = autoClassSemesterPlusFase();
@@ -1990,7 +2039,12 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
     setCompiler(plan.compiler);
     setNip(plan.nip);
     setSubject(plan.subject);
-    setTopic(plan.topic);
+    setTopic(plan.topic || '');
+    setMaterials(
+      plan.materials && plan.materials.length > 0
+        ? plan.materials
+        : (plan.topic ? [plan.topic] : [''])
+    );
     setClassSemester(plan.classSemester);
     setAcademicYear(plan.academicYear);
     setTimeAllocation(plan.timeAllocation);
@@ -2096,11 +2150,15 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!topic.trim()) {
-      showAlert('Harap isi materi pokok!', 'error');
+    const validMaterials = materials.filter(m => m.trim() !== '');
+    const cleanTopic = topic.trim();
+
+    if (!cleanTopic && validMaterials.length === 0) {
+      showAlert('Harap isi Topik Pembelajaran atau Materi Pokok!', 'error');
       return;
     }
 
+    const effectiveTopic = cleanTopic || (validMaterials[0] || '');
     const targetId = editingId || 'plan-' + Date.now();
 
     const planData: LearningPlan = {
@@ -2110,7 +2168,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
       compiler,
       nip,
       subject,
-      topic,
+      topic: effectiveTopic,
+      materials: validMaterials,
       classSemester,
       academicYear,
       timeAllocation,
@@ -2313,9 +2372,12 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
             <td class="meta-label" style="width: 17%;">Nama Sekolah</td>
             <td style="width: 2%; text-align: center;">:</td>
             <td style="width: 31%; font-weight: bold;">${plan.schoolName}</td>
-            <td class="meta-label" style="width: 17%; padding-left: 20px;">Materi Pokok</td>
+            <td class="meta-label" style="width: 17%; padding-left: 20px;">Topik / Materi</td>
             <td style="width: 2%; text-align: center;">:</td>
-            <td style="width: 31%; font-weight: bold;">${plan.topic}</td>
+            <td style="width: 31%; font-weight: bold;">
+              ${plan.topic}
+              ${plan.materials && plan.materials.length > 0 ? `<div style="font-size: 8.5pt; font-weight: normal; color: #334155; margin-top: 1px;">Materi: ${plan.materials.join('; ')}</div>` : ''}
+            </td>
           </tr>
           <tr>
             <td class="meta-label">Nama Penyusun</td>
@@ -2783,9 +2845,16 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                 
                 <div className="space-y-1">
                   <div className="flex items-start">
-                    <span className="w-28 text-slate-500 shrink-0">Materi Pokok</span>
+                    <span className="w-28 text-slate-500 shrink-0">Topik / Materi</span>
                     <span className="mr-2 shrink-0">:</span>
-                    <span className="font-bold text-slate-800 flex-1 min-w-0 break-words">{printPlan.topic}</span>
+                    <div className="flex-1 min-w-0 break-words">
+                      <span className="font-bold text-slate-800">{printPlan.topic}</span>
+                      {printPlan.materials && printPlan.materials.length > 0 && (
+                        <div className="text-[10px] text-slate-600 font-normal mt-0.5">
+                          Materi: {printPlan.materials.join('; ')}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-start">
                     <span className="w-28 text-slate-500 shrink-0">Kelas/Semester</span>
@@ -3341,9 +3410,9 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Mapel */}
-                    <div className="space-y-1.5 col-span-1">
+                    <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase">Mata Pelajaran</label>
                       <select 
                         value={subject}
@@ -3356,21 +3425,8 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                       </select>
                     </div>
 
-                    {/* Topic */}
-                    <div className="space-y-1.5 col-span-1 md:col-span-2">
-                      <label className="text-xs font-bold text-slate-500 uppercase">Materi Pokok / Topik Bahasan</label>
-                      <input 
-                        type="text"
-                        value={topic}
-                        onChange={(e) => setTopic(e.target.value)}
-                        placeholder="Masukkan Materi Pokok / Topik Bahasan..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
-                        required
-                      />
-                    </div>
-
                     {/* Alokasi Waktu */}
-                    <div className="space-y-1.5 col-span-1">
+                    <div className="space-y-1.5">
                       <label className="text-xs font-bold text-slate-500 uppercase">Alokasi Waktu</label>
                       <select 
                         value={timeAllocation}
@@ -3381,6 +3437,73 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
                       </select>
+                    </div>
+                  </div>
+
+                  {/* Topik Pembelajaran */}
+                  <div className="space-y-1.5 bg-slate-50/60 p-4 rounded-2xl border border-slate-200/80">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-700 uppercase flex items-center gap-1.5">
+                        <BookOpen size={14} className="text-[#5AB2FF]" />
+                        Topik Pembelajaran (Topik Utama / Tema Besar)
+                      </label>
+                      <span className="text-[10px] text-slate-400 font-medium">Contoh: Sistem Organ Tubuh Manusia, Siklus Air</span>
+                    </div>
+                    <input 
+                      type="text"
+                      value={topic}
+                      onChange={(e) => setTopic(e.target.value)}
+                      placeholder="Masukkan Topik Utama Pembelajaran..."
+                      className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
+                    />
+                  </div>
+
+                  {/* Rincian Materi Pokok (Sub-Input Dinamis) */}
+                  <div className="space-y-2.5 bg-indigo-50/40 p-4 rounded-2xl border border-indigo-100">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="text-xs font-bold text-indigo-950 uppercase flex items-center gap-1.5">
+                          <Layers size={14} className="text-indigo-600" />
+                          Rincian Materi Pokok (Sub-Materi)
+                        </label>
+                        <p className="text-[11px] text-indigo-700/80 font-medium mt-0.5">
+                          Materi ini menjadi dasar pemilihan pada Tujuan Pembelajaran (TP) & penyesuaian konteks Kegiatan AI.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddMaterial}
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-700 bg-indigo-100 hover:bg-indigo-200 px-3 py-1.5 rounded-xl border border-indigo-200/60 transition self-start sm:self-auto"
+                      >
+                        <Plus size={14} /> Tambah Sub-Materi
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 pt-1">
+                      {materials.map((mat, mIdx) => (
+                        <div key={mIdx} className="flex items-center gap-2">
+                          <span className="text-[11px] font-bold text-indigo-700 bg-white border border-indigo-200 px-2.5 py-2 rounded-xl shrink-0 min-w-[76px] text-center shadow-xs">
+                            Materi #{mIdx + 1}
+                          </span>
+                          <input
+                            type="text"
+                            value={mat}
+                            onChange={(e) => handleMaterialChange(mIdx, e.target.value)}
+                            placeholder={`Masukkan sub-materi ke-${mIdx + 1}... ${mIdx === 0 ? '(misal: Struktur & Fungsi Organ Jantung)' : mIdx === 1 ? '(misal: Pembuluh Darah & Sirkulasi)' : ''}`}
+                            className="w-full bg-white border border-indigo-200/70 rounded-xl px-3.5 py-2 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#5AB2FF]"
+                          />
+                          {materials.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMaterial(mIdx)}
+                              className="p-2 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-xl border border-rose-200 transition shrink-0"
+                              title="Hapus Sub-Materi Ini"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -4001,12 +4124,48 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
                                   {/* Bagian 3: Materi Bahasan */}
                                   <div className="space-y-1">
                                     <label className="text-[10px] font-extrabold text-slate-500 uppercase">3. Materi / Sasaran</label>
+                                    <select
+                                      value={tempSelectedMaterialOption}
+                                      onChange={(e) => {
+                                        const opt = e.target.value;
+                                        setTempSelectedMaterialOption(opt);
+                                        if (opt.startsWith('mat_')) {
+                                          const idx = parseInt(opt.replace('mat_', ''), 10);
+                                          const validMats = materials.filter(m => m.trim() !== '');
+                                          setTempMateri(validMats[idx] || '');
+                                        } else if (opt === 'all_materials') {
+                                          const validMats = materials.filter(m => m.trim() !== '');
+                                          setTempMateri(validMats.join(', '));
+                                        } else if (opt === 'topic') {
+                                          setTempMateri(topic);
+                                        }
+                                      }}
+                                      className="w-full bg-white border border-indigo-200/60 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF]"
+                                    >
+                                      {materials.filter(m => m.trim() !== '').map((mat, idx) => (
+                                        <option key={idx} value={`mat_${idx}`}>
+                                          Materi #{idx + 1}: {mat.length > 20 ? mat.substring(0, 20) + '...' : mat}
+                                        </option>
+                                      ))}
+                                      {materials.filter(m => m.trim() !== '').length > 1 && (
+                                        <option value="all_materials">Semua Sub-Materi</option>
+                                      )}
+                                      {topic.trim() && (
+                                        <option value="topic">
+                                          Topik: {topic.length > 20 ? topic.substring(0, 20) + '...' : topic}
+                                        </option>
+                                      )}
+                                      <option value="custom">-- Ketik Kustom --</option>
+                                    </select>
                                     <input
                                       type="text"
                                       value={tempMateri}
-                                      onChange={(e) => setTempMateri(e.target.value)}
-                                      placeholder="Masukkan materi pokok..."
-                                      className="w-full bg-white border border-indigo-200/60 rounded-xl px-2.5 py-2 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF]"
+                                      onChange={(e) => {
+                                        setTempMateri(e.target.value);
+                                        setTempSelectedMaterialOption('custom');
+                                      }}
+                                      placeholder="Masukkan materi sasaran..."
+                                      className="w-full bg-white border border-indigo-200/60 rounded-xl px-2.5 py-1.5 text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#5AB2FF]"
                                     />
                                   </div>
 

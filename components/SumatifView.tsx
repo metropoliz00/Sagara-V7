@@ -874,8 +874,8 @@ const SumatifView: React.FC<SumatifViewProps> = ({
   const handleResetResult = async (studentId: string, sumatif: Sumatif) => {
     setModal({
       isOpen: true,
-      title: 'Reset Hasil Ujian (Realtime Database)',
-      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Status tes siswa akan direset langsung di database ke "mulai" dan siswa dapat segera mengerjakan ulang.',
+      title: 'Reset Hasil Ujian',
+      message: 'Apakah Anda yakin ingin mereset hasil ujian siswa ini? Status tes siswa akan direset ke mode "mulai" dan siswa dapat segera mengerjakan ulang.',
       type: 'confirm',
       confirmText: 'Reset Sekarang',
       cancelText: 'Batal',

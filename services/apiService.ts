@@ -3956,10 +3956,7 @@ export const apiService = {
     const cached = cacheService.get<SumatifResult[]>(`sumatif_results_${sumatifId}`) || [];
     const index = cached.findIndex(r => r.studentId === studentId);
     if (index !== -1) {
-      cached[index].status_tes = 'mulai';
-      cached[index].score = 0;
-      cached[index].answers = {};
-      cached[index].submittedAt = '';
+      cached.splice(index, 1);
       cacheService.set(`sumatif_results_${sumatifId}`, cached);
     }
 
@@ -3968,16 +3965,9 @@ export const apiService = {
     try {
       const { error } = await supabase
         .from('sumatif_results')
-        .upsert({ 
-          sumatif_id: sumatifId, 
-          student_id: studentId, 
-          status_tes: 'mulai', 
-          score: 0, 
-          answers: {}, 
-          submitted_at: null,
-          needs_grading: false,
-          manual_scores: {}
-        }, { onConflict: 'sumatif_id,student_id' });
+        .delete()
+        .eq('sumatif_id', sumatifId)
+        .eq('student_id', studentId);
       if (error) throw error;
     } catch (err) {
       console.warn("resetSumatifResult database failed:", err);

@@ -625,7 +625,7 @@ export interface SumatifResult {
   startedAt?: string;
   createdAt?: string;
   submittedAt: string;
-  status_tes?: 'mulai' | 'sedang mengerjakan' | 'selesai';
+  status_tes?: 'mulai' | 'sedang mengerjakan' | 'selesai' | 'belum mulai';
   needsGrading?: boolean; // True if there are ungraded 'uraian' questions
 }
 

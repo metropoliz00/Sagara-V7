@@ -4119,59 +4119,112 @@ export const apiService = {
 
   // --- Learning Plans ---
   getLearningPlans: async (): Promise<LearningPlan[]> => {
-    const { data, error } = await supabase
-      .from('learning_plans')
-      .select('id, school_name, compiler, nip, subject, topic, class_semester, academic_year, time_allocation, student_characteristics, profile_dimensions, capaian_pembelajaran, learning_goals, pendekatan, pendekatan_reason, model, model_reason, strategi, strategi_reason, metode, metode_reason, lintas_disiplin, mitra, digital, lingkungan, kegiatan_awal, kegiatan_inti, kegiatan_penutup, kegiatan_awal_title, kegiatan_inti_title, kegiatan_penutup_title, durasi_awal, durasi_inti, durasi_penutup, asesmen_awal, asesmen_proses, asesmen_akhir, attachments, created_date, created_at')
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      console.error("Error fetching learning plans from database:", error);
+    // Helper to retrieve fallback cached plans
+    const getLocalCachedPlans = (): LearningPlan[] => {
+      const cached = cacheService.get('learning_plans') as LearningPlan[];
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+      if (typeof window !== 'undefined') {
+        try {
+          const local = localStorage.getItem('sagara_learning_plans');
+          if (local) {
+            const parsed = JSON.parse(local);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        } catch (e) {
+          // ignore error
+        }
+      }
       return [];
+    };
+
+    if (!supabase) {
+      return getLocalCachedPlans();
     }
-    
-    return data.map((item: any) => ({
-      id: item.id,
-      schoolName: item.school_name,
-      compiler: item.compiler,
-      nip: item.nip,
-      subject: item.subject,
-      topic: item.topic,
-      materials: item.materials || (item.topic ? [item.topic] : []),
-      classSemester: item.class_semester,
-      academicYear: item.academic_year,
-      timeAllocation: item.time_allocation,
-      studentCharacteristics: item.student_characteristics,
-      profileDimensions: item.profile_dimensions || [],
-      capaianPembelajaran: item.capaian_pembelajaran,
-      learningGoals: item.learning_goals || [],
-      pendekatan: item.pendekatan,
-      pendekatanReason: item.pendekatan_reason,
-      model: item.model,
-      modelReason: item.model_reason,
-      strategi: item.strategi,
-      strategiReason: item.strategi_reason,
-      metode: item.metode || [],
-      metodeReason: item.metode_reason,
-      lintasDisiplin: item.lintas_disiplin,
-      mitra: item.mitra,
-      digital: item.digital,
-      lingkungan: item.lingkungan,
-      kegiatanAwal: item.kegiatan_awal || [],
-      kegiatanInti: item.kegiatan_inti || [],
-      kegiatanPenutup: item.kegiatan_penutup || [],
-      kegiatanAwalTitle: item.kegiatan_awal_title,
-      kegiatanIntiTitle: item.kegiatan_inti_title,
-      kegiatanPenutupTitle: item.kegiatan_penutup_title,
-      durasiAwal: item.durasi_awal,
-      durasiInti: item.durasi_inti,
-      durasiPenutup: item.durasi_penutup,
-      asesmenAwal: item.asesmen_awal,
-      asesmenProses: item.asesmen_proses,
-      asesmenAkhir: item.asesmen_akhir,
-      attachments: item.attachments || [],
-      createdDate: item.created_date,
-      createdAt: item.created_at
-    }));
+
+    try {
+      // First attempt: query using wildcard so all fields including optional materials are retrieved
+      let response = await supabase
+        .from('learning_plans')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      // If statement timeout (57014) occurred (e.g. temporary table lock or slow network), retry once after a short delay
+      if (response.error && (response.error.code === '57014' || response.error.message?.includes('timeout'))) {
+        console.warn("Learning plans query timed out. Retrying once after delay...");
+        await new Promise(resolve => setTimeout(resolve, 800));
+        response = await supabase
+          .from('learning_plans')
+          .select('*')
+          .order('created_at', { ascending: false });
+      }
+
+      if (response.error) {
+        console.warn("Notice: Fetching learning plans from Supabase failed, using local cached data:", response.error.message || response.error);
+        return getLocalCachedPlans();
+      }
+
+      const rawData = response.data || [];
+      const plans: LearningPlan[] = rawData.map((item: any) => ({
+        id: item.id,
+        schoolName: item.school_name,
+        compiler: item.compiler,
+        nip: item.nip,
+        subject: item.subject,
+        topic: item.topic,
+        materials: item.materials && Array.isArray(item.materials) && item.materials.length > 0
+          ? item.materials
+          : (item.topic ? [item.topic] : []),
+        classSemester: item.class_semester,
+        academicYear: item.academic_year,
+        timeAllocation: item.time_allocation,
+        studentCharacteristics: item.student_characteristics,
+        profileDimensions: item.profile_dimensions || [],
+        capaianPembelajaran: item.capaian_pembelajaran,
+        learningGoals: item.learning_goals || [],
+        pendekatan: item.pendekatan,
+        pendekatanReason: item.pendekatan_reason,
+        model: item.model,
+        modelReason: item.model_reason,
+        strategi: item.strategi,
+        strategiReason: item.strategi_reason,
+        metode: item.metode || [],
+        metodeReason: item.metode_reason,
+        lintasDisiplin: item.lintas_disiplin,
+        mitra: item.mitra,
+        digital: item.digital,
+        lingkungan: item.lingkungan,
+        kegiatanAwal: item.kegiatan_awal || [],
+        kegiatanInti: item.kegiatan_inti || [],
+        kegiatanPenutup: item.kegiatan_penutup || [],
+        kegiatanAwalTitle: item.kegiatan_awal_title,
+        kegiatanIntiTitle: item.kegiatan_inti_title,
+        kegiatanPenutupTitle: item.kegiatan_penutup_title,
+        durasiAwal: item.durasi_awal,
+        durasiInti: item.durasi_inti,
+        durasiPenutup: item.durasi_penutup,
+        asesmenAwal: item.asesmen_awal,
+        asesmenProses: item.asesmen_proses,
+        asesmenAkhir: item.asesmen_akhir,
+        attachments: item.attachments || [],
+        createdDate: item.created_date,
+        createdAt: item.created_at
+      }));
+
+      // Cache the fresh plans
+      cacheService.set('learning_plans', plans);
+      if (typeof window !== 'undefined' && plans.length > 0) {
+        try {
+          localStorage.setItem('sagara_learning_plans', JSON.stringify(plans));
+        } catch (e) {
+          // ignore
+        }
+      }
+
+      return plans;
+    } catch (err: any) {
+      console.warn("Exception fetching learning plans, falling back to cache:", err);
+      return getLocalCachedPlans();
+    }
   },
 
   saveLearningPlan: async (plan: LearningPlan): Promise<LearningPlan> => {
@@ -4246,11 +4299,22 @@ export const apiService = {
       }
     } catch (err) {
       console.error("Error saving learning plan to database:", err);
+      // Even if remote save failed, ensure local cache retains user plan
+      const cached = (cacheService.get('learning_plans') || []) as LearningPlan[];
+      const updated = cached.some((p: any) => p.id === plan.id)
+        ? cached.map((p: any) => p.id === plan.id ? plan : p)
+        : [plan, ...cached];
+      cacheService.set('learning_plans', updated);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('sagara_learning_plans', JSON.stringify(updated));
+        } catch (e) {}
+      }
       throw err;
     }
 
     const data = resultData;
-    return {
+    const savedPlan: LearningPlan = {
       id: data.id,
       schoolName: data.school_name,
       compiler: data.compiler,
@@ -4293,9 +4357,33 @@ export const apiService = {
       createdDate: data.created_date,
       createdAt: data.created_at
     };
+
+    // Update in memory cache and localStorage
+    const cached = (cacheService.get('learning_plans') || []) as LearningPlan[];
+    const updated = cached.some((p: any) => p.id === savedPlan.id)
+      ? cached.map((p: any) => p.id === savedPlan.id ? savedPlan : p)
+      : [savedPlan, ...cached];
+    cacheService.set('learning_plans', updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('sagara_learning_plans', JSON.stringify(updated));
+      } catch (e) {}
+    }
+
+    return savedPlan;
   },
 
   deleteLearningPlan: async (id: string): Promise<void> => {
+    // Update local cache first
+    const cached = (cacheService.get('learning_plans') || []) as LearningPlan[];
+    const updated = cached.filter((p: any) => p.id !== id);
+    cacheService.set('learning_plans', updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('sagara_learning_plans', JSON.stringify(updated));
+      } catch (e) {}
+    }
+
     const { error } = await supabase
       .from('learning_plans')
       .delete()

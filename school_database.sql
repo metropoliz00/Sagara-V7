@@ -627,6 +627,8 @@ CREATE TABLE IF NOT EXISTS learning_plans (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX IF NOT EXISTS idx_learning_plans_created_at ON learning_plans (created_at DESC);
+
 -- 36. Kokurikuler Plans (RPK) table
 CREATE TABLE IF NOT EXISTS kokurikuler_plans (
   id TEXT PRIMARY KEY,

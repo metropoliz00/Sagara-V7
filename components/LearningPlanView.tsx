@@ -907,6 +907,53 @@ export const LearningPlanView: React.FC<LearningPlanViewProps> = ({
     };
   };
 
+  // Helper to format dynamic "Guru Kelas [Roman]" based on teacher's class / plan's class
+  const getGuruKelasLabel = (planItem?: Partial<LearningPlan> | null) => {
+    const romanClasses: Record<string, string> = {
+      '1': 'I', '2': 'II', '3': 'III', '4': 'IV', '5': 'V', '6': 'VI'
+    };
+
+    // Candidate class source in priority order:
+    // 1. planItem.classId
+    // 2. view classId prop
+    // 3. teacherProfile.teachingClass or teacherProfile.classId
+    // 4. currentUser.classId or currentUser.teachingClass
+    // 5. extract from planItem.classSemester or current form classSemester
+    const sourceStr = (
+      planItem?.classId ||
+      classId ||
+      teacherProfile?.teachingClass ||
+      (teacherProfile as any)?.classId ||
+      currentUser?.classId ||
+      (currentUser as any)?.teachingClass ||
+      planItem?.classSemester ||
+      classSemester ||
+      ''
+    ).toString().toUpperCase().trim();
+
+    // 1. Check if it already contains Roman numerals (VI, IV, V, III, II, I) with optional section letter (e.g. "V A" or "V")
+    const romanMatch = sourceStr.match(/\b(VI|IV|V|III|II|I)\b/);
+    if (romanMatch) {
+      const letterMatch = sourceStr.match(/\b(VI|IV|V|III|II|I)\s*([A-Z])\b/);
+      if (letterMatch && letterMatch[2] && !['GANJIL', 'GENAP'].includes(letterMatch[2])) {
+        return `Guru Kelas ${letterMatch[1]} ${letterMatch[2]}`;
+      }
+      return `Guru Kelas ${romanMatch[1]}`;
+    }
+
+    // 2. Check if it contains digits 1-6 with optional section letter (e.g. "5", "5A", "5 A")
+    const digitMatch = sourceStr.match(/([1-6])\s*([A-Z])?/);
+    if (digitMatch) {
+      const num = digitMatch[1];
+      const roman = romanClasses[num] || num;
+      const letter = digitMatch[2] && !['G'].includes(digitMatch[2]) ? ` ${digitMatch[2]}` : '';
+      return `Guru Kelas ${roman}${letter}`;
+    }
+
+    // 3. Fallback
+    return 'Guru Kelas V';
+  };
+
   // Merge schedule subjects with standard base keys from CP_TEMPLATES
   const getDynamicSubjects = () => {
     // 10 Core/Main elementary school subjects ordered with PAI and Koding (KKA) first
@@ -2582,16 +2629,16 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
           <table class="signature-table">
             <tr>
               <td>
-                <p>Mengetahui,<br/>Kepala UPT SD Negeri Remen 2</p>
+                <p>Mengetahui,<br/>Kepala ${schoolProfile?.name || 'UPT SD Negeri Remen 2'}</p>
                 <br/><br/><br/>
-                <p style="font-weight: bold; font-size: 10pt;">Nurhariadji, S.Pd</p>
-                <p style="font-size: 10pt;">NIP. 196701161994031012</p>
+                <p style="font-weight: bold; font-size: 10pt;">${schoolProfile?.headmaster || 'Nurhariadji, S.Pd'}</p>
+                <p style="font-size: 10pt;">NIP. ${schoolProfile?.headmasterNip || '196701161994031012'}</p>
               </td>
               <td>
-                <p>Remen, ${new Date(plan.createdAt || new Date()).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}<br/>Guru Kelas V</p>
+                <p>${plan.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}, ${new Date(plan.createdAt || new Date()).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}<br/>${getGuruKelasLabel(plan)}</p>
                 <br/><br/><br/>
-                <p style="font-weight: bold; font-size: 10pt;">${plan.compiler}</p>
-                <p style="font-size: 10pt;">NIP. ${plan.nip || '198905202020121006'}</p>
+                <p style="font-weight: bold; font-size: 10pt;">${plan.compiler || teacherProfile?.fullName || currentUser?.fullName || 'Dedy Meyga Saputra, S.Pd, M.Pd'}</p>
+                <p style="font-size: 10pt;">NIP. ${plan.nip || teacherProfile?.nip || currentUser?.nip || '198905202020121006'}</p>
               </td>
             </tr>
           </table>
@@ -3097,22 +3144,22 @@ KEMBALIKAN OUTPUT HANYA DALAM FORMAT JSON VALID BERIKUT (TANPA MARKDOWN, TANPA P
               <div className="text-center w-60 space-y-14">
                 <div>
                   <p>Mengetahui,</p>
-                  <p>Kepala UPT SD Negeri Remen 2</p>
+                  <p>Kepala {schoolProfile?.name || 'UPT SD Negeri Remen 2'}</p>
                 </div>
                 <div className="space-y-0.5">
-                  <p className="font-bold text-[11px]">Nurhariadji, S.Pd</p>
-                  <p className="text-[11px] text-slate-500 font-mono">NIP. 196701161994031012</p>
+                  <p className="font-bold text-[11px]">{schoolProfile?.headmaster || 'Nurhariadji, S.Pd'}</p>
+                  <p className="text-[11px] text-slate-500 font-mono">NIP. {schoolProfile?.headmasterNip || '196701161994031012'}</p>
                 </div>
               </div>
               
               <div className="text-center w-60 space-y-14">
                 <div>
                   <p>{printPlan.tempatPengesahan || schoolProfile?.desa || (schoolProfile?.jalan || schoolProfile?.address)?.split(',')[0]?.trim() || 'Remen'}, {new Date(printPlan.createdAt).toLocaleDateString('id-ID', {day: 'numeric', month: 'long', year: 'numeric'})}</p>
-                  <p>Guru Kelas V</p>
+                  <p>{getGuruKelasLabel(printPlan)}</p>
                 </div>
                 <div className="space-y-0.5">
-                  <p className="font-bold text-[11px]">{printPlan.compiler}</p>
-                  <p className="text-[11px] text-slate-500 font-mono">NIP. {printPlan.nip || '198905202020121006'}</p>
+                  <p className="font-bold text-[11px]">{printPlan.compiler || teacherProfile?.fullName || currentUser?.fullName || 'Dedy Meyga Saputra, S.Pd, M.Pd'}</p>
+                  <p className="text-[11px] text-slate-500 font-mono">NIP. {printPlan.nip || teacherProfile?.nip || currentUser?.nip || '198905202020121006'}</p>
                 </div>
               </div>
             </div>

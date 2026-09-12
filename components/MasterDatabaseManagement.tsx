@@ -38,7 +38,7 @@ export const MasterDatabaseManagement: React.FC = () => {
 
   const fetchSchools = async () => {
     try {
-      if (!masterSupabase) throw new Error("Database Pusat tidak terkonfigurasi.");
+      if (!masterSupabase) throw new Error("Database SAGARA tidak terkonfigurasi.");
       
       const { data, error: fetchErr } = await masterSupabase
         .from('school_databases')
@@ -149,8 +149,8 @@ export const MasterDatabaseManagement: React.FC = () => {
     <div className="bg-white rounded-xl shadow p-4 md:p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-xl font-bold text-gray-800">Manajemen Database Pusat</h2>
-          <p className="text-sm text-gray-500">Kelola database pusat untuk aktivasi sekolah</p>
+          <h2 className="text-xl font-bold text-gray-800">Manajemen Database SAGARA</h2>
+          <p className="text-sm text-gray-500">Kelola database dan aktivasi sekolah di Database SAGARA</p>
         </div>
         <button 
           onClick={() => {
@@ -262,7 +262,7 @@ export const MasterDatabaseManagement: React.FC = () => {
             {schools.length === 0 && !isAdding && (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  Belum ada data sekolah di database pusat.
+                  Belum ada data sekolah di Database SAGARA.
                 </td>
               </tr>
             )}

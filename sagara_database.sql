@@ -1,13 +1,23 @@
--- SAGARA School Database Schema
--- Run this in your Supabase SQL Editor for the School Database.
+-- ==============================================================================
+-- DATABASE SAGARA - UNIFIED SINGLE DATABASE SCHEMA
+-- ==============================================================================
+-- Skema Database Tunggal (Unified) untuk Aplikasi SAGARA.
+-- Menggabungkan seluruh tabel Pusat dan Sekolah ke dalam satu Database SAGARA.
+-- Jalankan seluruh script SQL ini di Supabase SQL Editor Database SAGARA Anda.
+-- ==============================================================================
 
--- Drop existing tables to ensure clean schema if needed (Optional, remove if maintaining data)
--- DROP TABLE IF EXISTS academic_calendar, class_config, materials, schedule, grades, book_inventory, book_loans, bos_management, school_assets, learning_documentation, support_documents, permission_requests, buku_penghubung, jurnal_kelas, learning_reports, employment_links, penilaian_karakter, penilaian_sikap, guests, inventory, profiles, extracurriculars, counseling, holidays, attendance, agendas, students, users, graduates, sumatif_results, sumatifs, emergency_alerts, performance_assessments, learning_plans CASCADE;
+-- 1. Tabel Registrasi Database & Metadata Sekolah (Eks Database Pusat)
+CREATE TABLE IF NOT EXISTS school_databases (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  school_code VARCHAR(50) UNIQUE NOT NULL,
+  school_name VARCHAR(255) NOT NULL,
+  supabase_url TEXT NOT NULL,
+  supabase_anon_key TEXT NOT NULL,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
 
--- (Include all tables from supabase_migration.sql here, excluding school_databases)
--- ... [All tables from supabase_migration.sql] ...
-
--- 1. Users table
+-- 2. Tabel Pengguna (Users) - Mendukung Superadmin, Admin, Guru, KS, Siswa
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   username TEXT UNIQUE NOT NULL,
@@ -30,14 +40,14 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 2. Class Config table
+-- 3. Tabel Konfigurasi Kelas
 CREATE TABLE IF NOT EXISTS class_config (
   class_id TEXT PRIMARY KEY,
   data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. GTK Data table
+-- 4. Tabel Data GTK (Guru dan Tenaga Kependidikan)
 CREATE TABLE IF NOT EXISTS gtk_data (
   id TEXT PRIMARY KEY,
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -63,7 +73,7 @@ CREATE TABLE IF NOT EXISTS gtk_data (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 4. Students table
+-- 5. Tabel Data Siswa
 CREATE TABLE IF NOT EXISTS students (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -151,55 +161,7 @@ CREATE TABLE IF NOT EXISTS students (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Migration script to add any missing columns to existing students table without deleting existing data:
-ALTER TABLE students ADD COLUMN IF NOT EXISTS rt TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS rw TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS dusun TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS kelurahan TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS kecamatan TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS kode_pos TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS jenis_tinggal TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS alat_transportasi TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS telepon TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS hp TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS email TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS skhun TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS penerima_kps TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS no_kps TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS father_birth_year TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS father_income TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS father_nik TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_birth_year TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_income TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS mother_nik TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_birth_year TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_education TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_income TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS guardian_nik TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS rombel TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS no_ujian_nasional TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS no_seri_ijazah TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS penerima_kip TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_kip TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS nama_di_kip TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_kks TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS no_registrasi_akta_lahir TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS bank TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS nomor_rekening_bank TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS rekening_atas_nama TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS layak_pip TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS alasan_layak_pip TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS kebutuhan_khusus TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS sekolah_asal TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS anak_ke TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS lintang TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS bujur TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS no_kk TEXT;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS lingkar_kepala NUMERIC DEFAULT 0;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS jml_saudara_kandung NUMERIC DEFAULT 0;
-ALTER TABLE students ADD COLUMN IF NOT EXISTS jarak_rumah_km NUMERIC DEFAULT 0;
-
--- 5. Agendas table
+-- 6. Tabel Agenda Kelas
 CREATE TABLE IF NOT EXISTS agendas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -211,7 +173,7 @@ CREATE TABLE IF NOT EXISTS agendas (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 6. Materials table
+-- 7. Tabel Materi Pembelajaran
 CREATE TABLE IF NOT EXISTS materials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -223,14 +185,14 @@ CREATE TABLE IF NOT EXISTS materials (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 7. Attendance table
+-- 8. Tabel Presensi / Absensi
 CREATE TABLE IF NOT EXISTS attendance (
   id TEXT PRIMARY KEY,
   records JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 8. Holidays table
+-- 9. Tabel Hari Libur & Kalender
 CREATE TABLE IF NOT EXISTS holidays (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT,
@@ -240,7 +202,7 @@ CREATE TABLE IF NOT EXISTS holidays (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 9. Counseling table
+-- 10. Tabel Bimbingan Konseling & Pelanggaran
 CREATE TABLE IF NOT EXISTS counseling (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -256,7 +218,7 @@ CREATE TABLE IF NOT EXISTS counseling (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 10. Extracurriculars table
+-- 11. Tabel Ekstrakurikuler
 CREATE TABLE IF NOT EXISTS extracurriculars (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -268,14 +230,14 @@ CREATE TABLE IF NOT EXISTS extracurriculars (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 11. Profiles table
+-- 12. Tabel Profil Aplikasi & Sekolah
 CREATE TABLE IF NOT EXISTS profiles (
   id TEXT PRIMARY KEY,
   data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 12. Inventory table
+-- 13. Tabel Inventaris Kelas
 CREATE TABLE IF NOT EXISTS inventory (
   id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -285,7 +247,7 @@ CREATE TABLE IF NOT EXISTS inventory (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 13. Guests table
+-- 14. Tabel Buku Tamu
 CREATE TABLE IF NOT EXISTS guests (
   id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -297,7 +259,7 @@ CREATE TABLE IF NOT EXISTS guests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 14. Penilaian Sikap table
+-- 15. Tabel Penilaian Sikap (DPL)
 CREATE TABLE IF NOT EXISTS penilaian_sikap (
   student_id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -312,7 +274,7 @@ CREATE TABLE IF NOT EXISTS penilaian_sikap (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 15. Penilaian Karakter table
+-- 16. Tabel Penilaian Karakter (7 KAIH)
 CREATE TABLE IF NOT EXISTS penilaian_karakter (
   student_id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -328,7 +290,7 @@ CREATE TABLE IF NOT EXISTS penilaian_karakter (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 15b. Jurnal Harian 7 KAIH table
+-- 17. Tabel Jurnal Harian 7 KAIH Siswa
 CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id TEXT NOT NULL,
@@ -348,7 +310,7 @@ CREATE TABLE IF NOT EXISTS jurnal_kaih_harian (
   CONSTRAINT unique_student_kaih_date UNIQUE (student_id, date)
 );
 
--- 16. Employment Links table
+-- 18. Tabel Tautan Aplikasi Terintegrasi
 CREATE TABLE IF NOT EXISTS employment_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   title TEXT NOT NULL,
@@ -357,7 +319,7 @@ CREATE TABLE IF NOT EXISTS employment_links (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 17. Learning Reports table
+-- 19. Tabel Laporan Pembelajaran
 CREATE TABLE IF NOT EXISTS learning_reports (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -370,7 +332,7 @@ CREATE TABLE IF NOT EXISTS learning_reports (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 18. Jurnal Kelas table
+-- 20. Tabel Jurnal Kelas
 CREATE TABLE IF NOT EXISTS jurnal_kelas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -381,7 +343,7 @@ CREATE TABLE IF NOT EXISTS jurnal_kelas (
   UNIQUE(class_id, date)
 );
 
--- 19. Buku Penghubung table
+-- 21. Tabel Buku Penghubung
 CREATE TABLE IF NOT EXISTS buku_penghubung (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -395,7 +357,7 @@ CREATE TABLE IF NOT EXISTS buku_penghubung (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 20. Permission Requests table
+-- 22. Tabel Permohonan Izin Siswa
 CREATE TABLE IF NOT EXISTS permission_requests (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -407,7 +369,7 @@ CREATE TABLE IF NOT EXISTS permission_requests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 21. Support Documents table
+-- 23. Tabel Dokumen Bukti Dukung
 CREATE TABLE IF NOT EXISTS support_documents (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -416,7 +378,7 @@ CREATE TABLE IF NOT EXISTS support_documents (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 22. Learning Documentation table
+-- 24. Tabel Dokumentasi Pembelajaran
 CREATE TABLE IF NOT EXISTS learning_documentation (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -425,7 +387,7 @@ CREATE TABLE IF NOT EXISTS learning_documentation (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 23. School Assets table
+-- 25. Tabel Sarana & Prasarana Sekolah
 CREATE TABLE IF NOT EXISTS school_assets (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
@@ -435,7 +397,7 @@ CREATE TABLE IF NOT EXISTS school_assets (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 24. BOS Management table
+-- 26. Tabel Pengelolaan Dana BOS
 CREATE TABLE IF NOT EXISTS bos_management (
   id TEXT PRIMARY KEY,
   date DATE NOT NULL,
@@ -446,7 +408,7 @@ CREATE TABLE IF NOT EXISTS bos_management (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 25. Book Loans table
+-- 27. Tabel Peminjaman Buku Perpustakaan
 CREATE TABLE IF NOT EXISTS book_loans (
   id TEXT PRIMARY KEY,
   student_id TEXT NOT NULL,
@@ -460,7 +422,7 @@ CREATE TABLE IF NOT EXISTS book_loans (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 26. Book Inventory table
+-- 28. Tabel Inventaris Buku Perpustakaan
 CREATE TABLE IF NOT EXISTS book_inventory (
   id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -473,7 +435,7 @@ CREATE TABLE IF NOT EXISTS book_inventory (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 27. Grades table
+-- 29. Tabel Nilai & Rapor
 CREATE TABLE IF NOT EXISTS grades (
   student_id TEXT NOT NULL,
   class_id TEXT NOT NULL,
@@ -487,14 +449,14 @@ CREATE TABLE IF NOT EXISTS grades (
   PRIMARY KEY (student_id, subject_id)
 );
 
--- 28. Academic Calendar table
+-- 30. Tabel Kalender Akademik
 CREATE TABLE IF NOT EXISTS academic_calendar (
   id TEXT PRIMARY KEY,
   data JSONB NOT NULL,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 29. Schedule table
+-- 31. Tabel Jadwal Pelajaran
 CREATE TABLE IF NOT EXISTS schedule (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -504,7 +466,7 @@ CREATE TABLE IF NOT EXISTS schedule (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 30. Graduates table
+-- 32. Tabel Data Lulusan / Alumni
 CREATE TABLE IF NOT EXISTS graduates (
   id TEXT PRIMARY KEY,
   nis TEXT,
@@ -520,7 +482,7 @@ CREATE TABLE IF NOT EXISTS graduates (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 31. Sumatifs table
+-- 33. Tabel Soal & Ujian Sumatif
 CREATE TABLE IF NOT EXISTS sumatifs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id TEXT NOT NULL,
@@ -538,7 +500,7 @@ CREATE TABLE IF NOT EXISTS sumatifs (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 32. Sumatif Results table
+-- 34. Tabel Hasil Pengerjaan Sumatif Siswa
 CREATE TABLE IF NOT EXISTS sumatif_results (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sumatif_id UUID REFERENCES sumatifs(id) ON DELETE CASCADE,
@@ -554,7 +516,7 @@ CREATE TABLE IF NOT EXISTS sumatif_results (
   UNIQUE(sumatif_id, student_id)
 );
 
--- 33. Emergency Alerts table
+-- 35. Tabel Tanggap Darurat / Emergency Alerts
 CREATE TABLE IF NOT EXISTS emergency_alerts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   type TEXT NOT NULL,
@@ -565,7 +527,7 @@ CREATE TABLE IF NOT EXISTS emergency_alerts (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 34. Performance Assessments table
+-- 36. Tabel Penilaian Kinerja Guru (Supervisi KS)
 CREATE TABLE IF NOT EXISTS performance_assessments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   teacher_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -581,7 +543,7 @@ CREATE TABLE IF NOT EXISTS performance_assessments (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 35. Learning Plans table
+-- 37. Tabel Rencana Pembelajaran Mingguan (RPM)
 CREATE TABLE IF NOT EXISTS learning_plans (
   id TEXT PRIMARY KEY,
   school_name TEXT NOT NULL,
@@ -629,7 +591,7 @@ CREATE TABLE IF NOT EXISTS learning_plans (
 
 CREATE INDEX IF NOT EXISTS idx_learning_plans_created_at ON learning_plans (created_at DESC);
 
--- 36. Kokurikuler Plans (RPK) table
+-- 38. Tabel Rencana Projek Kokurikuler (RPK)
 CREATE TABLE IF NOT EXISTS kokurikuler_plans (
   id TEXT PRIMARY KEY,
   identitas JSONB NOT NULL,
@@ -646,7 +608,7 @@ CREATE TABLE IF NOT EXISTS kokurikuler_plans (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 37. Mail Records (Surat Menyurat) table
+-- 39. Tabel Pengarsipan Surat Menyurat
 CREATE TABLE IF NOT EXISTS mail_records (
   id TEXT PRIMARY KEY,
   type TEXT NOT NULL DEFAULT 'masuk',
@@ -664,7 +626,7 @@ CREATE TABLE IF NOT EXISTS mail_records (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 38. Staff Leave Requests (Izin Pegawai) table
+-- 40. Tabel Permohonan Izin Pegawai / GTK
 CREATE TABLE IF NOT EXISTS staff_leave_requests (
   id TEXT PRIMARY KEY,
   user_id TEXT NOT NULL,
@@ -682,9 +644,7 @@ CREATE TABLE IF NOT EXISTS staff_leave_requests (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
-ALTER TABLE staff_leave_requests ADD COLUMN IF NOT EXISTS rejection_reason TEXT;
-
--- 39. Formatif Topics table
+-- 41. Tabel Topik & Asesmen Formatif
 CREATE TABLE IF NOT EXISTS formatif_topics (
   id TEXT PRIMARY KEY,
   class_id TEXT NOT NULL,
@@ -695,7 +655,7 @@ CREATE TABLE IF NOT EXISTS formatif_topics (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- 40. Formatif Scores table
+-- 42. Tabel Nilai Formatif Siswa
 CREATE TABLE IF NOT EXISTS formatif_scores (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   topic_id TEXT REFERENCES formatif_topics(id) ON DELETE CASCADE,
@@ -705,7 +665,9 @@ CREATE TABLE IF NOT EXISTS formatif_scores (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- DISABLE RLS for all tables
+-- ==============================================================================
+-- NONAKTIFKAN ROW LEVEL SECURITY (RLS) AGAR AKSES SEMPURNA
+-- ==============================================================================
 DO $$
 DECLARE
     table_name TEXT;
@@ -716,12 +678,33 @@ BEGIN
         WHERE schemaname = 'public'
     LOOP
         EXECUTE 'ALTER TABLE public.' || quote_ident(table_name) || ' DISABLE ROW LEVEL SECURITY';
-        -- Optional: remove policies
     END LOOP;
 END $$;
 
--- Insert default admin user
-INSERT INTO users (username, password, role, full_name, class_id)
-VALUES ('admin', '123456', 'admin', 'Administrator Utama', 'all')
+-- ==============================================================================
+-- SEED DATA DEFAULT (AKUN UTAMA & PROFIL AWAL)
+-- ==============================================================================
+
+-- Superadmin & Admin Akun
+INSERT INTO users (username, password, role, full_name, class_id, position)
+VALUES 
+  ('superadmin', 'superadmin123', 'superadmin', 'Administrator Pusat', 'ALL', 'Superadmin Pusat'),
+  ('admin', '123456', 'admin', 'Administrator Utama', 'ALL', 'Admin Sekolah')
 ON CONFLICT (username) DO NOTHING;
 
+-- Default Profile jika belum ada
+INSERT INTO profiles (id, data)
+VALUES (
+  'school_profile',
+  '{
+    "name": "SAGARA School",
+    "npsn": "12345678",
+    "address": "Jl. Pendidikan Nasional No. 1",
+    "headmaster": "Kepala Sekolah, M.Pd",
+    "headmasterNip": "197501012000031001",
+    "year": "2024/2025",
+    "semester": "1",
+    "primaryColor": "#5AB2FF"
+  }'::jsonb
+)
+ON CONFLICT (id) DO NOTHING;

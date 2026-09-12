@@ -391,7 +391,7 @@ const AppContent: React.FC = () => {
     
     if (!schoolId) {
       setTemporarySupabase();
-      handleShowNotification("Koneksi dikembalikan ke database pusat/utama.", "success");
+      handleShowNotification("Koneksi dikembalikan ke Database SAGARA utama.", "success");
     } else {
       const school = schoolsList.find(s => s.id === schoolId);
       if (school) {

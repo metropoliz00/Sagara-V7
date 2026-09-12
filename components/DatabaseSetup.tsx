@@ -58,7 +58,7 @@ export const DatabaseSetup: React.FC = () => {
     setIsLoading(true);
     try {
       if (!masterSupabase) {
-        throw new Error('Database pusat belum dikonfigurasi. Hubungi administrator.');
+        throw new Error('Database SAGARA belum dikonfigurasi. Hubungi administrator.');
       }
       
       const { data, error: fetchError } = await masterSupabase
@@ -75,7 +75,7 @@ export const DatabaseSetup: React.FC = () => {
         throw new Error('Akun sekolah anda belum aktif, hubungi admin untuk aktivasi.');
       }
 
-      setSuccessMessage('Aktivasi Berhasil! Menghubungkan ke database sekolah Anda...');
+      setSuccessMessage('Aktivasi Berhasil! Menghubungkan ke Database SAGARA...');
       setSuccess(true);
       // Wait briefly for the success animation before reloading
       setTimeout(() => {
@@ -115,7 +115,7 @@ export const DatabaseSetup: React.FC = () => {
     setIsLoading(true);
     try {
       if (!masterSupabase) {
-        throw new Error('Database pusat belum dikonfigurasi. Hubungi administrator.');
+        throw new Error('Database SAGARA belum dikonfigurasi. Hubungi administrator.');
       }
 
       // Check if school code already exists
@@ -353,7 +353,7 @@ export const DatabaseSetup: React.FC = () => {
             onClick={() => setShowDisconnectModal(true)}
           >
             <Trash2 size={14} />
-            <span>Kembali ke Data Pusat</span>
+            <span>Reset ke Database SAGARA Default</span>
           </button>
         </div>
       )}
@@ -361,8 +361,8 @@ export const DatabaseSetup: React.FC = () => {
       <CustomModal
         isOpen={showDisconnectModal}
         type="confirm"
-        title="Kembali ke Data Pusat"
-        message="Apakah Anda yakin ingin melepas koneksi database sekolah dan kembali ke data pusat?"
+        title="Reset Konfigurasi Database"
+        message="Apakah Anda yakin ingin mereset koneksi database dan kembali ke konfigurasi bawaan Database SAGARA?"
         onConfirm={() => {
           resetDatabaseConfig();
           setShowDisconnectModal(false);

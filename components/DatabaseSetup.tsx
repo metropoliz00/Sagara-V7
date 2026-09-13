@@ -353,7 +353,7 @@ export const DatabaseSetup: React.FC = () => {
             onClick={() => setShowDisconnectModal(true)}
           >
             <Trash2 size={14} />
-            <span>Reset ke Database SAGARA Default</span>
+            <span>Reset ke Database Pusat</span>
           </button>
         </div>
       )}
@@ -362,7 +362,7 @@ export const DatabaseSetup: React.FC = () => {
         isOpen={showDisconnectModal}
         type="confirm"
         title="Reset Konfigurasi Database"
-        message="Apakah Anda yakin ingin mereset koneksi database dan kembali ke konfigurasi bawaan Database SAGARA?"
+        message="Apakah Anda yakin ingin mereset koneksi database dan kembali ke konfigurasi bawaan Database Pusat?"
         onConfirm={() => {
           resetDatabaseConfig();
           setShowDisconnectModal(false);
